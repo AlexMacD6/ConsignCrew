@@ -8,11 +8,18 @@ datasource db {
 }
 
 model User {
-  id           Int    @id @default(autoincrement())
+  id           String  @id @default(cuid())
   firstName    String
   lastName     String
-  email        String @unique
-  passwordHash String // Store hashed password
+  email        String  @unique
+  passwordHash String? // Optional for OAuth users who don't set a password
+
+  // OAuth Provider Information
+  oauthProvider     String? // 'google', 'facebook', 'tiktok', or null for email/password
+  oauthProviderId   String? // The unique ID from the OAuth provider
+  oauthAccessToken  String? // Encrypted access token from OAuth provider
+  oauthRefreshToken String? // Encrypted refresh token from OAuth provider
+  oauthExpiresAt    DateTime? // When the OAuth token expires
 
   // Contact & Notifications
   mobilePhone      String?
@@ -27,9 +34,13 @@ model User {
   payoutAccount String // Routing/account or PayPal email (encrypted in app)
 
   // Verification & Trust
-  profilePhotoUrl String? // Optional profile photo
+  profilePhotoUrl String? // Optional profile photo (can come from OAuth)
   governmentIdUrl String? // Optional, encrypted storage
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Index for OAuth provider lookups
+  @@index([oauthProvider, oauthProviderId])
+  @@index([email])
 }

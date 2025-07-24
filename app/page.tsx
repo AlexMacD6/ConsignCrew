@@ -76,7 +76,7 @@ export default function LandingPage() {
           )}
           {submitted && (
             <div className="text-green-400 mt-4 animate-fade-in delay-300">
-              You’re on the list – we’ll be in touch.
+              You're on the list – we'll be in touch.
             </div>
           )}
         </div>
@@ -87,7 +87,27 @@ export default function LandingPage() {
         <div className="h-1 w-24 bg-gradient-to-r from-[#D4AF3D] via-[#fffbe6] to-[#D4AF3D] rounded-full shadow" />
       </div>
 
-      {/* Mission, Problem, Solution as Cards in a Responsive Grid */}
+      {/* Pain Point Section - Now Second */}
+      <section className="max-w-4xl mx-auto px-4 mb-20">
+        <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center border-t-4 border-[#825E08] animate-fade-in">
+          <h2 className="text-3xl md:text-4xl font-bold mb-6 text-[#222]">
+            The Problem We're Solving
+          </h2>
+          <p className="text-lg md:text-xl text-gray-700 leading-relaxed max-w-3xl mx-auto">
+            Valuable items just sit collecting dust in your garage because
+            selling means wading through hundreds of bot‑filled or tire‑kicking
+            messages, arranging awkward cash meetups, and risking sketchy
+            encounters with strangers.
+          </p>
+        </div>
+      </section>
+
+      {/* Section Divider */}
+      <div className="w-full flex justify-center my-8">
+        <div className="h-1 w-24 bg-gradient-to-r from-[#825E08] via-[#fffbe6] to-[#825E08] rounded-full shadow" />
+      </div>
+
+      {/* Mission, Problem Details, Solution as Cards in a Responsive Grid */}
       <section className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
         {/* Mission Card */}
         <div
@@ -99,7 +119,7 @@ export default function LandingPage() {
             At <span className="font-bold">ConsignCrew</span>, we believe
             selling should be simple, transparent, and—dare we say—enjoyable.
             Too many people struggle with complicated listing sites, endless
-            packaging headaches, and missing payouts. We’re on a mission to
+            packaging headaches, and missing payouts. We're on a mission to
             change that by:
           </p>
           <ul className="space-y-2 text-base">
@@ -120,12 +140,12 @@ export default function LandingPage() {
             </li>
           </ul>
         </div>
-        {/* Problem Card */}
+        {/* Problem Details Card */}
         <div
           id="problem"
           className="bg-white rounded-2xl shadow-lg p-8 flex flex-col items-center text-center border-t-4 border-[#825E08] animate-fade-in delay-100"
         >
-          <h2 className="text-2xl font-bold mb-4 text-[#222]">The Problem</h2>
+          <h2 className="text-2xl font-bold mb-4 text-[#222]">The Details</h2>
           <ol className="list-decimal list-inside space-y-2 text-base text-left mx-auto max-w-xs">
             <li>
               <span className="font-semibold">Listing overload.</span> Countless
@@ -153,7 +173,7 @@ export default function LandingPage() {
             <li>
               <span className="font-bold">One‑Click Listing</span>
               <br />
-              Snap a photo, set your price, and hit “List.” We’ll handle the
+              Snap a photo, set your price, and hit "List." We'll handle the
               rest.
             </li>
             <li>
@@ -175,7 +195,7 @@ export default function LandingPage() {
 
       {/* Section Divider */}
       <div className="w-full flex justify-center my-8">
-        <div className="h-1 w-24 bg-gradient-to-r from-[#825E08] via-[#fffbe6] to-[#825E08] rounded-full shadow" />
+        <div className="h-1 w-24 bg-gradient-to-r from-[#D4AF3D] via-[#fffbe6] to-[#D4AF3D] rounded-full shadow" />
       </div>
 
       {/* Waitlist / CTA */}
@@ -193,7 +213,7 @@ export default function LandingPage() {
           </li>
           <li>
             💬 <span className="font-semibold">Influence the Product</span> —
-            Tell us your pain points; we’ll build the solutions you need.
+            Tell us your pain points; we'll build the solutions you need.
           </li>
           <li>
             🔒 <span className="font-semibold">Founders‑Only Perks</span> —
@@ -228,7 +248,7 @@ export default function LandingPage() {
           {error && <div className="text-red-400 mt-4">{error}</div>}
           {submitted && (
             <div className="text-green-400 mt-4">
-              You’re on the list – we’ll be in touch.
+              You're on the list – we'll be in touch.
             </div>
           )}
         </div>
@@ -286,7 +306,7 @@ export default function LandingPage() {
           </a>
         </div>
         <div className="text-center md:text-right w-full md:w-auto mt-4 md:mt-0">
-          © 2025 ConsignCrew. All rights reserved.
+          © 2025 ConsignCrew. All rights reserved.
         </div>
       </footer>
     </div>
