@@ -5,6 +5,7 @@ import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { registerUser } from "../api/auth/registerUser";
 
 export default function RegisterPage() {
   const [firstName, setFirstName] = useState("");
@@ -14,45 +15,34 @@ export default function RegisterPage() {
   const [mobilePhone, setMobilePhone] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
   const router = useRouter();
 
   /**
-   * Handle email/password registration using Better Auth
+   * Handle email/password registration using Better Auth (server action)
    */
   const handleEmailRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
+    setSuccess(false);
 
-    try {
-      const response = await fetch("/api/auth/[...betterauth]", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "signUp",
-          email,
-          password,
-          firstName,
-          lastName,
-          mobilePhone,
-        }),
-      });
+    const result = await registerUser({
+      email,
+      password,
+      firstName,
+      lastName,
+      mobilePhone,
+    });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        // Successful registration - redirect to profile
-        router.push("/profile");
-      } else {
-        setError(data.error || "Registration failed. Please try again.");
-      }
-    } catch (err) {
-      setError("Network error. Please try again.");
-    } finally {
-      setIsLoading(false);
+    if (result.success) {
+      setSuccess(true);
+      // Optionally redirect to profile or login
+      setTimeout(() => router.push("/login"), 1500);
+    } else {
+      setError(result.error || "Registration failed. Please try again.");
     }
+    setIsLoading(false);
   };
 
   /**
@@ -84,6 +74,13 @@ export default function RegisterPage() {
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
             {error}
+          </div>
+        )}
+
+        {/* Success Display */}
+        {success && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-600 text-sm">
+            Registration successful! Redirecting to login...
           </div>
         )}
 

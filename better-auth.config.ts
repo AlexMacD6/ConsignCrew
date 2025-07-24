@@ -1,40 +1,47 @@
-import { defineConfig } from 'better-auth';
+export default {
+  // App configuration
+  appName: "ConsignCrew",
+  secret: process.env.BETTER_AUTH_SECRET || process.env.AUTH_SECRET || "your-secret-key-here",
 
-export default defineConfig({
-  // Use Prisma as the database adapter
+  // Use in-memory SQLite for dev/testing
   database: {
-    provider: 'prisma',
-    url: process.env.DATABASE_URL,
+    provider: 'sqlite',
+    url: 'file::memory:?cache=shared',
   },
 
   // Enable email/password authentication
-  auth: {
-    emailPassword: {
+  emailPassword: {
+    enabled: true,
+    // Optionally configure email sending for password resets, etc.
+  },
+
+  // Enable OAuth providers
+  socialProviders: {
+    google: {
       enabled: true,
-      // Optionally configure email sending for password resets, etc.
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      // Optionally specify scopes, etc.
     },
-    // Enable OAuth providers
-    providers: [
-      {
-        id: 'google',
-        clientId: process.env.GOOGLE_CLIENT_ID!,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-        // Optionally specify scopes, etc.
-      },
-      {
-        id: 'facebook',
-        clientId: process.env.FACEBOOK_CLIENT_ID!,
-        clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
-        // Optionally specify scopes, etc.
-      },
-      {
-        id: 'tiktok',
-        clientId: process.env.TIKTOK_CLIENT_ID!,
-        clientSecret: process.env.TIKTOK_CLIENT_SECRET!,
-        // Optionally specify scopes, etc.
-      },
-    ],
+    facebook: {
+      enabled: true,
+      clientId: process.env.FACEBOOK_CLIENT_ID!,
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
+      // Optionally specify scopes, etc.
+    },
+    tiktok: {
+      enabled: true,
+      clientId: process.env.TIKTOK_CLIENT_ID!,
+      clientSecret: process.env.TIKTOK_CLIENT_SECRET!,
+      // Optionally specify scopes, etc.
+    },
+  },
+
+  // Session configuration
+  session: {
+    expiresIn: 60 * 60 * 24 * 7, // 7 days
+    updateAge: 60 * 60 * 24, // 24 hours
   },
 
   // Add any additional configuration here (rate limiting, plugins, etc.)
-}); 
+}; 

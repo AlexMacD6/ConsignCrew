@@ -1,4 +1,4 @@
-import { betterAuthHandler } from 'better-auth/next';
+import { auth } from '../../../lib/auth'
 
-// This catch-all route handles all Better Auth authentication endpoints (sign in, sign up, callback, etc.)
-export { betterAuthHandler as GET, betterAuthHandler as POST }; 
+export const GET = auth.handler
+export const POST = auth.handler 
