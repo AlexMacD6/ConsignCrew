@@ -1,0 +1,12 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+After finishing making any changes to the `schema.prisma` file, run:
+
+```sh
+npx prisma migrate dev --name <descriptive-migration-name>
+```
+
+If you change or revert schema updates, update or remove the corresponding migration files before merging.

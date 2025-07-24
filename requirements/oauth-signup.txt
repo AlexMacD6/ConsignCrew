@@ -1,0 +1,63 @@
+# OAuth Sign-Up Integration Requirements
+
+## Overview
+
+- Implement OAuth-based user sign-up and login using the betterauth library.
+- Integrate with the existing user registration and authentication flow.
+- Ensure seamless user experience for both new and returning users.
+
+## Goals
+
+- Allow users to sign up and log in using third-party OAuth providers.
+- Store and manage user identity in the existing Prisma User table.
+- Maintain security and privacy best practices.
+
+## Providers
+
+- Google (required)
+- (Optional: Add Facebook, Apple, or others as needed)
+
+## User Flow
+
+- On the registration and login pages, display "Sign up with Google" and "Log in with Google" buttons.
+- When a user clicks an OAuth button:
+  - Redirect to the provider’s authentication page.
+  - On success, create a new user in the database if one does not exist, or log in the user if they already exist.
+  - Store relevant user information (name, email, provider ID, etc.) in the User table.
+  - Set authentication state in the frontend (e.g., localStorage/session/cookie).
+- If the user already has an account with the same email, link the OAuth login to their existing account.
+
+## Backend
+
+- Use betterauth to handle OAuth flows and token validation.
+- Add necessary API endpoints for OAuth callback and user session management.
+- Update Prisma User model if additional fields are needed (e.g., provider, providerId).
+
+## Frontend
+
+- Add OAuth sign-up/login buttons to registration and login pages.
+- Handle redirect and callback flows.
+- Update UI to reflect authentication state.
+
+## Security
+
+- Never expose sensitive tokens or secrets to the frontend.
+- Validate all OAuth tokens server-side.
+- Ensure CSRF protection on OAuth flows.
+
+## Testing
+
+- Test sign-up and login with Google.
+- Test account linking for users who sign up with email/password and later use OAuth.
+- Test error handling for failed or cancelled OAuth attempts.
+
+---
+
+**Instructions for Reviewers**
+
+1. Pull this branch.
+2. Set up betterauth credentials for Google OAuth (see README for setup).
+3. Run the app and test sign-up and login with Google.
+4. Verify that new users are created and existing users can log in via OAuth.
+5. Check that user data is stored correctly in the database.
+6. Test account linking and error handling. 

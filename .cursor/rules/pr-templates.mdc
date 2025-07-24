@@ -1,0 +1,46 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+For every branch, maintain a PR template markdown file in the pr-templates/ directory.
+
+The template must include:
+
+A changelog section that summarizes all changes made in the branch.
+
+Simple, clear testing instructions for reviewers.
+
+Keep all language factual and to the point—avoid marketing terms or unnecessary detail.
+
+Update the changelog and instructions as changes are made.
+
+
+```md
+## Changelog
+
+- Added user authentication
+  - Created login form in the frontend
+    - Added input validation for email and password fields
+    - Displayed error messages for invalid or missing input
+  - Connected login form to backend authentication API
+    - Sent login requests to backend and handled responses
+    - Stored authentication token after successful login
+- Updated dependencies
+  - Upgraded `react` and `@prisma/client` to latest versions
+  - Updated authentication-related packages (`jsonwebtoken`, `bcrypt`)
+
+---
+
+## Testing Instructions
+
+1. Pull this branch.
+2. Run `npm install` to update dependencies.
+3. Start the application with `npm run dev`.
+4. Navigate to `/login` in the browser.
+5. Test login with:
+    - Correct email and password (should log in and store token)
+    - Incorrect credentials (should display error message)
+    - Missing fields (should display validation messages)
+6. Check for errors related to updated dependencies.
+```

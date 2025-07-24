@@ -1,0 +1,14 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+For all requests, remind the user to document the requirements in a text file within the `requirements/` directory (if they haven't already).
+
+The requirements text file should clearly describe the requested changes or features using bullets.
+
+This requirements file should then be included in the Cursor prompt, rather than the user manually writing the request.
+
+If the requirements file is not referenced or provided, the user should be reminded to create and include one before work proceeds.
+
+This practice ensures all original requirements are version controlled and available for reviewers, making it easy to understand the goal of the changes versus the resulting output.
