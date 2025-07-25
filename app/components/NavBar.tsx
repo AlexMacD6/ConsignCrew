@@ -66,6 +66,12 @@ export default function NavBar() {
             >
               List an Item
             </Link>
+            <Link
+              href="/listings"
+              className="px-4 py-2 bg-[#D4AF3D] text-white font-bold rounded-lg shadow hover:bg-[#b8932f] transition"
+            >
+              Listings
+            </Link>
             <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
               <PopoverTrigger asChild>
                 <Button

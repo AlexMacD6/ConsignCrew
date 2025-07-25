@@ -1,0 +1,114 @@
+# Admin Functionality Requirements
+
+## Overview
+Add an Admin page within the profile page that only appears for administrators, featuring User Management and Content Management sections with specific focus on managing approved zip codes.
+
+## Features Implemented
+
+### Admin Access Control
+- **Admin Tab**: Only visible to users with admin privileges
+- **Admin Check**: Uses Better Auth organization system - checks if user is ADMIN or OWNER in any organization
+- **Shield Icon**: Visual indicator for admin functionality
+- **Responsive Design**: Admin tab integrates seamlessly with existing profile tabs
+
+### User Management Section
+- **User Table**: Comprehensive table displaying all users with organization memberships
+- **User Information**: Name, email, admin status, organizations, join date, last login
+- **Admin Status**: Visual indicators showing if user is admin in any organization
+- **Organization Memberships**: Shows all organizations user belongs to with their roles
+- **Make Admin Button**: Quick action to assign admin role to users
+- **User Actions**: Edit and delete buttons for each user
+- **Real-time Updates**: State management for immediate UI updates
+
+### Organization Management Section
+- **Organization List**: Display all organizations with member counts and team counts
+- **Create Organization**: Form to create new organizations with name, slug, and logo
+- **Organization Details**: Shows organization name, slug, member count, and team count
+- **Member Management**: View and manage members within each organization
+- **Role Management**: Change member roles (MEMBER, ADMIN, OWNER) with visual indicators
+- **Member Actions**: Remove members from organizations
+- **Organization Actions**: Edit and delete organizations
+
+### Content Management Section
+- **Content Navigation**: Tabbed interface for different content types
+- **Approved Zip Codes Component**: Dedicated section for managing zip codes
+
+### Approved Zip Codes Management
+- **Dual Display**: Separate sections for Seller and Buyer zip codes
+- **Visual Organization**: 
+  - Seller zip codes in blue section
+  - Buyer zip codes in green section
+  - Grid layout for easy scanning
+- **Add Functionality**: Form to add new zip codes with:
+  - Zip code input field
+  - Area name input field
+  - Type selector (Buyer/Seller)
+  - Save button with validation
+- **Delete Functionality**: Individual delete buttons for each zip code
+- **Real-time Data**: Uses actual zip code data from `zipcodes.ts`
+- **Responsive Grid**: Adapts to different screen sizes
+
+### User Interface Enhancements
+- **Icon Integration**: Uses Lucide React icons throughout
+- **Consistent Styling**: Matches existing ConsignCrew design system
+- **Color Coding**: Different colors for different user roles and zip code types
+- **Hover Effects**: Interactive elements with proper hover states
+- **Loading States**: Proper loading indicators for async operations
+
+## Technical Implementation
+
+### State Management
+- `tab`: Controls main profile tabs (overview, settings, admin)
+- `adminTab`: Controls admin sub-tabs (users, content)
+- `users`: Array of user objects for user management
+- `newZipCode`: Object for adding new zip codes
+- `editingZipCode`: Tracks which zip code is being edited
+
+### Admin Functions
+- `isUserAdmin()`: Checks if user has admin privileges in any organization
+- `getUserAdminOrganizations()`: Gets user's admin organizations
+- `getAllUsersWithOrganizations()`: Fetches all users with their organization memberships
+- `assignUserAsAdmin()`: Assigns admin role to user in specified organization
+- `handleCreateOrganization()`: Creates new organizations via API
+- `handleAssignAdmin()`: Assigns admin role to users
+- `handleAddZipCode()`: Adds new zip codes (placeholder for API integration)
+- `handleDeleteZipCode()`: Removes zip codes (placeholder for API integration)
+
+### Data Integration
+- **Better Auth Integration**: Uses Better Auth's organization system for admin roles
+- **Organization Management**: Full CRUD operations for organizations and members
+- **Zip Codes**: Imports and uses actual data from `SELLER_ZIP_CODES` and `BUYER_ZIP_CODES`
+- **Real User Data**: Fetches actual users with organization memberships
+- **API Endpoints**: Complete API for organization and member management
+
+### Security Considerations
+- **Admin Check**: Proper admin privilege verification
+- **Role-based Access**: Different functionality based on user role
+- **Input Validation**: Form validation for zip code additions
+- **Confirmation Dialogs**: Delete operations should include confirmations
+
+## User Experience
+- **Intuitive Navigation**: Clear tab structure for admin functions
+- **Visual Feedback**: Immediate updates when changing user roles/status
+- **Organized Layout**: Logical grouping of related functionality
+- **Accessibility**: Proper focus management and keyboard navigation
+- **Mobile Responsive**: Works across all device sizes
+
+## Future Enhancements
+- **Backend Integration**: Connect to actual API endpoints
+- **Bulk Operations**: Select multiple users/zip codes for batch operations
+- **Search and Filter**: Add search functionality to user and zip code lists
+- **Audit Trail**: Track changes made by administrators
+- **Export Functionality**: Export user and zip code data
+- **Advanced Permissions**: Granular permission system for different admin levels
+- **Real-time Updates**: WebSocket integration for live updates
+- **Email Notifications**: Notify users of role/status changes
+- **Zip Code Validation**: Validate zip codes against real postal data
+- **Geographic Visualization**: Map view of approved zip code areas
+
+## Integration Points
+- **Authentication System**: Integrate with existing auth for admin checks
+- **Database Schema**: Update user model to include role and status fields
+- **API Endpoints**: Create endpoints for user and zip code management
+- **Audit System**: Log all admin actions for compliance
+- **Notification System**: Alert users of account changes 

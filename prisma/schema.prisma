@@ -131,3 +131,10 @@ model verificationToken {
   @@unique([identifier, token])
   @@map("verificationToken")
 }
+
+model ZipCode {
+  id   String @id @default(cuid())
+  code String
+  area String
+  type String // 'seller' or 'buyer'
+}

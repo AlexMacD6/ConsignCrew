@@ -1,0 +1,41 @@
+# List an Item Page Schema Update Requirements
+
+## Overview
+Update the List an Item page to incorporate all the new fields from the comprehensive listing schema used in the ConsignCrew application.
+
+## Changes Made
+
+### New Fields Added
+- **Reserve Price**: Optional field for minimum acceptable price
+- **GTIN (Global Trade Item Number)**: Optional field for product identification
+- **Discount Schedule**: Dropdown with three options (Turbo-30, Classic-60, Standard-90)
+- **Serial Number**: Optional field for item serial number
+- **Model Number**: Optional field for item model number
+
+### Field Updates
+- **Price**: Renamed to "List Price" for clarity
+- **Condition**: Updated values to match schema (NEW, EXCELLENT, GOOD, FAIR)
+- **Discount Schedule**: Changed from radio buttons to dropdown with descriptions
+
+### Form Structure Improvements
+- Reorganized field order for better user experience
+- Added helpful descriptions for optional fields
+- Improved field labels with clear indication of required vs optional fields
+- Added explanatory text for discount schedule options
+
+### Data Structure Updates
+- Updated form submission to include all new fields
+- Proper handling of optional fields (null values when empty)
+- Maintained backward compatibility with existing validation
+
+## Technical Details
+- All new fields are optional except for core required fields
+- Form validation updated to handle new field structure
+- Data submission format matches the listing schema used in the application
+- Maintained existing ZIP code validation and neighborhood mapping
+
+## User Experience
+- Clear distinction between required and optional fields
+- Helpful placeholder text and descriptions
+- Logical field grouping and ordering
+- Consistent styling with existing form elements 

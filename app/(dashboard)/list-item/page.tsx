@@ -2,7 +2,12 @@
 import React, { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../../components/ui/button";
-import { CheckCircleIcon } from "lucide-react";
+import { CheckCircleIcon, AlertCircle, MapPin } from "lucide-react";
+import {
+  isApprovedZipCode,
+  getNeighborhoodName,
+  getApprovedZipCodes,
+} from "../../lib/zipcodes";
 
 const taxonomy = {
   Furniture: {
@@ -121,11 +126,9 @@ const taxonomy = {
 type Department = keyof typeof taxonomy;
 type Category = string;
 type SubCategory = string;
-
 const conditions = ["New", "Like New", "Good", "Fair"] as const;
 
 export default function ListItemPage() {
-  const router = useRouter();
   const [image, setImage] = useState<File | null>(null);
   const [showFlash, setShowFlash] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
@@ -138,12 +141,12 @@ export default function ListItemPage() {
   );
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
-  const [zip, setZip] = useState("");
+  const [zipCode, setZipCode] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
-  // Handle image selection and flash
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
+    const file = e.target.files?.[0];
     if (file) {
       setImage(file);
       setShowFlash(true);
@@ -154,44 +157,44 @@ export default function ListItemPage() {
     }
   };
 
-  // Form validation
   const isFormValid =
-    !!image &&
+    image &&
     department &&
     category &&
     subCategory &&
-    title.trim().length > 0 &&
-    title.length <= 100 &&
+    title &&
     condition &&
     price &&
-    !isNaN(Number(price)) &&
-    Number(price) > 0 &&
-    description.trim().length > 0 &&
-    zip.match(/^\d{5}$/);
+    description &&
+    zipCode &&
+    isApprovedZipCode(zipCode);
 
-  // Handle form submit
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const data = {
-      image,
-      department,
-      category,
-      subCategory,
-      title,
-      condition,
-      price,
-      description,
-      zip,
-    };
-    // eslint-disable-next-line no-console
-    console.table(data);
-    router.push("/dashboard");
+    if (isFormValid) {
+      const formData = {
+        image: image?.name,
+        department,
+        category,
+        subCategory,
+        title,
+        condition,
+        price: parseFloat(price),
+        description,
+        zipCode,
+        neighborhood: getNeighborhoodName(zipCode),
+        timestamp: new Date().toISOString(),
+      };
+      console.table(formData);
+      router.push("/dashboard");
+    }
   };
+
+  const approvedZipCodes = getApprovedZipCodes();
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-lg mx-auto">
-        {/* Step 1: Photo Capture */}
         {step === 1 && (
           <div className="flex flex-col items-center justify-center min-h-[80vh] bg-white rounded-xl shadow-lg p-8 relative">
             <h1 className="text-2xl font-bold mb-4 text-[#D4AF3D]">
@@ -225,27 +228,30 @@ export default function ListItemPage() {
               </div>
             )}
             <style>{`
-              @keyframes pop {
-                0% { transform: scale(0.7); opacity: 0; }
-                60% { transform: scale(1.15); opacity: 1; }
-                100% { transform: scale(1); opacity: 1; }
-              }
-              .animate-pop { animation: pop 0.8s cubic-bezier(.17,.67,.83,.67); }
               @keyframes fade-in {
                 from { opacity: 0; }
                 to { opacity: 1; }
               }
-              .animate-fade-in { animation: fade-in 0.2s; }
+              @keyframes pop {
+                0% { transform: scale(0.5); opacity: 0; }
+                50% { transform: scale(1.2); }
+                100% { transform: scale(1); opacity: 1; }
+              }
+              .animate-fade-in {
+                animation: fade-in 0.3s ease-out;
+              }
+              .animate-pop {
+                animation: pop 0.6s ease-out;
+              }
             `}</style>
           </div>
         )}
-        {/* Step 2: Listing Form */}
+
         {step === 2 && (
           <form
             className="bg-white rounded-xl shadow-lg p-8 space-y-6"
             onSubmit={handleSubmit}
           >
-            {/* Photo Preview */}
             {image && (
               <div className="flex justify-center mb-4">
                 <img
@@ -255,44 +261,48 @@ export default function ListItemPage() {
                 />
               </div>
             )}
+
             <div className="space-y-4">
               {/* Department */}
               <div>
-                <label className="block font-medium mb-1">Department</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Department *
+                </label>
                 <select
-                  className="w-full border rounded-lg px-3 py-2"
                   value={department}
                   onChange={(e) => {
                     setDepartment(e.target.value as Department);
                     setCategory("");
                     setSubCategory("");
                   }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
                   required
                 >
                   <option value="">Select Department</option>
-                  {Object.keys(taxonomy).map((dep) => (
-                    <option key={dep} value={dep}>
-                      {dep}
+                  {(Object.keys(taxonomy) as string[]).map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
                     </option>
                   ))}
                 </select>
               </div>
+
               {/* Category */}
               <div>
-                <label className="block font-medium mb-1">Category</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Category *
+                </label>
                 <select
-                  className="w-full border rounded-lg px-3 py-2"
                   value={category}
                   onChange={(e) => {
                     setCategory(e.target.value);
                     setSubCategory("");
                   }}
-                  required
                   disabled={!department}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent disabled:bg-gray-100"
+                  required
                 >
-                  <option value="">
-                    {department ? "Select Category" : "Select Department first"}
-                  </option>
+                  <option value="">Select Category</option>
                   {department &&
                     (Object.keys(taxonomy[department]) as string[]).map(
                       (cat) => (
@@ -303,121 +313,156 @@ export default function ListItemPage() {
                     )}
                 </select>
               </div>
+
               {/* Sub-category */}
               <div>
-                <label className="block font-medium mb-1">Sub-category</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Sub-category *
+                </label>
                 <select
-                  className="w-full border rounded-lg px-3 py-2"
                   value={subCategory}
                   onChange={(e) => setSubCategory(e.target.value)}
-                  required
                   disabled={!category}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent disabled:bg-gray-100"
+                  required
                 >
-                  <option value="">
-                    {category ? "Select Sub-category" : "Select Category first"}
-                  </option>
-                  {department &&
-                  category &&
-                  (taxonomy[department][
-                    category as keyof (typeof taxonomy)[typeof department]
-                  ] as unknown as string[]) &&
-                  (
-                    taxonomy[department][
-                      category as keyof (typeof taxonomy)[typeof department]
-                    ] as unknown as string[]
-                  ).length > 0 ? (
+                  <option value="">Select Sub-category</option>
+                  {category &&
+                    department &&
                     (
                       taxonomy[department][
                         category as keyof (typeof taxonomy)[typeof department]
                       ] as unknown as string[]
-                    ).map((sub: string) => (
+                    ).map((sub) => (
                       <option key={sub} value={sub}>
                         {sub}
                       </option>
-                    ))
-                  ) : (
-                    <option value="">(No sub-categories)</option>
-                  )}
+                    ))}
                 </select>
               </div>
+
               {/* Title */}
               <div>
-                <label className="block font-medium mb-1">Title</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Title *
+                </label>
                 <input
                   type="text"
-                  className="w-full border rounded-lg px-3 py-2"
-                  maxLength={100}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
+                  maxLength={100}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  placeholder="Enter item title"
                   required
-                  placeholder="e.g. Modern Sofa, iPhone 13, etc."
                 />
-                <div className="text-xs text-gray-400 text-right">
-                  {title.length}/100
-                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {title.length}/100 characters
+                </p>
               </div>
+
               {/* Condition */}
               <div>
-                <label className="block font-medium mb-1">Condition</label>
-                <div className="flex gap-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Condition *
+                </label>
+                <div className="space-y-2">
                   {conditions.map((cond) => (
-                    <label key={cond} className="flex items-center gap-1">
+                    <label key={cond} className="flex items-center">
                       <input
                         type="radio"
                         name="condition"
                         value={cond}
                         checked={condition === cond}
-                        onChange={() => setCondition(cond)}
+                        onChange={(e) =>
+                          setCondition(
+                            e.target.value as (typeof conditions)[number]
+                          )
+                        }
+                        className="mr-2"
                         required
                       />
-                      <span>{cond}</span>
+                      {cond}
                     </label>
                   ))}
                 </div>
               </div>
+
               {/* Price */}
               <div>
-                <label className="block font-medium mb-1">Price ($)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Price ($) *
+                </label>
                 <input
                   type="number"
-                  className="w-full border rounded-lg px-3 py-2"
-                  min={1}
-                  step={0.01}
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
+                  min="0"
+                  step="0.01"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  placeholder="0.00"
                   required
-                  placeholder="Enter price"
                 />
               </div>
+
               {/* Description */}
               <div>
-                <label className="block font-medium mb-1">Description</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description *
+                </label>
                 <textarea
-                  className="w-full border rounded-lg px-3 py-2"
-                  rows={4}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  required
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
                   placeholder="Describe your item..."
+                  required
                 />
               </div>
+
               {/* ZIP Code */}
               <div>
-                <label className="block font-medium mb-1">ZIP Code</label>
-                <input
-                  type="text"
-                  className="w-full border rounded-lg px-3 py-2"
-                  value={zip}
-                  onChange={(e) =>
-                    setZip(e.target.value.replace(/[^0-9]/g, "").slice(0, 5))
-                  }
-                  required
-                  pattern="^\d{5}$"
-                  placeholder="e.g. 90210"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  ZIP Code *
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={zipCode}
+                    onChange={(e) => setZipCode(e.target.value)}
+                    maxLength={5}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent pr-10"
+                    placeholder="77007"
+                    required
+                  />
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    {zipCode &&
+                      (isApprovedZipCode(zipCode) ? (
+                        <CheckCircleIcon className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <AlertCircle className="h-5 w-5 text-red-500" />
+                      ))}
+                  </div>
+                </div>
+                {zipCode && (
+                  <div className="mt-2">
+                    {isApprovedZipCode(zipCode) ? (
+                      <div className="flex items-center gap-2 text-sm text-green-600">
+                        <MapPin className="h-4 w-4" />
+                        <span>{getNeighborhoodName(zipCode)}</span>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-red-600">
+                        ZIP code not in approved service area
+                      </div>
+                    )}
+                  </div>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  Must be in ConsignCrew service area
+                </p>
               </div>
             </div>
-            {/* Sticky Post Button */}
+
             <div className="sticky bottom-0 left-0 right-0 bg-white pt-4 pb-2">
               <Button
                 type="submit"

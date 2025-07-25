@@ -1,0 +1,141 @@
+# Better Auth Organization Dashboard Requirements
+
+## Overview
+Implement comprehensive Better Auth organization management functionality directly from the admin dashboard, ensuring all new users are automatically added to a generic organization for immediate usability.
+
+## Core Features Implemented
+
+### 1. Default Organization System
+- **Automatic User Assignment**: All new users are automatically added to a "Default Organization" upon registration
+- **Default Organization Creation**: System creates a default organization if it doesn't exist
+- **Role Assignment**: New users are assigned "MEMBER" role by default
+- **Prevention of Deletion**: Default organization cannot be deleted to maintain system integrity
+
+### 2. Organization Management
+- **Create Organizations**: Admins can create new organizations with name, slug, logo, and metadata
+- **Edit Organizations**: Update organization details including name, slug, logo, and metadata
+- **Delete Organizations**: Remove organizations (except default organization)
+- **Organization Listing**: View all organizations with member counts and team counts
+- **Organization Details**: Detailed view of each organization with members and teams
+
+### 3. Member Management
+- **Add Members**: Add existing users to organizations with specific roles
+- **Role Management**: Assign and update user roles (MEMBER, ADMIN, OWNER)
+- **Remove Members**: Remove users from organizations (with protection for last owner)
+- **Member Listing**: View all members of an organization with their roles
+- **Role Protection**: Prevent removal of last owner from an organization
+
+### 4. Invitation System
+- **Send Invitations**: Invite users by email to join organizations
+- **Role Assignment**: Specify role when sending invitations
+- **Invitation Expiration**: Invitations expire after 7 days
+- **Invitation Status**: Track invitation status (PENDING, ACCEPTED, CANCELLED)
+- **Accept Invitations**: Users can accept pending invitations
+- **Invitation Management**: View and manage all pending invitations
+
+### 5. Team Management
+- **Create Teams**: Create teams within organizations
+- **Edit Teams**: Update team names and details
+- **Delete Teams**: Remove teams from organizations
+- **Team Members**: Add and remove users from teams
+- **Team Listing**: View all teams within an organization
+
+### 6. Admin Dashboard Interface
+- **Overview Tab**: Display key metrics (users, organizations, pending invitations)
+- **Organizations Tab**: Full organization management interface
+- **Users Tab**: User management with organization memberships
+- **Invitations Tab**: Manage and accept pending invitations
+- **Content Tab**: Content management (zip codes, etc.)
+
+## API Endpoints Created
+
+### Organization Management
+- `GET /api/admin/organizations` - List all organizations
+- `POST /api/admin/organizations` - Create new organization
+- `GET /api/admin/organizations/[id]` - Get organization details
+- `PUT /api/admin/organizations/[id]` - Update organization
+- `DELETE /api/admin/organizations/[id]` - Delete organization
+
+### Member Management
+- `GET /api/admin/organizations/[id]/members` - List organization members
+- `POST /api/admin/organizations/[id]/members` - Add member to organization
+- `PUT /api/admin/organizations/[id]/members` - Update member role
+- `DELETE /api/admin/organizations/[id]/members` - Remove member from organization
+
+### Invitation Management
+- `GET /api/admin/organizations/[id]/invitations` - List organization invitations
+- `POST /api/admin/organizations/[id]/invitations` - Create invitation
+- `DELETE /api/admin/organizations/[id]/invitations` - Cancel invitation
+- `GET /api/invitations/pending` - Get user's pending invitations
+- `POST /api/invitations/accept` - Accept invitation
+
+### Team Management
+- `GET /api/admin/organizations/[id]/teams` - List organization teams
+- `POST /api/admin/organizations/[id]/teams` - Create team
+- `PUT /api/admin/organizations/[id]/teams` - Update team
+- `DELETE /api/admin/organizations/[id]/teams` - Delete team
+- `GET /api/admin/organizations/[id]/teams/[teamId]/members` - List team members
+- `POST /api/admin/organizations/[id]/teams/[teamId]/members` - Add member to team
+- `DELETE /api/admin/organizations/[id]/teams/[teamId]/members` - Remove member from team
+
+### User Management
+- `GET /api/admin/users` - List all users with organization memberships
+- `POST /api/admin/users/[id]/assign-admin` - Assign admin role to user
+
+## Utility Functions Created
+
+### Organization Utilities (`app/lib/organization-utils.ts`)
+- `getOrCreateDefaultOrganization()` - Get or create default organization
+- `addUserToDefaultOrganization()` - Add user to default organization
+- `createOrganization()` - Create new organization with owner
+- `inviteUserToOrganization()` - Send invitation to user
+- `acceptInvitation()` - Accept organization invitation
+- `removeUserFromOrganization()` - Remove user from organization
+- `updateUserRole()` - Update user role in organization
+
+## Security Features
+- **Authentication Required**: All endpoints require valid user session
+- **Authorization Checks**: Verify user has appropriate permissions (ADMIN/OWNER)
+- **Role-Based Access**: Different permissions for different roles
+- **Data Validation**: Validate all input data and prevent invalid operations
+- **Error Handling**: Comprehensive error handling and user feedback
+
+## User Experience Features
+- **Real-time Updates**: Dashboard updates automatically after operations
+- **Success/Error Messages**: Clear feedback for all operations
+- **Confirmation Dialogs**: Confirm destructive operations
+- **Loading States**: Show loading indicators during operations
+- **Responsive Design**: Works on desktop and mobile devices
+
+## Database Schema Updates
+- **Organization Model**: Complete organization structure with metadata
+- **Member Model**: User-organization relationships with roles
+- **Invitation Model**: Invitation system with expiration and status
+- **Team Model**: Team structure within organizations
+- **TeamMember Model**: User-team relationships
+
+## Integration Points
+- **Better Auth Integration**: Seamless integration with existing auth system
+- **Automatic User Assignment**: New users automatically added to default organization
+- **Session Management**: Proper session handling for all operations
+- **Prisma ORM**: All database operations use Prisma for safety and consistency
+
+## Testing Considerations
+- **API Testing**: Test all endpoints with various scenarios
+- **Permission Testing**: Verify role-based access controls
+- **Edge Case Testing**: Test boundary conditions and error scenarios
+- **User Flow Testing**: Test complete user journeys
+- **Security Testing**: Verify authentication and authorization
+
+## Deployment Requirements
+- **Database Migration**: Run Prisma migrations for new schema
+- **Environment Variables**: Ensure all required environment variables are set
+- **Default Organization Setup**: Ensure default organization is created
+- **Admin User Setup**: Set up initial admin user with proper permissions
+
+## Maintenance Considerations
+- **Logging**: Comprehensive logging for all operations
+- **Monitoring**: Monitor system performance and usage
+- **Backup Strategy**: Regular database backups
+- **Update Procedures**: Procedures for updating organization structures
+- **User Support**: Support procedures for organization management issues 

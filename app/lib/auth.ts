@@ -104,13 +104,23 @@ export const auth = betterAuth({
     },
   },
   
-  // Ensure account.type is set for credentials
+  // Ensure account.type is set for credentials and add users to default organization
   callbacks: {
     async beforeAccountCreate(account: any, user: any, provider: any) {
       if (provider === "credentials" || provider === "emailAndPassword") {
         account.type = "credential";
       }
       return account;
+    },
+    async afterUserCreate(user: any) {
+      try {
+        // Import here to avoid circular dependencies
+        const { addUserToDefaultOrganization } = await import('./organization-utils');
+        await addUserToDefaultOrganization(user.id, 'MEMBER');
+        console.log('Added new user to default organization:', user.email);
+      } catch (error) {
+        console.error('Error adding user to default organization:', error);
+      }
     }
   },
 }) 
