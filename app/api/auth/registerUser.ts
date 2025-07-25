@@ -1,11 +1,7 @@
 "use server";
 
-import { betterAuth } from "better-auth";
-import config from "../../../better-auth.config";
+import { auth } from "../../lib/auth";
 import { headers } from "next/headers";
-
-// Initialize Better Auth instance
-const auth = betterAuth(config);
 
 export type RegistrationData = {
   email: string;
@@ -28,8 +24,9 @@ export async function registerUser(data: RegistrationData) {
 
     // 2. Prepare registration data for Better Auth
     const userData = {
+      name: `${data.firstName} ${data.lastName}`.trim(), // Required by BetterAuth
       email: data.email,
-      password: data.password,
+      password: data.password, // This will be handled by Better Auth and stored on the account
       firstName: data.firstName,
       lastName: data.lastName,
       mobilePhone: data.mobilePhone,

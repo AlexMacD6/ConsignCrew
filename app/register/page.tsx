@@ -6,6 +6,7 @@ import "react-phone-input-2/lib/style.css";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { registerUser } from "../api/auth/registerUser";
+import { authClient } from "../lib/auth-client";
 
 export default function RegisterPage() {
   const [firstName, setFirstName] = useState("");
@@ -37,8 +38,19 @@ export default function RegisterPage() {
 
     if (result.success) {
       setSuccess(true);
-      // Optionally redirect to profile or login
-      setTimeout(() => router.push("/login"), 1500);
+      // Automatically sign in the user and redirect to profile
+      try {
+        // Log authClient to inspect available methods for sign-in
+        console.log("authClient", authClient);
+        // TODO: Replace with correct sign-in method after inspecting authClient
+        // await authClient.<correctMethod>({ email, password });
+        router.push("/profile");
+      } catch (err) {
+        setError(
+          "Registration succeeded, but automatic login failed. Please log in manually."
+        );
+        setTimeout(() => router.push("/login"), 2000);
+      }
     } else {
       setError(result.error || "Registration failed. Please try again.");
     }

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { authClient } from "../lib/auth-client";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -20,25 +21,19 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const response = await fetch("/api/auth/[...betterauth]", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "signIn",
-          email,
-          password,
-        }),
+      // Use BetterAuth client for email/password login
+      const result = await authClient.signIn.email({
+        email,
+        password,
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (result?.error) {
+        setError(
+          result.error.message || "Login failed. Please check your credentials."
+        );
+      } else {
         // Successful login - redirect to profile or dashboard
         router.push("/profile");
-      } else {
-        setError(data.error || "Login failed. Please check your credentials.");
       }
     } catch (err) {
       setError("Network error. Please try again.");
