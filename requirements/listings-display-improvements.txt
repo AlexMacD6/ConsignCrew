@@ -1,0 +1,58 @@
+# Listings Display Improvements Requirements
+
+## 1. Information Hiding and Privacy
+- Remove "ConsignCrew Fee" from listing display, show only at checkout
+- Conceal "price range" and "reserve price" from listing, show "Reserve Met" note when list price is at or below reserve minimum
+- Remove "Item ID" from listing display
+- Conditionally display "Serial Number" or "Model Number" only if filled out
+
+## 2. Enhanced Listing Information
+- Display "time left before the next price drop" according to discount schedule
+- Add "brand/manufacturer" information to listings
+- Add "product dimensions" to listings
+- Show estimated retail price with strikethrough, percentage off, and red downward arrow
+
+## 3. UI Text Changes
+- Change "Contact Seller" button to "Ask A Question"
+- Make "Buy it Now" the main Call to Action
+- Make "Ask a Question" button tiny with Question Mark icon
+
+## 4. Gallery and Button Updates
+- Remove "Approved Zone" comment from listing cards
+- Remove "Classic-60" discount code tag
+- Remove discount schedule tags from listings
+- Remove ZIP codes from Gallery page
+- Remove "Heart" functionality, keep only "Save" and "Hide"
+
+## 5. List an Item Page Alignment
+- Make "List an Item" page match required inputs for Listing details
+- Show auto-generated fields on the left (read-only)
+- Show editable fields on the right
+- Include all new fields: brand, dimensions, serial/model numbers, estimated retail price, discount schedule
+- Add tooltip with detailed discount schedule explanations (Turbo-30 vs Classic-60)
+
+## 6. Listing Tags and Badges
+- Add "Newly Listed" tag for items added in the last 7 days
+- Add "Price Drop" tag for any price drops in the last 3 days
+
+## 7. Questions and Answers System
+- Add public "Questions component" below listing details in modal
+- Include "Approve" button for Admin to release questions and answers publicly
+- All questions/responses must be approved before being released
+- Show different states: Pending Approval, Approved - Not Public, Public
+- Admin can preview answers before making them public
+- Display "ConsignCrew" as the responder for approved answers
+
+## 8. AI Responses System
+- Create SQL table `ai_responses` with specified schema
+- Populate with initial data for AI-driven standard responses
+- Support categories: Pickup & Delivery, Pricing & Offers, Item Details, Availability, Returns & Refunds, Buyer Support, Payment & Checkout, Delivery Updates, General, Trust & Safety
+
+## Implementation Notes
+- All changes implemented in `app/(dashboard)/listings/page.tsx`
+- Questions component includes mock data for testing
+- Admin approval functionality is mock-enabled for demonstration
+- Newly Listed tag calculates based on creation date
+- Price Drop tag uses mock data (30% chance) for demonstration
+- All conditional rendering properly implemented
+- Responsive design maintained throughout 

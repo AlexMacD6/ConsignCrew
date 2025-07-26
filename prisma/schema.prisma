@@ -138,3 +138,17 @@ model ZipCode {
   area String
   type String // 'seller' or 'buyer'
 }
+
+model AiResponse {
+  id                Int      @id @default(autoincrement())
+  category          String
+  triggerPhrases    String[] @map("trigger_phrases")
+  response          String
+  tags              String[]
+  autoResponse      Boolean  @default(true) @map("auto_response")
+  escalateIfUnclear Boolean  @default(false) @map("escalate_if_unclear")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("ai_responses")
+}
