@@ -1,0 +1,80 @@
+# AWS S3 Integration Requirements
+
+## Problem
+The application needs to securely upload photos to AWS S3 using pre-signed URLs to avoid exposing AWS credentials in the frontend and ensure secure, scalable photo storage.
+
+## Requirements
+
+### 1. AWS S3 Setup
+- **S3 Bucket**: Create a dedicated bucket for photo storage
+- **IAM Role**: Service role with minimal required permissions
+- **CORS Configuration**: Allow uploads from the application domain
+- **Bucket Policy**: Secure access control
+
+### 2. Pre-signed URL Implementation
+- **Backend API**: Generate pre-signed URLs for secure uploads
+- **Frontend Integration**: Upload photos directly to S3 using pre-signed URLs
+- **Security**: No AWS credentials exposed in frontend
+- **Validation**: File type and size validation before upload
+
+### 3. Photo Upload Flow
+- **File Selection**: User selects photo from device
+- **Validation**: Check file type (JPEG, PNG, WebP) and size (max 10MB)
+- **Pre-signed URL**: Backend generates secure upload URL
+- **Direct Upload**: Frontend uploads directly to S3
+- **Confirmation**: Store S3 URL in application state
+
+### 4. File Organization
+- **User-based Structure**: `/uploads/{userId}/{photoType}/{timestamp}-{filename}`
+- **Photo Types**: hero, back, proof, additional
+- **Metadata**: Store user ID, upload time, original filename
+- **Unique Keys**: Prevent filename conflicts
+
+### 5. Security Requirements
+- **Authentication**: Only authenticated users can upload
+- **Authorization**: Users can only access their own photos
+- **URL Expiration**: Pre-signed URLs expire after 15 minutes
+- **File Validation**: Server-side validation of file types and sizes
+
+### 6. Error Handling
+- **Upload Failures**: Graceful handling of S3 upload errors
+- **Network Issues**: Retry logic for failed uploads
+- **Validation Errors**: Clear error messages for invalid files
+- **Authentication Errors**: Proper handling of unauthorized requests
+
+### 7. Performance Optimization
+- **Image Compression**: Optional client-side compression before upload
+- **Progressive Upload**: Show upload progress to users
+- **Batch Uploads**: Support for multiple photo uploads
+- **CDN Integration**: Optional CloudFront integration for faster delivery
+
+### 8. Environment Configuration
+- **AWS Credentials**: Access key ID and secret access key
+- **S3 Bucket**: Bucket name and region configuration
+- **Environment Variables**: Secure storage of AWS configuration
+
+## Technical Implementation
+
+### Backend Components
+- `app/lib/s3.ts`: S3 client configuration and utility functions
+- `app/api/upload/presigned-url/route.ts`: API endpoint for pre-signed URLs
+- `app/lib/upload-utils.ts`: Frontend upload utilities
+
+### Frontend Integration
+- Update photo upload handlers to use S3
+- Add upload progress indicators
+- Implement error handling and retry logic
+- Store S3 URLs instead of local file references
+
+### Database Updates
+- Store S3 URLs in listing records
+- Track upload metadata (timestamp, file size, etc.)
+- Link photos to specific listings and users
+
+## Testing
+- Test pre-signed URL generation
+- Verify file upload to S3
+- Test file validation and error handling
+- Verify security (no credential exposure)
+- Test upload performance and reliability
+- Verify CORS configuration works correctly 

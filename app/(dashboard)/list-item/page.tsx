@@ -7,7 +7,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "../../components/ui/popover";
-import { CheckCircleIcon, AlertCircle, MapPin, Info, Lock } from "lucide-react";
+import {
+  CheckCircleIcon,
+  AlertCircle,
+  MapPin,
+  Info,
+  Lock,
+  Upload,
+  Loader2,
+} from "lucide-react";
 import {
   isApprovedZipCode,
   getNeighborhoodName,
@@ -135,9 +143,25 @@ const conditions = ["New", "Like New", "Good", "Fair"] as const;
 const discountSchedules = ["Turbo-30", "Classic-60"] as const;
 
 export default function ListItemPage() {
-  const [image, setImage] = useState<File | null>(null);
+  // Photo management with S3 integration
+  const [photos, setPhotos] = useState<{
+    hero: { file: File | null; key: string | null; url: string | null };
+    back: { file: File | null; key: string | null; url: string | null };
+    proof: { file: File | null; key: string | null; url: string | null };
+    additional: Array<{ file: File; key: string | null; url: string | null }>;
+  }>({
+    hero: { file: null, key: null, url: null },
+    back: { file: null, key: null, url: null },
+    proof: { file: null, key: null, url: null },
+    additional: [],
+  });
+  const [currentPhotoType, setCurrentPhotoType] = useState<
+    "hero" | "back" | "proof" | "additional"
+  >("hero");
   const [showFlash, setShowFlash] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [department, setDepartment] = useState<Department | "">("");
   const [category, setCategory] = useState<Category | "">("");
   const [subCategory, setSubCategory] = useState<SubCategory | "">("");
@@ -162,20 +186,239 @@ export default function ListItemPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setImage(file);
-      setShowFlash(true);
-      setTimeout(() => {
-        setShowFlash(false);
-        setStep(2);
-      }, 800);
+      try {
+        setUploading(true);
+        setUploadError(null);
+
+        // Generate item ID for S3 key
+        const itemId = generateItemId();
+
+        // Upload file using API route
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("photoType", currentPhotoType);
+        formData.append("itemId", itemId);
+
+        const uploadResponse = await fetch("/api/upload/photo", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json();
+          throw new Error(errorData.error || "Upload failed");
+        }
+
+        const result = await uploadResponse.json();
+
+        // Update photo state
+        if (currentPhotoType === "additional") {
+          setPhotos((prev) => ({
+            ...prev,
+            additional: [
+              ...prev.additional,
+              {
+                file,
+                key: result.key,
+                url: result.url,
+              },
+            ],
+          }));
+        } else {
+          setPhotos((prev) => ({
+            ...prev,
+            [currentPhotoType]: {
+              file,
+              key: result.key,
+              url: result.url,
+            },
+          }));
+        }
+
+        setShowFlash(true);
+        setTimeout(() => {
+          setShowFlash(false);
+          // Move to next photo type or to form
+          if (currentPhotoType === "hero") {
+            setCurrentPhotoType("back");
+          } else if (currentPhotoType === "back") {
+            setCurrentPhotoType("proof");
+          } else if (currentPhotoType === "proof") {
+            setCurrentPhotoType("additional");
+          } else {
+            setStep(2);
+          }
+        }, 800);
+      } catch (error) {
+        console.error("Error uploading image:", error);
+        setUploadError(
+          error instanceof Error ? error.message : "Upload failed"
+        );
+      } finally {
+        setUploading(false);
+      }
     }
   };
 
+  const goToPhotoType = (type: "hero" | "back" | "proof" | "additional") => {
+    setCurrentPhotoType(type);
+    setStep(1);
+  };
+
+  const goBackToPhotos = () => {
+    // Determine which photo type to go back to based on what's missing
+    if (!photos.hero?.file) {
+      setCurrentPhotoType("hero");
+    } else if (!photos.back?.file) {
+      setCurrentPhotoType("back");
+    } else if (!photos.proof?.file) {
+      setCurrentPhotoType("proof");
+    } else {
+      setCurrentPhotoType("additional");
+    }
+    setStep(1);
+  };
+
+  // Photo analysis and auto-filling functions
+  const analyzePhotosForAutoFill = () => {
+    // This would integrate with AI/ML services to analyze photos
+    // For now, we'll provide a framework for auto-filling based on photo analysis
+
+    const autoFillData = {
+      department: "",
+      category: "",
+      subCategory: "",
+      condition: "",
+      brand: "",
+      model: "",
+      serialNumber: "",
+      description: "",
+      estimatedValue: 0,
+    };
+
+    // Analyze hero photo for item type and condition
+    if (photos.hero?.file) {
+      // AI analysis would happen here
+      // For now, we'll set some example logic
+      autoFillData.condition = "Good"; // Default condition
+    }
+
+    // Analyze proof photo for brand, model, serial number
+    if (photos.proof?.file) {
+      // AI analysis would extract text and identify brand/model
+      // This would use OCR and AI to read labels, screens, etc.
+    }
+
+    // Analyze back photo for additional details
+    if (photos.back?.file) {
+      // AI analysis would identify ports, connections, etc.
+    }
+
+    return autoFillData;
+  };
+
+  const applyAutoFillData = () => {
+    const autoFillData = analyzePhotosForAutoFill();
+
+    // Apply auto-filled data to form fields
+    if (autoFillData.department)
+      setDepartment(autoFillData.department as Department);
+    if (autoFillData.category) setCategory(autoFillData.category);
+    if (autoFillData.subCategory) setSubCategory(autoFillData.subCategory);
+    if (autoFillData.condition)
+      setCondition(autoFillData.condition as (typeof conditions)[number]);
+    if (autoFillData.brand) setBrand(autoFillData.brand);
+    if (autoFillData.model) setModelNumber(autoFillData.model);
+    if (autoFillData.serialNumber) setSerialNumber(autoFillData.serialNumber);
+    if (autoFillData.description) setDescription(autoFillData.description);
+    if (autoFillData.estimatedValue)
+      setPrice(autoFillData.estimatedValue.toString());
+  };
+
+  const removePhoto = (
+    type: "hero" | "back" | "proof" | "additional",
+    index?: number
+  ) => {
+    if (type === "additional" && index !== undefined) {
+      setPhotos((prev) => ({
+        ...prev,
+        additional: prev.additional.filter((_, i) => i !== index),
+      }));
+    } else {
+      setPhotos((prev) => ({
+        ...prev,
+        [type]: { file: null, key: null, url: null },
+      }));
+    }
+  };
+
+  const clearCurrentPhoto = () => {
+    if (currentPhotoType === "additional") {
+      // For additional photos, clear the last one added
+      setPhotos((prev) => ({
+        ...prev,
+        additional: prev.additional.slice(0, -1),
+      }));
+    } else {
+      setPhotos((prev) => ({
+        ...prev,
+        [currentPhotoType]: { file: null, key: null, url: null },
+      }));
+    }
+  };
+
+  // Navigation functions
+  const goToNextPhoto = () => {
+    if (currentPhotoType === "hero") {
+      setCurrentPhotoType("back");
+    } else if (currentPhotoType === "back") {
+      setCurrentPhotoType("proof");
+    } else if (currentPhotoType === "proof") {
+      setCurrentPhotoType("additional");
+    } else if (currentPhotoType === "additional") {
+      // Only proceed to form if all required photos are uploaded
+      if (photos.hero && photos.back) {
+        setStep(2);
+        // Apply auto-fill data when reaching the form
+        setTimeout(() => {
+          applyAutoFillData();
+        }, 100);
+      }
+    }
+  };
+
+  const goToPreviousPhoto = () => {
+    if (currentPhotoType === "back") {
+      setCurrentPhotoType("hero");
+    } else if (currentPhotoType === "proof") {
+      setCurrentPhotoType("back");
+    } else if (currentPhotoType === "additional") {
+      setCurrentPhotoType("proof");
+    }
+  };
+
+  const canGoNext = () => {
+    if (currentPhotoType === "hero") return photos.hero?.file !== null;
+    if (currentPhotoType === "back") return photos.back?.file !== null;
+    if (currentPhotoType === "proof") return photos.proof?.file !== null;
+    if (currentPhotoType === "additional") {
+      // Only allow going to form if all required photos are uploaded
+      return photos.hero?.file !== null && photos.back?.file !== null;
+    }
+    return false;
+  };
+
+  const canGoBack = () => {
+    if (currentPhotoType === "hero") return false;
+    return true;
+  };
+
   const isFormValid =
-    image &&
+    photos.hero?.file &&
+    photos.back?.file &&
     department &&
     category &&
     subCategory &&
@@ -186,32 +429,62 @@ export default function ListItemPage() {
     zipCode &&
     isApprovedZipCode(zipCode);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isFormValid) {
-      const formData = {
-        image: image?.name,
-        department,
-        category,
-        subCategory,
-        title,
-        condition,
-        price: parseFloat(price),
-        description,
-        zipCode,
-        neighborhood: getNeighborhoodName(zipCode),
-        brand,
-        dimensions,
-        serialNumber,
-        modelNumber,
-        estimatedRetailPrice: estimatedRetailPrice
-          ? parseFloat(estimatedRetailPrice)
-          : null,
-        discountSchedule,
-        timestamp: new Date().toISOString(),
-      };
-      console.table(formData);
-      router.push("/dashboard");
+      try {
+        const formData = {
+          photos: {
+            hero: photos.hero?.key,
+            back: photos.back?.key,
+            proof: photos.proof?.key,
+            additional: photos.additional.map((f) => f.key),
+          },
+          department,
+          category,
+          subCategory,
+          title,
+          condition,
+          price: parseFloat(price),
+          description,
+          zipCode,
+          neighborhood: getNeighborhoodName(zipCode),
+          brand,
+          dimensions,
+          serialNumber,
+          modelNumber,
+          estimatedRetailPrice: estimatedRetailPrice
+            ? parseFloat(estimatedRetailPrice)
+            : null,
+          discountSchedule,
+        };
+
+        console.table(formData);
+
+        const response = await fetch("/api/listings", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to create listing");
+        }
+
+        const result = await response.json();
+        console.log("Listing created successfully:", result);
+
+        // Redirect to listings page
+        router.push("/listings");
+      } catch (error) {
+        console.error("Error creating listing:", error);
+        alert(
+          `Failed to create listing: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
     }
   };
 
@@ -244,31 +517,421 @@ export default function ListItemPage() {
       <div className="w-full max-w-6xl mx-auto">
         {step === 1 && (
           <div className="flex flex-col items-center justify-center min-h-[80vh] bg-white rounded-xl shadow-lg p-8 relative">
-            <h1 className="text-2xl font-bold mb-4 text-[#D4AF3D]">
-              Snap a Photo
+            {/* Navigation Buttons - Top Corners */}
+            <div className="absolute top-6 left-6 right-6 flex justify-between items-center">
+              {/* Back Button - Top Left */}
+              <button
+                type="button"
+                onClick={goToPreviousPhoto}
+                disabled={!canGoBack()}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  canGoBack()
+                    ? "bg-gray-500 text-white hover:bg-gray-600"
+                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                }`}
+              >
+                Back
+              </button>
+
+              {/* Next Button - Top Right */}
+              <button
+                type="button"
+                onClick={goToNextPhoto}
+                disabled={!canGoNext()}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  canGoNext()
+                    ? "bg-[#D4AF3D] text-white hover:bg-[#b8932f]"
+                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                }`}
+              >
+                {currentPhotoType === "additional"
+                  ? "Continue to Form"
+                  : "Next"}
+              </button>
+            </div>
+
+            <h1 className="text-2xl font-bold mb-6 text-[#D4AF3D] mt-16">
+              Photo Requirements
             </h1>
-            <label
-              htmlFor="photo-input"
-              className="w-full flex flex-col items-center cursor-pointer"
-            >
-              <input
-                id="photo-input"
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                onChange={handleImageChange}
-              />
-              <div className="w-64 h-64 bg-gray-100 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center mb-2">
-                <span className="text-gray-400">
-                  Tap to take or choose a photo
-                </span>
+
+            {/* Photo Progress with Previews */}
+            <div className="flex items-center gap-4 mb-8">
+              {/* Photo 1 - Hero */}
+              <div className="flex flex-col items-center gap-2">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                    currentPhotoType === "hero"
+                      ? "bg-[#D4AF3D] text-white ring-2 ring-[#D4AF3D] ring-offset-2"
+                      : photos.hero
+                        ? "bg-green-500 text-white"
+                        : "bg-gray-200 text-gray-600"
+                  }`}
+                >
+                  1
+                </div>
+                {photos.hero?.url && photos.hero.url.trim() !== "" && (
+                  <div className="relative w-12 h-12">
+                    <img
+                      src={photos.hero.url}
+                      alt="Hero photo preview"
+                      className="w-full h-full object-cover rounded-lg border border-gray-200"
+                    />
+                    <button
+                      onClick={() => removePhoto("hero")}
+                      className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
               </div>
-            </label>
+
+              {/* Photo 2 - Back */}
+              <div className="flex flex-col items-center gap-2">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                    currentPhotoType === "back"
+                      ? "bg-[#D4AF3D] text-white ring-2 ring-[#D4AF3D] ring-offset-2"
+                      : photos.back
+                        ? "bg-green-500 text-white"
+                        : "bg-gray-200 text-gray-600"
+                  }`}
+                >
+                  2
+                </div>
+                {photos.back?.url && photos.back.url.trim() !== "" && (
+                  <div className="relative w-12 h-12">
+                    <img
+                      src={photos.back.url}
+                      alt="Back photo preview"
+                      className="w-full h-full object-cover rounded-lg border border-gray-200"
+                    />
+                    <button
+                      onClick={() => removePhoto("back")}
+                      className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Photo 3 - Proof */}
+              <div className="flex flex-col items-center gap-2">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                    currentPhotoType === "proof"
+                      ? "bg-[#D4AF3D] text-white ring-2 ring-[#D4AF3D] ring-offset-2"
+                      : photos.proof
+                        ? "bg-green-500 text-white"
+                        : "bg-gray-200 text-gray-600"
+                  }`}
+                >
+                  3
+                </div>
+                {photos.proof?.url && photos.proof.url.trim() !== "" && (
+                  <div className="relative w-12 h-12">
+                    <img
+                      src={photos.proof.url}
+                      alt="Proof photo preview"
+                      className="w-full h-full object-cover rounded-lg border border-gray-200"
+                    />
+                    <button
+                      onClick={() => removePhoto("proof")}
+                      className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Additional Photos */}
+              <div className="flex flex-col items-center gap-2">
+                <div
+                  className={`text-sm font-medium transition-colors ${
+                    currentPhotoType === "additional"
+                      ? "text-[#D4AF3D] font-semibold"
+                      : "text-gray-400"
+                  }`}
+                >
+                  +
+                </div>
+                {photos.additional.length > 0 && (
+                  <div className="flex gap-1">
+                    {photos.additional.slice(0, 2).map((photo, index) => {
+                      const imageSrc =
+                        photo.url ||
+                        (photo.file ? URL.createObjectURL(photo.file) : null);
+                      return imageSrc ? (
+                        <div key={index} className="relative w-12 h-12">
+                          <img
+                            src={imageSrc}
+                            alt={`Additional photo ${index + 1} preview`}
+                            className="w-full h-full object-cover rounded-lg border border-gray-200"
+                          />
+                          <button
+                            onClick={() => removePhoto("additional", index)}
+                            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ) : null;
+                    })}
+                    {photos.additional.length > 2 && (
+                      <div className="w-12 h-12 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center text-xs text-gray-500">
+                        +{photos.additional.length - 2}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Photo Requirements Notice */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 max-w-md">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0">
+                  <svg
+                    className="w-5 h-5 text-blue-600"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div className="text-sm text-blue-800">
+                  <p className="font-medium mb-1">
+                    Required Photos for Auto-Fill
+                  </p>
+                  <p>
+                    Photos #1 and #2 are required to proceed to the form. These
+                    photos will be analyzed to automatically fill in item
+                    details.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Current Photo Type Instructions */}
+            <div className="text-center mb-6 max-w-md">
+              <h2 className="text-lg font-semibold mb-2">
+                {currentPhotoType === "hero" && "Photo #1: Front-On Hero"}
+                {currentPhotoType === "back" &&
+                  "Photo #2: Full Back / Underside"}
+                {currentPhotoType === "proof" &&
+                  "Photo #3: Proof / Identification"}
+                {currentPhotoType === "additional" &&
+                  "Additional Photos (Optional)"}
+              </h2>
+
+              <div className="text-sm text-gray-600 mb-4">
+                {currentPhotoType === "hero" && (
+                  <>
+                    <p className="font-medium mb-2">What to capture:</p>
+                    <p>
+                      Entire item, centered, front-facing. Include any
+                      detachable pieces that normally stay attached.
+                    </p>
+                    <p className="font-medium mt-3 mb-2">Shooting tips:</p>
+                    <ul className="text-left space-y-1">
+                      <li>• Place on uncluttered surface or wall</li>
+                      <li>• Shoot straight-on (eye-level), not angled</li>
+                      <li>• Fill ~80% of frame—but leave clean margins</li>
+                      <li>
+                        • Use daylight or neutral lamp; avoid window back-glare
+                      </li>
+                      <li>• Remove cords, trash, personal items from scene</li>
+                    </ul>
+                  </>
+                )}
+                {currentPhotoType === "back" && (
+                  <>
+                    <p className="font-medium mb-2">What to capture:</p>
+                    <p>
+                      Entire rear (or underside) of the same item. Show ports,
+                      hinges, back fabric, cabinet backs, battery doors.
+                    </p>
+                    <p className="font-medium mt-3 mb-2">Shooting tips:</p>
+                    <ul className="text-left space-y-1">
+                      <li>• Step back to capture the whole reverse side</li>
+                      <li>• Flip small items face-down on a clean surface</li>
+                      <li>• Keep lighting consistent with Photo 1</li>
+                      <li>• Don't crop off feet, plugs, or vent areas</li>
+                    </ul>
+                  </>
+                )}
+                {currentPhotoType === "proof" && (
+                  <>
+                    <p className="font-medium mb-2">What to capture:</p>
+                    <p>One of the following based on your item type:</p>
+                    <ul className="text-left space-y-1 mb-3">
+                      <li>
+                        • Electronics & Appliances: powered-on screen or label
+                        plate with model + serial
+                      </li>
+                      <li>• Luxury Bags / Shoes: logo stamp & date code</li>
+                      <li>
+                        • Furniture: wood grain or tag showing brand + fabric
+                        code
+                      </li>
+                      <li>
+                        • Collectibles: maker's mark, limited-edition number
+                      </li>
+                    </ul>
+                    <p className="font-medium mb-2">Shooting tips:</p>
+                    <ul className="text-left space-y-1">
+                      <li>
+                        • Fill frame with label or lit screen—text must be
+                        legible
+                      </li>
+                      <li>• Use flash only if it doesn't blow out ink</li>
+                      <li>• Hold phone steady; tap focus on text</li>
+                      <li>
+                        • For power shots, show full screen—no standby splash
+                      </li>
+                    </ul>
+                  </>
+                )}
+                {currentPhotoType === "additional" && (
+                  <>
+                    <p className="font-medium mb-2">
+                      Additional Photos (4-10):
+                    </p>
+                    <p>
+                      Show unique features, damage, accessories, or different
+                      angles that help buyers understand the item.
+                    </p>
+                    <p className="font-medium mt-3 mb-2">Guidance:</p>
+                    <ul className="text-left space-y-1">
+                      <li>• Close-ups of any damage or wear</li>
+                      <li>• Different angles or perspectives</li>
+                      <li>• Included accessories or parts</li>
+                      <li>• Size comparison with common objects</li>
+                      <li>• Functionality demonstrations</li>
+                    </ul>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Current Photo Upload Area */}
+            <div className="w-full flex flex-col items-center">
+              {/* Photo Preview for Current Step */}
+              {(() => {
+                let imageSrc = null;
+
+                if (currentPhotoType === "hero" && photos.hero) {
+                  imageSrc =
+                    photos.hero.url ||
+                    (photos.hero.file
+                      ? URL.createObjectURL(photos.hero.file)
+                      : null);
+                } else if (currentPhotoType === "back" && photos.back) {
+                  imageSrc =
+                    photos.back.url ||
+                    (photos.back.file
+                      ? URL.createObjectURL(photos.back.file)
+                      : null);
+                } else if (currentPhotoType === "proof" && photos.proof) {
+                  imageSrc =
+                    photos.proof.url ||
+                    (photos.proof.file
+                      ? URL.createObjectURL(photos.proof.file)
+                      : null);
+                } else if (
+                  currentPhotoType === "additional" &&
+                  photos.additional.length > 0
+                ) {
+                  const lastAdditional =
+                    photos.additional[photos.additional.length - 1];
+                  imageSrc =
+                    lastAdditional.url ||
+                    (lastAdditional.file
+                      ? URL.createObjectURL(lastAdditional.file)
+                      : null);
+                }
+
+                return imageSrc ? (
+                  <div className="mb-4 relative">
+                    <img
+                      src={imageSrc}
+                      alt={`${currentPhotoType} photo preview`}
+                      className="w-64 h-64 object-cover rounded-xl border border-gray-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={clearCurrentPhoto}
+                      className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : null;
+              })()}
+
+              {/* Upload Area */}
+              <label
+                htmlFor="photo-input"
+                className={`w-full flex flex-col items-center cursor-pointer ${
+                  (currentPhotoType === "hero" && photos.hero) ||
+                  (currentPhotoType === "back" && photos.back) ||
+                  (currentPhotoType === "proof" && photos.proof) ||
+                  (currentPhotoType === "additional" &&
+                    photos.additional.length > 0)
+                    ? "hidden"
+                    : ""
+                }`}
+              >
+                <input
+                  id="photo-input"
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={handleImageChange}
+                />
+                <div className="w-64 h-64 bg-gray-100 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center mb-2">
+                  <span className="text-gray-400">
+                    {currentPhotoType === "additional"
+                      ? "Add another photo"
+                      : "Tap to take or choose a photo"}
+                  </span>
+                </div>
+              </label>
+            </div>
+
             <p className="text-gray-500 text-sm">
-              Tap to take or choose a photo
+              {currentPhotoType === "additional"
+                ? "Add more photos (optional)"
+                : "Tap to take or choose a photo"}
             </p>
+
+            {/* Skip to Form Button (only when all required photos are uploaded) */}
+            {currentPhotoType === "additional" &&
+              photos.hero &&
+              photos.back && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep(2);
+                    // Apply auto-fill data when reaching the form
+                    setTimeout(() => {
+                      applyAutoFillData();
+                    }, 100);
+                  }}
+                  className="mt-4 px-6 py-2 bg-gray-300 text-gray-600 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                  Skip to Form
+                </button>
+              )}
+
             {showFlash && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 z-10 animate-fade-in">
                 <CheckCircleIcon className="w-24 h-24 text-green-500 animate-pop" />
@@ -481,15 +1144,126 @@ export default function ListItemPage() {
                     Fill out these fields to complete your listing
                   </p>
 
-                  {image && (
-                    <div className="flex justify-center mb-4">
-                      <img
-                        src={URL.createObjectURL(image)}
-                        alt="Preview"
-                        className="w-64 h-64 object-cover rounded-xl border border-gray-200"
-                      />
+                  {/* Photo Gallery */}
+                  <div className="mb-6">
+                    <h3 className="text-sm font-medium text-gray-700 mb-3">
+                      Uploaded Photos
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {/* Hero Photo */}
+                      {photos.hero && (
+                        <div className="relative">
+                          <img
+                            src={
+                              photos.hero.url ||
+                              (photos.hero.file
+                                ? URL.createObjectURL(photos.hero.file)
+                                : "")
+                            }
+                            alt="Hero"
+                            className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                          />
+                          <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-1 rounded">
+                            1
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removePhoto("hero")}
+                            className="absolute top-1 right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Back Photo */}
+                      {photos.back && (
+                        <div className="relative">
+                          <img
+                            src={
+                              photos.back.url ||
+                              (photos.back.file
+                                ? URL.createObjectURL(photos.back.file)
+                                : "")
+                            }
+                            alt="Back"
+                            className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                          />
+                          <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-1 rounded">
+                            2
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removePhoto("back")}
+                            className="absolute top-1 right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Proof Photo */}
+                      {photos.proof && (
+                        <div className="relative">
+                          <img
+                            src={
+                              photos.proof.url ||
+                              (photos.proof.file
+                                ? URL.createObjectURL(photos.proof.file)
+                                : "")
+                            }
+                            alt="Proof"
+                            className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                          />
+                          <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-1 rounded">
+                            3
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removePhoto("proof")}
+                            className="absolute top-1 right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Additional Photos */}
+                      {photos.additional.map((photo, index) => (
+                        <div key={index} className="relative">
+                          <img
+                            src={
+                              photo.url ||
+                              (photo.file
+                                ? URL.createObjectURL(photo.file)
+                                : "")
+                            }
+                            alt={`Additional ${index + 1}`}
+                            className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                          />
+                          <div className="absolute top-1 left-1 bg-green-500 text-white text-xs px-1 rounded">
+                            {index + 4}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removePhoto("additional", index)}
+                            className="absolute top-1 right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                  )}
+
+                    {/* Add More Photos Button */}
+                    <button
+                      type="button"
+                      onClick={() => goToPhotoType("additional")}
+                      className="mt-3 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+                    >
+                      + Add More Photos
+                    </button>
+                  </div>
 
                   <div className="space-y-4">
                     {/* Department */}
@@ -934,14 +1708,24 @@ export default function ListItemPage() {
             </div>
 
             <div className="sticky bottom-0 left-0 right-0 bg-white pt-6 pb-2">
-              <Button
-                type="submit"
-                variant="default"
-                className="w-full"
-                disabled={!isFormValid}
-              >
-                Post Listing
-              </Button>
+              <div className="flex gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={goBackToPhotos}
+                >
+                  Back to Photos
+                </Button>
+                <Button
+                  type="submit"
+                  variant="default"
+                  className="flex-1"
+                  disabled={!isFormValid}
+                >
+                  Post Listing
+                </Button>
+              </div>
             </div>
           </form>
         )}

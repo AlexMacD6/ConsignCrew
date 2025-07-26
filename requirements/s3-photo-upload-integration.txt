@@ -1,0 +1,75 @@
+# S3 Photo Upload Integration Requirements
+
+## Problem
+The list-item page needs to integrate with the new typed S3 SDK for photo uploads. The current implementation has TypeScript errors because the photo state structure has changed from File objects to objects containing { file, key, url } properties.
+
+## Requirements
+
+### 1. Photo State Structure
+- Update photo state to store S3 keys and URLs alongside File objects
+- Maintain backward compatibility for existing functionality
+- Support for hero, back, proof, and additional photos
+
+### 2. S3 Integration
+- Use API route `/api/upload/photo` for secure uploads
+- Validate file size and type before upload
+- Generate unique item IDs for S3 keys
+- Store S3 keys and public URLs in state
+
+### 3. UI Updates
+- Update image preview components to use S3 URLs instead of File objects
+- Maintain photo preview functionality
+- Support photo removal and clearing
+- Show upload progress and error states
+
+### 4. Error Handling
+- Display upload errors to users
+- Handle network failures gracefully
+- Validate file types and sizes
+- Provide clear error messages
+
+### 5. Loading States
+- Show upload progress indicators
+- Disable form during uploads
+- Provide visual feedback for upload status
+
+## Technical Implementation
+
+### Photo State Structure
+```typescript
+const [photos, setPhotos] = useState<{
+  hero: { file: File | null; key: string | null; url: string | null };
+  back: { file: File | null; key: string | null; url: string | null };
+  proof: { file: File | null; key: string | null; url: string | null };
+  additional: Array<{ file: File; key: string | null; url: string | null }>;
+}>({
+  hero: { file: null, key: null, url: null },
+  back: { file: null, key: null, url: null },
+  proof: { file: null, key: null, url: null },
+  additional: [],
+});
+```
+
+### Upload Process
+1. User selects file
+2. Validate file size and type
+3. Generate item ID
+4. Upload to S3 via API route
+5. Store S3 key and URL in state
+6. Update UI with preview
+
+### Image Display
+- Use S3 URLs for image previews: `src={photos.hero?.url}`
+- Fallback to File objects if S3 URL not available
+- Support for additional photos array
+
+## Files to Update
+- `app/(dashboard)/list-item/page.tsx`: Main photo upload logic
+- `app/api/upload/photo/route.ts`: S3 upload API route
+- UI components for photo previews and progress
+
+## Testing
+- Test photo upload functionality
+- Verify S3 integration works correctly
+- Test error handling and validation
+- Ensure UI updates properly 

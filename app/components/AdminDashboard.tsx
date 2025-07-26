@@ -20,8 +20,10 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
+  MessageSquare,
 } from "lucide-react";
 // Remove hardcoded zip codes import - we'll use database data instead
+import QuestionManagement from "./QuestionManagement";
 
 interface User {
   id: string;
@@ -88,6 +90,7 @@ export default function AdminDashboard() {
   const [pendingInvitations, setPendingInvitations] = useState<Invitation[]>(
     []
   );
+  const [pendingQuestions, setPendingQuestions] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -162,6 +165,15 @@ export default function AdminDashboard() {
           })),
         ];
         setZipCodes(allZipCodes);
+      }
+
+      // Load pending questions count
+      const questionsRes = await fetch(
+        "/api/admin/questions?status=pending&limit=1"
+      );
+      if (questionsRes.ok) {
+        const questionsData = await questionsRes.json();
+        setPendingQuestions(questionsData.pagination.total);
       }
     } catch (error) {
       setError("Failed to load data");
@@ -525,11 +537,22 @@ export default function AdminDashboard() {
           <FileText className="inline w-4 h-4 mr-2" />
           Content
         </button>
+        <button
+          className={`px-4 py-2 font-semibold transition border-b-2 ${
+            activeTab === "questions"
+              ? "border-[#D4AF3D] text-[#D4AF3D]"
+              : "border-transparent text-gray-500"
+          }`}
+          onClick={() => setActiveTab("questions")}
+        >
+          <MessageSquare className="inline w-4 h-4 mr-2" />
+          Questions
+        </button>
       </div>
 
       {/* Overview Tab */}
       {activeTab === "overview" && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-white p-6 rounded-lg shadow">
             <h3 className="text-lg font-semibold mb-4">Users</h3>
             <div className="text-3xl font-bold text-[#D4AF3D]">
@@ -550,6 +573,13 @@ export default function AdminDashboard() {
               {pendingInvitations.length}
             </div>
             <p className="text-gray-600">Awaiting response</p>
+          </div>
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h3 className="text-lg font-semibold mb-4">Pending Questions</h3>
+            <div className="text-3xl font-bold text-[#D4AF3D]">
+              {pendingQuestions}
+            </div>
+            <p className="text-gray-600">Awaiting approval</p>
           </div>
         </div>
       )}
@@ -1016,6 +1046,9 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* Questions Management Tab */}
+      {activeTab === "questions" && <QuestionManagement />}
 
       {/* Edit Organization Modal */}
       {editingOrg && (

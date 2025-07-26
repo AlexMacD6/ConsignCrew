@@ -1,0 +1,119 @@
+# Listing Detail Page Features Requirements
+
+## Overview
+Implementation of enhanced listing functionality including dedicated listing detail pages, "See More" navigation, and transportation history tracking.
+
+## Features Implemented
+
+### 1. "See More" Button on Listing Modals
+- **Location**: Added to each listing modal in the listings page
+- **Functionality**: 
+  - Button appears in the action buttons section of the modal
+  - Uses ExternalLink icon for visual clarity
+  - Navigates to dedicated listing detail page using the item_id
+  - Route: `/list-item/[id]` where [id] is the item_id
+
+### 2. Dedicated Listing Detail Page
+- **Route**: `/list-item/[id]` (dynamic route)
+- **Features**:
+  - Full item details display
+  - Multiple image support with thumbnail navigation
+  - Enhanced pricing information with retail price comparison
+  - Complete item specifications (brand, dimensions, serial numbers, etc.)
+  - Seller information with ratings
+  - QR code display for the specific item
+  - Save/unsave functionality
+  - Back navigation to listings
+
+### 3. Transportation History Tracking
+- **Implementation**: Visual timeline showing item journey
+- **Stages**:
+  1. Ordered - Item ordered and payment confirmed
+  2. Pick-Up - Item picked up from seller location
+  3. QA/QC - Quality assurance and quality control check completed
+  4. Ready to Ship - Item packaged and ready for shipping
+  5. Out for Delivery - Item is out for delivery to buyer
+  6. Delivered - Item delivered to buyer
+- **Visual Elements**:
+  - Progress indicators (checkmarks for completed, numbers for pending)
+  - Connecting lines between stages
+  - Timestamps for completed stages
+  - Status descriptions
+
+### 4. QuestionsDisplay Component Integration
+- **Location**: Added to both listing modals and detail pages
+- **Functionality**:
+  - Replaces existing hardcoded questions section
+  - Uses the QuestionsDisplay component with proper props
+  - Supports admin vs regular user views
+  - Includes question submission functionality
+  - Shows pending questions for admins
+
+## Technical Implementation
+
+### File Changes
+1. **app/(dashboard)/listings/page.tsx**
+   - Added useRouter import
+   - Added ExternalLink icon import
+   - Added QuestionsDisplay component import
+   - Added navigateToListingDetail function
+   - Added "See More" button to modal action buttons
+   - Replaced hardcoded questions section with QuestionsDisplay component
+
+2. **app/(dashboard)/list-item/[id]/page.tsx** (NEW)
+   - Created dynamic route for individual listing pages
+   - Implemented comprehensive listing detail view
+   - Added transportation history timeline
+   - Integrated QuestionsDisplay component
+   - Added image gallery with thumbnails
+   - Implemented responsive design
+
+### Navigation Flow
+1. User views listings on main listings page
+2. User clicks "View Details" to open modal
+3. User clicks "See More" button in modal
+4. User navigates to dedicated listing page: `/list-item/[item_id]`
+5. QR codes for items redirect to this same page
+
+### Data Structure
+- **Mock Data**: Currently using mock data for demonstration
+- **Real Implementation**: Would fetch from API based on item_id parameter
+- **Transportation History**: Array of objects with status, timestamp, description, and completion status
+
+## User Experience Features
+
+### Visual Design
+- Consistent with existing ConsignCrew design system
+- Uses brand colors (#D4AF3D for primary actions)
+- Responsive layout (mobile-friendly)
+- Clean, modern interface with proper spacing
+
+### Interactive Elements
+- Image gallery with thumbnail navigation
+- Save/unsave functionality
+- QR code display and access
+- Back navigation
+- Buy it Now and Make Offer buttons
+
+### Loading States
+- Loading spinner while fetching listing data
+- Error handling for non-existent listings
+- Proper fallback UI for missing data
+
+## Future Enhancements
+- Real API integration for listing data
+- Real-time transportation status updates
+- Image upload and management
+- Advanced filtering and search on detail page
+- Related items suggestions
+- Social sharing functionality
+- Print-friendly version of listing details
+
+## Testing Considerations
+- Test navigation from listings to detail pages
+- Test QR code functionality
+- Test responsive design on different screen sizes
+- Test loading and error states
+- Test QuestionsDisplay component integration
+- Test transportation history display
+- Test image gallery functionality 

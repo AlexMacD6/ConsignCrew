@@ -1,0 +1,32 @@
+# Module Resolution Fix Requirements
+
+## Problem
+The application was experiencing module resolution errors for Prisma imports in API routes, specifically:
+- Error: Can't resolve '../../../lib/prisma' in app/api/questions/route.ts
+- TypeScript path mapping was incorrectly configured
+
+## Root Cause
+- TypeScript configuration had path mapping `@/*` pointing to `./src/*` instead of `./app/*`
+- Inconsistent import paths across API routes
+- Some routes using relative paths, others potentially using incorrect paths
+
+## Solution Requirements
+
+### 1. TypeScript Configuration Fix
+- Update tsconfig.json to map `@/*` to `./app/*` instead of `./src/*`
+- Ensure proper module resolution for the app directory structure
+
+### 2. Import Path Standardization
+- Update API routes to use `@/lib/prisma` instead of relative paths
+- Ensure consistent import patterns across all API routes
+- Fix any incorrect relative path calculations
+
+### 3. Module Resolution Verification
+- Test all API routes to ensure they can resolve Prisma imports
+- Verify that the development server starts without module resolution errors
+- Check that all database operations work correctly
+
+## Testing
+- Start development server and verify no module resolution errors
+- Test API endpoints that use Prisma to ensure they function correctly
+- Verify that all imports resolve properly across the application 

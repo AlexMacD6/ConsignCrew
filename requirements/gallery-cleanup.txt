@@ -1,0 +1,32 @@
+# Gallery Page Cleanup Requirements
+
+## Problem
+The Gallery Page (listings page) was displaying too much information on each card, making it cluttered and overwhelming for users browsing listings.
+
+## Request
+Remove seller name, serial number, and model number from the Gallery Page cards, keeping these details only in the View Details modal.
+
+## Solution Requirements
+
+### 1. Remove from Gallery Cards
+- Remove seller name display from listing cards
+- Remove serial number display from listing cards  
+- Remove model number display from listing cards
+- Keep brand and dimensions as they provide quick visual context
+
+### 2. Maintain in View Details
+- Ensure seller name remains in "Seller Information" section of modal
+- Ensure serial number remains in "Item Details" section of modal
+- Ensure model number remains in "Item Details" section of modal
+- Verify all other details are properly displayed in modal
+
+### 3. Improve User Experience
+- Create cleaner, less cluttered gallery view
+- Maintain all important information accessible via View Details
+- Keep essential information (price, condition, location) visible on cards
+
+## Testing
+- Verify gallery cards no longer show seller name, serial number, or model number
+- Confirm View Details modal still displays all removed information
+- Test that the layout remains clean and readable
+- Ensure no information is lost, only relocated 

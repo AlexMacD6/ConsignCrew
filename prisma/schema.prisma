@@ -23,6 +23,10 @@ model user {
   teamMemberships TeamMember[]
   sessions        session[]
   accounts        account[]
+  questions       Question[]   @relation("QuestionCreatedBy")
+  answers         Question[]   @relation("QuestionAnsweredBy")
+  approvals       Question[]   @relation("QuestionApprovedBy")
+  listings        Listing[]
 
   @@index([email])
 }
@@ -151,4 +155,53 @@ model AiResponse {
   updatedAt         DateTime @updatedAt
 
   @@map("ai_responses")
+}
+
+model Question {
+  id             String   @id @default(cuid())
+  listingId      String?
+  question       String
+  answer         String?
+  createdBy      String
+  answeredBy     String?
+  approvedBy     String?
+  isPublic       Boolean  @default(false)
+  isApproved     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  createdByUser  user     @relation("QuestionCreatedBy", fields: [createdBy], references: [id])
+  answeredByUser user?    @relation("QuestionAnsweredBy", fields: [answeredBy], references: [id])
+  approvedByUser user?    @relation("QuestionApprovedBy", fields: [approvedBy], references: [id])
+}
+
+model Listing {
+  id                   String   @id @default(cuid())
+  userId               String
+  itemId               String   @unique
+  photos               Json // Store photo keys as JSON
+  department           String
+  category             String
+  subCategory          String
+  title                String
+  condition            String
+  price                Float
+  description          String
+  zipCode              String
+  neighborhood         String
+  brand                String?
+  dimensions           String?
+  serialNumber         String?
+  modelNumber          String?
+  estimatedRetailPrice Float?
+  discountSchedule     Json? // Store discount schedule as JSON
+  status               String   @default("active") // active, sold, expired, etc.
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user user @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([department])
+  @@index([zipCode])
 }
