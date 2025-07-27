@@ -11,7 +11,7 @@ const s3Client = new S3Client({
 });
 
 // S3 Bucket Configuration
-const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || 'consigncrew-photos';
+const BUCKET_NAME = process.env.S3_BUCKET || 'consigncrew';
 const BUCKET_REGION = process.env.AWS_REGION || 'us-east-1';
 
 /**

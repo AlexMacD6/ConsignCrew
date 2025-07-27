@@ -1,0 +1,40 @@
+# Dependency Resolution Fix Requirements
+
+## Problem
+- Module not found error for '@prisma/client'
+- React 19 compatibility issues with Three.js ecosystem
+- Peer dependency conflicts between React 19 and older Three.js packages
+
+## Solution Implemented
+
+### 1. Install Missing Prisma Dependencies
+- Added @prisma/client to dependencies
+- Added prisma to devDependencies
+- Generated Prisma client with `npx prisma generate`
+
+### 2. Update Three.js Ecosystem for React 19 Compatibility
+- Updated @react-three/fiber to latest version (9.2.0)
+- Updated @react-three/drei to latest version (10.6.1)
+- Updated @react-three/cannon to latest version (6.6.0)
+- Updated @react-spring/three to latest version (10.0.1)
+- Updated @react-spring/web to latest version (10.0.1)
+- Updated three.js to latest version (0.178.0)
+
+### 3. Use Legacy Peer Dependencies
+- Used --legacy-peer-deps flag to resolve React 19 compatibility issues
+- This allows the application to run with React 19 while maintaining Three.js functionality
+
+## Dependencies Added/Updated
+- @prisma/client: ^6.12.0
+- prisma: ^6.12.0 (dev dependency)
+- @react-three/fiber: ^9.2.0
+- @react-three/drei: ^10.6.1
+- @react-three/cannon: ^6.6.0
+- @react-spring/three: ^10.0.1
+- @react-spring/web: ^10.0.1
+- three: ^0.178.0
+
+## Testing
+- Server successfully starts on localhost:3000
+- No more module resolution errors
+- Three.js functionality should work with React 19 

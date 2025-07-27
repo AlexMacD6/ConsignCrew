@@ -1,0 +1,57 @@
+# Next.js Dependencies Fix
+
+## Issue
+- TypeScript errors in Next.js application due to missing dependencies
+- Errors included:
+  - Cannot find module 'next/navigation'
+  - Cannot find module 'lucide-react'
+  - Button component variant prop type errors
+
+## Root Cause
+- Project had Next.js application structure but Vite-based package.json
+- Missing Next.js dependencies and related packages
+- Missing utility functions and type definitions
+
+## Solution
+- Installed Next.js and related dependencies
+- Updated package.json scripts to use Next.js instead of Vite
+- Added missing UI component dependencies
+- Created missing utility files
+
+## Changes Made
+
+### Dependencies Added
+- next@latest
+- react@latest  
+- react-dom@latest
+- lucide-react
+- @radix-ui/react-slot
+- class-variance-authority
+- clsx
+- tailwind-merge
+- @types/node
+- typescript
+- @types/react
+- @types/react-dom
+
+### Files Created/Updated
+- Updated package.json scripts to use Next.js commands
+- Created app/lib/utils.ts with cn function
+- Updated tsconfig.json (already properly configured)
+
+### Scripts Changed
+- dev: "vite" → "next dev"
+- build: "vite build" → "next build"
+- preview: "vite preview" → "next start"
+- Added: "lint": "next lint"
+
+## Testing
+- Next.js development server should now start without TypeScript errors
+- All imports should resolve correctly
+- Button component variant props should work properly
+- Application should be accessible at http://localhost:3000
+
+## Notes
+- Used --legacy-peer-deps flag to resolve React version compatibility issues
+- Maintained existing Next.js configuration in next.config.ts
+- Preserved existing TypeScript configuration 

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth.js';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth.api.getSession({ headers: request.headers });
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -44,12 +44,22 @@ export async function POST(request: NextRequest) {
       .toString()
       .padStart(3, "0")}_${dateStr}_${timeStr}`;
 
-    // Create listing in database
+    // Transform photos to use CloudFront URLs instead of S3 keys
+    const { getPublicUrl } = await import('../../../src/aws/imageStore');
+    
+    const transformedPhotos = {
+      hero: photos.hero?.url ? photos.hero.url : (typeof photos.hero === 'string' ? getPublicUrl(photos.hero) : photos.hero),
+      back: photos.back?.url ? photos.back.url : (typeof photos.back === 'string' ? getPublicUrl(photos.back) : photos.back),
+      proof: photos.proof?.url ? photos.proof.url : (typeof photos.proof === 'string' ? getPublicUrl(photos.proof) : photos.proof),
+      additional: photos.additional?.map((photo: any) => 
+        photo.url ? photo.url : (typeof photo === 'string' ? getPublicUrl(photo) : photo)
+      ) || []
+    };
     const listing = await prisma.listing.create({
       data: {
         userId: session.user.id,
         itemId,
-        photos: photos,
+        photos: transformedPhotos,
         department,
         category,
         subCategory,
@@ -84,7 +94,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth.api.getSession({ headers: request.headers });
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

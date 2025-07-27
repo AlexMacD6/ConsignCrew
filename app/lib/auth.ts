@@ -43,10 +43,11 @@ export const auth = betterAuth({
     },
   },
   
-  // Session configuration
+  // Session configuration - optimized to reduce database queries
   session: {
     expiresIn: 60 * 60 * 24 * 30, // 30 days
-    updateAge: 60 * 60 * 24, // 24 hours
+    updateAge: 60 * 60 * 24 * 7, // 7 days (increased from 24 hours)
+    strategy: 'database', // Use database strategy for better performance
   },
   
   // CSRF protection
@@ -96,11 +97,13 @@ export const auth = betterAuth({
     // stripePlugin({ ... }) // Uncomment and configure if using Stripe
   ],
 
-  // Logger for auditing
+  // Logger for auditing - reduced logging to prevent spam
   logger: {
-    level: "info",
+    level: process.env.NODE_ENV === 'development' ? "warn" : "info",
     log: (level, message, ...args) => {
-      console.log(`[${level}] ${message}`, ...args);
+      if (level === 'error' || level === 'warn') {
+        console.log(`[${level}] ${message}`, ...args);
+      }
     },
   },
   

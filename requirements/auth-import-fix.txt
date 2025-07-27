@@ -1,0 +1,67 @@
+# Auth Import Fix for Photo Upload Route
+
+## Problem
+The photo upload API route (`/api/upload/photo`) is failing with the error:
+```
+Error uploading photo: TypeError: (0 , _lib_auth__WEBPACK_IMPORTED_MODULE_1__.auth) is not a function
+```
+
+## Root Cause
+The auth import in the photo upload route was causing a module resolution issue. The static import of the auth function was not working properly, likely due to circular dependencies or module initialization issues.
+
+## Requirements
+
+### 1. Fix Auth Import
+- Replace static import with dynamic import to avoid module resolution issues
+- Use dynamic import: `const { auth } = await import('../../../lib/auth');`
+- This ensures the auth function is properly loaded when needed
+
+### 2. Maintain Functionality
+- Ensure authentication still works properly
+- Verify session validation continues to function
+- Maintain security for photo uploads
+
+### 3. Test Photo Upload
+- Verify photo upload functionality works after the fix
+- Test authentication flow
+- Ensure error handling remains intact
+
+## Technical Implementation
+
+### Before (Static Import)
+```typescript
+import { auth } from '@/lib/auth';
+
+export async function POST(request: NextRequest) {
+  try {
+    const session = await auth();
+    // ...
+  }
+}
+```
+
+### After (Dynamic Import)
+```typescript
+export async function POST(request: NextRequest) {
+  try {
+    const { auth } = await import('../../../lib/auth');
+    const session = await auth();
+    // ...
+  }
+}
+```
+
+## Files Updated
+- `app/api/upload/photo/route.ts`: Updated auth import to use dynamic import
+
+## Testing
+1. Start the development server
+2. Navigate to `/list-item`
+3. Try to upload a photo
+4. Verify the upload completes successfully without auth errors
+5. Check that authentication still works for other routes
+
+## Notes
+- Dynamic imports are resolved at runtime, avoiding potential circular dependency issues
+- This approach is commonly used when dealing with complex module initialization
+- The auth function is still properly exported from `app/lib/auth.ts` 

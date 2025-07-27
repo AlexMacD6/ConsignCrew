@@ -1,0 +1,22 @@
+# React Spring Web Dependency Addition
+
+## Issue
+- Development server failed to start due to missing `@react-spring/web` dependency
+- Error: "Failed to resolve import '@react-spring/web' from 'src/components/SignupModal.jsx'"
+
+## Solution
+- Added `@react-spring/web` dependency to the project
+- Used `--legacy-peer-deps` flag to resolve React version compatibility issues
+- Dependency automatically added to package.json
+
+## Changes Made
+- Installed `@react-spring/web@^10.0.1` via npm
+- Updated package.json to include the new dependency
+- Resolved import resolution error in SignupModal.jsx
+
+## Testing
+- Development server should now start without import errors
+- SignupModal component should load properly with react-spring animations
+
+## Dependencies Added
+- @react-spring/web: ^10.0.1 

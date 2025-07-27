@@ -1,0 +1,47 @@
+# Vite Removal Cleanup
+
+## Issue
+- Project had mixed Vite and Next.js configurations
+- Vite dependencies and configuration files were no longer needed
+- Documentation still referenced Vite instead of Next.js
+
+## Solution
+- Removed all Vite-related dependencies and configuration files
+- Updated documentation to reflect Next.js-only setup
+- Cleaned up package.json and package-lock.json
+
+## Changes Made
+
+### Files Deleted
+- `vite.config.js` - Vite configuration file
+- `vitest.config.ts` - Vitest test configuration
+- `index.html` - Vite entry point (not needed for Next.js)
+- `tests/imageStore.test.ts` - Vitest test file
+- `tests/setup.ts` - Vitest setup file
+- `tsconfig.tsbuildinfo` - Vite build cache file
+
+### Dependencies Removed
+- `@vitejs/plugin-react` - Vite React plugin
+- `vite` - Vite build tool
+
+### Documentation Updated
+- `README.md` - Changed "Vite" to "Next.js"
+- `requirements/packing-tetris-landing-page.txt` - Updated tech stack references
+- `requirements/s3-typed-sdk.txt` - Changed Vitest to Jest references
+- `pr-templates/s3-typed-sdk.md` - Updated testing framework references
+
+### Configuration Changes
+- Removed Vite-specific dependencies from package.json
+- Cleaned up package-lock.json
+- Maintained Next.js configuration in next.config.ts
+
+## Result
+- Clean Next.js-only project setup
+- No conflicting build tool configurations
+- Consistent documentation throughout the project
+- Reduced bundle size by removing unused Vite dependencies
+
+## Testing
+- Next.js development server should continue to work properly
+- All existing functionality should remain intact
+- Build process should use Next.js exclusively 

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
 import { 
   getUploadUrl, 
   ImagePrefix, 
@@ -10,7 +9,8 @@ import {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const { auth } = await import('../../../lib/auth');
+    const session = await auth.api.getSession({ headers: request.headers });
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -52,8 +52,26 @@ export async function POST(request: NextRequest) {
     });
 
     if (!uploadResponse.ok) {
-      return NextResponse.json({ error: 'Failed to upload file to S3' }, { status: 500 });
+      const errorText = await uploadResponse.text();
+      console.error('S3 upload failed:', {
+        status: uploadResponse.status,
+        statusText: uploadResponse.statusText,
+        error: errorText,
+        url: url,
+        contentType: file.type,
+        fileSize: file.size
+      });
+      return NextResponse.json({ 
+        error: `Failed to upload file to S3: ${uploadResponse.status} ${uploadResponse.statusText}` 
+      }, { status: 500 });
     }
+
+    console.log('S3 upload successful:', {
+      status: uploadResponse.status,
+      statusText: uploadResponse.statusText,
+      key: key,
+      fileSize: file.size
+    });
 
     // Get public URL
     const publicUrl = getPublicUrl(key);

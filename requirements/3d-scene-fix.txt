@@ -1,0 +1,49 @@
+New Landing Page Structure - Information-Focused Design
+
+- Completely redesigned landing page with clear information hierarchy
+  - Removed complex 3D physics experience from packing-tetris page
+  - Eliminated WebGL context loss issues and performance problems
+  - Deleted unused components: Scene.tsx, BoxSpawner.tsx, Crate.tsx, useCrateFull.ts
+
+- New landing page structure:
+  1. Hero Section
+     - Logo and "Sell stress-free" one-liner
+     - Email form with "Get Early Access" CTA
+     - Video placeholder for YouTube demo (ready for URL)
+     - Two-column layout for better information density
+
+  2. How It Works (4-Step Process)
+     - Snap & List → AI Pricing → Ship/Drop Off → Get Paid
+     - Clear numbered steps with icons and descriptions
+     - Emphasizes escrow and instant payout
+
+  3. Transparent Pricing Grid
+     - 40% for Premium Items ($500+)
+     - 35% for Standard Items ($100-$499) - Most Popular
+     - 30% for Basic Items (under $100)
+     - Clear value propositions for each tier
+
+  4. Benefit Cards
+     - Easy Listing: AI creates perfect listings
+     - Smart Shipping: Handle packaging and tracking
+     - Safe & Fast Payout: Escrow and instant payments
+
+  5. Roadmap Teaser
+     - Private Beta (Q1 2024)
+     - Public Launch (Q2 2024) - Next phase
+     - Mobile App (Q3 2024)
+     - Clear timeline and feature progression
+
+- Enhanced user experience:
+  - Fast loading without complex 3D physics
+  - Mobile-friendly responsive design
+  - Clear value proposition presented upfront
+  - Multiple conversion points throughout the page
+  - Professional, trustworthy design with transparent pricing
+  - Maintained beautiful 3D background animation for visual appeal
+
+- Focus on rapid information delivery and conversion:
+  - Users understand the service and pricing immediately
+  - Clear call-to-actions at multiple points
+  - Social proof elements and roadmap build trust
+  - Email capture forms for lead generation 

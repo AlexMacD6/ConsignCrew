@@ -380,7 +380,10 @@ export default function ListItemPage() {
       setCurrentPhotoType("additional");
     } else if (currentPhotoType === "additional") {
       // Only proceed to form if all required photos are uploaded
-      if (photos.hero && photos.back) {
+      if (
+        (photos.hero?.file || photos.hero?.url) &&
+        (photos.back?.file || photos.back?.url)
+      ) {
         setStep(2);
         // Apply auto-fill data when reaching the form
         setTimeout(() => {
@@ -401,12 +404,18 @@ export default function ListItemPage() {
   };
 
   const canGoNext = () => {
-    if (currentPhotoType === "hero") return photos.hero?.file !== null;
-    if (currentPhotoType === "back") return photos.back?.file !== null;
-    if (currentPhotoType === "proof") return photos.proof?.file !== null;
+    if (currentPhotoType === "hero")
+      return photos.hero?.file !== null || photos.hero?.url !== null;
+    if (currentPhotoType === "back")
+      return photos.back?.file !== null || photos.back?.url !== null;
+    if (currentPhotoType === "proof")
+      return photos.proof?.file !== null || photos.proof?.url !== null;
     if (currentPhotoType === "additional") {
       // Only allow going to form if all required photos are uploaded
-      return photos.hero?.file !== null && photos.back?.file !== null;
+      return (
+        (photos.hero?.file !== null || photos.hero?.url !== null) &&
+        (photos.back?.file !== null || photos.back?.url !== null)
+      );
     }
     return false;
   };
@@ -417,8 +426,8 @@ export default function ListItemPage() {
   };
 
   const isFormValid =
-    photos.hero?.file &&
-    photos.back?.file &&
+    (photos.hero?.file || photos.hero?.url) &&
+    (photos.back?.file || photos.back?.url) &&
     department &&
     category &&
     subCategory &&
@@ -562,7 +571,7 @@ export default function ListItemPage() {
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
                     currentPhotoType === "hero"
                       ? "bg-[#D4AF3D] text-white ring-2 ring-[#D4AF3D] ring-offset-2"
-                      : photos.hero
+                      : photos.hero?.file || photos.hero?.url
                         ? "bg-green-500 text-white"
                         : "bg-gray-200 text-gray-600"
                   }`}
@@ -592,7 +601,7 @@ export default function ListItemPage() {
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
                     currentPhotoType === "back"
                       ? "bg-[#D4AF3D] text-white ring-2 ring-[#D4AF3D] ring-offset-2"
-                      : photos.back
+                      : photos.back?.file || photos.back?.url
                         ? "bg-green-500 text-white"
                         : "bg-gray-200 text-gray-600"
                   }`}
@@ -622,7 +631,7 @@ export default function ListItemPage() {
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
                     currentPhotoType === "proof"
                       ? "bg-[#D4AF3D] text-white ring-2 ring-[#D4AF3D] ring-offset-2"
-                      : photos.proof
+                      : photos.proof?.file || photos.proof?.url
                         ? "bg-green-500 text-white"
                         : "bg-gray-200 text-gray-600"
                   }`}
@@ -879,9 +888,12 @@ export default function ListItemPage() {
               <label
                 htmlFor="photo-input"
                 className={`w-full flex flex-col items-center cursor-pointer ${
-                  (currentPhotoType === "hero" && photos.hero) ||
-                  (currentPhotoType === "back" && photos.back) ||
-                  (currentPhotoType === "proof" && photos.proof) ||
+                  (currentPhotoType === "hero" &&
+                    (photos.hero?.file || photos.hero?.url)) ||
+                  (currentPhotoType === "back" &&
+                    (photos.back?.file || photos.back?.url)) ||
+                  (currentPhotoType === "proof" &&
+                    (photos.proof?.file || photos.proof?.url)) ||
                   (currentPhotoType === "additional" &&
                     photos.additional.length > 0)
                     ? "hidden"
@@ -915,8 +927,8 @@ export default function ListItemPage() {
 
             {/* Skip to Form Button (only when all required photos are uploaded) */}
             {currentPhotoType === "additional" &&
-              photos.hero &&
-              photos.back && (
+              (photos.hero?.file || photos.hero?.url) &&
+              (photos.back?.file || photos.back?.url) && (
                 <button
                   type="button"
                   onClick={() => {

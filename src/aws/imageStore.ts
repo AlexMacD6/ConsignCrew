@@ -96,9 +96,12 @@ function getBucketName(): string {
  * Get the CloudFront domain from environment variables
  */
 function getCloudFrontDomain(): string {
-  const cfDomain = process.env.CF_DOMAIN;
+  const cfDomain = process.env.NEXT_PUBLIC_CDN_URL || process.env.CF_DOMAIN;
   if (!cfDomain) {
-    throw new Error('CF_DOMAIN environment variable is required');
+    // Fallback to S3 URL if CloudFront not configured
+    const bucketName = getBucketName();
+    const region = process.env.AWS_REGION || 'us-east-1';
+    return `${bucketName}.s3.${region}.amazonaws.com`;
   }
   return cfDomain;
 }
@@ -153,6 +156,14 @@ export async function getUploadUrl(
   const bucketName = getBucketName();
   const key = generateS3Key(options);
   
+  console.log('Generating upload URL:', {
+    bucketName,
+    key,
+    contentType: options.contentType,
+    itemId: options.itemId,
+    prefix: options.prefix
+  });
+  
   const command = new PutObjectCommand({
     Bucket: bucketName,
     Key: key,
@@ -164,9 +175,14 @@ export async function getUploadUrl(
     },
   });
 
-  const url = await getSignedUrl(s3Client, command, { expiresIn: expires });
-  
-  return { url, key };
+  try {
+    const url = await getSignedUrl(s3Client, command, { expiresIn: expires });
+    console.log('Generated upload URL successfully:', { url, key });
+    return { url, key };
+  } catch (error) {
+    console.error('Error generating signed URL:', error);
+    throw error;
+  }
 }
 
 /**
@@ -174,6 +190,11 @@ export async function getUploadUrl(
  */
 export function getPublicUrl(key: string): string {
   const cfDomain = getCloudFrontDomain();
+  // If the domain already includes protocol, use it as is
+  if (cfDomain.startsWith('http://') || cfDomain.startsWith('https://')) {
+    return `${cfDomain}/${key}`;
+  }
+  // Otherwise, add https:// protocol
   return `https://${cfDomain}/${key}`;
 }
 

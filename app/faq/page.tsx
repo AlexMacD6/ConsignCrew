@@ -1,15 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import {
-  FaSearch,
-  FaChevronDown,
-  FaChevronRight,
-  FaThumbsUp,
-  FaThumbsDown,
-} from "react-icons/fa";
 import { faqData } from "./faq-data";
-import { ChevronDown, ChevronUp, ThumbsUp, ThumbsDown } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  ThumbsUp,
+  ThumbsDown,
+  Search,
+} from "lucide-react";
 import Link from "next/link";
 
 // Add type definitions at the top of the file
@@ -149,7 +148,11 @@ export default function FAQPage() {
                 <button
                   key={category.id}
                   onClick={() => setSelectedCategory(category.id)}
-                  className={`w-full text-left px-4 py-2 rounded-lg transition-colors ${selectedCategory === category.id ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                  className={`w-full text-left px-4 py-2 rounded-lg transition-colors ${
+                    selectedCategory === category.id
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-muted"
+                  }`}
                 >
                   {category.name}
                 </button>
@@ -165,7 +168,7 @@ export default function FAQPage() {
               Frequently Asked Questions
             </h1>
             <div className="relative">
-              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search FAQs..."
@@ -224,14 +227,22 @@ export default function FAQPage() {
                             </span>
                             <button
                               onClick={() => handleFeedback(item.id, true)}
-                              className={`flex items-center gap-2 transition-colors ${userFeedback[item.id] === true ? "text-green-600 bg-green-50 hover:bg-green-100" : "hover:bg-gray-100"}`}
+                              className={`flex items-center gap-2 transition-colors ${
+                                userFeedback[item.id] === true
+                                  ? "text-green-600 bg-green-50 hover:bg-green-100"
+                                  : "hover:bg-gray-100"
+                              }`}
                             >
                               <ThumbsUp className="h-4 w-4" />
                               <span>{feedback[item.id]?.helpful || 0}</span>
                             </button>
                             <button
                               onClick={() => handleFeedback(item.id, false)}
-                              className={`flex items-center gap-2 transition-colors ${userFeedback[item.id] === false ? "text-red-600 bg-red-50 hover:bg-red-100" : "hover:bg-gray-100"}`}
+                              className={`flex items-center gap-2 transition-colors ${
+                                userFeedback[item.id] === false
+                                  ? "text-red-600 bg-red-50 hover:bg-red-100"
+                                  : "hover:bg-gray-100"
+                              }`}
                             >
                               <ThumbsDown className="h-4 w-4" />
                               <span>{feedback[item.id]?.notHelpful || 0}</span>

@@ -21,7 +21,7 @@
   - LifecycleRule interface for prefix constraints
   - Environment variable validation with clear error messages
 - Added comprehensive testing:
-  - Unit tests with Vitest and mocked AWS SDK
+  - Unit tests with Jest and mocked AWS SDK
   - Test coverage for all public functions
   - Environment variable testing
   - Error condition testing

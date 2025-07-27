@@ -1,0 +1,268 @@
+# Packing Tetris Landing Page for ConsignCrew
+
+## Project Overview
+A single-page React app that shows 3D boxes "Tetris-dropping" into a shipping crate. When the crate fills (height or timer), the camera dives inside and reveals an email sign-up modal.
+
+## Core Requirements
+
+### 🎯 Primary Goals
+- Create an engaging 3D interactive experience
+- Demonstrate ConsignCrew's packing technology
+- Collect email addresses for early access
+- Provide accessibility options for all users
+
+### 🛠️ Technical Stack
+- **React 18** with **Next.js** for fast development
+- **@react-three/fiber** for Three.js integration
+- **@react-three/cannon** for physics simulation
+- **@react-three/drei** for helpful utilities
+- **@react-spring/three** for smooth animations
+- **Tailwind CSS** for styling
+
+### 📁 Project Structure
+```
+public/
+  cardboard.jpg
+src/
+  App.jsx
+  main.jsx
+  styles.css
+  components/
+    Scene.jsx
+    Crate.jsx
+    BoxSpawner.jsx
+    SignupModal.jsx
+  hooks/
+    useCrateFull.js
+next.config.ts
+tailwind.config.js
+package.json
+README.md
+```
+
+## 🎮 Animation & Logic Flow
+
+### 1. Initial Setup
+- Camera starts at position `[0, 6, 12]`
+- Crate is built with four walls + floor
+- Physics world initialized with gravity `[0, -9.81, 0]`
+
+### 2. Box Spawning
+- Spawns a cube every 0.8-1.4 seconds (randomized)
+- Random box sizes: 0.8-1.4 units
+- Random X-Z positions within crate bounds
+- 10 different colors for visual variety
+
+### 3. Physics Simulation
+- Realistic gravity and collision detection
+- Box friction: 0.3, restitution: 0.2
+- Boxes stack naturally as they fall
+
+### 4. Crate Full Detection
+- Monitors maximum Y position of all boxes
+- Counts total boxes within crate bounds
+- Triggers when either:
+  - Maximum Y > 5 units, OR
+  - 15+ boxes spawned
+
+### 5. Camera Animation
+- Smooth camera transition to `[0, 2, 8]`
+- 2-second duration with spring physics
+- Camera moves inside the crate
+
+### 6. Box Fading
+- Boxes fade to 20% opacity over 0.8 seconds
+- Uses react-spring for smooth transitions
+- Creates dramatic effect for modal reveal
+
+### 7. Signup Modal
+- Appears with backdrop blur effect
+- Email input with validation
+- Success state with confirmation
+- Stores signup status in localStorage
+
+## ♿ Accessibility Features
+
+### Skip Animation
+- "Skip Animation" button in top-right corner
+- Immediately triggers modal without waiting
+- Accessible via keyboard navigation
+
+### Reduced Motion Support
+- Detects `prefers-reduced-motion` media query
+- Shows static version instead of 3D animation
+- Maintains all functionality without motion
+
+### Keyboard Navigation
+- Arrow keys for navigation
+- Tab navigation through modal
+- Proper ARIA labels and semantic HTML
+
+## 📧 Email Integration
+
+### Current Implementation
+- Mock API endpoint for demonstration
+- Simulates successful subscription
+- Stores email in localStorage for demo
+
+### Real Integration Options
+1. **Mailchimp**: Use API with list ID
+2. **Airtable**: Create base with email column
+3. **ConvertKit**: Use subscriber API
+4. **SendGrid**: Use contacts API
+
+### Example Mailchimp Integration
+```javascript
+const response = await fetch(`https://us1.api.mailchimp.com/3.0/lists/${LIST_ID}/members`, {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${API_KEY}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    email_address: email,
+    status: 'subscribed',
+  }),
+})
+```
+
+## 🎨 Design & UX
+
+### Visual Design
+- Dark theme with ConsignCrew gold accents
+- Realistic wooden crate appearance
+- Colorful boxes for visual interest
+- Smooth animations and transitions
+
+### User Experience
+- Immediate visual engagement
+- Clear progression from animation to signup
+- Responsive design for all devices
+- Fast loading and smooth performance
+
+### Brand Integration
+- ConsignCrew gold color (#D4AF3D)
+- Professional yet playful aesthetic
+- Consistent with brand identity
+
+## 📱 Mobile Support
+
+### Touch Controls
+- Works with touch gestures
+- Responsive design for mobile screens
+- Optimized performance for mobile devices
+
+### Responsive Design
+- Adapts to different screen sizes
+- Maintains aspect ratios
+- Touch-friendly interface elements
+
+## 🔧 Configuration Options
+
+### Physics Settings
+- Gravity: `[0, -9.81, 0]` (realistic Earth gravity)
+- Box friction: 0.3 (realistic friction)
+- Box restitution: 0.2 (slight bounce)
+
+### Animation Settings
+- Spawn interval: 0.8-1.4 seconds (randomized)
+- Box sizes: 0.8-1.4 units (randomized)
+- Camera transition: 2 seconds duration
+- Box fade: 0.8 seconds duration
+
+### Crate Dimensions
+- Width: 8 units
+- Height: 6 units
+- Depth: 8 units
+- Easily configurable in Crate.jsx
+
+## 🚀 Performance Optimizations
+
+### Rendering Efficiency
+- Shared geometries and materials
+- Limited pixel ratio to 2x
+- Automatic box cleanup
+- Efficient physics calculations
+
+### Loading Performance
+- Minimal bundle size
+- Optimized 3D assets
+- Fast initial render
+- Progressive enhancement
+
+## 🧪 Testing Requirements
+
+### Functionality Testing
+1. Box spawning and physics
+2. Crate full detection
+3. Camera animation
+4. Modal appearance and form submission
+5. Accessibility features
+
+### Performance Testing
+1. Frame rate on different devices
+2. Memory usage over time
+3. Loading times
+4. Mobile performance
+
+### Accessibility Testing
+1. Screen reader compatibility
+2. Keyboard navigation
+3. Reduced motion support
+4. Color contrast compliance
+
+## 📋 Deliverables
+
+### Source Files
+- All React components and hooks
+- Configuration files (Next.js, Tailwind)
+- Package.json with dependencies
+- README with setup instructions
+
+### Documentation
+- Comprehensive README
+- Code comments and documentation
+- Setup and deployment instructions
+- Email integration examples
+
+### Build Output
+- Production-ready build
+- Optimized assets
+- Deployable to any static hosting
+
+## 🎯 Success Metrics
+
+### User Engagement
+- Time spent on page
+- Email signup conversion rate
+- Return visitor rate
+- Social sharing
+
+### Technical Performance
+- Page load time < 3 seconds
+- 60fps animation on desktop
+- 30fps+ on mobile devices
+- Lighthouse score > 90
+
+### Accessibility
+- WCAG 2.1 AA compliance
+- Screen reader compatibility
+- Keyboard navigation support
+- Reduced motion support
+
+## 🔮 Future Enhancements
+
+### Nice-to-Haves
+- Sound effects on collisions (Howler.js)
+- Rotating crate lights for dynamics
+- Billboard sprites with product thumbnails
+- Particle effects for impact
+- Multiple crate themes
+- Social sharing integration
+
+### Advanced Features
+- User interaction with boxes
+- Custom box creation
+- Multiplayer mode
+- Leaderboard system
+- Integration with main ConsignCrew app 

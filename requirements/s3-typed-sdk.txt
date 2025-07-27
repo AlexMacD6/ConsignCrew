@@ -52,7 +52,7 @@ ConsignCrew needs a clean, typed SDK for managing image uploads to S3 with speci
 - **Batch Operation Errors**: Handle partial failures in delete operations
 
 ### 8. Testing Requirements
-- **Unit Tests**: Comprehensive test coverage with Vitest
+- **Unit Tests**: Comprehensive test coverage with Jest
 - **Mocked AWS SDK**: No real AWS calls during testing
 - **Environment Mocking**: Test environment variable handling
 - **Edge Cases**: Test batching, pagination, and error scenarios
@@ -63,7 +63,7 @@ ConsignCrew needs a clean, typed SDK for managing image uploads to S3 with speci
 - `src/aws/s3Client.ts`: Singleton S3Client with environment configuration
 - `src/aws/imageStore.ts`: Main SDK with all business logic
 - `tests/imageStore.test.ts`: Comprehensive unit tests
-- `vitest.config.ts`: Test configuration
+- `jest.config.js`: Test configuration
 - `env.example`: Environment variables template
 
 ### Key Functions

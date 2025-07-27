@@ -27,19 +27,19 @@ export default function NavBar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur border-b border-[#eee] flex items-center justify-between px-4 py-2 shadow-sm">
+    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur border-b border-[#eee] flex items-center justify-between px-6 py-4 shadow-sm">
       {/* Branding/Logo */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <Link href="/">
           <img
             src="/Consign Crew Banner Logo.png"
             alt="ConsignCrew logo"
-            className="h-10 w-auto object-contain drop-shadow-md cursor-pointer"
+            className="h-16 w-auto object-contain drop-shadow-md cursor-pointer"
           />
         </Link>
       </div>
       {/* Marketing Links (center, hidden on mobile) */}
-      <div className="hidden md:flex gap-6 text-[#222] font-medium text-sm">
+      <div className="hidden md:flex gap-8 text-[#222] font-medium text-base">
         <a href="#mission" className="hover:text-[#D4AF3D] transition">
           Mission
         </a>
@@ -57,18 +57,18 @@ export default function NavBar() {
         </Link>
       </div>
       {/* Session-aware buttons (right) */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         {session?.user ? (
           <>
             <Link
               href="/list-item"
-              className="px-4 py-2 bg-[#D4AF3D] text-white font-bold rounded-lg shadow hover:bg-[#b8932f] transition"
+              className="px-6 py-3 bg-[#D4AF3D] text-white font-bold rounded-lg shadow hover:bg-[#b8932f] transition text-base"
             >
               List an Item
             </Link>
             <Link
               href="/listings"
-              className="px-4 py-2 bg-[#D4AF3D] text-white font-bold rounded-lg shadow hover:bg-[#b8932f] transition"
+              className="px-6 py-3 bg-[#D4AF3D] text-white font-bold rounded-lg shadow hover:bg-[#b8932f] transition text-base"
             >
               Listings
             </Link>
@@ -76,12 +76,12 @@ export default function NavBar() {
               <PopoverTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="flex items-center gap-2 font-bold"
+                  className="flex items-center gap-2 font-bold text-base px-4 py-2"
                 >
-                  Profile <ChevronDown className="h-4 w-4" />
+                  Profile <ChevronDown className="h-5 w-5" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-44 p-2">
+              <PopoverContent className="w-48 p-3">
                 <Link
                   href="/profile"
                   className="block w-full px-4 py-2 text-sm hover:bg-accent rounded-md"
@@ -101,13 +101,13 @@ export default function NavBar() {
           <>
             <Link
               href="/login"
-              className="px-4 py-2 bg-[#D4AF3D] text-white font-bold rounded-lg shadow hover:bg-[#b8932f] transition"
+              className="px-6 py-3 bg-[#D4AF3D] text-white font-bold rounded-lg shadow hover:bg-[#b8932f] transition text-base"
             >
               Log In
             </Link>
             <Link
               href="/register"
-              className="px-4 py-2 bg-[#D4AF3D] text-white font-bold rounded-lg shadow hover:bg-[#b8932f] transition"
+              className="px-6 py-3 bg-[#D4AF3D] text-white font-bold rounded-lg shadow hover:bg-[#b8932f] transition text-base"
             >
               Register
             </Link>

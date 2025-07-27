@@ -1,0 +1,36 @@
+# Tailwind CSS Fix Requirements
+
+## Problem
+- Tailwind CSS globals.css code appeared to be deleted or not applied after removing Vite
+- Potential configuration issues with Tailwind CSS setup
+
+## Issues Identified and Fixed
+
+### 1. Duplicate PostCSS Configuration Files
+- **Issue**: Both `postcss.config.js` and `postcss.config.mjs` existed, causing conflicts
+- **Solution**: Removed `postcss.config.js` and kept `postcss.config.mjs` for consistency
+
+### 2. Incorrect Tailwind Content Paths
+- **Issue**: Tailwind config was looking for components in `./components/**/*` but components are in `./app/components/**/*`
+- **Solution**: Updated `tailwind.config.ts` content paths to include `./app/components/**/*.{js,ts,jsx,tsx,mdx}`
+
+### 3. Missing Tailwind Animation Plugin
+- **Issue**: `tailwindcss-animate` plugin was referenced in config but not installed
+- **Solution**: Installed `tailwindcss-animate` package
+
+## Files Modified
+- **Deleted**: `postcss.config.js` (duplicate)
+- **Updated**: `tailwind.config.ts` (content paths)
+- **Added**: `tailwindcss-animate` dependency
+
+## Verification
+- Development server runs successfully on localhost:3000
+- Tailwind classes are being applied in components (NavBar, main page)
+- globals.css file is complete and properly structured
+- PostCSS configuration is clean and consistent
+
+## Current Status
+✅ Tailwind CSS is properly configured and working
+✅ All custom CSS variables and brand colors are defined
+✅ Components are using Tailwind classes correctly
+✅ No configuration conflicts remain 
