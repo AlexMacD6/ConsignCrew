@@ -173,22 +173,11 @@ export default function PriceSlider() {
           </p>
         </div>
 
-        {/* ConsignClub Service Fee */}
+        {/* ConsignCrew Service Fee */}
         <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-8 border border-gray-200 text-center hover:bg-white transition-all shadow-lg">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <h3 className="text-2xl font-bold text-gray-900">
-              ConsignCrew Service Fee
-            </h3>
-            <div className="relative group">
-              <div className="w-6 h-6 bg-gray-800 rounded-full flex items-center justify-center cursor-help">
-                <span className="text-white text-sm font-bold">i</span>
-              </div>
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-20">
-                Payment processing handled separately
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-800"></div>
-              </div>
-            </div>
-          </div>
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">
+            ConsignCrew Service Fee
+          </h3>
           <div className="text-5xl font-bold text-consigncrew-gold mb-2">
             $
             {conciergeFee.toLocaleString(undefined, {
@@ -196,7 +185,7 @@ export default function PriceSlider() {
             })}
           </div>
           <p className="text-gray-700">
-            {currentTier.feePercentage}% fee for our services
+            {currentTier.feePercentage}% all-inclusive fee
           </p>
         </div>
       </div>

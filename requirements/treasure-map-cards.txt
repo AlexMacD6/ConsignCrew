@@ -1,0 +1,64 @@
+# Treasure Map Flip Cards Enhancement
+
+## Overview
+Replaced the static "Why ConsignCrew" benefit cards with interactive treasure map flip cards using Framer Motion animations.
+
+## Changes Made
+
+### 1. Distilled Benefit Cards
+- **Zero Hassle Listing**: Snap photos, add descriptions. Our automated system creates perfect listings in minutes.
+- **Transparent Earnings**: Know exactly what you'll earn with our clear, all-inclusive pricing structure.
+- **Safe & Fast Payout**: Funds held securely in escrow. Instant payout when your item sells.
+
+### 2. Interactive Treasure Map Design
+- Created flipable cards with 3D rotation animations
+- Front side shows the main benefit with call-to-action button
+- Back side reveals detailed "treasure map" with step-by-step process
+- Each card has unique treasure map content relevant to the benefit
+
+### 3. Framer Motion Integration
+- Smooth 3D flip animations with proper perspective
+- Staggered entrance animations for cards
+- Interactive hover and click effects
+- Hardware-accelerated animations for performance
+
+### 4. Visual Design
+- Treasure map theme with amber/yellow color scheme
+- Emoji icons for visual appeal and clarity
+- Gradient backgrounds for depth
+- Consistent branding with ConsignCrew colors
+
+## Technical Implementation
+
+### Components Created
+- `TreasureMapCards.tsx`: Main component with flip logic
+- `TreasureCard`: Individual flip card component
+- Added 3D CSS transforms for flip effect
+
+### CSS Additions
+- `.perspective-1000`: 3D perspective for flip effect
+- `.preserve-3d`: Maintains 3D positioning
+- `.backface-hidden`: Hides back face during rotation
+- `.rotate-y-180`: 180-degree Y-axis rotation
+
+### Animation Features
+- 0.6-second smooth flip transition
+- Staggered entrance animations (0.2s delay between cards)
+- Hover effects with scale and rotation
+- Interactive button animations
+
+## User Experience
+- Click any card to flip and see detailed treasure map
+- Clear visual feedback for interactive elements
+- Engaging animations that encourage exploration
+- Mobile-friendly touch interactions
+
+## Dependencies
+- framer-motion: ^11.0.0 (for animations)
+- react-intersection-observer: ^9.8.1 (for scroll animations)
+
+## Testing
+- Verify flip animations work on all devices
+- Test touch interactions on mobile
+- Ensure animations are smooth and performant
+- Check accessibility with reduced motion preferences 

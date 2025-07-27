@@ -60,16 +60,10 @@ export default function NavBar() {
       <div className="flex items-center gap-3">
         {session?.user ? (
           <>
-            <Link
-              href="/list-item"
-              className="px-6 py-3 bg-[#D4AF3D] text-white font-bold rounded-lg shadow hover:bg-[#b8932f] transition text-base"
-            >
+            <Link href="/list-item" className="btn btn-primary btn-md">
               List an Item
             </Link>
-            <Link
-              href="/listings"
-              className="px-6 py-3 bg-[#D4AF3D] text-white font-bold rounded-lg shadow hover:bg-[#b8932f] transition text-base"
-            >
+            <Link href="/listings" className="btn btn-primary btn-md">
               Listings
             </Link>
             <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
@@ -99,16 +93,10 @@ export default function NavBar() {
           </>
         ) : (
           <>
-            <Link
-              href="/login"
-              className="px-6 py-3 bg-[#D4AF3D] text-white font-bold rounded-lg shadow hover:bg-[#b8932f] transition text-base"
-            >
+            <Link href="/login" className="btn btn-primary btn-md">
               Log In
             </Link>
-            <Link
-              href="/register"
-              className="px-6 py-3 bg-[#D4AF3D] text-white font-bold rounded-lg shadow hover:bg-[#b8932f] transition text-base"
-            >
+            <Link href="/register" className="btn btn-primary btn-md">
               Register
             </Link>
           </>

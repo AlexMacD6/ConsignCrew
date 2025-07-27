@@ -39,21 +39,30 @@ export default function PainPointsSection() {
           {painPoints.map((point, index) => (
             <div
               key={index}
-              className={`relative cursor-pointer transition-all duration-300 ${
+              className={`relative cursor-pointer transition-all duration-500 ${
                 clickedPoints.has(index)
-                  ? "opacity-0 scale-95 pointer-events-none"
+                  ? "pointer-events-none"
                   : "hover:scale-105 hover:bg-red-500/30"
               }`}
               onClick={() => handlePointClick(index)}
             >
-              <div className="bg-red-500/20 backdrop-blur-sm border border-red-400/30 rounded-lg p-4 text-center min-h-[80px] flex items-center justify-center">
+              <div className="bg-red-500/20 backdrop-blur-sm border border-red-400/30 rounded-lg p-4 text-center min-h-[100px] flex items-center justify-center relative overflow-hidden">
                 <span
-                  className={`text-red-300 text-sm font-medium transition-all duration-500 ${
-                    clickedPoints.has(index) ? "line-through opacity-60" : ""
+                  className={`text-red-300 text-base md:text-lg font-medium transition-all duration-500 ${
+                    clickedPoints.has(index) ? "opacity-20" : ""
                   }`}
                 >
                   {point}
                 </span>
+
+                {/* Big X overlay when clicked */}
+                {clickedPoints.has(index) && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-red-600/80 backdrop-blur-sm">
+                    <div className="text-white text-4xl md:text-6xl font-bold animate-pulse">
+                      ✕
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ))}

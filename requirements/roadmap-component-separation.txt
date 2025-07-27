@@ -1,0 +1,68 @@
+# Roadmap Component Separation
+
+## Overview
+Separate the roadmap component from the TreasureMapCards component and place it as a standalone section below the "Why ConsignCrew" component.
+
+## Changes Made
+
+### 1. Created New Roadmap Component
+- Created `app/components/Roadmap.tsx` as a standalone component
+- Extracted `RoadmapNode` and `Roadmap` components from `TreasureMapCards.tsx`
+- Maintained all existing functionality including:
+  - Bouncing red circle nodes
+  - Content cards with bulleted details
+  - Swaying red dotted line animation
+  - Framer Motion animations and hover effects
+
+### 2. Updated TreasureMapCards Component
+- Removed `RoadmapNodeProps` interface
+- Removed `RoadmapNode` component definition
+- Removed `Roadmap` component definition
+- Removed `<Roadmap />` component call from within the component
+- Cleaned up imports and dependencies
+
+### 3. Updated Main Page Layout
+- Added import for `Roadmap` component in `app/page.tsx`
+- Replaced existing roadmap section with new `Roadmap` component
+- Updated section title to "Your Treasure Map"
+- Updated section description to "Follow the path to stress-free selling with our detailed process"
+- Maintained existing styling and layout structure
+
+## Technical Implementation
+
+### Component Structure
+- `Roadmap.tsx`: Standalone component with `RoadmapNode` and `Roadmap` sub-components
+- `TreasureMapCards.tsx`: Focused only on treasure map cards with 3D sand reveal
+- `page.tsx`: Updated to render `Roadmap` component separately
+
+### Animation Features
+- Bouncing red circle nodes with staggered delays
+- Swaying red dotted line using CSS gradients and Framer Motion
+- Content cards with hover effects and scale animations
+- Staggered fade-in animations for nodes
+
+### Data Structure
+- `roadmapData` array containing three main sections:
+  - Zero Hassle Listing
+  - Transparent Earnings  
+  - Safe & Fast Payout
+- Each section includes title and detailed bullet points
+
+## User Experience
+- Roadmap now appears as a separate, dedicated section below the treasure cards
+- Clear visual separation between the "Why ConsignCrew" sand reveal and the roadmap
+- Maintains the treasure map theme with red dotted lines and nodes
+- Responsive design that works on all screen sizes
+
+## Dependencies
+- framer-motion: For animations and motion effects
+- React: For component structure and state management
+
+## Testing Instructions
+1. Navigate to the landing page
+2. Scroll down to the "Why ConsignCrew" section
+3. Verify the sand reveal animation works correctly
+4. Continue scrolling to see the "Your Treasure Map" section
+5. Verify the roadmap appears with bouncing nodes and swaying dotted line
+6. Test hover effects on the content cards
+7. Verify responsive behavior on different screen sizes 

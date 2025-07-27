@@ -282,20 +282,32 @@ export default function ProfilePage() {
             <h1 className="text-2xl font-bold">Profile</h1>
             <div className="flex gap-2">
               <button
-                className={`px-4 py-2 rounded-t font-semibold transition border-b-2 ${tab === "overview" ? "border-[#D4AF3D] text-[#D4AF3D]" : "border-transparent text-gray-500"}`}
+                className={`px-4 py-2 rounded-t font-semibold transition border-b-2 ${
+                  tab === "overview"
+                    ? "border-[#D4AF3D] text-[#D4AF3D]"
+                    : "border-transparent text-gray-500"
+                }`}
                 onClick={() => setTab("overview")}
               >
                 Overview
               </button>
               <button
-                className={`px-4 py-2 rounded-t font-semibold transition border-b-2 ${tab === "settings" ? "border-[#D4AF3D] text-[#D4AF3D]" : "border-transparent text-gray-500"}`}
+                className={`px-4 py-2 rounded-t font-semibold transition border-b-2 ${
+                  tab === "settings"
+                    ? "border-[#D4AF3D] text-[#D4AF3D]"
+                    : "border-transparent text-gray-500"
+                }`}
                 onClick={() => setTab("settings")}
               >
                 Settings
               </button>
               {isAdminUser && (
                 <button
-                  className={`px-4 py-2 rounded-t font-semibold transition border-b-2 ${tab === "admin" ? "border-[#D4AF3D] text-[#D4AF3D]" : "border-transparent text-gray-500"}`}
+                  className={`px-4 py-2 rounded-t font-semibold transition border-b-2 ${
+                    tab === "admin"
+                      ? "border-[#D4AF3D] text-[#D4AF3D]"
+                      : "border-transparent text-gray-500"
+                  }`}
                   onClick={() => setTab("admin")}
                 >
                   <Shield className="inline w-4 h-4 mr-1" />
@@ -485,17 +497,11 @@ export default function ProfilePage() {
 
           <div className="flex justify-end mt-6">
             {!editMode && tab !== "admin" ? (
-              <button
-                className="px-6 py-2 bg-[#D4AF3D] text-white font-bold rounded-lg shadow hover:bg-[#b8932f] transition"
-                onClick={handleEdit}
-              >
+              <button className="btn btn-primary btn-md" onClick={handleEdit}>
                 Edit Profile
               </button>
             ) : editMode && tab !== "admin" ? (
-              <button
-                className="px-6 py-2 bg-[#D4AF3D] text-white font-bold rounded-lg shadow hover:bg-[#b8932f] transition"
-                onClick={handleUpdate}
-              >
+              <button className="btn btn-primary btn-md" onClick={handleUpdate}>
                 Update Profile
               </button>
             ) : null}
