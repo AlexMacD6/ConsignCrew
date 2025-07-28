@@ -4,6 +4,66 @@ import { Canvas, useFrame, useLoader } from "@react-three/fiber";
 import { OrbitControls, Stars, Float } from "@react-three/drei";
 import * as THREE from "three";
 
+// WebGL Support Detection Utility
+const checkWebGLSupport = () => {
+  try {
+    const canvas = document.createElement("canvas");
+
+    // Try WebGL2 first, then WebGL, then experimental WebGL
+    const gl =
+      canvas.getContext("webgl2", {
+        powerPreference: "default",
+        failIfMajorPerformanceCaveat: false,
+        antialias: false,
+        alpha: true,
+        depth: true,
+        stencil: false,
+        preserveDrawingBuffer: false,
+        logarithmicDepthBuffer: false,
+      }) ||
+      canvas.getContext("webgl", {
+        powerPreference: "default",
+        failIfMajorPerformanceCaveat: false,
+        antialias: false,
+        alpha: true,
+        depth: true,
+        stencil: false,
+        preserveDrawingBuffer: false,
+      }) ||
+      canvas.getContext("experimental-webgl", {
+        powerPreference: "default",
+        failIfMajorPerformanceCaveat: false,
+        antialias: false,
+        alpha: true,
+        depth: true,
+        stencil: false,
+        preserveDrawingBuffer: false,
+      });
+
+    if (!gl) {
+      console.warn("WebGL not supported");
+      return false;
+    }
+
+    // Test basic WebGL functionality
+    const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+    const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+
+    if (!vertexShader || !fragmentShader) {
+      console.warn("WebGL shader creation failed");
+      return false;
+    }
+
+    gl.deleteShader(vertexShader);
+    gl.deleteShader(fragmentShader);
+
+    return true;
+  } catch (error) {
+    console.error("WebGL support check failed:", error);
+    return false;
+  }
+};
+
 // Floating Box Component with Logo Texture
 function FloatingBox({
   position,
@@ -391,7 +451,7 @@ function ErrorFallback({ onReset }: { onReset?: () => void }) {
   );
 }
 
-// Main ThreeScene Component with Error Handling
+// Main ThreeScene Component with Enhanced Error Handling
 export default function ThreeScene() {
   const [hasError, setHasError] = useState(false);
   const [contextLost, setContextLost] = useState(false);
@@ -414,40 +474,16 @@ export default function ThreeScene() {
   }, []);
 
   useEffect(() => {
-    // Enhanced WebGL support detection
-    const checkWebGLSupport = () => {
-      try {
-        const canvas = document.createElement("canvas");
-        const gl =
-          canvas.getContext("webgl2") ||
-          canvas.getContext("webgl") ||
-          canvas.getContext("experimental-webgl");
+    // Check WebGL support immediately
+    const isWebGLSupported = checkWebGLSupport();
+    setWebglSupported(isWebGLSupported);
 
-        if (!gl) {
-          console.warn(
-            "WebGL not supported, falling back to static background"
-          );
-          setWebglSupported(false);
-          setHasError(true);
-          return false;
-        }
-
-        // Test WebGL capabilities
-        const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
-        if (debugInfo) {
-          const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-          console.log("WebGL Renderer:", renderer);
-        }
-
-        setWebglSupported(true);
-        return true;
-      } catch (error) {
-        console.error("Error checking WebGL support:", error);
-        setWebglSupported(false);
-        setHasError(true);
-        return false;
-      }
-    };
+    if (!isWebGLSupported) {
+      console.warn("WebGL not supported, showing fallback");
+      setHasError(true);
+      setIsLoading(false);
+      return;
+    }
 
     const handleError = (error: ErrorEvent) => {
       console.error("Three.js error:", error);
@@ -455,7 +491,9 @@ export default function ThreeScene() {
       // Check if it's a WebGL context creation error
       if (
         error.message &&
-        error.message.includes("WebGL context could not be created")
+        (error.message.includes("WebGL context could not be created") ||
+          error.message.includes("Failed to create WebGL2RenderingContext") ||
+          error.message.includes("WebGL not supported"))
       ) {
         console.warn(
           "WebGL context creation failed, falling back to static background"
@@ -489,10 +527,7 @@ export default function ThreeScene() {
       setHasError(false);
     };
 
-    // Check WebGL support first
-    const isWebGLSupported = checkWebGLSupport();
-
-    // Listen for console messages to detect context loss
+    // Enhanced console error interception
     const originalConsoleWarn = console.warn;
     const originalConsoleError = console.error;
 
@@ -500,10 +535,12 @@ export default function ThreeScene() {
       const message = args.join(" ");
       if (
         message.includes("THREE.WebGLRenderer: Context Lost") ||
-        message.includes("WebGL context could not be created")
+        message.includes("WebGL context could not be created") ||
+        message.includes("Failed to create WebGL2RenderingContext")
       ) {
         console.log("Detected WebGL context loss via console message");
-        handleContextLost(new Event("webglcontextlost"));
+        setWebglSupported(false);
+        setHasError(true);
       }
       originalConsoleWarn.apply(console, args);
     };
@@ -512,7 +549,8 @@ export default function ThreeScene() {
       const message = args.join(" ");
       if (
         message.includes("WebGL context could not be created") ||
-        message.includes("Failed to create WebGL2RenderingContext")
+        message.includes("Failed to create WebGL2RenderingContext") ||
+        message.includes("WebGL not supported")
       ) {
         console.warn(
           "WebGL context creation failed, falling back to static background"
@@ -540,11 +578,12 @@ export default function ThreeScene() {
     };
   }, [retryCount, resetScene]);
 
-  if (hasError || contextLost) {
+  // Show fallback immediately if WebGL is not supported
+  if (webglSupported === false || hasError || contextLost) {
     return <ErrorFallback onReset={retryCount < 3 ? resetScene : undefined} />;
   }
 
-  if (isLoading) {
+  if (isLoading || webglSupported === null) {
     return (
       <div className="w-full h-full bg-[#f9fafb] flex items-center justify-center">
         <div className="text-gray-800 text-center">
@@ -563,6 +602,7 @@ export default function ThreeScene() {
         style={{ background: "#f9fafb" }}
         onError={(error) => {
           console.error("Canvas error:", error);
+          setWebglSupported(false);
           setHasError(true);
         }}
         gl={{
@@ -573,7 +613,6 @@ export default function ThreeScene() {
           stencil: false,
           preserveDrawingBuffer: false,
           failIfMajorPerformanceCaveat: false,
-          preserveDrawingBuffer: false,
           logarithmicDepthBuffer: false,
         }}
         onCreated={({ gl }) => {
