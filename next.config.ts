@@ -44,6 +44,30 @@ const nextConfig: NextConfig = {
 			'@': path.resolve(__dirname, 'src'),
 		}
 		
+		// Add fallbacks for Node.js modules that might be imported in client-side code
+		if (!isServer) {
+			config.resolve.fallback = {
+				...config.resolve.fallback,
+				fs: false,
+				net: false,
+				tls: false,
+				crypto: false,
+				stream: false,
+				url: false,
+				zlib: false,
+				http: false,
+				https: false,
+				assert: false,
+				os: false,
+				path: false,
+				'supports-color': false,
+				debug: false,
+				util: false,
+				buffer: false,
+				process: false,
+			}
+		}
+		
 		// Disable CSS source maps in development to prevent 404 errors
 		if (dev && !isServer) {
 			config.devtool = 'eval-source-map'

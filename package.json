@@ -36,6 +36,7 @@
     "react-phone-input-2": "^2.15.1",
     "react-scrollama": "^2.4.2",
     "scrollama": "^3.2.0",
+    "supports-color": "^10.0.0",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.178.0"
