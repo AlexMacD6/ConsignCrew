@@ -1,0 +1,28 @@
+Fix Prisma Client Generation Issue on Vercel
+
+- Resolve PrismaClientInitializationError during Vercel build process
+- Ensure Prisma client is properly generated before Next.js build
+- Fix Vercel dependency caching issue with Prisma client
+- Add proper build configuration for Vercel deployment
+
+Root Cause:
+- Vercel caches dependencies, causing outdated Prisma Client
+- Prisma auto-generation isn't triggered during build process
+- Build script needs explicit Prisma generation before Next.js build
+
+Solution:
+- Added prebuild script to package.json
+- Created vercel.json configuration file
+- Updated build command to ensure Prisma generation
+- Enhanced database utility for better Vercel compatibility
+
+Changes Made:
+1. Added "prebuild": "prisma generate" to package.json scripts
+2. Created vercel.json with explicit buildCommand
+3. Updated database utility with connection pooling
+4. Ensured immediate Prisma client initialization
+
+Expected Result:
+- Prisma client will be generated before Next.js build
+- Build process will complete successfully
+- API routes will work properly in production 

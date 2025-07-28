@@ -1,0 +1,25 @@
+Update Environment Variables with Specific Vercel URL
+
+Production URL: https://treasurehub.vercel.app (recommended)
+Alternative URL: https://treasurehub-l4taaqh0k-alex-macdonalds-projects-993587d5.vercel.app
+
+Environment Variables to Update:
+1. BETTER_AUTH_URL=https://treasurehub.vercel.app
+2. NEXTAUTH_URL=https://treasurehub.vercel.app
+3. NEXT_PUBLIC_APP_URL=https://treasurehub.vercel.app (if exists)
+4. NEXT_PUBLIC_BASE_URL=https://treasurehub.vercel.app (if exists)
+5. NEXT_PUBLIC_SOCKET_URL=https://treasurehub.vercel.app (if exists)
+
+Current Values (to replace):
+- BETTER_AUTH_URL=http://localhost:3000
+- NEXTAUTH_URL=http://localhost:3000
+- Any other localhost:3000 references
+
+Additional Requirements:
+- Ensure all URLs use HTTPS
+- Keep existing production secrets (BETTER_AUTH_SECRET, NEXTAUTH_SECRET)
+- Keep existing production database URL
+- Keep existing AWS configuration
+- Keep existing CDN configuration
+
+Note: Using treasurehub.vercel.app is recommended as it's cleaner and more stable than the deployment-specific URL. 

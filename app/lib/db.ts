@@ -20,6 +20,16 @@ function getPrismaClient(): PrismaClient {
         url: databaseUrl,
       },
     },
+    // Add connection pooling and retry logic for production
+    __internal: {
+      engine: {
+        connectionLimit: 10,
+        pool: {
+          min: 2,
+          max: 10,
+        },
+      },
+    },
   })
 
   if (process.env.NODE_ENV !== 'production') {
@@ -29,6 +39,7 @@ function getPrismaClient(): PrismaClient {
   return client
 }
 
+// Initialize the client immediately to ensure it's available during build
 export const db = getPrismaClient()
 
 // Helper function to check if database is available
