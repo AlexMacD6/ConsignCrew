@@ -1,0 +1,20 @@
+Vercel Deployment Fix Requirements
+
+- Fixed missing supports-color dependency issue
+  - Added supports-color package to dependencies
+  - Updated Next.js webpack configuration to handle Node.js module fallbacks
+
+- Enhanced webpack configuration for production builds
+  - Added fallbacks for common Node.js modules that might be imported in client-side code
+  - Configured proper handling of server-side dependencies in browser environment
+  - Added fallbacks for fs, net, tls, crypto, stream, url, zlib, http, https, assert, os, path, debug, util, buffer, process
+
+- Improved build process for Vercel deployment
+  - Ensured server-side packages are properly handled in client-side builds
+  - Added webpack fallbacks to prevent module resolution errors
+  - Maintained compatibility with existing server-side functionality
+
+- Technical improvements
+  - Added supports-color dependency to package.json
+  - Updated next.config.ts with comprehensive webpack fallbacks
+  - Ensured Mailchimp integration continues to work properly in production 
