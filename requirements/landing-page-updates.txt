@@ -12,11 +12,11 @@ Various updates to improve the landing page content, contact page functionality,
 
 ### 2. Contact Page Email Update
 - **File**: `app/contact/page.tsx`
-- **Change**: Updated email address from `alex.macdonald@maritimeep.com` to `support@treasurehunt.club`
+- **Change**: Updated email address from `[OLD_EMAIL]` to `support@treasurehunt.club`
 
 ### 3. Contact API Route Update
 - **File**: `app/api/contact/route.ts`
-- **Change**: Updated email recipient in commented SendGrid example from `alex.macdonald@maritimeep.com` to `support@treasurehunt.club`
+- **Change**: Updated email recipient in commented SendGrid example from `[OLD_EMAIL]` to `support@treasurehunt.club`
 
 ### 4. Contact Page Modal Integration
 - **File**: `app/contact/page.tsx`

@@ -1,7 +1,7 @@
 # Contact Page Requirements
 
 ## Overview
-Create a professional contact page with a form that allows users to send messages to alex.macdonald@maritimeep.com, and add it to the navigation bar.
+Create a professional contact page with a form that allows users to send messages to [CONTACT_EMAIL], and add it to the navigation bar.
 
 ## Changes Made
 
@@ -46,7 +46,7 @@ Create a professional contact page with a form that allows users to send message
 - **Accessibility**: Proper labels, form structure
 
 #### Contact Information:
-- **Email Display**: alex.macdonald@maritimeep.com
+- **Email Display**: [CONTACT_EMAIL]
 - **Response Time**: 24-hour response expectation
 - **FAQ Link**: Direct link to FAQ page
 - **Early Access Promotion**: Call-to-action for early access

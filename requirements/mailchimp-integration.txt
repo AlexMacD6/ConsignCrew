@@ -11,7 +11,7 @@ Integrate Mailchimp email marketing service with the TreasureHub email registrat
 ### 2. Environment Variables Required
 Add the following to your `.env.local` file:
 ```
-MAILCHIMP_API_KEY=b38e839820390ac70e5882cd79f76217-us7
+MAILCHIMP_API_KEY=your_mailchimp_api_key_here
 MAILCHIMP_AUDIENCE_ID=46b6d4edb8
 MAILCHIMP_SERVER_PREFIX=us7
 ```
@@ -119,7 +119,7 @@ MAILCHIMP_SERVER_PREFIX=us7
 #### Audience Details:
 - Audience ID: 46b6d4edb8
 - Server Prefix: us7
-- API Key: b38e839820390ac70e5882cd79f76217-us7
+- API Key: [REDACTED]
 
 #### Tags Applied:
 - 'early-access' - For identifying early access subscribers
