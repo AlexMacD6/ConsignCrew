@@ -1,0 +1,140 @@
+# Contact Page Requirements
+
+## Overview
+Create a professional contact page with a form that allows users to send messages to alex.macdonald@maritimeep.com, and add it to the navigation bar.
+
+## Changes Made
+
+### 1. Files Created
+
+#### New Files:
+- `app/contact/page.tsx` - Contact page component
+  - Professional two-column layout
+  - Contact form with validation
+  - Contact information display
+  - Early access promotion section
+  - Success/error state handling
+  - Responsive design with animations
+
+- `app/api/contact/route.ts` - Contact form API endpoint
+  - Form validation (required fields, email format)
+  - Logs submissions for development
+  - Prepared for email service integration
+  - Error handling and response formatting
+
+- `app/our-origin/page.tsx` - Our Origin page component
+  - Professional storytelling layout
+  - Pain points comparison table
+  - Proof-of-concept timeline and metrics
+  - Mission statement and call-to-action
+  - Responsive design with animations
+
+### 2. Files Modified
+
+#### Modified Files:
+- `app/components/NavBar.tsx` - Added Contact and Our Origin links
+  - Added "Contact" link to navigation menu
+  - Added "Our Origin" link to navigation menu
+  - Maintains consistent styling with other nav items
+
+### 3. Features Implemented
+
+#### Contact Form:
+- **Form Fields**: Name, Email, Subject (dropdown), Message
+- **Validation**: Required fields, email format validation
+- **User Experience**: Loading states, success/error messages
+- **Accessibility**: Proper labels, form structure
+
+#### Contact Information:
+- **Email Display**: alex.macdonald@maritimeep.com
+- **Response Time**: 24-hour response expectation
+- **FAQ Link**: Direct link to FAQ page
+- **Early Access Promotion**: Call-to-action for early access
+
+#### Design & UX:
+- **Professional Layout**: Two-column responsive design
+- **Brand Consistency**: Uses TreasureHub colors and styling
+- **Animations**: Smooth page transitions with Framer Motion
+- **Mobile Responsive**: Works on all device sizes
+
+#### Technical Features:
+- **Form Handling**: Controlled inputs with state management
+- **API Integration**: RESTful endpoint for form submissions
+- **Error Handling**: Comprehensive error states
+- **TypeScript**: Full type safety
+
+### 4. Form Fields
+
+#### Required Fields:
+- **Full Name**: Text input for user's name
+- **Email Address**: Email input with validation
+- **Subject**: Dropdown with predefined options:
+  - General Inquiry
+  - Early Access Question
+  - Partnership Opportunity
+  - Technical Support
+  - Feedback
+  - Other
+- **Message**: Multi-line textarea for detailed message
+
+### 5. Email Integration
+
+#### Current Implementation:
+- Form submissions are logged to console
+- Simulated email sending delay
+- Ready for email service integration
+
+#### Future Email Service Options:
+- **SendGrid**: Popular email service with good deliverability
+- **AWS SES**: Cost-effective for high volume
+- **Nodemailer**: Direct SMTP integration
+- **Resend**: Modern email API
+
+#### Email Template Prepared:
+- HTML and text versions
+- Professional formatting
+- All form data included
+- Timestamp tracking
+
+### 6. Testing Instructions
+
+1. Navigate to `/contact` in the browser
+2. Test form validation:
+   - Try submitting with empty fields
+   - Test invalid email format
+   - Verify required field indicators
+3. Test successful submission:
+   - Fill all fields correctly
+   - Submit form
+   - Verify success message
+   - Check console for logged data
+4. Test responsive design:
+   - View on mobile devices
+   - Test different screen sizes
+5. Test navigation:
+   - Verify Contact link in navbar
+   - Test navigation between pages
+
+### 7. Security Considerations
+
+- **Input Validation**: Server-side validation of all fields
+- **Email Validation**: Proper email format checking
+- **Rate Limiting**: Should be implemented for production
+- **CSRF Protection**: Consider adding for production
+- **Data Sanitization**: Clean user inputs before processing
+
+### 8. Future Enhancements
+
+- **Email Service Integration**: Connect to SendGrid/AWS SES
+- **Auto-Reply**: Send confirmation email to user
+- **File Attachments**: Allow file uploads
+- **Contact Preferences**: Let users choose response method
+- **Analytics**: Track form submissions and conversions
+- **Spam Protection**: Add CAPTCHA or honeypot fields
+
+## Files Modified:
+- app/contact/page.tsx (new)
+- app/api/contact/route.ts (new)
+- app/components/NavBar.tsx
+- app/our-origin/page.tsx (new)
+- requirements/contact-page.txt (this file) 

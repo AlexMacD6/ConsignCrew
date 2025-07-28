@@ -86,8 +86,10 @@ const TreasureCard: React.FC<TreasureCardProps> = ({
           transition={{ duration: 0.6, ease: "easeInOut" }}
         >
           <div className="text-center h-full flex flex-col justify-center">
-            <h4 className="text-2xl font-bold text-gray-900 mb-4">{title}</h4>
-            <div className="text-gray-700 text-sm mb-6">
+            <h4 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-4">
+              {title}
+            </h4>
+            <div className="text-gray-700 text-base lg:text-lg mb-6">
               {treasureMapContent}
             </div>
           </div>
@@ -340,7 +342,7 @@ export default function TreasureMapCards() {
         "Snap photos, add descriptions. Our automated system creates perfect listings in minutes.",
       icon: (
         <svg
-          className="w-16 h-16 text-amber-600"
+          className="w-32 h-32 text-black"
           fill="currentColor"
           viewBox="0 0 24 24"
         >
@@ -348,12 +350,10 @@ export default function TreasureMapCards() {
         </svg>
       ),
       treasureMapContent: (
-        <div className="space-y-2">
-          <ul className="text-left space-y-1">
+        <div className="space-y-3">
+          <ul className="text-left space-y-2">
             <li>• Snap photos of your item</li>
-            <li>• Add any additional details</li>
             <li>• System creates professional listing</li>
-            <li>• Confirm or adjust pricing</li>
             <li>• Done in under 1 minute</li>
           </ul>
         </div>
@@ -365,7 +365,7 @@ export default function TreasureMapCards() {
         "Know exactly what you'll earn with our clear, all-inclusive pricing structure.",
       icon: (
         <svg
-          className="w-16 h-16 text-amber-600"
+          className="w-32 h-32 text-black"
           fill="currentColor"
           viewBox="0 0 24 24"
         >
@@ -373,13 +373,11 @@ export default function TreasureMapCards() {
         </svg>
       ),
       treasureMapContent: (
-        <div className="space-y-2">
-          <ul className="text-left space-y-1">
+        <div className="space-y-3">
+          <ul className="text-left space-y-2">
             <li>• All-inclusive fees</li>
             <li>• Higher value = lower percentage</li>
-            <li>• Aligned incentives for all parties</li>
             <li>• Automated pricing recommendations</li>
-            <li>• Known discount schedules</li>
           </ul>
         </div>
       ),
@@ -390,7 +388,7 @@ export default function TreasureMapCards() {
         "Funds held securely in escrow. Instant payout when your item sells.",
       icon: (
         <svg
-          className="w-16 h-16 text-amber-600"
+          className="w-32 h-32 text-black"
           fill="currentColor"
           viewBox="0 0 24 24"
         >
@@ -398,12 +396,10 @@ export default function TreasureMapCards() {
         </svg>
       ),
       treasureMapContent: (
-        <div className="space-y-2">
-          <ul className="text-left space-y-1">
+        <div className="space-y-3">
+          <ul className="text-left space-y-2">
             <li>• Funds held securely digitally</li>
-            <li>• Payout upon delivery</li>
             <li>• Concierge pick-up and drop-off service</li>
-            <li>• Pick your pick-up / delivery window</li>
             <li>• Track your delivery online</li>
           </ul>
         </div>
@@ -413,6 +409,7 @@ export default function TreasureMapCards() {
 
   return (
     <section
+      id="why-treasurehub"
       ref={sectionRef}
       className="py-20 px-4 relative overflow-hidden"
       style={{
@@ -448,7 +445,7 @@ export default function TreasureMapCards() {
           viewport={{ once: true }}
         >
           <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
-            Why ConsignCrew?
+            Why TreasureHub?
           </h2>
           <p className="text-xl text-gray-700 max-w-3xl mx-auto">
             Discover the treasure map to stress-free selling.

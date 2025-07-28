@@ -87,7 +87,7 @@ export default function PriceSlider() {
           <div className="h-4 bg-gray-200 rounded-full relative shadow-inner">
             {/* Filled portion */}
             <div
-              className="h-full bg-gradient-to-r from-consigncrew-gold to-yellow-400 rounded-full transition-all duration-200 ease-out shadow-sm"
+              className="h-full bg-gradient-to-r from-treasure-500 to-treasure-400 rounded-full transition-all duration-200 ease-out shadow-sm"
               style={{
                 width: `${Math.max(0, Math.min(100, sliderPosition))}%`,
               }}
@@ -95,11 +95,6 @@ export default function PriceSlider() {
 
             {/* Price markers */}
             <div className="absolute top-0 left-0 w-full h-full">
-              {/* Under $100 label (left side) */}
-              <div className="absolute top-6 left-0 text-xs text-gray-600 font-medium">
-                Under $100
-              </div>
-
               {/* $100 marker */}
               <div className="absolute top-0" style={{ left: "10%" }}>
                 <div className="w-4 h-4 bg-white border-2 border-gray-300 rounded-full transform -translate-x-2 -translate-y-0.5">
@@ -123,11 +118,6 @@ export default function PriceSlider() {
                     $500
                   </div>
                 </div>
-              </div>
-
-              {/* $500+ label (right side) */}
-              <div className="absolute top-6 right-0 text-xs text-gray-600 font-medium">
-                $500+
               </div>
             </div>
 

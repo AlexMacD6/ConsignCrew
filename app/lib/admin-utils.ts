@@ -160,10 +160,10 @@ export async function createDefaultAdminOrganization() {
     // Create default admin organization
     const defaultOrg = await prisma.organization.create({
       data: {
-        name: 'ConsignCrew Admin',
-        slug: 'consigncrew-admin',
+            name: 'TreasureHub Admin',
+    slug: 'treasurehub-admin',
         metadata: JSON.stringify({
-          description: 'Default admin organization for ConsignCrew',
+                      description: 'Default admin organization for TreasureHub',
           type: 'admin',
         }),
       },

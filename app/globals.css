@@ -93,14 +93,18 @@ body,
 		--brand-primary-hex: #D4AF3D;
 		--brand-secondary: 36, 87%, 28%; /* #825E08 in HSL */
 		--brand-secondary-hex: #825E08;
+		--brand-accent: 45, 93%, 47%; /* #F4D03F in HSL - lighter gold */
+		--brand-accent-hex: #F4D03F;
+		--brand-dark: 36, 87%, 18%; /* #5D4A00 in HSL - darker gold */
+		--brand-dark-hex: #5D4A00;
 		--brand-black: #000;
 		--brand-white: #fff;
 
 		/* Override shadcn/ui system colors with brand colors */
-		--primary: 0 0% 9%; /* #D4AF3D */
-		--primary-foreground: 0 0% 98%; /* white */
-		--secondary: 0 0% 96.1%; /* #825E08 */
-		--secondary-foreground: 0 0% 9%; /* white */
+		--primary: 42 69% 54%; /* #D4AF3D */
+		--primary-foreground: 0 0% 9%; /* dark text */
+		--secondary: 36 87% 28%; /* #825E08 */
+		--secondary-foreground: 0 0% 98%; /* white text */
 		--background: 0 0% 100%;
 		--foreground: 0 0% 3.9%;
 		--card: 0 0% 100%;
@@ -138,13 +142,17 @@ body,
 		--brand-primary-hex: #D4AF3D;
 		--brand-secondary: 36, 87%, 28%; /* #825E08 in HSL */
 		--brand-secondary-hex: #825E08;
+		--brand-accent: 45, 93%, 47%; /* #F4D03F in HSL - lighter gold */
+		--brand-accent-hex: #F4D03F;
+		--brand-dark: 36, 87%, 18%; /* #5D4A00 in HSL - darker gold */
+		--brand-dark-hex: #5D4A00;
 		--brand-black: #000;
 		--brand-white: #fff;
 
-		--primary: 0 0% 98%; /* #D4AF3D */
-		--primary-foreground: 0 0% 9%; /* white */
-		--secondary: 0 0% 14.9%; /* #825E08 */
-		--secondary-foreground: 0 0% 98%; /* white */
+		--primary: 42 69% 54%; /* #D4AF3D */
+		--primary-foreground: 0 0% 9%; /* dark text */
+		--secondary: 36 87% 28%; /* #825E08 */
+		--secondary-foreground: 0 0% 98%; /* white text */
 		--background: 0 0% 3.9%;
 		--foreground: 0 0% 98%;
 		--card: 0 0% 3.9%;
@@ -409,11 +417,11 @@ canvas {
 
   /* Primary buttons - Light background */
   .btn-primary {
-    @apply bg-yellow-400 text-gray-900 border-2 border-yellow-400 hover:bg-yellow-600 hover:border-yellow-600 focus:ring-yellow-500 transform hover:scale-105 shadow-lg;
+    @apply bg-[#d4af3d] text-gray-900 border-2 border-[#d4af3d] hover:bg-[#825e08] hover:border-[#825e08] focus:ring-[#d4af3d] transform hover:scale-105 shadow-lg;
   }
 
   .btn-primary-outline {
-    @apply bg-transparent text-yellow-600 border-2 border-yellow-400 hover:bg-yellow-400 hover:text-gray-900 focus:ring-yellow-500 transform hover:scale-105;
+    @apply bg-transparent text-[#825e08] border-2 border-[#d4af3d] hover:bg-[#d4af3d] hover:text-gray-900 focus:ring-[#d4af3d] transform hover:scale-105;
   }
 
   /* Secondary buttons - Light background */
@@ -450,11 +458,11 @@ canvas {
 
   /* Dark background variants */
   .dark .btn-primary {
-    @apply bg-yellow-400 text-gray-900 border-2 border-yellow-400 hover:bg-yellow-500 hover:border-yellow-500 focus:ring-yellow-400 transform hover:scale-105 shadow-lg;
+    @apply bg-[#d4af3d] text-gray-900 border-2 border-[#d4af3d] hover:bg-[#f4d03f] hover:border-[#f4d03f] focus:ring-[#d4af3d] transform hover:scale-105 shadow-lg;
   }
 
   .dark .btn-primary-outline {
-    @apply bg-transparent text-yellow-400 border-2 border-yellow-400 hover:bg-yellow-400 hover:text-gray-900 focus:ring-yellow-400 transform hover:scale-105;
+    @apply bg-transparent text-[#d4af3d] border-2 border-[#d4af3d] hover:bg-[#d4af3d] hover:text-gray-900 focus:ring-[#d4af3d] transform hover:scale-105;
   }
 
   .dark .btn-secondary {

@@ -64,7 +64,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#fffbe6] via-[#f7f7f7] to-[#f7f7f7]">
       <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
         <h1 className="text-2xl font-bold mb-6 text-center">
-          Sign In to ConsignCrew
+          Sign In to TreasureHub
         </h1>
 
         {/* Error Display */}

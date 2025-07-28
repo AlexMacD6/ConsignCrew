@@ -22,22 +22,22 @@ export const faqData = [
   {
     id: "getting-started",
     name: "Getting Started",
-    description: "Learn how ConsignCrew works and how to join.",
+    description: "Learn how TreasureHub works and how to join.",
     items: [
       {
-        id: "what-is-consigncrew",
-        question: "What is ConsignCrew and how does it work?",
-        answer: `ConsignCrew is a one‑click consignment platform that handles the entire selling process for you. Simply list your item in our app, schedule a pickup when it sells, and we’ll pack, ship, and deliver it. Once your item sells, we notify you and initiate your payout—no hidden steps or surprise fees.`,
+        id: "what-is-treasurehub",
+        question: "What is TreasureHub and how does it work?",
+        answer: `TreasureHub is a one‑click consignment platform that handles the entire selling process for you. Simply list your item in our app, schedule a pickup when it sells, and we'll pack, ship, and deliver it. Once your item sells, we notify you and initiate your payout—no hidden steps or surprise fees.`,
       },
       {
         id: "join-early-access",
         question: "How do I join the early‑access list?",
-        answer: `Just enter your email in the signup form on our homepage and click “Join the Crew.” You’ll receive a confirmation email and periodic updates about our beta launch and exclusive perks.`,
+        answer: `Just enter your email in the signup form on our homepage and click "Join the Crew." You'll receive a confirmation email and periodic updates about our beta launch and exclusive perks.`,
       },
       {
         id: "waitlist-free",
         question: "Is joining the waitlist free?",
-        answer: `Yes—joining our waitlist is completely free, and there’s no obligation to use ConsignCrew once we launch.`,
+        answer: `Yes—joining our waitlist is completely free, and there's no obligation to use TreasureHub once we launch.`,
       },
     ],
   },
@@ -63,8 +63,8 @@ export const faqData = [
       },
       {
         id: "what-can-i-sell",
-        question: "What kinds of items can I sell through ConsignCrew?",
-        answer: `We support a wide range of consumer goods—electronics, fashion, home décor, collectibles, and more. During beta we’ll publish a detailed list; if you’re not sure, just add your item and we’ll let you know if it fits.`,
+        question: "What kinds of items can I sell through TreasureHub?",
+        answer: `We support a wide range of consumer goods—electronics, fashion, home décor, collectibles, and more. During beta we'll publish a detailed list; if you're not sure, just add your item and we'll let you know if it fits.`,
       },
       {
         id: "edit-remove-listing",
@@ -75,8 +75,8 @@ export const faqData = [
   },
   {
     id: "pickup-delivery",
-    name: "Pickup & Delivery",
-    description: "How pickup and delivery work with ConsignCrew.",
+    name: "Pickup & Delivery",
+    description: "How pickup and delivery work with TreasureHub.",
     items: [
       {
         id: "how-pickups-scheduled",
@@ -97,13 +97,13 @@ export const faqData = [
   },
   {
     id: "tracking-notifications",
-    name: "Tracking & Notifications",
+    name: "Tracking & Notifications",
     description: "Stay updated on your item’s journey.",
     items: [
       {
         id: "track-progress",
-        question: "How can I track my item’s progress?",
-        answer: `Log in to the ConsignCrew dashboard or scan your QR code to view real‑time status—from “Picked Up” to “Delivered.”`,
+        question: "How can I track my item's progress?",
+        answer: `Log in to the TreasureHub dashboard or scan your QR code to view real‑time status—from "Picked Up" to "Delivered."`,
       },
       {
         id: "notifications",
@@ -127,7 +127,7 @@ export const faqData = [
   },
   {
     id: "payout-post-sale",
-    name: "Payout & Post‑Sale",
+    name: "Payout & Post‑Sale",
     description: "What happens after your item sells.",
     items: [
       {
@@ -144,12 +144,12 @@ export const faqData = [
   },
   {
     id: "account-privacy",
-    name: "Account & Data Privacy",
+    name: "Account & Data Privacy",
     description: "Your privacy and data rights.",
     items: [
       {
         id: "is-info-safe",
-        question: "Is my personal information safe with ConsignCrew?",
+        question: "Is my personal information safe with TreasureHub?",
         answer: `Absolutely. We use industry‑standard encryption (SSL/TLS) and never share your data with third parties without your consent.`,
       },
       {
@@ -160,7 +160,7 @@ export const faqData = [
       {
         id: "unsubscribe-delete-data",
         question: "Can I unsubscribe or delete my data at any time?",
-        answer: `Yes—every email has an “unsubscribe” link, and you can request full data deletion by contacting us at privacy@consigncrew.com.`,
+        answer: `Yes—every email has an "unsubscribe" link, and you can request full data deletion by contacting us at privacy@treasurehub.club.`,
       },
     ],
   },
@@ -172,7 +172,7 @@ export const faqData = [
       {
         id: "contact-support",
         question: "Who do I contact if I have questions or issues?",
-        answer: `Email our Support team at support@consigncrew.com or use the in‑app chat button. We aim to respond within 24 hours.`,
+        answer: `Email our Support team at support@treasurehub.club or use the in‑app chat button. We aim to respond within 24 hours.`,
       },
       {
         id: "cancel-pickup",

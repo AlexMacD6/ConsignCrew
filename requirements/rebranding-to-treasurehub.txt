@@ -1,0 +1,107 @@
+# Rebranding from ConsignCrew to TreasureHub
+
+## Overview
+Complete rebranding of the application from "ConsignCrew" to "TreasureHub" including logo changes and text updates.
+
+## Changes Made
+
+### Logo Updates
+- Changed main landing page logo from "/Logo.png" to "/TreasureHub - Logo.png"
+- Changed navigation bar banner logo from "/Consign Crew Banner Logo.png" to "/TreasureHub Banner Logo.png"
+- Changed floating boxes 3D scene logo from "/Consign Crew Banner Logo Black Background.png" to "/TreasureHub Centered.png"
+- Updated alt text for all logos to "TreasureHub"
+
+### Page Title Updates
+- Updated page title in layout.tsx from "ConsignCrew | Sell Stress-Free" to "TreasureHub | Sell Stress-Free"
+
+### Authentication Pages
+- Updated login page title from "Sign In to ConsignCrew" to "Sign In to TreasureHub"
+- Updated register page title from "Create Your ConsignCrew Account" to "Create Your TreasureHub Account"
+
+### Packing Tetris Page
+- Updated welcome message from "Welcome back to ConsignCrew!" to "Welcome back to TreasureHub!"
+- Updated main heading from "ConsignCrew" to "TreasureHub"
+- Updated section heading from "Why Choose ConsignCrew" to "Why Choose TreasureHub"
+
+### Configuration Files
+- Updated auth.ts appName from 'ConsignCrew' to 'TreasureHub'
+- Updated auth.ts trusted origins from 'https://consigncrew.com' to 'https://treasurehub.club'
+- Updated admin-utils.ts organization name from 'ConsignCrew Admin' to 'TreasureHub Admin'
+- Updated admin-utils.ts organization slug from 'consigncrew-admin' to 'treasurehub-admin'
+- Updated admin-utils.ts description from 'Default admin organization for ConsignCrew' to 'Default admin organization for TreasureHub'
+
+### FAQ Content
+- Updated all FAQ questions and answers to reference "TreasureHub" instead of "ConsignCrew"
+- Updated FAQ category descriptions to reference "TreasureHub"
+- Updated FAQ item IDs where appropriate (e.g., "what-is-consigncrew" to "what-is-treasurehub")
+
+### Privacy Policy
+- Updated privacy policy title from "ConsignCrew Privacy Policy" to "TreasureHub Privacy Policy"
+- Updated all references to "ConsignCrew" to "TreasureHub" throughout the policy
+- Updated domain references from "www.consigncrew.com" to "www.treasurehub.club"
+- Updated email addresses from "privacy@consigncrew.com" to "privacy@treasurehub.club"
+- Updated support email from "support@consigncrew.com" to "support@treasurehub.club"
+
+## Files Modified
+- app/page.tsx
+- app/components/NavBar.tsx
+- app/components/ThreeScene.tsx
+- app/components/TreasureMapCards.tsx
+- app/layout.tsx
+- app/login/page.tsx
+- app/register/page.tsx
+- app/packing-tetris/page.tsx
+- app/lib/auth.ts
+- app/lib/admin-utils.ts
+- app/faq/faq-data.tsx
+- app/faq/privacy-policy.tsx
+
+## Additional Updates
+
+### Hero Section Video Integration
+- Added video demonstration to the left of Hero text on landing page
+- Video source: YouTube embed (https://youtu.be/E-YgSpgl6M0)
+- Implemented responsive 5-column grid layout (video: 3 columns, text: 2 columns) for better video prominence
+- Video behavior: Autoplay once, muted, with controls for user interaction
+- Added aesthetic enhancements:
+  - Rounded corners and shadow effects
+  - Brand color gradient background
+  - Decorative animated elements
+  - YouTube embed with optimized parameters (autoplay, mute, controls enabled, modest branding)
+  - Proper aspect ratio (16:9) with minimum height (400px) for consistent sizing
+  - No black edges - video fills container properly
+- Updated layout from centered single-column to responsive grid
+- Enhanced visual hierarchy with staggered animations
+- **Performance benefit**: YouTube's global CDN provides faster video loading than local file hosting
+- **User experience**: Video plays once automatically, users can click to replay
+
+### Typography Consistency Improvements
+- Increased font sizes in "Why TreasureHub" cards for better readability
+- Updated card titles from `text-2xl` to `text-2xl lg:text-3xl` for responsive sizing
+- Updated card content from `text-sm` to `text-base lg:text-lg` for consistency with main landing page
+- Improved bullet point spacing from `space-y-1` to `space-y-2` for better visual hierarchy
+- Enhanced overall spacing from `space-y-2` to `space-y-3` for better content breathing room
+- **Consistency**: All components now use consistent font sizing patterns throughout the landing page
+
+### Icon Enhancements
+- Increased icon sizes in "Why TreasureHub" cards from `w-16 h-16` to `w-32 h-32` (doubled in size)
+- Changed icon color from `text-treasure-500` to `text-black` for better contrast and visibility
+- **Visual impact**: Larger, more prominent icons create stronger visual hierarchy and brand presence
+
+### Navigation and Call-to-Action Updates
+- **Hidden Login/Register buttons**: Removed Log In and Register buttons from navigation bar for non-authenticated users
+- **Added "Get Early Access" button**: Replaced login/register with single "Get Early Access" button that opens email signup modal
+- **Created SignupModal component**: New modal component with email input, success state, and smooth animations
+- **Updated navigation links**: Changed navigation to scroll to landing page sections instead of external pages:
+  - "How It Works" → scrolls to `#how-it-works` section
+  - "Pricing" → scrolls to `#pricing` section  
+  - "Why TreasureHub" → scrolls to `#why-treasurehub` section
+  - "Roadmap" → scrolls to `#roadmap` section
+  - "FAQ" → remains as external link to `/faq` page
+- **Added section IDs**: Added corresponding IDs to landing page sections for smooth scrolling
+- **Single call-to-action focus**: All user interactions now funnel to email signup for early access
+
+## Notes
+- CSS classes with "consigncrew" in the name (like "consigncrew-gold") were left unchanged as they are styling classes
+- Configuration files like env.example and aws-iam-policy.json were not modified as they contain environment-specific settings
+- Generated CSS files (out.css, globals.output.css) were not modified as they are build artifacts 

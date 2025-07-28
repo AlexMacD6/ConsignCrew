@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { addEmailToMailchimp } from '@/lib/mailchimp';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email } = await request.json();
+    const { email, source = 'website' } = await request.json();
 
     // Validate email
     if (!email || !email.includes('@')) {
@@ -12,15 +13,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Integrate with actual email service (Mailchimp, SendGrid, etc.)
-    // For now, just log the email and return success
-    console.log('New subscription:', email);
+    // Add to Mailchimp and database
+    const result = await addEmailToMailchimp(email, source);
 
-    // Mock successful subscription
-    return NextResponse.json(
-      { message: 'Successfully subscribed', email },
-      { status: 200 }
-    );
+    if (result.success) {
+      return NextResponse.json(
+        { 
+          message: 'Successfully subscribed', 
+          email,
+          details: result.message || 'Added to mailing list',
+          signupNumber: result.signupNumber
+        },
+        { status: 200 }
+      );
+    } else {
+      return NextResponse.json(
+        { error: result.error || 'Failed to subscribe' },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     console.error('Subscription error:', error);
     return NextResponse.json(

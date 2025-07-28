@@ -7,7 +7,8 @@ import PriceSlider from "./components/PriceSlider";
 import ScrollSection from "./components/ScrollSection";
 import TreasureMapCards from "./components/TreasureMapCards";
 import Roadmap from "./components/Roadmap";
-import DemoVideoBubble from "./components/DemoVideoBubble";
+
+import EarlyAccessTracker from "./components/EarlyAccessTracker";
 
 // Dynamically import the 3D background to prevent SSR issues
 const ThreeScene = dynamic(() => import("./components/ThreeScene"), {
@@ -15,7 +16,7 @@ const ThreeScene = dynamic(() => import("./components/ThreeScene"), {
   loading: () => (
     <div className="w-full h-full bg-[#f9fafb] flex items-center justify-center">
       <div className="text-gray-800 text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-consigncrew-gold mx-auto mb-4"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-treasure-500 mx-auto mb-4"></div>
         <p className="text-gray-600">Loading...</p>
       </div>
     </div>
@@ -34,22 +35,68 @@ export default function HomePage() {
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [error, setError] = useState("");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   // Ensure page starts at the top when loaded
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
-  const handleEmailSubmit = async (e: React.FormEvent) => {
+  // Handle success message fade-out
+  useEffect(() => {
+    if (submitSuccess) {
+      setShowSuccessMessage(true);
+      const timer = setTimeout(() => {
+        setShowSuccessMessage(false);
+        setSubmitSuccess(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [submitSuccess]);
+
+  const handleEmailSubmit = async (
+    e: React.FormEvent,
+    source: string = "hero"
+  ) => {
     e.preventDefault();
     if (!email) return;
 
     setIsSubmitting(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setSubmitSuccess(true);
-    setIsSubmitting(false);
-    setEmail("");
+    setError("");
+    setSubmitSuccess(false);
+
+    try {
+      const response = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, source }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        if (data.message === "Email already subscribed") {
+          setError(
+            "You're already signed up! We'll notify you when we launch."
+          );
+        } else {
+          setSubmitSuccess(true);
+          setEmail("");
+          setRefreshTrigger((prev) => prev + 1); // Trigger refresh of tracker
+        }
+      } else {
+        setError(data.error || "Failed to subscribe. Please try again.");
+      }
+    } catch (error) {
+      console.error("Network error:", error);
+      setError("Network error. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -63,73 +110,145 @@ export default function HomePage() {
       <div className="relative z-10">
         {/* Hero Section */}
         <ScrollSection animationType="fadeInUp" threshold={0.2}>
-          <section className="min-h-[60vh] flex items-center justify-center px-4 py-8">
-            <div className="max-w-4xl mx-auto text-center">
-              <ScrollSection animationType="fadeInUp" delay={200}>
-                <div className="mb-6">
-                  <div className="flex items-center justify-center gap-4 mb-4">
-                    <img
-                      src="/Logo.png"
-                      alt="ConsignCrew"
-                      className="h-24 w-auto"
-                    />
-                    <h1 className="text-5xl lg:text-6xl font-bold text-gray-900">
-                      Sell{" "}
-                      <span className="text-consigncrew-gold">Stress-Free</span>
-                    </h1>
-                  </div>
-                  <p className="text-xl lg:text-2xl text-gray-700 mb-6 max-w-2xl mx-auto">
-                    Turn clutter into cash without the headaches.
-                  </p>
-                  <ul className="text-lg text-gray-700 mb-6 max-w-2xl mx-auto space-y-2">
-                    <li className="flex items-center justify-start">
-                      <span className="text-consigncrew-gold mr-2">•</span>
-                      Automatically generated listings
-                    </li>
-                    <li className="flex items-center justify-start">
-                      <span className="text-consigncrew-gold mr-2">•</span>
-                      Set discount schedules
-                    </li>
-                    <li className="flex items-center justify-start">
-                      <span className="text-consigncrew-gold mr-2">•</span>
-                      Concierge pick-up/delivery
-                    </li>
-                    <li className="flex items-center justify-start">
-                      <span className="text-consigncrew-gold mr-2">•</span>
-                      Instant payouts
-                    </li>
-                  </ul>
+          <section className="min-h-[80vh] flex items-center justify-center px-4 py-8">
+            <div className="max-w-7xl mx-auto">
+              <div className="grid lg:grid-cols-5 gap-12 items-center">
+                {/* Video Section - Left Side (3 columns) */}
+                <div className="lg:col-span-3">
+                  <ScrollSection animationType="fadeInLeft" delay={200}>
+                    <div className="relative">
+                      <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-treasure-500/20 to-treasure-600/20 p-2">
+                        <iframe
+                          src="https://www.youtube.com/embed/E-YgSpgl6M0?autoplay=1&mute=1&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1"
+                          title="TreasureHub - How Easy It Is To Get Paid"
+                          className="w-full h-auto rounded-xl"
+                          style={{ aspectRatio: "16/10", minHeight: "400px" }}
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        ></iframe>
+                        {/* Subtle overlay for better text contrast */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent pointer-events-none rounded-xl"></div>
+                      </div>
+                      {/* Decorative elements */}
+                      <div className="absolute -top-4 -left-4 w-8 h-8 bg-treasure-500 rounded-full opacity-20 animate-pulse"></div>
+                      <div className="absolute -bottom-4 -right-4 w-6 h-6 bg-treasure-600 rounded-full opacity-30 animate-pulse delay-1000"></div>
+                    </div>
+                  </ScrollSection>
                 </div>
 
-                {/* Email Form */}
-                <form
-                  onSubmit={handleEmailSubmit}
-                  className="w-full max-w-2xl mx-auto"
-                >
-                  <div className="flex gap-3">
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Enter your email"
-                      className="flex-1 px-6 py-4 bg-white/80 backdrop-blur-md border-2 border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-consigncrew-gold focus:bg-white transition-all text-lg font-medium shadow-lg"
-                      required
-                    />
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="btn btn-primary btn-xl whitespace-nowrap"
-                    >
-                      {isSubmitting ? "Joining..." : "Get Early Access"}
-                    </button>
-                  </div>
-                  {submitSuccess && (
-                    <p className="text-green-600 text-sm mt-2">
-                      ✅ You're on the list! We'll notify you when we launch.
-                    </p>
-                  )}
-                </form>
-              </ScrollSection>
+                {/* Text Content - Right Side (2 columns) */}
+                <div className="lg:col-span-2">
+                  <ScrollSection animationType="fadeInRight" delay={400}>
+                    <div className="text-left">
+                      <div className="mb-6">
+                        <div className="flex items-center gap-4 mb-6">
+                          <img
+                            src="/TreasureHub - Logo.png"
+                            alt="TreasureHub"
+                            className="h-20 w-auto"
+                          />
+                          <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-900 whitespace-nowrap">
+                            Sell{" "}
+                            <span className="text-treasure-500">
+                              Stress-Free
+                            </span>
+                          </h1>
+                        </div>
+                        <div className="max-w-2xl">
+                          <p className="text-xl lg:text-2xl text-gray-700 mb-8">
+                            Turn clutter into cash without the hassle
+                          </p>
+                          <ul className="text-lg text-gray-700 mb-6 space-y-3">
+                            <li className="flex items-center">
+                              <span className="text-treasure-500 mr-3 text-xl">
+                                •
+                              </span>
+                              Automatically generated listings
+                            </li>
+                            <li className="flex items-center">
+                              <span className="text-treasure-500 mr-3 text-xl">
+                                •
+                              </span>
+                              Set discount schedules
+                            </li>
+                            <li className="flex items-center">
+                              <span className="text-treasure-500 mr-3 text-xl">
+                                •
+                              </span>
+                              Concierge pick-up/delivery
+                            </li>
+                            <li className="flex items-center">
+                              <span className="text-treasure-500 mr-3 text-xl">
+                                •
+                              </span>
+                              Instant payouts
+                            </li>
+                          </ul>
+
+                          {/* Houston Stamp/Seal */}
+                          <div className="mb-8">
+                            <div className="inline-flex items-center gap-2 px-4 py-2 bg-treasure-500/10 border-2 border-treasure-500/30 rounded-full text-sm font-medium text-treasure-600 shadow-lg">
+                              <svg
+                                className="w-5 h-5"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                              Built in Houston, TX
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Early Access Tracker */}
+                      <EarlyAccessTracker refreshTrigger={refreshTrigger} />
+
+                      {/* Email Form */}
+                      <form
+                        onSubmit={handleEmailSubmit}
+                        className="w-full max-w-lg"
+                      >
+                        <div className="flex gap-3">
+                          <input
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="Enter your email"
+                            className="flex-1 px-6 py-4 bg-white/80 backdrop-blur-md border-2 border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-treasure-500 focus:bg-white transition-all text-lg font-medium shadow-lg"
+                            required
+                          />
+                          <button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="btn btn-primary btn-xl whitespace-nowrap"
+                          >
+                            {isSubmitting ? "Joining..." : "Get Early Access"}
+                          </button>
+                        </div>
+                        {showSuccessMessage && (
+                          <p
+                            className={`text-green-600 text-sm mt-2 transition-opacity duration-500 ${
+                              showSuccessMessage ? "opacity-100" : "opacity-0"
+                            }`}
+                          >
+                            ✅ You're on the list! We'll notify you when we
+                            launch.
+                          </p>
+                        )}
+                        {error && (
+                          <p className="text-red-600 text-sm mt-2">{error}</p>
+                        )}
+                      </form>
+                    </div>
+                  </ScrollSection>
+                </div>
+              </div>
             </div>
           </section>
         </ScrollSection>
@@ -141,7 +260,10 @@ export default function HomePage() {
 
         {/* How It Works Section */}
         <ScrollSection animationType="fadeInUp" threshold={0.2}>
-          <section className="py-20 px-4 bg-white/80 backdrop-blur-sm">
+          <section
+            id="how-it-works"
+            className="py-20 px-4 bg-white/80 backdrop-blur-sm"
+          >
             <div className="max-w-6xl mx-auto">
               <ScrollSection animationType="fadeInUp" delay={200}>
                 <div className="text-center mb-16">
@@ -167,7 +289,7 @@ export default function HomePage() {
                       </div>
                       <div className="mb-3 flex justify-center">
                         <svg
-                          className="w-12 h-12 text-consigncrew-gold"
+                          className="w-12 h-12 text-treasure-500"
                           fill="currentColor"
                           viewBox="0 0 24 24"
                         >
@@ -200,7 +322,7 @@ export default function HomePage() {
                       </div>
                       <div className="mb-3 flex justify-center">
                         <svg
-                          className="w-12 h-12 text-consigncrew-gold"
+                          className="w-12 h-12 text-treasure-500"
                           fill="currentColor"
                           viewBox="0 0 24 24"
                         >
@@ -231,7 +353,7 @@ export default function HomePage() {
                       </div>
                       <div className="mb-3 flex justify-center">
                         <svg
-                          className="w-12 h-12 text-consigncrew-gold"
+                          className="w-12 h-12 text-treasure-500"
                           fill="currentColor"
                           viewBox="0 0 24 24"
                         >
@@ -264,7 +386,7 @@ export default function HomePage() {
                       </div>
                       <div className="mb-3 flex justify-center">
                         <svg
-                          className="w-12 h-12 text-consigncrew-gold"
+                          className="w-12 h-12 text-treasure-500"
                           fill="currentColor"
                           viewBox="0 0 24 24"
                         >
@@ -297,7 +419,7 @@ export default function HomePage() {
                       </div>
                       <div className="mb-3 flex justify-center">
                         <svg
-                          className="w-12 h-12 text-consigncrew-gold"
+                          className="w-12 h-12 text-treasure-500"
                           fill="currentColor"
                           viewBox="0 0 24 24"
                         >
@@ -330,7 +452,7 @@ export default function HomePage() {
                     </div>
                     <div className="mb-2 flex justify-center">
                       <svg
-                        className="w-10 h-10 text-consigncrew-gold"
+                        className="w-10 h-10 text-treasure-500"
                         fill="currentColor"
                         viewBox="0 0 24 24"
                       >
@@ -474,7 +596,10 @@ export default function HomePage() {
 
         {/* Transparent Pricing Section */}
         <ScrollSection animationType="fadeInUp" threshold={0.2}>
-          <section className="py-20 px-4 bg-white/80 backdrop-blur-sm">
+          <section
+            id="pricing"
+            className="py-20 px-4 bg-white/80 backdrop-blur-sm"
+          >
             <div className="max-w-6xl mx-auto">
               <ScrollSection animationType="fadeInUp" delay={200}>
                 <div className="text-center mb-16">
@@ -507,14 +632,18 @@ export default function HomePage() {
             <div className="max-w-4xl mx-auto text-center">
               <ScrollSection animationType="fadeInUp" delay={200}>
                 <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
-                  Ready to Sell Stress-Free?
+                  Ready to Sell{" "}
+                  <span className="text-treasure-500">Stress-Free</span>?
                 </h2>
                 <p className="text-xl text-gray-700 mb-8 max-w-2xl mx-auto">
                   Join the Crew to maximize value and minimize your hassle.
                 </p>
               </ScrollSection>
               <ScrollSection animationType="scaleIn" delay={400}>
-                <form onSubmit={handleEmailSubmit} className="max-w-md mx-auto">
+                <form
+                  onSubmit={(e) => handleEmailSubmit(e, "footer")}
+                  className="max-w-md mx-auto"
+                >
                   <div className="flex flex-col sm:flex-row gap-3">
                     <input
                       type="email"
@@ -532,15 +661,24 @@ export default function HomePage() {
                       {isSubmitting ? "Joining..." : "Get Early Access"}
                     </button>
                   </div>
+                  {error && (
+                    <p className="text-red-600 text-sm mt-2">{error}</p>
+                  )}
+                  {showSuccessMessage && (
+                    <p
+                      className={`text-green-600 text-sm mt-2 transition-opacity duration-500 ${
+                        showSuccessMessage ? "opacity-100" : "opacity-0"
+                      }`}
+                    >
+                      ✅ You're on the list! We'll notify you when we launch.
+                    </p>
+                  )}
                 </form>
               </ScrollSection>
             </div>
           </section>
         </ScrollSection>
       </div>
-
-      {/* Demo Video Bubble */}
-      <DemoVideoBubble />
     </div>
   );
 }

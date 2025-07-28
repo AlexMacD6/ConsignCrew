@@ -17,7 +17,6 @@ const roadmapData: RoadmapPhase[] = [
     description: "Invite-only access for early adopters",
     details: [
       "Core platform features",
-      "Limited item categories",
       "Direct feedback integration",
       "Invite-only for seller community",
     ],
@@ -34,12 +33,11 @@ const roadmapData: RoadmapPhase[] = [
   {
     title: "Public Launch",
     time: "September 2025",
-    description: "Open to all users nationwide",
+    description: "Open to all users across Houston",
     details: [
       "Expanded categories",
       "Advanced pricing analytics",
       "Delivery tracking",
-      "Full platform rollout",
     ],
     icon: (
       <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -57,8 +55,7 @@ const roadmapData: RoadmapPhase[] = [
     time: "November 2025",
     description: "Expansion and advanced features",
     details: [
-      "Expanded zip code coverage in Houston, TX",
-      "Advanced automation features",
+      "Expanded zip code coverage in Houston",
       "Partner integrations",
       "Mobile app launch",
     ],
@@ -76,7 +73,10 @@ const roadmapData: RoadmapPhase[] = [
 
 const Roadmap: React.FC = () => {
   return (
-    <section className="py-16 px-4 bg-gradient-to-br from-gray-50 to-gray-100">
+    <section
+      id="roadmap"
+      className="py-16 px-4 bg-gradient-to-br from-gray-50 to-gray-100"
+    >
       <div className="max-w-6xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -88,14 +88,14 @@ const Roadmap: React.FC = () => {
             Our Roadmap
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Here's what to expect as we build the future of stress-free selling
+            Here's what to expect as we build the future of stress-free selling.
           </p>
         </motion.div>
 
         {/* Timeline */}
         <div className="relative">
           {/* Connecting line */}
-          <div className="absolute top-8 left-0 right-0 h-0.5 bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 transform -translate-y-1/2 z-0" />
+          <div className="absolute top-8 left-0 right-0 h-0.5 bg-gradient-to-r from-treasure-500 via-treasure-400 to-treasure-500 transform -translate-y-1/2 z-0" />
 
           {/* Timeline phases */}
           <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -112,11 +112,11 @@ const Roadmap: React.FC = () => {
                   {/* Icon and timeline dot */}
                   <div className="flex items-center justify-center mb-4">
                     <div className="relative">
-                      <div className="w-16 h-16 bg-yellow-400 rounded-full flex items-center justify-center text-gray-900 shadow-lg">
+                      <div className="w-16 h-16 bg-treasure-500 rounded-full flex items-center justify-center text-gray-900 shadow-lg">
                         {phase.icon}
                       </div>
                       {/* Timeline dot */}
-                      <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-yellow-400 rounded-full border-4 border-white shadow-md" />
+                      <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-treasure-500 rounded-full border-4 border-white shadow-md" />
                     </div>
                   </div>
 
@@ -125,7 +125,7 @@ const Roadmap: React.FC = () => {
                     <h3 className="text-xl font-bold text-gray-900 mb-2">
                       {phase.title}
                     </h3>
-                    <p className="text-yellow-600 font-semibold mb-3">
+                    <p className="text-treasure-600 font-semibold mb-3">
                       {phase.time}
                     </p>
                     <p className="text-gray-600 mb-4">{phase.description}</p>
@@ -137,7 +137,7 @@ const Roadmap: React.FC = () => {
                           key={detailIndex}
                           className="flex items-start text-sm text-gray-600"
                         >
-                          <span className="text-yellow-400 mr-2 mt-1">•</span>
+                          <span className="text-treasure-500 mr-2 mt-1">•</span>
                           {detail}
                         </li>
                       ))}

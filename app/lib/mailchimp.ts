@@ -1,0 +1,326 @@
+import mailchimp from '@mailchimp/mailchimp_marketing';
+import { prisma } from './prisma';
+
+// Configure Mailchimp
+mailchimp.setConfig({
+  apiKey: process.env.MAILCHIMP_API_KEY,
+  server: process.env.MAILCHIMP_SERVER_PREFIX, // e.g., 'us7'
+});
+
+export async function addEmailToMailchimp(email: string, source: string = 'website') {
+  try {
+    // Get the next signup number first
+    const signupNumber = await getNextSignupNumber();
+    
+    // First, add to Mailchimp with merge fields
+    const isTop200 = signupNumber <= 200;
+    const tags = ['treasurehub'];
+    if (isTop200) {
+      tags.push('Early-Access');
+    }
+
+    // Debug: Log the signup number being sent to Mailchimp
+    console.log(`Adding member to Mailchimp with signup number: ${signupNumber}`);
+    
+    const mailchimpResponse = await mailchimp.lists.addListMember(
+      process.env.MAILCHIMP_AUDIENCE_ID!,
+      {
+        email_address: email,
+        status: 'subscribed',
+        merge_fields: {
+          SIGNUP_NUM: signupNumber.toString(),
+          SOURCE: source,
+          IS_TOP_200: isTop200 ? 'Yes' : 'No',
+        },
+      }
+    );
+
+    // Add tags separately if user is in top 200
+    if (isTop200) {
+      try {
+        await mailchimp.lists.updateListMemberTags(
+          process.env.MAILCHIMP_AUDIENCE_ID!,
+          email,
+          {
+            tags: [
+              {
+                name: 'Early-Access',
+                status: 'active'
+              }
+            ]
+          }
+        );
+      } catch (tagError) {
+        console.log('Could not add Early-Access tag:', tagError);
+      }
+    }
+
+    // Then, save to database with the same sequential number
+    try {
+      const dbSignup = await prisma.earlyAccessSignup.create({
+        data: {
+          email,
+          source,
+          signupNumber,
+        },
+      });
+
+      return {
+        success: true,
+        data: mailchimpResponse,
+        signupNumber: dbSignup.signupNumber,
+      };
+    } catch (dbError: any) {
+      if (dbError.code === 'P2002') {
+        // Email already exists in database
+        const existingSignup = await prisma.earlyAccessSignup.findUnique({
+          where: { email },
+        });
+        
+        return {
+          success: true,
+          message: 'Email already subscribed',
+          signupNumber: existingSignup?.signupNumber,
+        };
+      }
+      throw dbError;
+    }
+  } catch (error: any) {
+    // Handle specific Mailchimp errors
+    if (error.response?.body?.title === 'Member Exists') {
+      // Email already exists in Mailchimp, check if it exists in database
+      try {
+        const existingSignup = await prisma.earlyAccessSignup.findUnique({
+          where: { email },
+        });
+
+        if (existingSignup) {
+          // Email exists in both Mailchimp and database
+          return {
+            success: true,
+            message: 'Email already subscribed',
+            signupNumber: existingSignup.signupNumber,
+          };
+        } else {
+          // Email exists in Mailchimp but not in database, add to database
+          const signupNumber = await getNextSignupNumber();
+          const dbSignup = await prisma.earlyAccessSignup.create({
+            data: {
+              email,
+              source,
+              signupNumber,
+            },
+          });
+
+          // Try to update the existing Mailchimp member with merge fields and tags
+          try {
+            const isTop200 = signupNumber <= 200;
+            const tags = ['treasurehub'];
+            if (isTop200) {
+              tags.push('Early-Access');
+            }
+
+            // Debug: Log the signup number being updated in Mailchimp
+            console.log(`Updating existing member in Mailchimp with signup number: ${signupNumber}`);
+            
+            await mailchimp.lists.setListMember(
+              process.env.MAILCHIMP_AUDIENCE_ID!,
+              email,
+              {
+                email_address: email,
+                status: 'subscribed',
+                status_if_new: 'subscribed',
+                merge_fields: {
+                  SIGNUP_NUM: signupNumber.toString(),
+                  SOURCE: source,
+                  IS_TOP_200: isTop200 ? 'Yes' : 'No',
+                },
+              }
+            );
+
+            // Add tags separately if user is in top 200
+            if (isTop200) {
+              try {
+                await mailchimp.lists.updateListMemberTags(
+                  process.env.MAILCHIMP_AUDIENCE_ID!,
+                  email,
+                  {
+                    tags: [
+                      {
+                        name: 'Early-Access',
+                        status: 'active'
+                      }
+                    ]
+                  }
+                );
+              } catch (tagError) {
+                console.log('Could not add Early-Access tag:', tagError);
+              }
+            }
+          } catch (updateError) {
+            console.log('Could not update existing Mailchimp member:', updateError);
+          }
+
+          return {
+            success: true,
+            message: 'Email already subscribed',
+            signupNumber: dbSignup.signupNumber,
+          };
+        }
+      } catch (dbError: any) {
+        console.error('Database error:', dbError);
+        return {
+          success: false,
+          error: 'Failed to process subscription',
+        };
+      }
+    }
+
+    console.error('Mailchimp error:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to subscribe',
+    };
+  }
+}
+
+// Helper function to get the next sequential signup number
+async function getNextSignupNumber(): Promise<number> {
+  const lastSignup = await prisma.earlyAccessSignup.findFirst({
+    orderBy: {
+      signupNumber: 'desc',
+    },
+  });
+
+  return (lastSignup?.signupNumber || 0) + 1;
+}
+
+// Function to get top N signups
+export async function getTopSignups(limit: number = 200) {
+  try {
+    const signups = await prisma.earlyAccessSignup.findMany({
+      where: {
+        signupNumber: {
+          lte: limit,
+        },
+      },
+      orderBy: {
+        signupNumber: 'asc',
+      },
+      select: {
+        id: true,
+        email: true,
+        signupNumber: true,
+        source: true,
+        createdAt: true,
+      },
+    });
+
+    return {
+      success: true,
+      data: signups,
+      total: signups.length,
+    };
+  } catch (error) {
+    console.error('Error fetching top signups:', error);
+    return {
+      success: false,
+      error: 'Failed to fetch signups',
+    };
+  }
+}
+
+// Function to get signup statistics
+export async function getSignupStats() {
+  try {
+    const totalSignups = await prisma.earlyAccessSignup.count();
+    const top200Count = await prisma.earlyAccessSignup.count({
+      where: {
+        signupNumber: {
+          lte: 200,
+        },
+      },
+    });
+
+    const remainingSpots = Math.max(0, 200 - top200Count);
+
+    return {
+      success: true,
+      data: {
+        totalSignups,
+        top200Count,
+        isTop200Available: top200Count < 200,
+        remainingSpots,
+      },
+    };
+  } catch (error) {
+    console.error('Error fetching signup stats:', error);
+    return {
+      success: false,
+      error: 'Failed to fetch signup statistics',
+    };
+  }
+} 
+
+// Utility function to create merge fields in Mailchimp (run once for setup)
+// Note: This function is commented out due to API method name differences
+// The merge fields should be created manually in the Mailchimp dashboard
+/*
+export async function setupMailchimpMergeFields() {
+  try {
+    const mergeFields = [
+      {
+        name: 'Signup Number',
+        type: 'text',
+        tag: 'SIGNUP_NUMBER',
+        required: false,
+        default_value: '',
+        public: false,
+        display_order: 1,
+        help_text: 'The sequential number assigned to this early access signup',
+      },
+      {
+        name: 'Source',
+        type: 'text',
+        tag: 'SOURCE',
+        required: false,
+        default_value: '',
+        public: false,
+        display_order: 2,
+        help_text: 'Where the signup came from (hero, modal, etc.)',
+      },
+      {
+        name: 'Is Top 200',
+        type: 'text',
+        tag: 'IS_TOP_200',
+        required: false,
+        default_value: '',
+        public: false,
+        display_order: 3,
+        help_text: 'Whether this signup is in the top 200 (Yes/No)',
+      },
+    ];
+
+    for (const field of mergeFields) {
+      try {
+        await mailchimp.lists.addListMergeField(
+          process.env.MAILCHIMP_AUDIENCE_ID!,
+          field
+        );
+        console.log(`Created merge field: ${field.name}`);
+      } catch (error: any) {
+        if (error.response?.body?.title === 'Merge field already exists') {
+          console.log(`Merge field already exists: ${field.name}`);
+        } else {
+          console.error(`Error creating merge field ${field.name}:`, error);
+        }
+      }
+    }
+
+    return { success: true, message: 'Merge fields setup completed' };
+  } catch (error) {
+    console.error('Error setting up merge fields:', error);
+    return { success: false, error: 'Failed to setup merge fields' };
+  }
+}
+*/ 

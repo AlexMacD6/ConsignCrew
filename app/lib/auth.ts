@@ -9,7 +9,7 @@ export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
   
   // Basic configuration
-  appName: 'ConsignCrew',
+  appName: 'TreasureHub',
   secret: process.env.BETTER_AUTH_SECRET || 'your-secret-key',
   
   // Email and password authentication
@@ -54,7 +54,7 @@ export const auth = betterAuth({
   csrf: {
     trustedOrigins: [
       'http://localhost:3000',
-      'https://consigncrew.com', // Add your production domain
+      'https://treasurehub.club', // Add your production domain
     ],
     expiresIn: 60 * 60 * 24, // 24 hours
   },

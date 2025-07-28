@@ -1,0 +1,111 @@
+# Landing Page Updates Requirements
+
+## Overview
+Various updates to improve the landing page content, contact page functionality, and modal positioning.
+
+## Changes Made
+
+### 1. Pain Points Section Update
+- **File**: `app/components/PainPointsSection.tsx`
+- **Change**: Updated section title from "No More Annoying Messages" to "Silence the Inbox Noise"
+- **Change**: Updated description to reference "TreasureHub" instead of "ConsignCrew"
+
+### 2. Contact Page Email Update
+- **File**: `app/contact/page.tsx`
+- **Change**: Updated email address from `alex.macdonald@maritimeep.com` to `support@treasurehunt.club`
+
+### 3. Contact API Route Update
+- **File**: `app/api/contact/route.ts`
+- **Change**: Updated email recipient in commented SendGrid example from `alex.macdonald@maritimeep.com` to `support@treasurehunt.club`
+
+### 4. Contact Page Modal Integration
+- **File**: `app/contact/page.tsx`
+- **Changes**:
+  - Added import for `SignupModal` component
+  - Added `isSignupModalOpen` state
+  - Changed "Get Early Access" link to button that opens modal
+  - Added `SignupModal` component at the end of the page
+  - Modal now opens instead of redirecting to homepage
+
+### 5. Modal Positioning Fix
+- **File**: `app/components/SignupModal.tsx`
+- **Changes**:
+  - Increased z-index from `z-50` to `z-[9999]` to ensure modal appears above all other elements
+  - Enhanced backdrop styling from `bg-black/50 backdrop-blur-sm` to `bg-black/60 backdrop-blur-md` for better greyed out effect
+  - Added `mx-auto` to modal content for better centering
+
+### 6. Global Modal Context Implementation
+- **File**: `app/contexts/ModalContext.tsx` (new)
+- **Changes**:
+  - Created global modal context to manage signup modal state
+  - Modal is now rendered at the root level to cover entire viewport
+  - Provides `useModal` hook for components to open/close modal
+
+- **File**: `app/layout.tsx`
+- **Changes**:
+  - Wrapped entire app with `ModalProvider` to enable global modal access
+  - Modal now renders at root level instead of within individual components
+
+- **File**: `app/components/NavBar.tsx`
+- **Changes**:
+  - Removed local modal state management
+  - Now uses `useModal` hook from context
+  - Removed SignupModal component from NavBar
+
+- **File**: `app/contact/page.tsx`
+- **Changes**:
+  - Removed local modal state management
+  - Now uses `useModal` hook from context
+  - Removed SignupModal component from contact page
+
+## Features Implemented
+
+### Modal Functionality:
+- Modal now opens from contact page "Get Early Access" button
+- Modal is properly centered on screen
+- Background is properly greyed out with enhanced blur effect
+- Modal has high z-index to appear above all other content
+- Clicking outside modal closes it and returns to main page
+- **Global Modal Context**: Modal is now rendered at root level to cover entire viewport
+- **Consistent Behavior**: All "Get Early Access" buttons use the same global modal
+
+### Contact Page Improvements:
+- Updated contact email to support@treasurehunt.club
+- "Get Early Access" button now opens modal instead of redirecting
+- Consistent modal behavior across all pages
+
+### Content Updates:
+- Updated pain points section title for better messaging
+- Fixed brand references to use "TreasureHub" consistently
+
+## Testing Instructions
+
+1. **Pain Points Section**:
+   - Navigate to landing page
+   - Scroll to pain points section
+   - Verify title shows "Silence the Inbox Noise"
+   - Verify description mentions "TreasureHub"
+
+2. **Contact Page**:
+   - Navigate to `/contact`
+   - Verify email shows `support@treasurehunt.club`
+   - Click "Get Early Access" button
+   - Verify modal opens instead of redirecting to homepage
+   - Verify modal is centered and background is greyed out
+   - Test closing modal by clicking outside
+
+3. **Modal Positioning**:
+   - Open modal from any page (homepage or contact page)
+   - Verify modal appears in center of screen
+   - Verify background is properly greyed out
+   - Verify modal appears above all other content
+
+## Files Modified:
+- app/components/PainPointsSection.tsx
+- app/contact/page.tsx
+- app/api/contact/route.ts
+- app/components/SignupModal.tsx
+- app/contexts/ModalContext.tsx (new)
+- app/layout.tsx
+- app/components/NavBar.tsx
+- requirements/landing-page-updates.txt (this file) 

@@ -5,7 +5,7 @@ import React from "react";
 export default function PrivacyPolicy() {
   return (
     <div className="max-w-2xl mx-auto py-12 px-4">
-      <h1 className="text-3xl font-bold mb-6">ConsignCrew Privacy Policy</h1>
+      <h1 className="text-3xl font-bold mb-6">TreasureHub Privacy Policy</h1>
       <div className="text-gray-700 space-y-8">
         <div>
           <strong>Effective Date:</strong> July 13th, 2025
@@ -13,14 +13,14 @@ export default function PrivacyPolicy() {
         <section>
           <h2 className="text-xl font-semibold mb-2">1. Introduction</h2>
           <p>
-            Welcome to ConsignCrew ("<strong>we</strong>", "<strong>us</strong>
+            Welcome to TreasureHub ("<strong>we</strong>", "<strong>us</strong>
             ", or "<strong>our</strong>"). We are a Texas-based platform
             providing stress-free consignment and resale services for
             individuals and households. We respect your privacy and are
             committed to protecting it through our compliance with this Privacy
             Policy. This policy explains how we collect, use, disclose, and
             protect your personal information when you access or use our website
-            (www.consigncrew.com), mobile applications, and related services
+            (www.treasurehub.club), mobile applications, and related services
             (collectively, the "<strong>Services</strong>").
           </p>
           <p>
@@ -40,7 +40,7 @@ export default function PrivacyPolicy() {
           <ul className="list-disc ml-6">
             <li>
               <strong>Account Registration:</strong> When you create or manage
-              an account with ConsignCrew, we may collect your name, email
+              an account with TreasureHub, we may collect your name, email
               address, phone number, shipping address, and other relevant
               contact details.
             </li>
@@ -154,7 +154,7 @@ export default function PrivacyPolicy() {
               share them publicly.
             </li>
             <li>
-              <strong>Business Transactions:</strong> If ConsignCrew undergoes a
+              <strong>Business Transactions:</strong> If TreasureHub undergoes a
               merger, acquisition, asset sale, or similar event, user
               information may be transferred as part of that process.
             </li>
@@ -171,7 +171,7 @@ export default function PrivacyPolicy() {
               <strong>Miscellaneous:</strong> To enforce or apply our terms of
               use and other agreements, including for billing and collection
               purposes. If we believe disclosure is necessary or appropriate to
-              protect the rights, property, or safety of ConsignCrew, our
+              protect the rights, property, or safety of TreasureHub, our
               customers, or others. This includes exchanging information with
               other companies and organizations for the purposes of fraud
               protection and credit risk reduction.
@@ -227,10 +227,10 @@ export default function PrivacyPolicy() {
           <p>
             To exercise any rights, contact us at{" "}
             <a
-              href="mailto:privacy@consigncrew.com"
+              href="mailto:privacy@treasurehub.club"
               className="text-blue-600 underline"
             >
-              privacy@consigncrew.com
+              privacy@treasurehub.club
             </a>
             .
           </p>
@@ -276,13 +276,13 @@ export default function PrivacyPolicy() {
             personal information, please reach out to:
           </p>
           <div className="mt-2">
-            <strong>ConsignCrew</strong>
+            <strong>TreasureHub</strong>
             <br />
             <a
-              href="mailto:privacy@consigncrew.com"
+              href="mailto:privacy@treasurehub.club"
               className="text-blue-600 underline"
             >
-              privacy@consigncrew.com
+              privacy@treasurehub.club
             </a>
           </div>
         </section>

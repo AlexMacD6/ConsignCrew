@@ -131,7 +131,7 @@ function Scene() {
   useEffect(() => {
     const textureLoader = new THREE.TextureLoader();
     textureLoader.load(
-      "/Consign Crew Banner Logo Black Background.png",
+      "/TreasureHub Centered.png",
       (texture) => {
         setLogoTexture(texture);
         setTextureError(false);
@@ -360,21 +360,32 @@ function Scene() {
 // Error Boundary Component
 function ErrorFallback({ onReset }: { onReset?: () => void }) {
   return (
-    <div className="w-full h-full bg-[#f9fafb] flex items-center justify-center">
-      <div className="text-gray-800 text-center">
-        <h2 className="text-2xl font-bold mb-4">ConsignCrew</h2>
-        <p className="text-gray-600">Simplifying your selling experience</p>
-        <p className="text-gray-500 text-sm mt-2 mb-4">
-          3D background temporarily unavailable
-        </p>
-        {onReset && (
-          <button
-            onClick={onReset}
-            className="px-4 py-2 bg-yellow-400 text-gray-900 font-medium rounded-lg hover:bg-yellow-600 transition-colors"
-          >
-            Retry 3D Background
-          </button>
-        )}
+    <div className="w-full h-full bg-gradient-to-br from-[#f9fafb] to-[#f3f4f6] flex items-center justify-center">
+      <div className="text-gray-800 text-center max-w-md mx-auto px-6">
+        <div className="mb-6">
+          <img
+            src="/TreasureHub - Logo.png"
+            alt="TreasureHub"
+            className="h-16 w-auto mx-auto mb-4"
+          />
+          <h2 className="text-2xl font-bold mb-2 text-gray-900">TreasureHub</h2>
+          <p className="text-gray-600">
+            Turn clutter into cash without the headaches
+          </p>
+        </div>
+        <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-gray-200">
+          <p className="text-gray-500 text-sm mb-4">
+            3D background temporarily unavailable
+          </p>
+          {onReset && (
+            <button
+              onClick={onReset}
+              className="px-4 py-2 bg-treasure-500 text-gray-900 font-medium rounded-lg hover:bg-treasure-600 transition-colors"
+            >
+              Retry 3D Background
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -386,6 +397,7 @@ export default function ThreeScene() {
   const [contextLost, setContextLost] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
+  const [webglSupported, setWebglSupported] = useState<boolean | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const resetScene = useCallback(() => {
@@ -402,8 +414,57 @@ export default function ThreeScene() {
   }, []);
 
   useEffect(() => {
+    // Enhanced WebGL support detection
+    const checkWebGLSupport = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        const gl =
+          canvas.getContext("webgl2") ||
+          canvas.getContext("webgl") ||
+          canvas.getContext("experimental-webgl");
+
+        if (!gl) {
+          console.warn(
+            "WebGL not supported, falling back to static background"
+          );
+          setWebglSupported(false);
+          setHasError(true);
+          return false;
+        }
+
+        // Test WebGL capabilities
+        const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
+        if (debugInfo) {
+          const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+          console.log("WebGL Renderer:", renderer);
+        }
+
+        setWebglSupported(true);
+        return true;
+      } catch (error) {
+        console.error("Error checking WebGL support:", error);
+        setWebglSupported(false);
+        setHasError(true);
+        return false;
+      }
+    };
+
     const handleError = (error: ErrorEvent) => {
       console.error("Three.js error:", error);
+
+      // Check if it's a WebGL context creation error
+      if (
+        error.message &&
+        error.message.includes("WebGL context could not be created")
+      ) {
+        console.warn(
+          "WebGL context creation failed, falling back to static background"
+        );
+        setWebglSupported(false);
+        setHasError(true);
+        return;
+      }
+
       setHasError(true);
     };
 
@@ -415,6 +476,9 @@ export default function ThreeScene() {
       setTimeout(() => {
         if (retryCount < 3) {
           resetScene();
+        } else {
+          setWebglSupported(false);
+          setHasError(true);
         }
       }, 1000);
     };
@@ -425,24 +489,38 @@ export default function ThreeScene() {
       setHasError(false);
     };
 
-    // Check if WebGL is supported
-    const canvas = document.createElement("canvas");
-    const gl =
-      canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
-    if (!gl) {
-      console.warn("WebGL not supported, falling back to static background");
-      setHasError(true);
-    }
+    // Check WebGL support first
+    const isWebGLSupported = checkWebGLSupport();
 
     // Listen for console messages to detect context loss
     const originalConsoleWarn = console.warn;
+    const originalConsoleError = console.error;
+
     console.warn = (...args) => {
       const message = args.join(" ");
-      if (message.includes("THREE.WebGLRenderer: Context Lost")) {
+      if (
+        message.includes("THREE.WebGLRenderer: Context Lost") ||
+        message.includes("WebGL context could not be created")
+      ) {
         console.log("Detected WebGL context loss via console message");
         handleContextLost(new Event("webglcontextlost"));
       }
       originalConsoleWarn.apply(console, args);
+    };
+
+    console.error = (...args) => {
+      const message = args.join(" ");
+      if (
+        message.includes("WebGL context could not be created") ||
+        message.includes("Failed to create WebGL2RenderingContext")
+      ) {
+        console.warn(
+          "WebGL context creation failed, falling back to static background"
+        );
+        setWebglSupported(false);
+        setHasError(true);
+      }
+      originalConsoleError.apply(console, args);
     };
 
     window.addEventListener("error", handleError);
@@ -454,6 +532,7 @@ export default function ThreeScene() {
 
     return () => {
       console.warn = originalConsoleWarn;
+      console.error = originalConsoleError;
       window.removeEventListener("error", handleError);
       window.removeEventListener("webglcontextlost", handleContextLost);
       window.removeEventListener("webglcontextrestored", handleContextRestored);
@@ -469,7 +548,7 @@ export default function ThreeScene() {
     return (
       <div className="w-full h-full bg-[#f9fafb] flex items-center justify-center">
         <div className="text-gray-800 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-consigncrew-gold mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-treasure-500 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
@@ -482,15 +561,24 @@ export default function ThreeScene() {
         key={`canvas-${retryCount}`}
         camera={{ position: [0, 0, 15], fov: 75 }}
         style={{ background: "#f9fafb" }}
-        onError={() => setHasError(true)}
+        onError={(error) => {
+          console.error("Canvas error:", error);
+          setHasError(true);
+        }}
         gl={{
-          powerPreference: "high-performance",
+          powerPreference: "default",
           antialias: false,
           alpha: true,
           depth: true,
           stencil: false,
           preserveDrawingBuffer: false,
           failIfMajorPerformanceCaveat: false,
+          preserveDrawingBuffer: false,
+          logarithmicDepthBuffer: false,
+        }}
+        onCreated={({ gl }) => {
+          console.log("WebGL context created successfully");
+          gl.setClearColor("#f9fafb", 1);
         }}
       >
         <Scene />

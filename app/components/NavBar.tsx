@@ -11,6 +11,7 @@ import {
 } from "./ui/navigation-menu";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
+import { useModal } from "../contexts/ModalContext";
 
 export default function NavBar() {
   const pathname = usePathname();
@@ -19,11 +20,19 @@ export default function NavBar() {
   const inactiveClass = "text-gray-600 hover:text-blue-600";
   const { data: session } = authClient.useSession();
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const { openSignupModal } = useModal();
 
   const handleSignOut = async () => {
     await authClient.signOut();
     setPopoverOpen(false);
     router.push("/login");
+  };
+
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth" });
+    }
   };
 
   return (
@@ -32,28 +41,46 @@ export default function NavBar() {
       <div className="flex items-center gap-3">
         <Link href="/">
           <img
-            src="/Consign Crew Banner Logo.png"
-            alt="ConsignCrew logo"
+            src="/TreasureHub Banner Logo.png"
+            alt="TreasureHub logo"
             className="h-16 w-auto object-contain drop-shadow-md cursor-pointer"
           />
         </Link>
       </div>
       {/* Marketing Links (center, hidden on mobile) */}
       <div className="hidden md:flex gap-8 text-[#222] font-medium text-base">
-        <a href="#mission" className="hover:text-[#D4AF3D] transition">
-          Mission
-        </a>
-        <a href="#problem" className="hover:text-[#D4AF3D] transition">
-          Problem
-        </a>
-        <a href="#solution" className="hover:text-[#D4AF3D] transition">
-          Solution
-        </a>
-        <a href="#waitlist" className="hover:text-[#D4AF3D] transition">
-          Waitlist
-        </a>
+        <button
+          onClick={() => scrollToSection("how-it-works")}
+          className="hover:text-[#D4AF3D] transition"
+        >
+          How It Works
+        </button>
+        <button
+          onClick={() => scrollToSection("pricing")}
+          className="hover:text-[#D4AF3D] transition"
+        >
+          Pricing
+        </button>
+        <button
+          onClick={() => scrollToSection("why-treasurehub")}
+          className="hover:text-[#D4AF3D] transition"
+        >
+          Why TreasureHub
+        </button>
+        <button
+          onClick={() => scrollToSection("roadmap")}
+          className="hover:text-[#D4AF3D] transition"
+        >
+          Roadmap
+        </button>
         <Link href="/faq" className="hover:text-[#D4AF3D] transition">
           FAQ
+        </Link>
+        <Link href="/contact" className="hover:text-[#D4AF3D] transition">
+          Contact
+        </Link>
+        <Link href="/our-origin" className="hover:text-[#D4AF3D] transition">
+          Our Origin
         </Link>
       </div>
       {/* Session-aware buttons (right) */}
@@ -92,14 +119,9 @@ export default function NavBar() {
             </Popover>
           </>
         ) : (
-          <>
-            <Link href="/login" className="btn btn-primary btn-md">
-              Log In
-            </Link>
-            <Link href="/register" className="btn btn-primary btn-md">
-              Register
-            </Link>
-          </>
+          <button onClick={openSignupModal} className="btn btn-primary btn-md">
+            Get Early Access
+          </button>
         )}
       </div>
     </nav>

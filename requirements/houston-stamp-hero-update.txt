@@ -1,0 +1,51 @@
+# Houston Stamp and Hero Text Update Requirements
+
+## Problem
+- Need to communicate that TreasureHub was built in Houston to users when they first arrive
+- Current "Sell Stress-Free" text is split across two lines and needs to be on one line
+- Early Access box needs cleanup and better messaging
+- Demo Video pop-up in bottom right corner needs to be removed
+
+## Solution
+- Add a Houston stamp/badge to the hero component
+- Modify the hero text layout to display "Sell Stress-Free" on one line
+- Clean up Early Access box messaging
+- Position Houston stamp after bullet points but before Early Access box
+- Remove Demo Video pop-up from bottom right corner
+
+## Implementation Details
+
+### Houston Stamp
+- Add a small, elegant badge/stamp indicating "Built in Houston" or "Houston, TX"
+- Position it after the bullet points but before the Early Access box
+- Use appropriate styling that fits with the existing design
+- Consider using an icon (like a location pin) with the text
+- Create a seal-like appearance with enhanced styling
+
+### Hero Text Layout
+- Modify the current flex layout for the logo and heading
+- Ensure "Sell Stress-Free" appears on a single line
+- Maintain responsive design for different screen sizes
+- Keep the existing styling and animations
+
+### Early Access Box Cleanup
+- Put "15% off Service Fee on first transaction" together on one line
+- Change "First 200 early access signups get" to "First 200 Early Access Sign-up Get: Only 200 Spots Remaining"
+- Improve the messaging clarity and urgency
+
+### Demo Video Pop-up Removal
+- Remove DemoVideoBubble component import from main page
+- Remove DemoVideoBubble component usage from page layout
+- Clean up any related styling or dependencies
+
+## Files to Modify
+- app/page.tsx - Hero section layout and text, remove DemoVideoBubble
+- app/components/EarlyAccessTracker.tsx - Early access box messaging
+
+## Design Considerations
+- Houston stamp should be subtle but visible
+- Maintain the existing color scheme and typography
+- Ensure the stamp doesn't interfere with the main call-to-action
+- Keep the overall hero section balanced and visually appealing
+- Early access messaging should be clear and create urgency
+- Removing demo video pop-up creates cleaner, less cluttered interface 

@@ -28,10 +28,10 @@ export default function PainPointsSection() {
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6">
-            No More Annoying Messages
+            Silence the Inbox Noise
           </h2>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-            With ConsignCrew, these frustrating interactions are eliminated.
+            With TreasureHub, these frustrating interactions are eliminated.
           </p>
         </div>
 
