@@ -9,8 +9,28 @@ mailchimp.setConfig({
 
 export async function addEmailToMailchimp(email: string, source: string = 'website') {
   try {
+    console.log('addEmailToMailchimp called with:', { email, source });
+    
+    // Validate environment variables
+    if (!process.env.MAILCHIMP_API_KEY) {
+      console.error('MAILCHIMP_API_KEY is missing');
+      return { success: false, error: 'Mailchimp API key not configured' };
+    }
+    
+    if (!process.env.MAILCHIMP_AUDIENCE_ID) {
+      console.error('MAILCHIMP_AUDIENCE_ID is missing');
+      return { success: false, error: 'Mailchimp audience ID not configured' };
+    }
+    
+    if (!process.env.MAILCHIMP_SERVER_PREFIX) {
+      console.error('MAILCHIMP_SERVER_PREFIX is missing');
+      return { success: false, error: 'Mailchimp server prefix not configured' };
+    }
+
     // Get the next signup number first
+    console.log('Getting next signup number...');
     const signupNumber = await getNextSignupNumber();
+    console.log('Next signup number:', signupNumber);
     
     // First, add to Mailchimp with merge fields
     const isTop200 = signupNumber <= 200;
@@ -21,6 +41,11 @@ export async function addEmailToMailchimp(email: string, source: string = 'websi
 
     // Debug: Log the signup number being sent to Mailchimp
     console.log(`Adding member to Mailchimp with signup number: ${signupNumber}`);
+    console.log('Mailchimp config:', {
+      audienceId: process.env.MAILCHIMP_AUDIENCE_ID,
+      serverPrefix: process.env.MAILCHIMP_SERVER_PREFIX,
+      hasApiKey: !!process.env.MAILCHIMP_API_KEY
+    });
     
     const mailchimpResponse = await mailchimp.lists.addListMember(
       process.env.MAILCHIMP_AUDIENCE_ID!,
@@ -34,6 +59,8 @@ export async function addEmailToMailchimp(email: string, source: string = 'websi
         },
       }
     );
+
+    console.log('Mailchimp response:', mailchimpResponse);
 
     // Add tags separately if user is in top 200
     if (isTop200) {
@@ -50,6 +77,7 @@ export async function addEmailToMailchimp(email: string, source: string = 'websi
             ]
           }
         );
+        console.log('Added Early-Access tag successfully');
       } catch (tagError) {
         console.log('Could not add Early-Access tag:', tagError);
       }
@@ -57,6 +85,7 @@ export async function addEmailToMailchimp(email: string, source: string = 'websi
 
     // Then, save to database with the same sequential number
     try {
+      console.log('Saving to database...');
       const dbSignup = await prisma.earlyAccessSignup.create({
         data: {
           email,
@@ -64,6 +93,7 @@ export async function addEmailToMailchimp(email: string, source: string = 'websi
           signupNumber,
         },
       });
+      console.log('Database save successful:', dbSignup);
 
       return {
         success: true,
@@ -71,8 +101,10 @@ export async function addEmailToMailchimp(email: string, source: string = 'websi
         signupNumber: dbSignup.signupNumber,
       };
     } catch (dbError: any) {
+      console.error('Database error:', dbError);
       if (dbError.code === 'P2002') {
         // Email already exists in database
+        console.log('Email already exists in database');
         const existingSignup = await prisma.earlyAccessSignup.findUnique({
           where: { email },
         });
@@ -86,8 +118,11 @@ export async function addEmailToMailchimp(email: string, source: string = 'websi
       throw dbError;
     }
   } catch (error: any) {
+    console.error('addEmailToMailchimp error:', error);
+    
     // Handle specific Mailchimp errors
     if (error.response?.body?.title === 'Member Exists') {
+      console.log('Member already exists in Mailchimp');
       // Email already exists in Mailchimp, check if it exists in database
       try {
         const existingSignup = await prisma.earlyAccessSignup.findUnique({
@@ -96,6 +131,7 @@ export async function addEmailToMailchimp(email: string, source: string = 'websi
 
         if (existingSignup) {
           // Email exists in both Mailchimp and database
+          console.log('Email exists in both Mailchimp and database');
           return {
             success: true,
             message: 'Email already subscribed',
@@ -103,6 +139,7 @@ export async function addEmailToMailchimp(email: string, source: string = 'websi
           };
         } else {
           // Email exists in Mailchimp but not in database, add to database
+          console.log('Email exists in Mailchimp but not in database, adding to database');
           const signupNumber = await getNextSignupNumber();
           const dbSignup = await prisma.earlyAccessSignup.create({
             data: {
@@ -176,7 +213,14 @@ export async function addEmailToMailchimp(email: string, source: string = 'websi
       }
     }
 
-    console.error('Mailchimp error:', error);
+    // Log detailed error information
+    console.error('Mailchimp error details:', {
+      message: error.message,
+      response: error.response?.body,
+      status: error.response?.status,
+      statusText: error.response?.statusText
+    });
+
     return {
       success: false,
       error: error.message || 'Failed to subscribe',
