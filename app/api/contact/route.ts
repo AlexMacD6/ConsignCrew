@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     
     const msg = {
-      to: 'support@treasurehunt.club',
+      to: 'support@treasurehub.club',
       from: 'noreply@treasurehub.club', // Verified sender
       subject: `Contact Form: ${subject}`,
       text: `

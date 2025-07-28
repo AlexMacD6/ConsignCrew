@@ -1,0 +1,40 @@
+3D Scene Performance Optimization
+
+- Fix glitching and restarting behavior of floating boxes
+- Improve memory management and reduce GPU load
+- Smooth animations without sudden jumps or resets
+- Optimize particle system and reduce complexity
+
+Root Cause Analysis:
+- Memory leaks from improper texture disposal
+- Too many floating boxes (24) overwhelming GPU
+- Modulo operations causing sudden animation jumps
+- Excessive particle count (800) and complex animations
+- Inefficient buffer updates in particle system
+
+Performance Optimizations:
+1. Reduced floating boxes from 24 to 10
+2. Reduced particle count from 800 to 300
+3. Removed modulo operations to prevent sudden jumps
+4. Improved memory management with proper cleanup
+5. Simplified WebGL context handling
+6. Reduced shadow map sizes and light intensities
+7. Optimized particle system with pre-allocated buffers
+
+Animation Improvements:
+- Continuous time-based animations without modulo
+- Smoother, more subtle movement patterns
+- Individual animation offsets for each box
+- Reduced animation intensity for better performance
+
+Memory Management:
+- Proper texture disposal in useEffect cleanup
+- Pre-allocated Float32Array for particle positions
+- Simplified WebGL support detection
+- Reduced retry attempts to prevent memory buildup
+
+Expected Results:
+- Smooth, continuous animations without glitches
+- Reduced GPU usage and better performance
+- No more sudden trajectory resets
+- Stable 3D background across different devices 

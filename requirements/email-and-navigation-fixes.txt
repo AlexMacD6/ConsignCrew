@@ -1,0 +1,36 @@
+Fix Email Address and Navigation Issues
+
+Email Address Fix:
+- Update incorrect email address from support@treasurehunt.club to support@treasurehub.club
+- Fix email address in contact page display
+- Fix email address in contact API route
+- Ensure consistency across all references
+
+Navigation Fix:
+- Fix navigation links that only work on landing page
+- Enable cross-page navigation with section targeting
+- Add hash navigation support for landing page sections
+- Ensure smooth scrolling to sections when navigating from other pages
+
+Root Cause:
+- Email domain was incorrectly set to treasurehunt.club instead of treasurehub.club
+- Navigation buttons only used scrollToSection which only works on the same page
+- No handling for hash navigation when coming from other pages
+
+Solution:
+- Updated email address in contact page and API route
+- Created handleNavigation function that checks current page
+- Added hash navigation support in landing page
+- Implemented smooth scrolling with hash anchors
+
+Changes Made:
+1. Updated email address in app/contact/page.tsx
+2. Updated email address in app/api/contact/route.ts
+3. Enhanced NavBar component with handleNavigation function
+4. Added hash navigation useEffect in landing page
+5. Maintained existing scroll behavior for same-page navigation
+
+Expected Result:
+- Correct email address displayed and used for contact form
+- Navigation links work from any page to landing page sections
+- Smooth scrolling to correct sections when navigating from other pages 

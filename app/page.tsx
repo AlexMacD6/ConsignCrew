@@ -44,6 +44,34 @@ export default function HomePage() {
     window.scrollTo(0, 0);
   }, []);
 
+  // Handle hash navigation from other pages
+  useEffect(() => {
+    const handleHashNavigation = () => {
+      const hash = window.location.hash;
+      if (hash) {
+        const sectionId = hash.substring(1); // Remove the # symbol
+        const element = document.getElementById(sectionId);
+        if (element) {
+          // Small delay to ensure page is fully loaded
+          setTimeout(() => {
+            element.scrollIntoView({ behavior: "smooth" });
+          }, 100);
+        }
+      }
+    };
+
+    // Handle initial load with hash
+    handleHashNavigation();
+
+    // Handle hash changes
+    const handleHashChange = () => {
+      handleHashNavigation();
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
   // Handle success message fade-out
   useEffect(() => {
     if (submitSuccess) {

@@ -35,6 +35,16 @@ export default function NavBar() {
     }
   };
 
+  const handleNavigation = (sectionId: string) => {
+    // If we're on the landing page, scroll to section
+    if (pathname === "/") {
+      scrollToSection(sectionId);
+    } else {
+      // If we're on another page, navigate to landing page with section hash
+      router.push(`/#${sectionId}`);
+    }
+  };
+
   return (
     <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur border-b border-[#eee] flex items-center justify-between px-6 py-4 shadow-sm">
       {/* Branding/Logo */}
@@ -50,25 +60,25 @@ export default function NavBar() {
       {/* Marketing Links (center, hidden on mobile) */}
       <div className="hidden md:flex gap-8 text-[#222] font-medium text-base">
         <button
-          onClick={() => scrollToSection("how-it-works")}
+          onClick={() => handleNavigation("how-it-works")}
           className="hover:text-[#D4AF3D] transition"
         >
           How It Works
         </button>
         <button
-          onClick={() => scrollToSection("pricing")}
+          onClick={() => handleNavigation("pricing")}
           className="hover:text-[#D4AF3D] transition"
         >
           Pricing
         </button>
         <button
-          onClick={() => scrollToSection("why-treasurehub")}
+          onClick={() => handleNavigation("why-treasurehub")}
           className="hover:text-[#D4AF3D] transition"
         >
           Why TreasureHub
         </button>
         <button
-          onClick={() => scrollToSection("roadmap")}
+          onClick={() => handleNavigation("roadmap")}
           className="hover:text-[#D4AF3D] transition"
         >
           Roadmap
