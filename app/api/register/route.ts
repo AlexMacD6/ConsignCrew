@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { db, safeDbOperation } from "@/lib/db";
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,27 +7,31 @@ export async function POST(req: NextRequest) {
     if (!firstName || !lastName || !email || !mobilePhone) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
-    // Check if user already exists
-    const existing = await prisma.user.findUnique({ where: { email } });
+    
+    // Safely execute database operations
+    const existing = await safeDbOperation(async () => {
+      return await db.user.findUnique({ where: { email } });
+    });
+
     if (existing) {
       return NextResponse.json({ error: "User already exists" }, { status: 409 });
     }
+    
     // Create user (password and other fields omitted for now)
-    await prisma.user.create({
-      data: {
-        firstName,
-        lastName,
-        email,
-        mobilePhone,
-        passwordHash: "", // Placeholder
-        preferredContact: "email",
-        shippingAddress: "",
-        payoutMethod: "",
-        payoutAccount: "",
-      },
+    await safeDbOperation(async () => {
+      return await db.user.create({
+        data: {
+          firstName,
+          lastName,
+          email,
+          mobilePhone,
+        },
+      });
     });
+    
     return NextResponse.json({ success: true });
   } catch (err) {
+    console.error('Registration error:', err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 } 

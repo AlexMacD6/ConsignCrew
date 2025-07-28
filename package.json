@@ -8,7 +8,8 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "generate": "prisma generate"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.850.0",
