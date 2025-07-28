@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db, isDatabaseAvailable, safeDbOperation } from '@/lib/db';
 import { auth } from '@/lib/auth';
 
 // GET /api/admin/check-status - Check if current user has admin privileges
@@ -11,16 +11,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user is admin in any organization
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      include: {
-        members: {
-          include: {
-            organization: true,
+    // Check if database is available
+    if (!isDatabaseAvailable()) {
+      console.error('DATABASE_URL not available');
+      return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
+    }
+
+    // Safely execute database operation
+    const user = await safeDbOperation(async () => {
+      return await db.user.findUnique({
+        where: { id: session.user.id },
+        include: {
+          members: {
+            include: {
+              organization: true,
+            },
           },
         },
-      },
+      });
     });
 
     if (!user) {
@@ -49,6 +57,12 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error checking admin status:', error);
+    
+    // Handle specific database errors
+    if (error instanceof Error && error.message.includes('Database not available')) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
+    }
+    
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 } 

@@ -1,0 +1,33 @@
+Update Environment Variables for Vercel Deployment
+
+- Update all localhost URLs to production Vercel URLs
+- Configure BetterAuth for production environment
+- Set up proper CDN and API URLs for production
+- Ensure all environment variables are properly configured for Vercel
+
+Current Localhost URLs to Update:
+- BETTER_AUTH_URL=http://localhost:3000
+- NEXTAUTH_URL=http://localhost:3000
+- NEXT_PUBLIC_API_URL=http://localhost:8000 (if used)
+- NEXT_PUBLIC_APP_URL (if exists)
+- NEXT_PUBLIC_BASE_URL (if exists)
+- NEXT_PUBLIC_SOCKET_URL (if exists)
+
+Required Changes:
+- Replace localhost URLs with Vercel production URLs
+- Update CDN URLs for production
+- Configure database URL for production
+- Set up proper secrets for production
+- Update any hardcoded localhost references
+
+Vercel URL Format:
+- Production: https://your-app-name.vercel.app
+- Custom domain: https://yourdomain.com (if configured)
+
+Environment Variables to Update:
+1. BETTER_AUTH_URL
+2. NEXTAUTH_URL
+3. NEXT_PUBLIC_CDN_URL
+4. DATABASE_URL (production database)
+5. BETTER_AUTH_SECRET (production secret)
+6. NEXTAUTH_SECRET (production secret) 

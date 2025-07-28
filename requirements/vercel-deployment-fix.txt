@@ -9,12 +9,19 @@ Vercel Deployment Fix Requirements
   - Configured proper handling of server-side dependencies in browser environment
   - Added fallbacks for fs, net, tls, crypto, stream, url, zlib, http, https, assert, os, path, debug, util, buffer, process
 
+- Fixed Prisma client generation issue for Vercel deployment
+  - Updated build script to include "prisma generate && next build"
+  - Added postinstall script to ensure Prisma client is generated after npm install
+  - Resolved PrismaClientInitializationError on Vercel builds
+
 - Improved build process for Vercel deployment
   - Ensured server-side packages are properly handled in client-side builds
   - Added webpack fallbacks to prevent module resolution errors
   - Maintained compatibility with existing server-side functionality
+  - Fixed Prisma client caching issues on Vercel
 
 - Technical improvements
   - Added supports-color dependency to package.json
   - Updated next.config.ts with comprehensive webpack fallbacks
+  - Updated package.json scripts to include Prisma client generation
   - Ensured Mailchimp integration continues to work properly in production 
