@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import ParamForm from "../components/ParamForm";
-import DividerResults from "../components/DividerResults";
+
 import { Play, ChevronLeft, ChevronRight, Settings } from "lucide-react";
 import { API_ENDPOINTS } from "../lib/api";
 
@@ -292,13 +292,18 @@ SKU0006,High Volume Item,4,4,3,1.0,800,3600,9.9,3.0`;
             )}
 
             {results && !loading && (
-              <DividerResults
-                dividers={results.dividers}
-                kpis={results.kpis}
-                trayDimensions={results.tray_dimensions}
-                model={results.model}
-                trayLayouts={results.tray_layouts}
-              />
+              <div className="bg-white rounded-lg border border-gray-200 p-8">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  Optimization Results
+                </h3>
+                <p className="text-gray-600">
+                  Results are available but the visualization component has been
+                  removed.
+                </p>
+                <pre className="mt-4 p-4 bg-gray-50 rounded text-sm overflow-auto">
+                  {JSON.stringify(results, null, 2)}
+                </pre>
+              </div>
             )}
 
             {!results && !loading && (
