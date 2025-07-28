@@ -115,7 +115,7 @@ export default function ContactPage() {
                     <h3 className="text-lg font-semibold text-gray-900">
                       Email
                     </h3>
-                    <p className="text-gray-600">support@treasurehunt.club</p>
+                    <p className="text-gray-600">support@treasurehub.club</p>
                   </div>
                 </div>
 
