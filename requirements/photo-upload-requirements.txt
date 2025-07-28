@@ -1,0 +1,56 @@
+# Photo Upload Requirements for List Item Page
+
+## Problem
+The current list item page only allows uploading a single photo, but users need to provide multiple photos with specific requirements to ensure quality listings and reduce returns.
+
+## Requirements
+
+### 1. Mandatory Photos (Minimum 2)
+- **Photo #1: Front-On Hero** - Required
+  - Entire item, centered, front-facing
+  - Include detachable pieces that normally stay attached
+  - Shooting tips: uncluttered surface, straight-on angle, 80% frame fill, good lighting
+  - Purpose: Search thumbnail and first image buyers see
+
+- **Photo #2: Full Back / Underside** - Required
+  - Entire rear or underside of the same item
+  - Show ports, hinges, back fabric, cabinet backs, battery doors
+  - Shooting tips: step back for full view, flip small items, consistent lighting
+  - Purpose: Prevent "surprise damage" returns
+
+### 2. Optional Photos
+- **Photo #3: Proof / Identification** - Optional but recommended
+  - Electronics: powered-on screen or label plate with model + serial
+  - Luxury items: logo stamp & date code
+  - Furniture: wood grain or tag showing brand + fabric code
+  - Collectibles: maker's mark, limited-edition number
+  - Shooting tips: legible text, steady camera, proper focus
+
+- **Photos #4-10: Additional Photos** - Optional
+  - Close-ups of damage or wear
+  - Different angles or perspectives
+  - Included accessories or parts
+  - Size comparison with common objects
+  - Functionality demonstrations
+
+### 3. User Interface Requirements
+- Step-by-step photo upload process
+- Clear instructions for each photo type
+- Progress indicator showing completed photos
+- Photo gallery in form with ability to remove/replace photos
+- Validation requiring minimum 2 photos (hero + back)
+- Skip option for additional photos
+
+### 4. Technical Requirements
+- Support for multiple file uploads
+- Image preview functionality
+- Photo removal and replacement
+- Form validation integration
+- Responsive design for mobile and desktop
+
+## Testing
+- Verify mandatory photos are required for form submission
+- Test photo upload flow for all photo types
+- Confirm photo removal and replacement works
+- Test responsive design on different screen sizes
+- Verify form validation with photo requirements 

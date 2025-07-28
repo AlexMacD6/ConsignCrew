@@ -1,0 +1,98 @@
+# Typed S3 Image Storage SDK Requirements
+
+## Problem
+ConsignCrew needs a clean, typed SDK for managing image uploads to S3 with specific folder structure and lifecycle rules. The system must handle pre-signed URLs, file validation, and batch operations across multiple storage prefixes.
+
+## Requirements
+
+### 1. S3 Bucket Structure
+- **prod/raw/**: Original uploaded images (50MB max, 7 days retention)
+- **prod/staged/**: Processed images for display (10MB max, 30 days retention)
+- **prod/thumbs/**: Thumbnail images (2MB max, 1 year retention)
+- **prod/bundles/**: Image bundles/collections (5MB max, 1 year retention)
+- **prod/qr/**: QR code images (1MB max, 1 year retention, PNG only)
+- **prod/temp/**: Temporary processing images (25MB max, 1 day retention)
+- **prod/archive/**: Long-term storage (100MB max, 5 years retention)
+
+### 2. Core SDK Features
+- **Singleton S3Client**: Configured with environment variables
+- **Pre-signed URL Generation**: Secure upload URLs with configurable expiration
+- **File Validation**: Type and size validation per prefix
+- **Batch Operations**: Delete all images for an item across prefixes
+- **CloudFront Integration**: Public URL generation via CDN
+
+### 3. TypeScript Implementation
+- **Strict TypeScript**: All code must pass strict type checking
+- **Typed Interfaces**: PreSignOptions, UploadUrlResponse, LifecycleRule
+- **Enum-based Prefixes**: ImagePrefix enum for type safety
+- **Environment Validation**: Runtime checks for required environment variables
+
+### 4. AWS SDK v3 Integration
+- **S3Client**: Singleton pattern with environment configuration
+- **Pre-signed URLs**: Using @aws-sdk/s3-request-presigner
+- **Batch Operations**: DeleteObjectsCommand with 1000 key limit
+- **List Operations**: ListObjectsV2Command with pagination support
+
+### 5. File Organization
+- **Unique Keys**: Timestamp + random ID to prevent conflicts
+- **Item-based Structure**: /{prefix}/{itemId}/{timestamp}-{randomId}.{ext}
+- **Metadata**: Store itemId, prefix, and upload timestamp
+- **Future-proofing**: All prefixes prepend 'prod/' for staging support
+
+### 6. Security & Validation
+- **Content Type Validation**: Per-prefix allowed MIME types
+- **File Size Limits**: Configurable maximum sizes per prefix
+- **Authentication**: Environment-based AWS credentials
+- **URL Expiration**: Configurable pre-signed URL expiration (default 15 min)
+
+### 7. Error Handling
+- **Environment Validation**: Clear errors for missing environment variables
+- **File Validation**: Descriptive errors for invalid file types/sizes
+- **AWS Error Handling**: Proper error propagation from AWS SDK
+- **Batch Operation Errors**: Handle partial failures in delete operations
+
+### 8. Testing Requirements
+- **Unit Tests**: Comprehensive test coverage with Jest
+- **Mocked AWS SDK**: No real AWS calls during testing
+- **Environment Mocking**: Test environment variable handling
+- **Edge Cases**: Test batching, pagination, and error scenarios
+
+## Technical Implementation
+
+### Core Files
+- `src/aws/s3Client.ts`: Singleton S3Client with environment configuration
+- `src/aws/imageStore.ts`: Main SDK with all business logic
+- `tests/imageStore.test.ts`: Comprehensive unit tests
+- `jest.config.js`: Test configuration
+- `env.example`: Environment variables template
+
+### Key Functions
+- `getUploadUrl(options, expires)`: Generate pre-signed upload URLs
+- `getPublicUrl(key)`: Generate CloudFront public URLs
+- `getStagedUrl(itemId)`: Convenience method for staged images
+- `deleteAll(itemId)`: Delete all images for an item
+- `validateFileSize(prefix, size)`: Validate file size against limits
+- `getLifecycleRule(prefix)`: Get lifecycle rules for a prefix
+
+### Environment Variables
+- `AWS_REGION`: AWS region (e.g., us-east-1)
+- `AWS_ACCESS_KEY_ID`: AWS access key
+- `AWS_SECRET_ACCESS_KEY`: AWS secret key
+- `S3_BUCKET`: S3 bucket name (e.g., consigncrew-images)
+- `CF_DOMAIN`: CloudFront domain (e.g., cdn.consigncrew.com)
+
+## Testing Strategy
+- **Mock AWS SDK**: Complete mocking of S3Client and presigner
+- **Environment Testing**: Test missing/invalid environment variables
+- **Function Testing**: Test all public functions with various inputs
+- **Error Testing**: Test error conditions and edge cases
+- **Integration Testing**: Test complete workflows
+
+## Acceptance Criteria
+- All tests pass with `npm test`
+- TypeScript compilation succeeds with strict mode
+- No hard-coded bucket names or regions
+- Pre-signed URLs work correctly with proper expiration
+- Batch delete operations handle large numbers of objects
+- File validation prevents invalid uploads
+- CloudFront URLs are generated correctly 

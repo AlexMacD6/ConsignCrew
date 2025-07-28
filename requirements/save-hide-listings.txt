@@ -1,0 +1,100 @@
+# Save and Hide Listings Functionality Requirements
+
+## Overview
+Add Save and Hide functionality to the listings page to allow users to save listings for later viewing and hide listings they don't want to see, plus a detailed modal for viewing listing information.
+
+## Features Implemented
+
+### Save Functionality
+- **Save Button**: Bookmark icon button on each listing card
+- **Visual Feedback**: Button changes color and fills icon when saved
+- **State Management**: Uses Set to track saved listing IDs
+- **Counter Display**: Shows total number of saved listings in header
+- **Toggle Behavior**: Clicking save button toggles saved state
+- **Saved Items Filter**: Button to show only saved listings
+
+### Hide Functionality
+- **Hide Button**: Eye-off icon button on each listing card
+- **Visual Feedback**: Button changes color and fills icon when hidden
+- **Hidden Badge**: "HIDDEN" badge appears on hidden listing cards
+- **Opacity Effect**: Hidden listings appear with reduced opacity
+- **State Management**: Uses Set to track hidden listing IDs
+- **Counter Display**: Shows total number of hidden listings in header
+
+### Filter Controls
+- **Show Saved Toggle**: Button to show only saved listings
+- **Show Hidden Toggle**: Button to show/hide hidden listings
+- **Default Behavior**: Hidden listings are filtered out by default
+- **Toggle State**: Buttons show current state (Saved Only / Show All, Show Hidden / Hide Hidden)
+- **Visual Feedback**: Button styling changes based on toggle state
+
+### Listing Details Modal
+- **Modal Trigger**: Clicking "View Details" opens comprehensive modal
+- **Full-Screen Overlay**: Dark overlay with centered modal
+- **Responsive Design**: Two-column layout on desktop, single column on mobile
+- **Close Functionality**: X button and click outside to close
+- **Scrollable Content**: Modal content scrolls if too long
+
+### Modal Content Sections
+- **Header**: Item title with close button
+- **Main Image**: Large product image display
+- **Price Information**: List price, price range, reserve price, and fees
+- **Action Buttons**: Contact Seller and Save buttons
+- **Item Details**: Condition, listing date, time left, serial/model numbers, GTIN
+- **Seller Information**: Seller name, location, rating, and reviews
+- **Description**: Full item description
+- **Item ID**: Unique identifier display
+
+### User Interface Enhancements
+- **Header Stats**: Display saved and hidden counts in results header
+- **Button Styling**: Consistent hover and active states
+- **Icon Integration**: Uses Lucide React icons (Bookmark, EyeOff, X, Calendar, etc.)
+- **Responsive Design**: Works across all screen sizes
+- **Enhanced Descriptions**: More detailed product descriptions for better modal content
+
+## Technical Implementation
+
+### State Management
+- `savedListings`: Set<string> to track saved listing IDs
+- `hiddenListings`: Set<string> to track hidden listing IDs
+- `showHidden`: boolean to control hidden listings visibility
+- `showSaved`: boolean to control saved listings visibility
+- `selectedListing`: object to store current modal listing data
+- `isModalOpen`: boolean to control modal visibility
+
+### Filtering Logic
+- Hidden listings are filtered out by default
+- Saved listings filter shows only saved items when enabled
+- Show Hidden toggle allows viewing hidden listings
+- Filtering works with existing search and category filters
+- Multiple filters can be applied simultaneously
+
+### Modal Functionality
+- `openModal()`: Sets selected listing and opens modal
+- `closeModal()`: Closes modal and clears selected listing
+- `formatDate()`: Formats listing creation date for display
+- Responsive grid layout for modal content
+- Proper z-index management for overlay
+
+### Data Persistence
+- Currently uses in-memory state (will need backend integration)
+- State persists during session but resets on page refresh
+
+## User Experience
+- **Intuitive Controls**: Clear visual indicators for saved/hidden states
+- **Quick Actions**: One-click save/hide functionality
+- **Flexible Viewing**: Easy toggle between showing/hiding hidden listings
+- **Detailed Information**: Comprehensive modal with all listing details
+- **Visual Feedback**: Immediate response to user actions
+- **Consistent Design**: Matches existing UI patterns and color scheme
+- **Accessibility**: Proper focus management and keyboard navigation
+
+## Future Enhancements
+- Backend integration for persistent storage
+- Saved listings page/menu
+- Bulk save/hide operations
+- Export saved listings
+- Share saved listings with others
+- Image gallery in modal (multiple images)
+- Contact seller functionality
+- Bid/offer system integration 

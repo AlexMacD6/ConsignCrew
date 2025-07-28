@@ -1,0 +1,183 @@
+# Mailchimp Integration Requirements
+
+## Overview
+Integrate Mailchimp email marketing service with the TreasureHub email registration system to collect and manage early access signups.
+
+## Changes Made
+
+### 1. Dependencies Added
+- Added `@mailchimp/mailchimp_marketing` package for API integration
+
+### 2. Environment Variables Required
+Add the following to your `.env.local` file:
+```
+MAILCHIMP_API_KEY=your_mailchimp_api_key_here
+MAILCHIMP_AUDIENCE_ID=46b6d4edb8
+MAILCHIMP_SERVER_PREFIX=us7
+```
+
+### 3. Files Created/Modified
+
+#### New Files:
+- `app/lib/mailchimp.ts` - Mailchimp utility functions
+  - Configured Mailchimp API client
+  - Created `addEmailToMailchimp()` function
+  - Added error handling for duplicate emails
+  - Added automatic tagging with 'early-access' and 'treasurehub'
+  - Added database integration for sequential tracking
+  - Added merge fields for signup number, source, and top 200 status
+  - Added utility functions for querying signups and statistics
+  - Added `setupMailchimpMergeFields()` function for initial setup
+
+- `app/api/admin/early-access-signups/route.ts` - Admin API for viewing signups
+  - GET endpoint to view top signups (default 200)
+  - GET endpoint to view signup statistics
+  - Supports query parameters for limit and type
+
+- `app/api/early-access-stats/route.ts` - Public API for frontend stats
+  - GET endpoint to fetch remaining spots count
+  - Returns real-time statistics for hero component
+
+- `app/components/EarlyAccessTracker.tsx` - Early access tracker component
+  - Displays 15% discount message for first 200 signups
+  - Shows real-time remaining spots counter
+  - Visual indicators for limited availability
+  - Auto-refreshes when new signups occur
+
+- `scripts/setup-mailchimp-merge-fields.js` - Setup script for Mailchimp merge fields
+  - Creates merge fields in Mailchimp for signup number, source, and top 200 status
+  - Provides usage examples for email templates
+  - One-time setup script for initial configuration
+
+#### Modified Files:
+- `prisma/schema.prisma` - Added EarlyAccessSignup model
+  - Sequential signup numbers for tracking top 200
+  - Source tracking (hero, modal, etc.)
+  - Email uniqueness constraint
+  - Proper indexing for performance
+
+- `app/api/subscribe/route.ts` - Updated to use real Mailchimp API
+  - Replaced mock subscription with actual Mailchimp integration
+  - Added database storage with sequential numbering
+  - Added proper error handling and response formatting
+  - Returns success/error messages and signup number to frontend
+
+- `app/components/SignupModal.tsx` - Enhanced with real API calls
+  - Updated to call `/api/subscribe` endpoint with source tracking
+  - Added error state and display
+  - Improved user feedback for success/failure states
+  - Added proper loading states
+
+- `app/page.tsx` - Updated main page email form
+  - Modified `handleEmailSubmit` to use real API with source tracking
+  - Added error handling for network issues
+  - Maintained existing UI/UX
+  - Added EarlyAccessTracker component to hero section
+  - Implemented real-time refresh when signups occur
+
+- `app/components/SignupModal.tsx` - Enhanced with real API calls
+  - Updated to call `/api/subscribe` endpoint with source tracking
+  - Added error state and display
+  - Improved user feedback for success/failure states
+  - Added proper loading states
+  - Dispatches custom event to refresh tracker on successful signup
+
+### 4. Features Implemented
+
+#### Email Collection:
+- Real-time email subscription to Mailchimp audience
+- Automatic tagging for segmentation
+- Database storage with sequential numbering (1, 2, 3, etc.)
+- Source tracking (hero form, modal, etc.)
+- **Merge fields integration**: Signup number, source, and top 200 status sent to Mailchimp
+- Duplicate email handling (graceful error handling)
+- Network error handling
+
+#### Early Access Campaign:
+- 15% discount offer for first 200 signups
+- Real-time remaining spots counter
+- Visual urgency indicators (color changes, animations)
+- Auto-refresh when new signups occur
+- Cross-component communication via custom events
+
+#### User Experience:
+- Loading states during submission
+- Success confirmation messages
+- Error display for failed submissions
+- Consistent behavior across modal and main page forms
+
+#### Technical Features:
+- Server-side email validation
+- Proper HTTP status codes
+- Error logging for debugging
+- TypeScript type safety
+- Database migration for EarlyAccessSignup table
+- Admin API endpoints for viewing signups and statistics
+
+### 5. Mailchimp Configuration
+
+#### Audience Details:
+- Audience ID: 46b6d4edb8
+- Server Prefix: us7
+- API Key: [REDACTED]
+
+#### Tags Applied:
+- 'early-access' - For identifying early access subscribers
+- 'treasurehub' - For brand-specific segmentation
+
+#### Merge Fields Created:
+- `SIGNUP_NUMBER` - Sequential signup number (1, 2, 3, etc.)
+- `SOURCE` - Signup source (hero, modal, etc.)
+- `IS_TOP_200` - Whether in top 200 (Yes/No)
+
+#### Email Template Usage:
+- Use `*|SIGNUP_NUMBER|*` to display the signup number
+- Use `*|SOURCE|*` to display where they signed up
+- Use `*|IS_TOP_200|*` to show top 200 status
+
+### 6. Testing Instructions
+
+1. Add environment variables to `.env.local`
+2. **Set up Mailchimp merge fields** (one-time setup):
+   ```bash
+   node scripts/setup-mailchimp-merge-fields.js
+   ```
+3. Start the development server: `npm run dev`
+4. Test email submission through:
+   - Main page email form (Hero section) - source: "hero"
+   - "Get Early Access" modal (NavBar button) - source: "modal"
+5. Verify emails appear in Mailchimp audience with merge fields
+6. Check database for sequential signup numbers
+7. Test duplicate email handling
+8. Test network error scenarios
+9. Test admin API endpoints:
+   - GET `/api/admin/early-access-signups?type=stats` - View statistics
+   - GET `/api/admin/early-access-signups?limit=50` - View top 50 signups
+
+### 7. Security Considerations
+
+- API key stored in environment variables (not in code)
+- Server-side validation of email addresses
+- No sensitive data exposed to client-side
+- Proper error handling without exposing internal details
+
+### 8. Future Enhancements
+
+- Add email validation on frontend
+- Implement double opt-in if required
+- Add analytics tracking for signup conversions
+- Create automated welcome email sequences
+- Add subscriber count display
+
+## Files Modified:
+- app/lib/mailchimp.ts (new)
+- app/api/subscribe/route.ts
+- app/api/admin/early-access-signups/route.ts (new)
+- app/api/early-access-stats/route.ts (new)
+- app/components/SignupModal.tsx
+- app/components/EarlyAccessTracker.tsx (new)
+- app/page.tsx
+- prisma/schema.prisma
+- package.json (dependencies)
+- scripts/setup-mailchimp-merge-fields.js (new)
+- requirements/mailchimp-integration.txt (this file) 

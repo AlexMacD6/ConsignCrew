@@ -1,0 +1,61 @@
+# React Three Cannon API Fix Requirements
+
+## Problem
+- TypeError: `useWorld` is not a function from `@react-three/cannon`
+- The `useWorld` hook was deprecated or removed in newer versions of `@react-three/cannon`
+- This was causing the packing tetris game to crash when trying to track crate fullness
+
+## Root Cause
+- Updated Three.js ecosystem to latest versions for React 19 compatibility
+- `@react-three/cannon` API changed between versions
+- `useWorld` hook is no longer available in the current version
+
+## Solution Implemented
+
+### 1. Removed Deprecated API Usage
+- **Removed**: `useWorld` hook from `useCrateFull.ts`
+- **Replaced**: With a global state tracking system
+
+### 2. Created Global State Tracking System
+- **Global Variables**: `globalBoxCount`, `globalMaxY`, `boxPositions`
+- **Update Function**: `updateBoxStats(boxId, y)` to track individual box positions
+- **Aggregation**: Automatically calculates total count and max height
+
+### 3. Modified Box Components
+- **Individual Tracking**: Each Box component now tracks its own position
+- **Real-time Updates**: Uses `useFrame` to continuously update position data
+- **Crate Bounds**: Only tracks boxes within the crate boundaries (|x| < 4, |z| < 4, y > 0)
+
+### 4. Updated Component Interfaces
+- **Box Props**: Added `id` property to track individual boxes
+- **BoxSpawner**: Passes unique IDs to each Box component
+- **Hook Integration**: `useCrateFull` now reads from global state
+
+## Technical Implementation
+
+### Files Modified
+- **app/hooks/useCrateFull.ts**: Complete rewrite to use global state
+- **app/components/BoxSpawner.tsx**: Added ID tracking and position monitoring
+
+### Key Changes
+- Removed dependency on deprecated `useWorld` API
+- Created robust position tracking system
+- Maintained all existing functionality
+- Improved performance by tracking only relevant boxes
+
+### API Compatibility
+- **Current Version**: Works with latest `@react-three/cannon`
+- **React 19**: Fully compatible with React 19
+- **Three.js**: Compatible with latest Three.js ecosystem
+
+## Benefits
+- **Stability**: No more crashes from deprecated API calls
+- **Accuracy**: Real-time tracking of actual box positions
+- **Performance**: Efficient tracking of only relevant boxes
+- **Maintainability**: Clean, modern API usage
+
+## Testing
+- Packing tetris game should now load without errors
+- Crate fullness detection should work correctly
+- Box spawning and physics should function normally
+- Camera animations should trigger when crate is full 

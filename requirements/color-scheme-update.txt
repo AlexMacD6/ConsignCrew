@@ -1,0 +1,54 @@
+# Color Scheme Update for TreasureHub Branding
+
+## Overview
+Update the entire application's color scheme to use the TreasureHub brand colors consistently throughout the landing page and components.
+
+## Brand Colors
+- **Primary Brand Color**: #d4af3d (treasure-500)
+- **Secondary Brand Color**: #825e08 (treasure-600) 
+- **Accent Color**: #f4d03f (treasure-400)
+- **Dark Brand Color**: #5d4a00 (treasure-700)
+
+## Changes Made
+
+### CSS Configuration Updates
+- Updated globals.css to use proper brand color variables
+- Added custom brand color palette to tailwind.config.ts
+- Updated button system to use brand colors instead of generic yellow
+- Updated CSS variables for light and dark mode
+
+### Landing Page Updates (app/page.tsx)
+- Updated main heading "Stress-Free" text color to treasure-500
+- Updated all bullet point indicators to treasure-500
+- Updated loading spinner border color to treasure-500
+- Updated input field focus border to treasure-500
+- Updated all icons in "How It Works" section to treasure-500
+- Updated gradient arrows to use treasure-500 colors
+
+### Component Updates
+- **SignupModal.tsx**: Updated button background to treasure-500 with treasure-600 hover
+- **ThreeScene.tsx**: Updated retry button to use treasure-500/600 colors
+- **Roadmap.tsx**: Updated timeline elements to use treasure color palette
+- **PriceSlider.tsx**: Updated slider gradient to use treasure colors
+- **TreasureMapCards.tsx**: Updated all icons to treasure-500
+
+### Button System
+- Primary buttons now use #d4af3d background with #825e08 hover
+- Outline buttons use transparent background with #d4af3d border
+- All buttons maintain consistent hover effects and transitions
+
+## Files Modified
+- app/globals.css
+- tailwind.config.ts
+- app/page.tsx
+- app/components/SignupModal.tsx
+- app/components/ThreeScene.tsx
+- app/components/Roadmap.tsx
+- app/components/PriceSlider.tsx
+- app/components/TreasureMapCards.tsx
+
+## Notes
+- All yellow-400, yellow-500, yellow-600 references replaced with treasure color equivalents
+- Maintained accessibility with proper contrast ratios
+- Preserved existing hover and focus states
+- Updated both light and dark mode color schemes 

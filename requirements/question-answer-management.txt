@@ -1,0 +1,46 @@
+Question and Answer Management System Requirements
+
+## Admin Dashboard Features
+- Add a new "Questions" tab to the Admin Dashboard
+- Display all questions asked across all listings in a centralized dashboard
+- Show question details including:
+  - Question text
+  - Listing ID/name
+  - User who asked the question
+  - Date asked
+  - Approval status
+  - Answer (if provided)
+- Allow admins to approve/reject questions directly from the dashboard
+- Allow admins to provide answers to questions
+- Filter questions by status (pending, approved, rejected)
+- Search questions by text or listing
+
+## User Question Submission Features
+- Add "Ask a Question" button to listing pages
+- Create a modal form for users to submit questions
+- Include form validation for question submission
+- Show success/error messages after submission
+- Display pending questions to users (if they created them)
+- Show approved questions and answers on listing pages
+
+## Technical Requirements
+- Use existing Question model from Prisma schema
+- Create new API endpoints for admin question management
+- Implement proper authentication and authorization
+- Use Prisma ORM for all database operations
+- Add proper error handling and loading states
+- Ensure responsive design for mobile and desktop
+
+## Database Operations
+- Fetch all questions for admin dashboard
+- Update question approval status
+- Add answers to questions
+- Create new questions from user submissions
+- Filter questions by various criteria
+
+## UI/UX Requirements
+- Clean, intuitive interface for admin management
+- User-friendly question submission modal
+- Clear status indicators for questions
+- Responsive design for all screen sizes
+- Consistent styling with existing application 

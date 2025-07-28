@@ -1,0 +1,54 @@
+# Populate Listings Database Requirements
+
+## Overview
+Push the hardcoded listing examples from the listings page to the actual Prisma table for Listing to simulate the listings page based off of real listings.
+
+## Requirements
+
+### 1. Database Population
+- Create a script to populate the Listing table with the 6 hardcoded examples from the listings page
+- Ensure all required fields are properly mapped from mock data to database schema
+- Handle optional fields appropriately (null values where applicable)
+- Use real user IDs from the database for the userId field
+
+### 2. Data Mapping
+- Map mock data structure to Prisma Listing model fields:
+  - item_id → itemId
+  - title, description, condition, price, zipCode, brand, dimensions, serialNumber, modelNumber
+  - photos → JSON structure with hero image
+  - category_id → split into department, category, subCategory
+  - discount_schedule → JSON structure
+  - estimated_retail_price → estimatedRetailPrice
+  - neighborhood → neighborhood
+  - status → status (default "active")
+
+### 3. User Association
+- Find existing users in the database to associate listings with
+- Create test users if none exist
+- Ensure each listing has a valid userId
+
+### 4. Image Handling
+- Use the existing image URLs from the mock data
+- Store image keys in the photos JSON field
+- Maintain the hero image structure
+
+### 5. Category Mapping
+- Parse category_id strings to extract department, category, and subCategory
+- Handle edge cases where category structure may vary
+
+### 6. Script Features
+- Safe execution with error handling
+- Logging of created listings
+- Option to clear existing listings before populating
+- Validation of data before insertion
+
+### 7. Integration
+- Ensure the listings page can fetch real data from the database
+- Maintain compatibility with existing API endpoints
+- Update any hardcoded references to use database data
+
+## Dependencies
+- Prisma client for database operations
+- Existing user accounts for listing associations
+- Proper error handling and logging
+- Data validation before insertion 

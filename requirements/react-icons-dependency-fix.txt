@@ -1,0 +1,58 @@
+# React Icons Dependency Fix Requirements
+
+## Problem
+- Module not found error for `react-icons/fa` in FAQ page
+- FAQ page was trying to import FontAwesome icons that weren't installed
+- Inconsistent icon library usage across the application
+
+## Root Cause
+- FAQ page was importing icons from `react-icons/fa` (FontAwesome)
+- The `react-icons` package wasn't installed in the project
+- Mixed usage of different icon libraries (react-icons vs lucide-react)
+
+## Solution Implemented
+
+### 1. Standardized Icon Library Usage
+- **Removed**: `react-icons/fa` imports from FAQ page
+- **Replaced**: All FontAwesome icons with equivalent Lucide React icons
+- **Consistency**: Now using only `lucide-react` throughout the application
+
+### 2. Icon Mappings
+- `FaSearch` → `Search` (lucide-react)
+- `FaChevronDown` → `ChevronDown` (lucide-react) - already in use
+- `FaChevronRight` → `ChevronRight` (lucide-react) - not used in current code
+- `FaThumbsUp` → `ThumbsUp` (lucide-react) - already in use
+- `FaThumbsDown` → `ThumbsDown` (lucide-react) - already in use
+
+### 3. Package Management
+- **Installed**: `react-icons` package for future compatibility
+- **Standardized**: Using `lucide-react` as the primary icon library
+- **Cleanup**: Removed unused FontAwesome imports
+
+## Technical Implementation
+
+### Files Modified
+- **app/faq/page.tsx**: Updated imports and icon usage
+
+### Changes Made
+- Removed FontAwesome icon imports
+- Added `Search` icon import from lucide-react
+- Replaced `FaSearch` with `Search` component
+- Maintained all existing functionality
+
+### Benefits
+- **Consistency**: Single icon library across the application
+- **Performance**: Reduced bundle size by using one icon library
+- **Maintainability**: Easier to manage and update icons
+- **Compatibility**: Works with React 19 and latest dependencies
+
+## Icon Library Strategy
+- **Primary**: `lucide-react` for all new icon needs
+- **Fallback**: `react-icons` available if needed for specific icons
+- **Consistency**: All components should use the same icon library
+
+## Testing
+- FAQ page should load without module resolution errors
+- Search icon should display correctly in the search input
+- All existing functionality should work as expected
+- No visual regressions in the FAQ interface 

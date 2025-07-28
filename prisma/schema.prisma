@@ -7,96 +7,214 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model tray_configs {
-  id              Int     @id @default(autoincrement())
-  name            String? @unique(map: "ix_tray_configs_name") @db.VarChar
-  tray_length_in  Float?
-  tray_width_in   Float?
-  tray_depth_in   Float?
-  num_trays       Int?
-  weight_limit_lb Float?
+model user {
+  id            String   @id @default(cuid())
+  firstName     String
+  lastName      String
+  mobilePhone   String?
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  @@index([id], map: "ix_tray_configs_id")
-  @@map("tray_configs")
+  // Relations for BetterAuth plugins
+  members         Member[]
+  invitationsSent Invitation[] @relation("InvitationsSent")
+  teamMemberships TeamMember[]
+  sessions        session[]
+  accounts        account[]
+  questions       Question[]   @relation("QuestionCreatedBy")
+  answers         Question[]   @relation("QuestionAnsweredBy")
+  approvals       Question[]   @relation("QuestionApprovedBy")
+  listings        Listing[]
+
+  @@index([email])
 }
 
-model inventory_lists {
-  id           String         @id @unique(map: "ix_inventory_lists_id") @default(uuid()) @db.VarChar
-  name         String         @db.VarChar
-  created_at   DateTime?      @db.Timestamp(6)
-  daily_sales  daily_sales[]
-  inventories  inventory[]
-  tray_layouts tray_layouts[]
+/// --- BetterAuth Organization Plugin Models ---
 
-  @@map("inventory_lists")
+model Organization {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  logo        String?
+  metadata    String?
+  createdAt   DateTime     @default(now())
+  members     Member[]
+  teams       Team[]
+  invitations Invitation[] // Invitations for this organization
+  sessions    session[] // Sessions with this org as active
 }
 
-model inventory {
-  id                Int             @id @default(autoincrement())
-  sku_id            String?         @db.VarChar
-  description       String?         @db.VarChar
-  length_in         Float?
-  width_in          Float?
-  height_in         Float?
-  weight_lb         Float?
-  on_hand_units     Int?
-  on_shelf_units    Int? // Added to match SQLAlchemy model
-  annual_units_sold Int?
-  daily_picks       Float?
-  demand_std_dev    Float?
-  inventory_list_id String          @db.VarChar
-  inventory_list    inventory_lists @relation(fields: [inventory_list_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@unique([sku_id, inventory_list_id], map: "uq_inventory_sku_list")
-  @@index([id], map: "ix_inventory_id")
-  @@index([sku_id], map: "ix_inventory_sku_id")
-  @@map("inventory")
+model Member {
+  id             String       @id @default(cuid())
+  userId         String
+  organizationId String
+  role           String // e.g. MEMBER, ADMIN, OWNER
+  createdAt      DateTime     @default(now())
+  user           user         @relation(fields: [userId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
 }
 
-model daily_sales {
-  id                Int             @id @default(autoincrement())
-  date              DateTime        @db.Timestamp(6)
-  sku_id            String          @db.VarChar
-  units_sold        Int
-  inventory_list_id String          @db.VarChar
-  inventory_list    inventory_lists @relation(fields: [inventory_list_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@index([id], map: "ix_daily_sales_id")
-  @@index([sku_id], map: "ix_daily_sales_sku_id")
-  @@map("daily_sales")
+model Invitation {
+  id             String       @id @default(cuid())
+  email          String
+  inviterId      String
+  organizationId String
+  role           String
+  status         String
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+  inviter        user         @relation("InvitationsSent", fields: [inviterId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
 }
 
-model tray_layouts {
-  id                 Int             @id @default(autoincrement())
-  tray_id            Int
-  inventory_list_id  String          @db.VarChar
-  optimization_model String          @db.VarChar
-  tray_width_in      Float
-  tray_length_in     Float
-  tray_depth_in      Float
-  buffer_pct         Float
-  created_at         DateTime        @default(now()) @db.Timestamp(6)
-  inventory_list     inventory_lists @relation(fields: [inventory_list_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  slots              tray_slots[]
-
-  @@index([id], map: "ix_tray_layouts_id")
-  @@index([tray_id], map: "ix_tray_layouts_tray_id")
-  @@index([inventory_list_id], map: "ix_tray_layouts_inventory_list_id")
-  @@map("tray_layouts")
+model Team {
+  id             String       @id @default(cuid())
+  name           String
+  organizationId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  teamMembers    TeamMember[]
+  sessions       session[] // Sessions with this team as active
 }
 
-model tray_slots {
-  id             Int          @id @default(autoincrement())
-  tray_layout_id Int          @db.Integer
-  sku_id         String       @db.VarChar
-  x_in           Float // X position in inches
-  y_in           Float // Y position in inches
-  width_in       Float // Slot width in inches
-  length_in      Float // Slot length in inches
-  tray_layout    tray_layouts @relation(fields: [tray_layout_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String
+  userId    String
+  createdAt DateTime @default(now())
+  team      Team     @relation(fields: [teamId], references: [id])
+  user      user     @relation(fields: [userId], references: [id])
+}
 
-  @@index([id], map: "ix_tray_slots_id")
-  @@index([sku_id], map: "ix_tray_slots_sku_id")
-  @@index([tray_layout_id], map: "ix_tray_slots_tray_layout_id")
-  @@map("tray_slots")
+model session {
+  id                   String        @id @default(cuid())
+  userId               String
+  token                String        @unique
+  expiresAt            DateTime
+  ipAddress            String?
+  userAgent            String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  activeOrganizationId String?
+  activeTeamId         String?
+  user                 user          @relation(fields: [userId], references: [id])
+  organization         Organization? @relation(fields: [activeOrganizationId], references: [id])
+  team                 Team?         @relation(fields: [activeTeamId], references: [id])
+
+  @@map("session")
+}
+
+// BetterAuth required models
+model account {
+  id                   String    @id @default(cuid())
+  userId               String
+  providerId           String    @map("provider")
+  accountId            String    @map("providerAccountId")
+  password             String? // For credentials (email/password) auth only
+  refreshToken         String?   @map("refresh_token")
+  accessToken          String?   @map("access_token")
+  accessTokenExpiresAt DateTime? @map("expires_at")
+  idToken              String?   @map("id_token")
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  user user @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@map("account")
+}
+
+model verificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verificationToken")
+}
+
+model ZipCode {
+  id   String @id @default(cuid())
+  code String
+  area String
+  type String // 'seller' or 'buyer'
+}
+
+model AiResponse {
+  id                Int      @id @default(autoincrement())
+  category          String
+  triggerPhrases    String[] @map("trigger_phrases")
+  response          String
+  tags              String[]
+  autoResponse      Boolean  @default(true) @map("auto_response")
+  escalateIfUnclear Boolean  @default(false) @map("escalate_if_unclear")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("ai_responses")
+}
+
+model Question {
+  id             String   @id @default(cuid())
+  listingId      String?
+  question       String
+  answer         String?
+  createdBy      String
+  answeredBy     String?
+  approvedBy     String?
+  isPublic       Boolean  @default(false)
+  isApproved     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  createdByUser  user     @relation("QuestionCreatedBy", fields: [createdBy], references: [id])
+  answeredByUser user?    @relation("QuestionAnsweredBy", fields: [answeredBy], references: [id])
+  approvedByUser user?    @relation("QuestionApprovedBy", fields: [approvedBy], references: [id])
+}
+
+model Listing {
+  id                   String   @id @default(cuid())
+  userId               String
+  itemId               String   @unique
+  photos               Json // Store photo keys as JSON
+  department           String
+  category             String
+  subCategory          String
+  title                String
+  condition            String
+  price                Float
+  description          String
+  zipCode              String
+  neighborhood         String
+  brand                String?
+  dimensions           String?
+  serialNumber         String?
+  modelNumber          String?
+  estimatedRetailPrice Float?
+  discountSchedule     Json? // Store discount schedule as JSON
+  status               String   @default("active") // active, sold, expired, etc.
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user user @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([department])
+  @@index([zipCode])
+}
+
+model EarlyAccessSignup {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  signupNumber Int      @unique // Sequential number for tracking top 200
+  source       String   @default("website") // website, modal, etc.
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([email])
+  @@index([signupNumber])
+  @@map("early_access_signups")
 }

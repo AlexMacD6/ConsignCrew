@@ -1,0 +1,49 @@
+# Duplicate Email Error Handling Requirements
+
+## Problem
+- Users who have already signed up for early access don't receive clear feedback when they try to sign up again
+- No error messages are displayed when duplicate emails are submitted
+- Users may be confused about whether their signup was successful
+
+## Solution
+- Add error message handling for duplicate email submissions
+- Display user-friendly messages when someone has already signed up
+- Implement consistent error handling across all signup forms
+
+## Implementation Details
+
+### API Response Handling
+- The `/api/subscribe` endpoint already returns `"Email already subscribed"` message for duplicate emails
+- Frontend components need to check for this specific message and display appropriate error
+
+### Error Message Display
+- Show "You're already signed up! We'll notify you when we launch." for duplicate emails
+- Display error messages in red text below the form
+- Clear error messages when user starts typing again
+
+### Components Updated
+- **Hero Section Form**: Added error state and display
+- **SignupModal**: Enhanced error handling for duplicate emails
+- **Final CTA Section**: Added error and success message display
+
+### User Experience Improvements
+- Clear feedback for duplicate submissions
+- Consistent messaging across all signup points
+- Non-frustrating experience for returning users
+
+## Files Modified
+- app/page.tsx - Hero and final CTA forms
+- app/components/SignupModal.tsx - Modal form
+
+## Error Handling Flow
+1. User submits email that already exists
+2. API returns success with "Email already subscribed" message
+3. Frontend checks for this specific message
+4. Displays user-friendly error message
+5. User understands they're already signed up
+
+## Benefits
+- Better user experience for returning visitors
+- Clear communication about signup status
+- Reduced confusion and support requests
+- Professional error handling throughout the application 

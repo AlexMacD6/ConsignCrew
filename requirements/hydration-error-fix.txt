@@ -1,0 +1,36 @@
+# Hydration Error Fix Requirements
+
+## Problem
+The listings page was experiencing hydration errors due to server/client mismatches in dynamic content rendering.
+
+## Root Cause
+- `new Date()` calls in `getTimeUntilNextDrop()` function created different values on server vs client
+- Random price drop badge using `Math.random()` caused inconsistent rendering
+- "Newly Listed" badge calculation using `new Date()` caused timing mismatches
+
+## Solution Requirements
+
+### 1. Client-Side Rendering Control
+- Add `isClient` state to track when component has hydrated
+- Use `useEffect` to set client-side rendering flag after hydration
+- Prevent dynamic content from rendering during server-side rendering
+
+### 2. Time Calculation Fixes
+- Modify `getTimeUntilNextDrop()` to return null during server-side rendering
+- Add periodic updates for time calculations (every minute)
+- Use `timeKey` state to force re-renders when time updates
+
+### 3. Deterministic Content
+- Replace `Math.random()` with deterministic logic based on listing ID
+- Ensure consistent rendering between server and client
+
+### 4. Component Updates
+- Add `useEffect` import to component
+- Add client-side rendering state management
+- Wrap dynamic content in `isClient` checks
+
+## Testing
+- Verify no hydration errors in browser console
+- Confirm dynamic content appears after initial page load
+- Test time calculations update correctly
+- Ensure consistent badge display across page refreshes 

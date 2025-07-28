@@ -1,0 +1,48 @@
+# Listings Questions & Answers System Requirements
+
+## 1. Public Q&A Display
+- All questions and answers for a specific listing are displayed publicly below the listing details (in the modal or on the listing page).
+- Only approved questions and answers are visible to the public.
+
+## 2. Admin Approval Workflow
+- All submitted questions and answers must be approved by an Admin before being released to the public.
+- An "Approve" button is available for Admins to release Q&A pairs.
+- Unapproved questions/answers are visible only to Admins (not to the seller or public).
+- Status badges indicate whether a Q&A is pending, approved (not public), or public.
+
+## 3. User Question Submission
+- Users can submit new questions for any listing via a form below the Q&A section.
+- Submitted questions are not visible to anyone except Admins until approved.
+- Optionally, notify sellers/admins when a new question is submitted.
+
+## 4. Persistence & Backend
+- All questions and answers are stored in the database (e.g., Prisma model: `Question`).
+- Fields include: `id`, `listing_id`, `question`, `answer`, `is_approved`, `is_public`, `created_by`, `created_at`, `answered_by`, `answered_at`, `approved_by`, `approved_at`.
+- API endpoints for:
+  - Submitting a question
+  - Posting an answer (by seller or admin)
+  - Approving a Q&A (admin only)
+  - Fetching public Q&A for a listing
+  - Fetching pending Q&A (admin only)
+
+## 5. Admin Restriction
+- Only users with the Admin role can:
+  - View pending/unapproved questions
+  - Approve questions/answers
+  - See the "Approve" button
+- All other users (including sellers) see only approved/public Q&A.
+
+## 6. Optional Enhancements
+- Allow sellers to answer questions, with admin approval required before public release.
+- Log who approved each Q&A for audit purposes.
+- Notify users when their question is answered and approved.
+
+## 7. Implementation Notes
+- UI should clearly distinguish between public and pending Q&A.
+- Responsive design for all Q&A components.
+- All changes should be tracked in this requirements file and referenced in PR templates. 
+
+- Add the QuestionsDisplay component to the listing pages below the listing details for each item.
+- Add a "See More" button to each listing modal that navigates to a dedicated listing page (item profile) for that item.
+- Ensure the QR code for each item redirects to this new item page.
+- Show the transportation history and log (Ordered -> Pick-Up -> QA/QC -> Ready to Ship -> Out for Delivery -> Delivered) on this new item page. 

@@ -1,0 +1,92 @@
+# Photo Navigation System Requirements
+
+## Problem
+Users need to be able to navigate back and forth between photo upload steps and the form before posting their listing, allowing them to review and modify their photos. Additionally, photos should be used to automatically fill form fields to reduce manual data entry.
+
+## Requirements
+
+### 1. Photo Upload Navigation
+- **Back Button**: Allow users to go to previous photo type
+  - Positioned in top left corner
+  - Greyed out when not available (e.g., on first photo)
+  - Navigate: additional → proof → back → hero
+- **Next Button**: Allow users to proceed to next photo type
+  - Positioned in top right corner
+  - Greyed out when current photo type has no photo uploaded
+  - Navigate: hero → back → proof → additional → form
+  - Button text changes to "Continue to Form" on additional photos
+
+### 2. Form Access Control
+- **Required Photos Enforcement**: 
+  - Users cannot access form fields until Photos #1 and #2 are uploaded
+  - Next button and "Continue to Form" only available when required photos are present
+  - Clear visual indication of photo requirements
+- **Auto-Fill Integration**: 
+  - Photos are analyzed to automatically fill form fields
+  - Auto-fill occurs when user reaches the form
+  - Reduces manual data entry and improves accuracy
+
+### 3. Form Navigation
+- **Back to Photos Button**: Allow users to return to photo upload
+  - Smart navigation: goes to first missing required photo
+  - If all required photos are uploaded, goes to additional photos
+  - Maintains user's progress in photo upload flow
+
+### 4. Navigation Logic
+- **Required Photos Validation**: 
+  - Hero photo (Photo #1) required to proceed from hero step
+  - Back photo (Photo #2) required to proceed from back step
+  - Proof photo (Photo #3) optional but recommended
+  - Additional photos optional (can skip to form only if required photos uploaded)
+- **Smart Back Navigation**:
+  - From form: goes to first missing required photo
+  - From photo steps: goes to previous photo type
+
+### 5. Photo Analysis and Auto-Fill
+- **Hero Photo Analysis**: 
+  - Item type identification
+  - Condition assessment
+  - Basic categorization
+- **Back Photo Analysis**:
+  - Port and connection identification
+  - Additional technical details
+- **Proof Photo Analysis**:
+  - Brand and model extraction (OCR)
+  - Serial number reading
+  - Authentication verification
+- **Auto-Fill Fields**:
+  - Department, category, subcategory
+  - Brand, model, serial number
+  - Condition assessment
+  - Estimated value
+  - Description generation
+
+### 6. User Experience
+- Clear visual feedback for navigation buttons
+- Consistent button styling and positioning
+- Disabled states for buttons when navigation not available (greyed out)
+- Navigation buttons positioned in top corners for easy access
+- Current step highlighting in progress indicators (gold ring and background)
+- Progress indicators show: completed (green), current (gold), pending (gray)
+- Photo previews in progress indicators with individual clear buttons
+- Current step photo preview with clear functionality
+- Maintains all uploaded photos when navigating between steps
+- Clear indication of photo requirements and auto-fill benefits
+
+### 7. Technical Requirements
+- State management for current photo type
+- Navigation functions for forward/backward movement
+- Validation functions for determining available actions
+- Photo analysis framework for auto-fill functionality
+- Photo clearing functionality for individual photos and current step
+- Photo preview system with URL.createObjectURL for real-time display
+- Integration with existing photo upload system
+
+## Testing
+- Test navigation between all photo types
+- Verify required photo validation works
+- Test form access control (cannot access without required photos)
+- Test auto-fill functionality when reaching form
+- Test smart back navigation from form
+- Confirm photos are preserved during navigation
+- Test edge cases (no photos, partial photos, all photos uploaded) 

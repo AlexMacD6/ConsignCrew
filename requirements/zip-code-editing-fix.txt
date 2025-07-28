@@ -1,0 +1,79 @@
+# Zip Code Editing Fix Requirements
+
+## Overview
+Fix the zip code editing functionality in the admin dashboard to allow administrators to add, edit, and delete zip codes for both sellers and buyers.
+
+## Current Issues
+- Zip codes are currently displayed as read-only in the admin dashboard
+- No editing functionality for existing zip codes
+- No ability to add new zip codes
+- No ability to delete zip codes
+
+## Required Changes
+
+### 1. Update Admin Dashboard Component
+- Add edit functionality for existing zip codes
+- Add delete functionality for zip codes
+- Add form to create new zip codes
+- Connect to existing zip code API endpoints
+- Add proper state management for zip code operations
+
+### 2. Zip Code Storage
+- Zip codes should be stored in the existing Prisma ZipCode table
+- Each zip code should have:
+  - code: string (the zip code)
+  - area: string (neighborhood/area name)
+  - type: string ('seller' or 'buyer')
+
+### 3. API Integration
+- Use existing `/api/admin/zipcodes` endpoint
+- Implement proper error handling
+- Add loading states for operations
+- Add success/error feedback
+
+### 4. User Interface
+- Add edit buttons for each zip code
+- Add delete buttons with confirmation
+- Add form for creating new zip codes
+- Maintain current visual organization (blue for sellers, green for buyers)
+- Add proper validation for zip code format
+
+### 5. Data Migration
+- Migrate existing hardcoded zip codes from `zipcodes.ts` to database
+- Update application to use database zip codes instead of hardcoded ones
+- Maintain backward compatibility during transition
+
+## Technical Implementation
+
+### Database Schema
+- Use existing ZipCode model in Prisma schema
+- Ensure proper indexing on code and type fields
+- Add validation for zip code format
+
+### API Endpoints
+- GET /api/admin/zipcodes - List all zip codes
+- POST /api/admin/zipcodes - Add new zip code
+- PUT /api/admin/zipcodes - Update existing zip code
+- DELETE /api/admin/zipcodes - Delete zip code
+
+### Frontend Changes
+- Update AdminDashboard component to include edit/delete functionality
+- Add proper form validation
+- Implement real-time updates after operations
+- Add confirmation dialogs for destructive operations
+
+## Testing Requirements
+- Test adding new zip codes
+- Test editing existing zip codes
+- Test deleting zip codes
+- Test validation for invalid zip codes
+- Test admin access control
+- Test data persistence
+
+## Success Criteria
+- Administrators can add new zip codes
+- Administrators can edit existing zip codes
+- Administrators can delete zip codes
+- All changes are persisted to database
+- UI provides proper feedback for all operations
+- Existing functionality continues to work 

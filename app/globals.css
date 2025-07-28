@@ -4,6 +4,76 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom scroll animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.8s ease-out forwards;
+}
+
+.animate-fade-in-left {
+  animation: fadeInLeft 0.8s ease-out forwards;
+}
+
+.animate-fade-in-right {
+  animation: fadeInRight 0.8s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.8s ease-out forwards;
+}
+
+/* Stagger animations for grid items */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+
+
+
 body {
 	font-family: 'Poppins', Arial, Helvetica, sans-serif;
 }
@@ -23,30 +93,34 @@ body,
 		--brand-primary-hex: #D4AF3D;
 		--brand-secondary: 36, 87%, 28%; /* #825E08 in HSL */
 		--brand-secondary-hex: #825E08;
+		--brand-accent: 45, 93%, 47%; /* #F4D03F in HSL - lighter gold */
+		--brand-accent-hex: #F4D03F;
+		--brand-dark: 36, 87%, 18%; /* #5D4A00 in HSL - darker gold */
+		--brand-dark-hex: #5D4A00;
 		--brand-black: #000;
 		--brand-white: #fff;
 
 		/* Override shadcn/ui system colors with brand colors */
 		--primary: 42 69% 54%; /* #D4AF3D */
-		--primary-foreground: 0 0% 100%; /* white */
+		--primary-foreground: 0 0% 9%; /* dark text */
 		--secondary: 36 87% 28%; /* #825E08 */
-		--secondary-foreground: 0 0% 100%; /* white */
+		--secondary-foreground: 0 0% 98%; /* white text */
 		--background: 0 0% 100%;
-		--foreground: 20 14.3% 4.1%;
+		--foreground: 0 0% 3.9%;
 		--card: 0 0% 100%;
-		--card-foreground: 20 14.3% 4.1%;
+		--card-foreground: 0 0% 3.9%;
 		--popover: 0 0% 100%;
-		--popover-foreground: 20 14.3% 4.1%;
-		--muted: 60 4.8% 95.9%;
-		--muted-foreground: 25 5.3% 44.7%;
-		--accent: 60 4.8% 95.9%;
-		--accent-foreground: 24 9.8% 10%;
+		--popover-foreground: 0 0% 3.9%;
+		--muted: 0 0% 96.1%;
+		--muted-foreground: 0 0% 45.1%;
+		--accent: 0 0% 96.1%;
+		--accent-foreground: 0 0% 9%;
 		--destructive: 0 84.2% 60.2%;
-		--destructive-foreground: 60 9.1% 97.8%;
-		--border: 20 5.9% 90%;
-		--input: 20 5.9% 90%;
-		--ring: 20 14.3% 4.1%;
-		--radius: 1rem;
+		--destructive-foreground: 0 0% 98%;
+		--border: 0 0% 89.8%;
+		--input: 0 0% 89.8%;
+		--ring: 0 0% 3.9%;
+		--radius: 0.5rem;
 		--chart-1: 12 76% 61%;
 		--chart-2: 173 58% 39%;
 		--chart-3: 197 37% 24%;
@@ -68,28 +142,32 @@ body,
 		--brand-primary-hex: #D4AF3D;
 		--brand-secondary: 36, 87%, 28%; /* #825E08 in HSL */
 		--brand-secondary-hex: #825E08;
+		--brand-accent: 45, 93%, 47%; /* #F4D03F in HSL - lighter gold */
+		--brand-accent-hex: #F4D03F;
+		--brand-dark: 36, 87%, 18%; /* #5D4A00 in HSL - darker gold */
+		--brand-dark-hex: #5D4A00;
 		--brand-black: #000;
 		--brand-white: #fff;
 
 		--primary: 42 69% 54%; /* #D4AF3D */
-		--primary-foreground: 0 0% 100%; /* white */
+		--primary-foreground: 0 0% 9%; /* dark text */
 		--secondary: 36 87% 28%; /* #825E08 */
-		--secondary-foreground: 0 0% 100%; /* white */
-		--background: 20 14.3% 4.1%;
-		--foreground: 60 9.1% 97.8%;
-		--card: 20 14.3% 4.1%;
-		--card-foreground: 60 9.1% 97.8%;
-		--popover: 20 14.3% 4.1%;
-		--popover-foreground: 60 9.1% 97.8%;
-		--muted: 12 6.5% 15.1%;
-		--muted-foreground: 24 5.4% 63.9%;
-		--accent: 12 6.5% 15.1%;
-		--accent-foreground: 60 9.1% 97.8%;
+		--secondary-foreground: 0 0% 98%; /* white text */
+		--background: 0 0% 3.9%;
+		--foreground: 0 0% 98%;
+		--card: 0 0% 3.9%;
+		--card-foreground: 0 0% 98%;
+		--popover: 0 0% 3.9%;
+		--popover-foreground: 0 0% 98%;
+		--muted: 0 0% 14.9%;
+		--muted-foreground: 0 0% 63.9%;
+		--accent: 0 0% 14.9%;
+		--accent-foreground: 0 0% 98%;
 		--destructive: 0 62.8% 30.6%;
-		--destructive-foreground: 60 9.1% 97.8%;
-		--border: 12 6.5% 15.1%;
-		--input: 12 6.5% 15.1%;
-		--ring: 35.5 91.7% 32.9%;
+		--destructive-foreground: 0 0% 98%;
+		--border: 0 0% 14.9%;
+		--input: 0 0% 14.9%;
+		--ring: 0 0% 83.1%;
 		--chart-1: 220 70% 50%;
 		--chart-2: 160 60% 45%;
 		--chart-3: 30 80% 55%;
@@ -108,11 +186,10 @@ body,
 
 @layer base {
 	* {
-		@apply border-border;
 		font-family: 'Poppins', Arial, Helvetica, sans-serif;
 	}
 	body {
-		@apply bg-background text-foreground;
+		@apply bg-white text-gray-900;
 		font-family: 'Poppins', Arial, Helvetica, sans-serif;
 	}
 }
@@ -185,6 +262,268 @@ html > body[data-scroll-locked] {
 /* Custom sidebar width utility */
 .lg\:ml-450px {
 	margin-left: 450px;
+}
+
+/* Packing Tetris specific styles */
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Canvas styles */
+canvas {
+  touch-action: none;
+}
+
+/* Modal backdrop */
+.modal-backdrop {
+  backdrop-filter: blur(8px);
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Landing page animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.8s ease-out forwards;
+}
+
+.animate-fade-in.delay-100 {
+  animation-delay: 0.1s;
+}
+
+.animate-fade-in.delay-200 {
+  animation-delay: 0.2s;
+}
+
+.animate-fade-in.delay-300 {
+  animation-delay: 0.3s;
+}
+
+.animate-fade-in.delay-400 {
+  animation-delay: 0.4s;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ConsignCrew brand colors for Packing Tetris */
+.consigncrew-dark {
+  background-color: #1a1a1a;
+}
+
+.consigncrew-gold {
+  background-color: #D4AF3D;
+}
+
+/* 3D Card Flip Styles */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+/* ===== BUTTON SYSTEM ===== */
+@layer components {
+  /* Base button styles */
+  .btn {
+    @apply inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Button sizes */
+  .btn-sm {
+    @apply px-3 py-2 text-sm;
+  }
+
+  .btn-md {
+    @apply px-4 py-2 text-base;
+  }
+
+  .btn-lg {
+    @apply px-6 py-3 text-lg;
+  }
+
+  .btn-xl {
+    @apply px-8 py-4 text-xl;
+  }
+
+  /* Primary buttons - Light background */
+  .btn-primary {
+    @apply bg-[#d4af3d] text-gray-900 border-2 border-[#d4af3d] hover:bg-[#825e08] hover:border-[#825e08] focus:ring-[#d4af3d] transform hover:scale-105 shadow-lg;
+  }
+
+  .btn-primary-outline {
+    @apply bg-transparent text-[#825e08] border-2 border-[#d4af3d] hover:bg-[#d4af3d] hover:text-gray-900 focus:ring-[#d4af3d] transform hover:scale-105;
+  }
+
+  /* Secondary buttons - Light background */
+  .btn-secondary {
+    @apply bg-gray-600 text-white border-2 border-gray-600 hover:bg-gray-700 hover:border-gray-700 focus:ring-gray-500 transform hover:scale-105 shadow-lg;
+  }
+
+  .btn-secondary-outline {
+    @apply bg-transparent text-gray-600 border-2 border-gray-600 hover:bg-gray-600 hover:text-white focus:ring-gray-500 transform hover:scale-105;
+  }
+
+  /* Success buttons - Light background */
+  .btn-success {
+    @apply bg-green-600 text-white border-2 border-green-600 hover:bg-green-700 hover:border-green-700 focus:ring-green-500 transform hover:scale-105 shadow-lg;
+  }
+
+  .btn-success-outline {
+    @apply bg-transparent text-green-600 border-2 border-green-600 hover:bg-green-600 hover:text-white focus:ring-green-500 transform hover:scale-105;
+  }
+
+  /* Danger buttons - Light background */
+  .btn-danger {
+    @apply bg-red-600 text-white border-2 border-red-600 hover:bg-red-700 hover:border-red-700 focus:ring-red-500 transform hover:scale-105 shadow-lg;
+  }
+
+  .btn-danger-outline {
+    @apply bg-transparent text-red-600 border-2 border-red-600 hover:bg-red-600 hover:text-white focus:ring-red-500 transform hover:scale-105;
+  }
+
+  /* Ghost buttons - Light background */
+  .btn-ghost {
+    @apply bg-transparent text-gray-700 border-2 border-transparent hover:bg-gray-100 hover:border-gray-300 focus:ring-gray-500;
+  }
+
+  /* Dark background variants */
+  .dark .btn-primary {
+    @apply bg-[#d4af3d] text-gray-900 border-2 border-[#d4af3d] hover:bg-[#f4d03f] hover:border-[#f4d03f] focus:ring-[#d4af3d] transform hover:scale-105 shadow-lg;
+  }
+
+  .dark .btn-primary-outline {
+    @apply bg-transparent text-[#d4af3d] border-2 border-[#d4af3d] hover:bg-[#d4af3d] hover:text-gray-900 focus:ring-[#d4af3d] transform hover:scale-105;
+  }
+
+  .dark .btn-secondary {
+    @apply bg-gray-500 text-white border-2 border-gray-500 hover:bg-gray-600 hover:border-gray-600 focus:ring-gray-400 transform hover:scale-105 shadow-lg;
+  }
+
+  .dark .btn-secondary-outline {
+    @apply bg-transparent text-gray-300 border-2 border-gray-500 hover:bg-gray-500 hover:text-white focus:ring-gray-400 transform hover:scale-105;
+  }
+
+  .dark .btn-success {
+    @apply bg-green-500 text-white border-2 border-green-500 hover:bg-green-600 hover:border-green-600 focus:ring-green-400 transform hover:scale-105 shadow-lg;
+  }
+
+  .dark .btn-success-outline {
+    @apply bg-transparent text-green-400 border-2 border-green-500 hover:bg-green-500 hover:text-white focus:ring-green-400 transform hover:scale-105;
+  }
+
+  .dark .btn-danger {
+    @apply bg-red-500 text-white border-2 border-red-500 hover:bg-red-600 hover:border-red-600 focus:ring-red-400 transform hover:scale-105 shadow-lg;
+  }
+
+  .dark .btn-danger-outline {
+    @apply bg-transparent text-red-400 border-2 border-red-500 hover:bg-red-500 hover:text-white focus:ring-red-400 transform hover:scale-105;
+  }
+
+  .dark .btn-ghost {
+    @apply bg-transparent text-gray-300 border-2 border-transparent hover:bg-gray-800 hover:border-gray-600 focus:ring-gray-400;
+  }
+
+  /* Special floating button style */
+  .btn-floating {
+    @apply bg-red-600 hover:bg-red-700 text-white rounded-full p-5 shadow-2xl border-4 border-white transition-all duration-300 hover:scale-110 transform hover:translate-x-2 hover:translate-y-2;
+  }
+
+  .dark .btn-floating {
+    @apply bg-red-500 hover:bg-red-600 text-white rounded-full p-5 shadow-2xl border-4 border-gray-800 transition-all duration-300 hover:scale-110 transform hover:translate-x-2 hover:translate-y-2;
+  }
+
+  /* Icon button styles */
+  .btn-icon {
+    @apply p-2 rounded-lg;
+  }
+
+  .btn-icon-sm {
+    @apply p-1.5 rounded-md;
+  }
+
+  .btn-icon-lg {
+    @apply p-3 rounded-xl;
+  }
+
+  /* Loading state */
+  .btn-loading {
+    @apply opacity-75 cursor-not-allowed;
+  }
+
+  .btn-loading::after {
+    content: '';
+    @apply inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin ml-2;
+  }
 }
 
 

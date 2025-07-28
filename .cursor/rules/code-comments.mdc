@@ -1,0 +1,38 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Code Commenting Guidelines
+
+Thoroughly comment your code to explain what each section is doing and why when relevant.
+
+Comments should make the code understandable to someone unfamiliar with your work.
+
+Use clear, concise language.
+
+For complex logic, add more detailed explanations.
+
+Example:
+
+```ts
+/**
+ * Retrieves a user and all their published posts.
+ * Use when displaying a user's public profile or content feed.
+ */
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
+
+async function getUserWithPublishedPosts(userId: number) {
+  // Fetch user and only their published posts (not drafts)
+  return await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      posts: {
+        where: { published: true },
+      },
+    },
+  });
+}
+
+```

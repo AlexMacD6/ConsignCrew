@@ -1,0 +1,24 @@
+# React Scrollama useInView Hook Fix
+
+## Issue
+- TypeError: (0 , react_scrollama__WEBPACK_IMPORTED_MODULE_2__.useInView) is not a function
+- The useInView hook does not exist in react-scrollama package
+- react-scrollama only exports Scrollama and Step components, not hooks
+
+## Changes Made
+- Replaced react-scrollama with react-intersection-observer
+  - Installed react-intersection-observer package
+  - Updated ScrollSection.tsx to use useInView from react-intersection-observer
+  - Fixed ref destructuring to use proper object destructuring
+- Removed incorrect type definitions
+  - Deleted types/react-scrollama.d.ts as it was incorrect
+  - react-intersection-observer has proper TypeScript support
+
+## Dependencies
+- react-intersection-observer: ^9.8.1 (newly installed)
+- react-scrollama: ^2.4.2 (kept for other components that might use it)
+
+## Testing
+- Verify that ScrollSection component renders without errors
+- Check that scroll animations work properly
+- Ensure TypeScript compilation passes without errors 

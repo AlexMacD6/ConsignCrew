@@ -1,0 +1,68 @@
+# Image Carousel Feature for Listings Gallery
+
+## Problem
+The listings gallery currently shows only a single static image per listing, making it difficult for users to view all available photos of an item without opening the full listing details.
+
+## Requirements
+- Add a carousel component to display multiple images for each listing
+- Allow users to navigate through images using left/right arrow buttons
+- Show image counter (e.g., "2 / 5") to indicate current position
+- Display navigation dots at the bottom for quick image selection
+- Support keyboard navigation (arrow keys)
+- Maintain responsive design for different screen sizes
+- Show carousel only when multiple images are available
+
+## Technical Implementation
+
+### Components Created
+1. **ImageCarousel.tsx** - Reusable carousel component with:
+   - Left/right navigation arrows
+   - Image counter display
+   - Navigation dots
+   - Keyboard navigation support
+   - Hover effects for arrows
+   - Auto-play capability (optional)
+
+### Features Implemented
+1. **Modal View Enhancement**:
+   - Replaced single image with carousel in listing detail modal
+   - Shows all available images (hero, back, proof, additional)
+   - Full-size carousel with arrows and dots
+
+2. **Grid View Enhancement**:
+   - Added carousel to grid items when multiple images exist
+   - Compact carousel with arrows only (no dots)
+   - Falls back to single image when only one photo available
+
+3. **Data Transformation**:
+   - Created `all_images` array containing all available photos
+   - Filters out null/undefined values
+   - Converts S3 keys to CloudFront URLs using existing helper function
+
+### User Experience
+- **Hover to Reveal**: Navigation arrows appear on hover
+- **Visual Feedback**: Smooth transitions and hover effects
+- **Accessibility**: Keyboard navigation and ARIA labels
+- **Responsive**: Works on mobile and desktop
+- **Performance**: Only loads carousel when multiple images exist
+
+## Testing Instructions
+1. Navigate to the listings page
+2. Look for listings with multiple photos (should show carousel in grid)
+3. Hover over grid images to see navigation arrows
+4. Click on a listing to open modal
+5. Test carousel navigation in modal:
+   - Click left/right arrows
+   - Click navigation dots
+   - Use keyboard arrow keys
+   - Verify image counter updates
+6. Test on mobile devices for touch navigation
+
+## Files Modified
+- `app/components/ImageCarousel.tsx` (new)
+- `app/(dashboard)/listings/page.tsx` (updated)
+
+## Dependencies
+- Lucide React icons (ChevronLeft, ChevronRight)
+- Existing photo URL conversion logic
+- Tailwind CSS for styling 
