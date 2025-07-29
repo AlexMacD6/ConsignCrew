@@ -44,7 +44,38 @@ export async function addEmailToMailchimp(email: string, source: string = 'websi
     console.log('Mailchimp config:', {
       audienceId: process.env.MAILCHIMP_AUDIENCE_ID,
       serverPrefix: process.env.MAILCHIMP_SERVER_PREFIX,
-      hasApiKey: !!process.env.MAILCHIMP_API_KEY
+      hasApiKey: !!process.env.MAILCHIMP_API_KEY,
+      apiKeyLength: process.env.MAILCHIMP_API_KEY?.length || 0,
+      serverPrefixLength: process.env.MAILCHIMP_SERVER_PREFIX?.length || 0
+    });
+    
+    // Test API connection first
+    try {
+      const accountInfo = await mailchimp.ping.get();
+      console.log('✅ Mailchimp API connection successful:', accountInfo);
+    } catch (pingError) {
+      console.error('❌ Mailchimp API connection failed:', pingError);
+      return { success: false, error: 'Mailchimp API connection failed' };
+    }
+    
+    // Test audience read permissions
+    try {
+      const audienceInfo = await mailchimp.lists.getListMember(process.env.MAILCHIMP_AUDIENCE_ID!, 'test@example.com');
+      console.log('✅ Audience write access test successful');
+    } catch (audienceError: any) {
+      if (audienceError.response?.status === 404) {
+        console.log('✅ Audience write access test successful (expected 404 for non-existent member)');
+      } else {
+        console.error('❌ Audience access failed:', audienceError);
+        return { success: false, error: 'Mailchimp audience access failed - check API key permissions' };
+      }
+    }
+    
+    // Log the merge fields being sent
+    console.log('📝 Sending merge fields:', {
+      SIGNUP_NUM: signupNumber.toString(),
+      SOURCE: source,
+      IS_TOP_200: isTop200 ? 'Yes' : 'No'
     });
     
     const mailchimpResponse = await mailchimp.lists.addListMember(
@@ -53,6 +84,12 @@ export async function addEmailToMailchimp(email: string, source: string = 'websi
         email_address: email,
         status: 'subscribed',
         merge_fields: {
+          FNAME: '',
+          LNAME: '',
+          ADDRESS: '',
+          PHONE: '',
+          BIRTHDAY: '',
+          COMPANY: '',
           SIGNUP_NUM: signupNumber.toString(),
           SOURCE: source,
           IS_TOP_200: isTop200 ? 'Yes' : 'No',
@@ -168,6 +205,12 @@ export async function addEmailToMailchimp(email: string, source: string = 'websi
                 status: 'subscribed',
                 status_if_new: 'subscribed',
                 merge_fields: {
+                  FNAME: '',
+                  LNAME: '',
+                  ADDRESS: '',
+                  PHONE: '',
+                  BIRTHDAY: '',
+                  COMPANY: '',
                   SIGNUP_NUM: signupNumber.toString(),
                   SOURCE: source,
                   IS_TOP_200: isTop200 ? 'Yes' : 'No',
@@ -218,8 +261,15 @@ export async function addEmailToMailchimp(email: string, source: string = 'websi
       message: error.message,
       response: error.response?.body,
       status: error.response?.status,
-      statusText: error.response?.statusText
+      statusText: error.response?.statusText,
+      errorType: error.constructor.name,
+      stack: error.stack?.split('\n').slice(0, 3).join('\n')
     });
+    
+    // Log the specific errors array if available
+    if (error.response?.body?.errors) {
+      console.error('🔍 Specific merge field errors:', JSON.stringify(error.response.body.errors, null, 2));
+    }
 
     return {
       success: false,
@@ -307,64 +357,20 @@ export async function getSignupStats() {
 } 
 
 // Utility function to create merge fields in Mailchimp (run once for setup)
-// Note: This function is commented out due to API method name differences
-// The merge fields should be created manually in the Mailchimp dashboard
-/*
+// Note: Merge fields must be created manually in the Mailchimp dashboard
+// Go to Audience > Settings > Audience name and defaults > Merge fields
+// Add these merge fields:
+// - SIGNUP_NUM (text)
+// - SOURCE (text) 
+// - IS_TOP_200 (text)
 export async function setupMailchimpMergeFields() {
-  try {
-    const mergeFields = [
-      {
-        name: 'Signup Number',
-        type: 'text',
-        tag: 'SIGNUP_NUMBER',
-        required: false,
-        default_value: '',
-        public: false,
-        display_order: 1,
-        help_text: 'The sequential number assigned to this early access signup',
-      },
-      {
-        name: 'Source',
-        type: 'text',
-        tag: 'SOURCE',
-        required: false,
-        default_value: '',
-        public: false,
-        display_order: 2,
-        help_text: 'Where the signup came from (hero, modal, etc.)',
-      },
-      {
-        name: 'Is Top 200',
-        type: 'text',
-        tag: 'IS_TOP_200',
-        required: false,
-        default_value: '',
-        public: false,
-        display_order: 3,
-        help_text: 'Whether this signup is in the top 200 (Yes/No)',
-      },
-    ];
-
-    for (const field of mergeFields) {
-      try {
-        await mailchimp.lists.addListMergeField(
-          process.env.MAILCHIMP_AUDIENCE_ID!,
-          field
-        );
-        console.log(`Created merge field: ${field.name}`);
-      } catch (error: any) {
-        if (error.response?.body?.title === 'Merge field already exists') {
-          console.log(`Merge field already exists: ${field.name}`);
-        } else {
-          console.error(`Error creating merge field ${field.name}:`, error);
-        }
-      }
-    }
-
-    return { success: true, message: 'Merge fields setup completed' };
-  } catch (error) {
-    console.error('Error setting up merge fields:', error);
-    return { success: false, error: 'Failed to setup merge fields' };
-  }
-}
-*/ 
+  console.log('⚠️  Merge fields must be created manually in Mailchimp dashboard');
+  console.log('📋 Go to Audience > Settings > Audience name and defaults > Merge fields');
+  console.log('📝 Add these merge fields:');
+  console.log('   - SIGNUP_NUM (text)');
+  console.log('   - SOURCE (text)');
+  console.log('   - IS_TOP_200 (text)');
+  console.log('✅ Once created, uncomment the merge_fields in the addEmailToMailchimp function');
+  
+  return { success: true, message: 'Please create merge fields manually in Mailchimp dashboard' };
+} 

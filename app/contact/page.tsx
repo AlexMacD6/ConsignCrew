@@ -3,6 +3,10 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { useModal } from "../contexts/ModalContext";
+import {
+  submitContactForm,
+  type ContactFormData,
+} from "../lib/contact-actions";
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -34,17 +38,9 @@ export default function ContactPage() {
     setError("");
 
     try {
-      const response = await fetch("/api/contact", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
+      const result = await submitContactForm(formData as ContactFormData);
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (result.success) {
         setSubmitSuccess(true);
         setFormData({
           name: "",
@@ -53,7 +49,7 @@ export default function ContactPage() {
           message: "",
         });
       } else {
-        setError(data.error || "Failed to send message");
+        setError(result.message);
       }
     } catch (error) {
       setError("Network error. Please try again.");
