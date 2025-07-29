@@ -147,7 +147,7 @@ export default function HomePage() {
                     <div className="relative">
                       <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-treasure-500/20 to-treasure-600/20 p-2">
                         <iframe
-                          src="https://www.youtube.com/embed/E-YgSpgl6M0?autoplay=1&mute=1&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1"
+                          src="https://www.youtube.com/embed/9hmtpNu3_Lk?autoplay=1&mute=1&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1"
                           title="TreasureHub - How Easy It Is To Get Paid"
                           className="w-full h-auto rounded-xl"
                           style={{ aspectRatio: "16/10", minHeight: "400px" }}
