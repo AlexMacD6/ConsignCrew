@@ -75,19 +75,19 @@ const Roadmap: React.FC = () => {
   return (
     <section
       id="roadmap"
-      className="py-16 px-4 bg-gradient-to-br from-gray-50 to-gray-100"
+      className="py-12 lg:py-16 px-4 bg-gradient-to-br from-gray-50 to-gray-100"
     >
       <div className="max-w-6xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-12"
+          className="text-center mb-8 lg:mb-12"
         >
-          <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 lg:mb-6">
             Our Roadmap
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto px-4">
             Here's what to expect as we build the future of stress-free selling.
           </p>
         </motion.div>

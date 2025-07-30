@@ -9,7 +9,7 @@ import {
   NavigationMenuItem,
   NavigationMenuLink,
 } from "./ui/navigation-menu";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { useModal } from "../contexts/ModalContext";
 
@@ -20,6 +20,7 @@ export default function NavBar() {
   const inactiveClass = "text-gray-600 hover:text-blue-600";
   const { data: session } = authClient.useSession();
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { openSignupModal } = useModal();
 
   const handleSignOut = async () => {
@@ -43,6 +44,8 @@ export default function NavBar() {
       // If we're on another page, navigate to landing page with section hash
       router.push(`/#${sectionId}`);
     }
+    // Close mobile menu after navigation
+    setMobileMenuOpen(false);
   };
 
   return (
@@ -53,11 +56,12 @@ export default function NavBar() {
           <img
             src="/TreasureHub Banner Logo.png"
             alt="TreasureHub logo"
-            className="h-16 w-auto object-contain drop-shadow-md cursor-pointer"
+            className="h-12 sm:h-16 w-auto object-contain drop-shadow-md cursor-pointer"
           />
         </Link>
       </div>
-      {/* Marketing Links (center, hidden on mobile) */}
+
+      {/* Desktop Navigation Links (hidden on mobile) */}
       <div className="hidden md:flex gap-8 text-[#222] font-medium text-base">
         <button
           onClick={() => handleNavigation("how-it-works")}
@@ -93,8 +97,21 @@ export default function NavBar() {
           Our Origin
         </Link>
       </div>
-      {/* Session-aware buttons (right) */}
+
+      {/* Mobile Menu Button and Session-aware buttons (right) */}
       <div className="flex items-center gap-3">
+        {/* Mobile Menu Button */}
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="md:hidden p-2 text-gray-600 hover:text-[#D4AF3D] transition"
+        >
+          {mobileMenuOpen ? (
+            <X className="h-6 w-6" />
+          ) : (
+            <Menu className="h-6 w-6" />
+          )}
+        </button>
+
         {session?.user ? (
           <>
             <Link href="/list-item" className="btn btn-primary btn-md">
@@ -134,6 +151,72 @@ export default function NavBar() {
           </button>
         )}
       </div>
+
+      {/* Mobile Navigation Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden absolute top-full left-0 right-0 bg-white/95 backdrop-blur border-b border-[#eee] shadow-lg">
+          <div className="px-6 py-4 space-y-4">
+            {/* Landing Page Sections */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                Sections
+              </h3>
+              <button
+                onClick={() => handleNavigation("how-it-works")}
+                className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+              >
+                How It Works
+              </button>
+              <button
+                onClick={() => handleNavigation("pricing")}
+                className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+              >
+                Pricing
+              </button>
+              <button
+                onClick={() => handleNavigation("why-treasurehub")}
+                className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+              >
+                Why TreasureHub
+              </button>
+              <button
+                onClick={() => handleNavigation("roadmap")}
+                className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+              >
+                Roadmap
+              </button>
+            </div>
+
+            {/* Other Pages */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                Pages
+              </h3>
+              <Link
+                href="/faq"
+                className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                FAQ
+              </Link>
+              <Link
+                href="/contact"
+                className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Contact
+              </Link>
+              <Link
+                href="/our-origin"
+                className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Our Origin
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }

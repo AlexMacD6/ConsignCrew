@@ -1,4 +1,4 @@
-# ConsignCrew - Packing Tetris Landing Page
+# TreasureHub - Packing Tetris Landing Page
 
 A stunning 3D interactive landing page featuring boxes "Tetris-dropping" into a shipping crate. When the crate fills up, the camera dives inside to reveal an email signup modal.
 
@@ -26,7 +26,7 @@ A stunning 3D interactive landing page featuring boxes "Tetris-dropping" into a 
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd consigncrew-packing-tetris
+   cd treasurehub-packing-tetris
    ```
 
 2. **Install dependencies**
@@ -193,4 +193,4 @@ For questions or issues, please open an issue on GitHub or contact the developme
 
 ---
 
-**Built with ❤️ for ConsignCrew**
+**Built with ❤️ for TreasureHub**

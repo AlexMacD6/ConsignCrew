@@ -32,7 +32,7 @@ const aiResponses = [
   {
     category: 'Pricing & Offers',
     triggerPhrases: ['Can I offer less?', 'Is the price negotiable?', 'Will you take less?'],
-    response: 'All ConsignCrew listings are fixed-price to protect both buyers and sellers. No haggling necessary!',
+    response: 'All TreasureHub listings are fixed-price to protect both buyers and sellers. No haggling necessary!',
     tags: ['pricing', 'offers'],
     autoResponse: true,
     escalateIfUnclear: false
@@ -134,7 +134,7 @@ const aiResponses = [
   {
     category: 'Delivery Updates',
     triggerPhrases: ['Where\'s my item?', 'Can I track my delivery?', 'Is the driver on the way?'],
-    response: 'Track your item in real-time using your ConsignCrew tracking link. We\'ll update you every step of the way.',
+    response: 'Track your item in real-time using your TreasureHub tracking link. We\'ll update you every step of the way.',
     tags: ['delivery', 'tracking'],
     autoResponse: true,
     escalateIfUnclear: false
@@ -142,8 +142,8 @@ const aiResponses = [
   // General
   {
     category: 'General',
-    triggerPhrases: ['What is ConsignCrew?', 'How does this work?', 'What do you do?'],
-    response: 'ConsignCrew connects sellers with buyers through a trusted, local resale platform. We handle the hard parts.',
+    triggerPhrases: ['What is TreasureHub?', 'How does this work?', 'What do you do?'],
+    response: 'TreasureHub connects sellers with buyers through a trusted, local resale platform. We handle the hard parts.',
     tags: ['about', 'platform'],
     autoResponse: true,
     escalateIfUnclear: false
@@ -151,7 +151,7 @@ const aiResponses = [
   {
     category: 'General',
     triggerPhrases: ['How do I sell something?', 'Can I list my own item?', 'Do you take consignments?'],
-    response: 'Yes! Head to consigncrew.com/sell to get started. We pick it up, list it, and handle everything for you.',
+    response: 'Yes! Head to treasurehub.club/list-item to get started. We pick it up, list it, and handle everything for you.',
     tags: ['seller', 'intake'],
     autoResponse: true,
     escalateIfUnclear: false

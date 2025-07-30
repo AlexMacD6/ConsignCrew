@@ -1,7 +1,7 @@
 # Typed S3 Image Storage SDK Requirements
 
 ## Problem
-ConsignCrew needs a clean, typed SDK for managing image uploads to S3 with specific folder structure and lifecycle rules. The system must handle pre-signed URLs, file validation, and batch operations across multiple storage prefixes.
+TreasureHub needs a clean, typed SDK for managing image uploads to S3 with specific folder structure and lifecycle rules. The system must handle pre-signed URLs, file validation, and batch operations across multiple storage prefixes.
 
 ## Requirements
 
@@ -78,8 +78,8 @@ ConsignCrew needs a clean, typed SDK for managing image uploads to S3 with speci
 - `AWS_REGION`: AWS region (e.g., us-east-1)
 - `AWS_ACCESS_KEY_ID`: AWS access key
 - `AWS_SECRET_ACCESS_KEY`: AWS secret key
-- `S3_BUCKET`: S3 bucket name (e.g., consigncrew-images)
-- `CF_DOMAIN`: CloudFront domain (e.g., cdn.consigncrew.com)
+- `S3_BUCKET`: S3 bucket name (e.g., treasurehub-images)
+- `CF_DOMAIN`: CloudFront domain (e.g., cdn.treasurehub.club)
 
 ## Testing Strategy
 - **Mock AWS SDK**: Complete mocking of S3Client and presigner

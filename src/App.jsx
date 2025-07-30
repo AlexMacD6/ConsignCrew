@@ -47,7 +47,7 @@ function App() {
     return (
       <div className="w-full h-screen bg-gradient-to-br from-consigncrew-dark to-gray-900 flex items-center justify-center">
         <div className="text-center text-white">
-          <h1 className="text-4xl font-bold mb-4">Welcome back to ConsignCrew!</h1>
+          <h1 className="text-4xl font-bold mb-4">Welcome back to TreasureHub!</h1>
           <p className="text-xl text-gray-300">You're already signed up for early access.</p>
           <button
             onClick={() => {
@@ -68,9 +68,9 @@ function App() {
     return (
       <div className="w-full h-screen bg-gradient-to-br from-consigncrew-dark to-gray-900 flex items-center justify-center">
         <div className="text-center text-white max-w-2xl mx-auto p-8">
-          <h1 className="text-5xl font-bold mb-6 text-consigncrew-gold">
-            ConsignCrew
-          </h1>
+                  <h1 className="text-5xl font-bold mb-6 text-consigncrew-gold">
+          TreasureHub
+        </h1>
           <h2 className="text-3xl font-semibold mb-4">
             The Future of Consignment
           </h2>

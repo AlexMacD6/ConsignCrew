@@ -103,7 +103,7 @@ function SignupModal({ open, onClose, onSuccess, static: isStatic = false }) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to ConsignCrew!</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to TreasureHub!</h2>
               <p className="text-gray-600">You're now signed up for early access. We'll notify you when we launch!</p>
             </div>
           ) : (

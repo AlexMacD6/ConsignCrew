@@ -1,7 +1,7 @@
 # Roadmap Component Separation
 
 ## Overview
-Separate the roadmap component from the TreasureMapCards component and place it as a standalone section below the "Why ConsignCrew" component.
+Separate the roadmap component from the TreasureMapCards component and place it as a standalone section below the "Why TreasureHub" component.
 
 ## Changes Made
 
@@ -50,7 +50,7 @@ Separate the roadmap component from the TreasureMapCards component and place it 
 
 ## User Experience
 - Roadmap now appears as a separate, dedicated section below the treasure cards
-- Clear visual separation between the "Why ConsignCrew" sand reveal and the roadmap
+- Clear visual separation between the "Why TreasureHub" sand reveal and the roadmap
 - Maintains the treasure map theme with red dotted lines and nodes
 - Responsive design that works on all screen sizes
 
@@ -60,7 +60,7 @@ Separate the roadmap component from the TreasureMapCards component and place it 
 
 ## Testing Instructions
 1. Navigate to the landing page
-2. Scroll down to the "Why ConsignCrew" section
+2. Scroll down to the "Why TreasureHub" section
 3. Verify the sand reveal animation works correctly
 4. Continue scrolling to see the "Your Treasure Map" section
 5. Verify the roadmap appears with bouncing nodes and swaying dotted line

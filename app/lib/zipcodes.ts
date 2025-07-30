@@ -1,5 +1,5 @@
 /**
- * Approved ZIP codes for ConsignCrew marketplace
+ * Approved ZIP codes for TreasureHub marketplace
  * Now fetches from database via API instead of hardcoded values
  */
 

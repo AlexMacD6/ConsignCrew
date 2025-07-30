@@ -1,7 +1,7 @@
 # Treasure Map Flip Cards Enhancement
 
 ## Overview
-Replaced the static "Why ConsignCrew" benefit cards with interactive treasure map flip cards using Framer Motion animations.
+Replaced the static "Why TreasureHub" benefit cards with interactive treasure map flip cards using Framer Motion animations.
 
 ## Changes Made
 
@@ -26,7 +26,7 @@ Replaced the static "Why ConsignCrew" benefit cards with interactive treasure ma
 - Treasure map theme with amber/yellow color scheme
 - Emoji icons for visual appeal and clarity
 - Gradient backgrounds for depth
-- Consistent branding with ConsignCrew colors
+- Consistent branding with TreasureHub colors
 
 ## Technical Implementation
 

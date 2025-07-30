@@ -8,13 +8,13 @@ async function setupAdmin() {
 
     // Create default admin organization
     const adminOrg = await prisma.organization.upsert({
-      where: { slug: 'consigncrew-admin' },
+      where: { slug: 'treasurehub-admin' },
       update: {},
       create: {
-        name: 'ConsignCrew Admin',
-        slug: 'consigncrew-admin',
+        name: 'TreasureHub Admin',
+        slug: 'treasurehub-admin',
         metadata: JSON.stringify({
-          description: 'Default admin organization for ConsignCrew',
+          description: 'Default admin organization for TreasureHub',
           type: 'admin',
         }),
       },

@@ -1,6 +1,6 @@
-# Admin Setup Guide for ConsignCrew
+# Admin Setup Guide for TreasureHub
 
-This guide explains how to set up and use the admin functionality in ConsignCrew using Better Auth's organization system.
+This guide explains how to set up and use the admin functionality in TreasureHub using Better Auth's organization system.
 
 ## Overview
 
@@ -17,7 +17,7 @@ node scripts/setup-admin.js
 ```
 
 This script will:
-- Create a default "ConsignCrew Admin" organization
+- Create a default "TreasureHub Admin" organization
 - Assign the first user as an `OWNER` of this organization
 - Enable admin access for that user
 
