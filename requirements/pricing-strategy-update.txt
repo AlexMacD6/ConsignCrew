@@ -1,0 +1,53 @@
+# Pricing Strategy Update Requirements
+
+## Overview
+Update the pricing strategy on the landing page to reflect new fee percentages and component breakdowns.
+
+## Changes Made
+
+### Fee Percentages by Tier
+- **Under $100**: Changed from 40% to 50% fee
+- **$100-$500**: Changed from 35% to 40% fee  
+- **Over $500**: Changed from 30% to 35% fee
+
+### Component Breakdown Updates
+
+#### Logistics
+- **Under $100**: 14% → 20%
+- **$100-$500**: 9% → 11%
+- **Over $500**: 5% (unchanged)
+- **Description**: Updated to "Pickup, first/last-mile shipping, 14-day storage"
+
+#### Prep & Quality
+- **Under $100**: 3% → 5%
+- **$100-$500**: 4% → 5%
+- **Over $500**: 5% → 7%
+- **Description**: Updated to "Cleaning, pro photos, authentication"
+
+#### Payment & Protection
+- **Under $100**: 7% (unchanged)
+- **$100-$500**: 6% (unchanged)
+- **Over $500**: 6% (unchanged)
+- **Description**: Updated to "Card/ACH fees, fraud screening, damage/return pool"
+
+#### Platform Ops & Support
+- **Under $100**: 6% (unchanged)
+- **$100-$500**: 6% (unchanged)
+- **Over $500**: 5% (unchanged)
+- **Description**: Updated to "Servers, engineers, 30-sec help line, compliance, marketing"
+
+#### TreasureHub Re-Investment
+- **Under $100**: 10% → 12%
+- **$100-$500**: 10% → 12%
+- **Over $500**: 9% → 12%
+- **Description**: Updated to "Platform development"
+
+## Files Modified
+- `app/components/PriceSlider.tsx` - Updated pricing tiers with new fee percentages
+- `app/components/ServiceFeeBreakdown.tsx` - Updated component breakdown percentages and descriptions
+
+## Testing
+- Verify that the price slider shows correct fee percentages for each tier
+- Confirm that the service fee breakdown chart displays updated percentages
+- Test hover interactions to ensure updated descriptions appear correctly
+- Validate that total percentages add up correctly for each tier 

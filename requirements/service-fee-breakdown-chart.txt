@@ -1,0 +1,36 @@
+Service Fee Breakdown Chart Requirements
+
+- Add a stacked bar chart to the landing page pricing section that breaks down the service fee components
+- Show the percentage breakdown for each pricing tier based on the data provided:
+  
+  Under $100 (40% fee):
+  - Logistics (Pickup + shipping + 14-day storage): 14%
+  - Prep & Quality (Cleaning, photos, authentication): 3%
+  - Payment & Protection (Card fees, fraud, damage pool): 7%
+  - Platform Ops & Support (Servers, help line, compliance, marketing): 6%
+  - TreasureHub Re-invest / Profit: 10%
+
+  $100 – $500 (35% fee):
+  - Logistics: 9%
+  - Prep & Quality: 4%
+  - Payment & Protection: 6%
+  - Platform Ops & Support: 6%
+  - TreasureHub Re-invest / Profit: 10%
+
+  Over $500 (30% fee):
+  - Logistics: 5%
+  - Prep & Quality: 5%
+  - Payment & Protection: 6%
+  - Platform Ops & Support: 5%
+  - TreasureHub Re-invest / Profit: 9%
+
+- The chart should update dynamically based on the price slider position
+- Use different colors for each fee component category
+- Display both percentage and dollar amount for each component
+- Include a legend explaining what each component covers
+- Make the chart responsive and mobile-friendly
+- Integrate seamlessly with the existing PriceSlider component
+- Use consistent styling with the rest of the landing page
+- Show as a vertical bar chart within the Service Fee box
+- Display detailed breakdown information only on hover
+- Include hover tooltips with component details and dollar amounts 

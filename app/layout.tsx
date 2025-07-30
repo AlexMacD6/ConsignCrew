@@ -4,12 +4,84 @@ import { ReactNode } from "react";
 import Link from "next/link";
 import Script from "next/script";
 import NavBar from "./components/NavBar";
+import Footer from "./components/Footer";
 import { ModalProvider } from "./contexts/ModalContext";
 
 export const metadata: Metadata = {
-  title: "TreasureHub | Sell Stress-Free",
+  title: {
+    default:
+      "TreasureHub | Sell Your Items Stress-Free - Professional Consignment Service",
+    template: "%s | TreasureHub",
+  },
+  description:
+    "TreasureHub is a professional consignment service that handles everything from pickup to sale. We clean, photograph, authenticate, and sell your items with transparent pricing. Get the most value for your belongings with our expert team.",
+  keywords: [
+    "consignment service",
+    "sell items online",
+    "professional selling",
+    "item authentication",
+    "stress-free selling",
+    "online marketplace",
+    "treasure hub",
+    "sell belongings",
+    "professional photography",
+    "item cleaning",
+  ],
+  authors: [{ name: "TreasureHub Team" }],
+  creator: "TreasureHub",
+  publisher: "TreasureHub",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  metadataBase: new URL("https://treasurehub.club"),
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://treasurehub.club",
+    siteName: "TreasureHub",
+    title: "TreasureHub | Sell Your Items Stress-Free",
+    description:
+      "Professional consignment service that handles everything from pickup to sale. Get the most value for your belongings.",
+    images: [
+      {
+        url: "/TreasureHub - Banner Black.png",
+        width: 1200,
+        height: 630,
+        alt: "TreasureHub - Professional Consignment Service",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "TreasureHub | Sell Your Items Stress-Free",
+    description:
+      "Professional consignment service that handles everything from pickup to sale.",
+    images: ["/TreasureHub - Banner Black.png"],
+    creator: "@treasurehub",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  verification: {
+    google: "your-google-verification-code", // Replace with actual verification code
+  },
   icons: {
     icon: "/TreasureHub - Favicon Black.png",
+    shortcut: "/TreasureHub - Favicon Black.png",
+    apple: "/TreasureHub - Favicon Black.png",
   },
 };
 
@@ -30,11 +102,75 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             gtag('config', 'G-B483BLYZEF');
           `}
         </Script>
+
+        {/* JSON-LD Structured Data */}
+        <Script
+          id="structured-data"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "TreasureHub",
+              url: "https://treasurehub.club",
+              logo: "https://treasurehub.club/TreasureHub - Logo.png",
+              description:
+                "Professional consignment service that handles everything from pickup to sale. We clean, photograph, authenticate, and sell your items with transparent pricing.",
+              foundingDate: "2024",
+              sameAs: [
+                "https://x.com/TreasureHubClub",
+                "https://facebook.com/treasurehubclub",
+                "https://www.instagram.com/treasurehubclub/",
+                "https://www.tiktok.com/@treasurehubclub",
+              ],
+              contactPoint: {
+                "@type": "ContactPoint",
+                contactType: "customer service",
+                url: "https://treasurehub.club/contact",
+              },
+              serviceType: "Consignment Service",
+              areaServed: "United States",
+              hasOfferCatalog: {
+                "@type": "OfferCatalog",
+                name: "Consignment Services",
+                itemListElement: [
+                  {
+                    "@type": "Offer",
+                    itemOffered: {
+                      "@type": "Service",
+                      name: "Professional Item Photography",
+                      description: "High-quality photography for your items",
+                    },
+                  },
+                  {
+                    "@type": "Offer",
+                    itemOffered: {
+                      "@type": "Service",
+                      name: "Item Authentication",
+                      description:
+                        "Professional authentication of valuable items",
+                    },
+                  },
+                  {
+                    "@type": "Offer",
+                    itemOffered: {
+                      "@type": "Service",
+                      name: "Item Cleaning & Preparation",
+                      description:
+                        "Professional cleaning and preparation of items for sale",
+                    },
+                  },
+                ],
+              },
+            }),
+          }}
+        />
       </head>
       <body className="bg-gray-50 min-h-screen">
         <ModalProvider>
           <NavBar />
           {children}
+          <Footer />
         </ModalProvider>
       </body>
     </html>

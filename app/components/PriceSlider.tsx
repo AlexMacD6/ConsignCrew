@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
+import ServiceFeeBreakdown from "./ServiceFeeBreakdown";
 
 interface PricingTier {
   minPrice: number;
@@ -15,7 +16,7 @@ const pricingTiers: PricingTier[] = [
   {
     minPrice: 50,
     maxPrice: 99,
-    feePercentage: 40,
+    feePercentage: 50,
     label: "Basic Items",
     description: "Items valued $50-$99",
     features: [
@@ -27,7 +28,7 @@ const pricingTiers: PricingTier[] = [
   {
     minPrice: 100,
     maxPrice: 499,
-    feePercentage: 35,
+    feePercentage: 40,
     label: "Standard Items",
     description: "Items valued $100-$499",
     features: [
@@ -39,7 +40,7 @@ const pricingTiers: PricingTier[] = [
   {
     minPrice: 500,
     maxPrice: 999999,
-    feePercentage: 30,
+    feePercentage: 35,
     label: "Premium Items",
     description: "Items valued $500+",
     features: [
@@ -148,7 +149,7 @@ export default function PriceSlider() {
       </div>
 
       {/* Pricing Breakdown */}
-      <div className="grid md:grid-cols-2 gap-8">
+      <div className="grid md:grid-cols-2 gap-8 mb-8">
         {/* Seller's Cut */}
         <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-8 border border-gray-200 text-center hover:bg-white transition-all shadow-lg">
           <h3 className="text-2xl font-bold text-gray-900 mb-2">
@@ -164,17 +165,31 @@ export default function PriceSlider() {
         </div>
 
         {/* Service Fee */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-8 border border-gray-200 text-center hover:bg-white transition-all shadow-lg">
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">Service Fee</h3>
-          <div className="text-4xl sm:text-5xl font-bold text-treasure-500 mb-2">
-            $
-            {conciergeFee.toLocaleString(undefined, {
-              maximumFractionDigits: 0,
-            })}
+        <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-8 border border-gray-200 hover:bg-white transition-all shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="text-center flex-1">
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                Service Fee
+              </h3>
+              <div className="text-4xl sm:text-5xl font-bold text-treasure-500 mb-2">
+                $
+                {conciergeFee.toLocaleString(undefined, {
+                  maximumFractionDigits: 0,
+                })}
+              </div>
+              <p className="text-gray-700">
+                {currentTier.feePercentage}% all-inclusive fee
+              </p>
+            </div>
+
+            {/* Service Fee Breakdown Chart */}
+            <div className="ml-6">
+              <ServiceFeeBreakdown
+                price={price}
+                totalFeePercentage={currentTier.feePercentage}
+              />
+            </div>
           </div>
-          <p className="text-gray-700">
-            {currentTier.feePercentage}% all-inclusive fee
-          </p>
         </div>
       </div>
     </div>
