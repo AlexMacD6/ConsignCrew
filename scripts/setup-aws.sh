@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# AWS S3 Setup Script for ConsignCrew
+# AWS S3 Setup Script for TreasureHub
 # This script helps set up the AWS S3 bucket and IAM role for photo uploads
 
 set -e
 
-echo "🚀 Setting up AWS S3 for ConsignCrew photo uploads..."
+echo "🚀 Setting up AWS S3 for TreasureHub photo uploads..."
 
 # Check if AWS CLI is installed
 if ! command -v aws &> /dev/null; then
@@ -24,7 +24,7 @@ fi
 # Get current AWS account ID
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 REGION=${AWS_REGION:-us-east-1}
-BUCKET_NAME=${AWS_S3_BUCKET_NAME:-consigncrew-photos}
+BUCKET_NAME=${AWS_S3_BUCKET_NAME:-treasurehub-photos}
 
 echo "📋 Configuration:"
 echo "   Account ID: $ACCOUNT_ID"

@@ -73,11 +73,11 @@ export default function PriceSlider() {
   return (
     <div className="max-w-4xl mx-auto">
       {/* Price Display */}
-      <div className="text-center mb-8">
-        <div className="text-6xl font-bold text-consigncrew-gold mb-2">
+      <div className="text-center mb-6 lg:mb-8">
+        <div className="text-4xl sm:text-5xl lg:text-6xl font-bold text-treasure-500 mb-2">
           ${price.toLocaleString()}
         </div>
-        <p className="text-xl text-gray-700">Item Value</p>
+        <p className="text-lg sm:text-xl text-gray-700">Item Value</p>
       </div>
 
       {/* Interactive Slider */}
@@ -105,7 +105,7 @@ export default function PriceSlider() {
               </div>
 
               {/* $300 marker (center) */}
-              <div className="absolute top-0 left-1/2 w-4 h-4 bg-consigncrew-gold border-2 border-consigncrew-gold rounded-full transform -translate-x-2 -translate-y-0.5">
+              <div className="absolute top-0 left-1/2 w-4 h-4 bg-treasure-500 border-2 border-treasure-500 rounded-full transform -translate-x-2 -translate-y-0.5">
                 <div className="absolute top-6 left-1/2 transform -translate-x-1/2 text-xs text-gray-600 font-medium">
                   $300
                 </div>
@@ -138,7 +138,7 @@ export default function PriceSlider() {
 
             {/* Custom thumb */}
             <div
-              className={`absolute top-0 w-8 h-8 bg-consigncrew-gold border-4 border-white rounded-full shadow-lg transform -translate-x-4 -translate-y-2 transition-all duration-200 ease-out hover:scale-110 ${
+              className={`absolute top-0 w-8 h-8 bg-treasure-500 border-4 border-white rounded-full shadow-lg transform -translate-x-4 -translate-y-2 transition-all duration-200 ease-out hover:scale-110 ${
                 isDragging ? "scale-125 shadow-xl" : ""
               }`}
               style={{ left: `${Math.max(0, Math.min(100, sliderPosition))}%` }}
@@ -163,12 +163,10 @@ export default function PriceSlider() {
           </p>
         </div>
 
-        {/* ConsignCrew Service Fee */}
+        {/* Service Fee */}
         <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-8 border border-gray-200 text-center hover:bg-white transition-all shadow-lg">
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">
-            ConsignCrew Service Fee
-          </h3>
-          <div className="text-5xl font-bold text-consigncrew-gold mb-2">
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">Service Fee</h3>
+          <div className="text-4xl sm:text-5xl font-bold text-treasure-500 mb-2">
             $
             {conciergeFee.toLocaleString(undefined, {
               maximumFractionDigits: 0,

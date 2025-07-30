@@ -3,7 +3,7 @@
 ## Changelog
 
 ### Information Hiding and Privacy
-- Removed "ConsignCrew Fee" from listing display (now only shown at checkout)
+- Removed "Service Fee" from listing display (now only shown at checkout)
 - Concealed "price range" and "reserve price" from listings
 - Added "Reserve Met" badge when list price is at or below reserve minimum
 - Removed "Item ID" from listing display
@@ -43,7 +43,7 @@
 - Implemented "Approve" button for Admin to release questions and answers publicly
 - Added approval workflow: Pending Approval → Approved - Not Public → Public
 - Admin can preview answers before making them public
-- Display "ConsignCrew" as the responder for approved answers
+- Display "TreasureHub" as the responder for approved answers
 - Added mock data for testing the questions system
 
 ### AI Responses System
@@ -58,7 +58,7 @@
 1. **Pull this branch and run `npm install`**
 
 2. **Test Information Hiding:**
-   - Verify ConsignCrew Fee is not visible in listings
+   - Verify Service Fee is not visible in listings
    - Check that price range and reserve price are hidden
    - Confirm "Reserve Met" badge appears when appropriate
    - Verify Item ID is not displayed

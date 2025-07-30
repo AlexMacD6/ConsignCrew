@@ -338,38 +338,9 @@ function Scene() {
   );
 }
 
-// Error Boundary Component
-function ErrorFallback({ onReset }: { onReset?: () => void }) {
-  return (
-    <div className="w-full h-full bg-gradient-to-br from-[#f9fafb] to-[#f3f4f6] flex items-center justify-center">
-      <div className="text-gray-800 text-center max-w-md mx-auto px-6">
-        <div className="mb-6">
-          <img
-            src="/TreasureHub - Logo.png"
-            alt="TreasureHub"
-            className="h-16 w-auto mx-auto mb-4"
-          />
-          <h2 className="text-2xl font-bold mb-2 text-gray-900">TreasureHub</h2>
-          <p className="text-gray-600">
-            Turn clutter into cash without the headaches
-          </p>
-        </div>
-        <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-gray-200">
-          <p className="text-gray-500 text-sm mb-4">
-            3D background temporarily unavailable
-          </p>
-          {onReset && (
-            <button
-              onClick={onReset}
-              className="px-4 py-2 bg-treasure-500 text-gray-900 font-medium rounded-lg hover:bg-treasure-600 transition-colors"
-            >
-              Retry 3D Background
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+// Simple Error Fallback - Just background color
+function ErrorFallback() {
+  return <div className="w-full h-full bg-[#f9fafb]" />;
 }
 
 // Main ThreeScene Component with Enhanced Performance
@@ -406,13 +377,20 @@ export default function ThreeScene() {
       setHasError(true);
     };
 
-    const handleContextLost = () => {
+    const handleContextLost = (event: Event) => {
+      event.preventDefault();
       console.warn("WebGL context lost");
+      setHasError(true);
+
+      // Don't retry automatically to prevent the sad face from appearing
       if (retryCount < 2) {
-        setTimeout(resetScene, 1000);
+        setTimeout(() => {
+          if (!hasError) {
+            resetScene();
+          }
+        }, 2000);
       } else {
         setWebglSupported(false);
-        setHasError(true);
       }
     };
 
@@ -429,28 +407,23 @@ export default function ThreeScene() {
   }, [retryCount, resetScene]);
 
   if (webglSupported === false || hasError) {
-    return <ErrorFallback onReset={retryCount < 2 ? resetScene : undefined} />;
+    // Return a clean fallback without any Three.js artifacts
+    return <ErrorFallback />;
   }
 
   if (isLoading || webglSupported === null) {
-    return (
-      <div className="w-full h-full bg-[#f9fafb] flex items-center justify-center">
-        <div className="text-gray-800 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-treasure-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
+    return <ErrorFallback />;
   }
 
   return (
-    <div className="w-full h-full bg-[#f9fafb]">
+    <div className="w-full h-full bg-[#f9fafb] relative overflow-hidden">
       <Canvas
         key={`canvas-${retryCount}`}
         camera={{ position: [0, 0, 15], fov: 75 }}
         style={{ background: "#f9fafb" }}
         onError={(error) => {
           console.error("Canvas error:", error);
+          // Prevent the sad face by immediately showing our fallback
           setWebglSupported(false);
           setHasError(true);
         }}
@@ -467,6 +440,26 @@ export default function ThreeScene() {
         onCreated={({ gl }) => {
           console.log("WebGL context created successfully");
           gl.setClearColor("#f9fafb", 1);
+
+          // Prevent the default Three.js sad face from appearing
+          gl.canvas.addEventListener(
+            "webglcontextlost",
+            (event) => {
+              event.preventDefault();
+              console.warn("WebGL context lost, preventing default sad face");
+              setHasError(true);
+            },
+            false
+          );
+
+          gl.canvas.addEventListener(
+            "webglcontextrestored",
+            () => {
+              console.log("WebGL context restored");
+              setHasError(false);
+            },
+            false
+          );
         }}
       >
         <Scene />

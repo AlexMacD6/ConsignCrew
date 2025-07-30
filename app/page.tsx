@@ -9,6 +9,7 @@ import TreasureMapCards from "./components/TreasureMapCards";
 import Roadmap from "./components/Roadmap";
 
 import EarlyAccessTracker from "./components/EarlyAccessTracker";
+import IntegratedVideoPlayer from "./components/IntegratedVideoPlayer";
 
 // Dynamically import the 3D background to prevent SSR issues
 const ThreeScene = dynamic(() => import("./components/ThreeScene"), {
@@ -138,45 +139,43 @@ export default function HomePage() {
       <div className="relative z-10">
         {/* Hero Section */}
         <ScrollSection animationType="fadeInUp" threshold={0.2}>
-          <section className="min-h-[80vh] flex items-center justify-center px-4 py-8">
-            <div className="max-w-7xl mx-auto">
-              <div className="grid lg:grid-cols-5 gap-12 items-center">
+          <section className="min-h-[90vh] flex items-center justify-center px-4 py-12 relative overflow-hidden">
+            {/* Background decorative elements */}
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-br from-treasure-500/5 to-treasure-600/5 rounded-full blur-3xl"></div>
+              <div className="absolute bottom-20 right-10 w-40 h-40 bg-gradient-to-br from-treasure-600/5 to-treasure-700/5 rounded-full blur-3xl"></div>
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-treasure-500/3 to-treasure-600/3 rounded-full blur-3xl"></div>
+            </div>
+
+            <div className="max-w-7xl mx-auto relative z-10">
+              <div className="grid lg:grid-cols-5 gap-8 lg:gap-16 items-center">
                 {/* Video Section - Left Side (3 columns) */}
-                <div className="lg:col-span-3">
+                <div className="lg:col-span-3 order-2 lg:order-1">
                   <ScrollSection animationType="fadeInLeft" delay={200}>
-                    <div className="relative">
-                      <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-treasure-500/20 to-treasure-600/20 p-2">
-                        <iframe
-                          src="https://www.youtube.com/embed/9hmtpNu3_Lk?autoplay=1&mute=1&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1"
-                          title="TreasureHub - How Easy It Is To Get Paid"
-                          className="w-full h-auto rounded-xl"
-                          style={{ aspectRatio: "16/10", minHeight: "400px" }}
-                          frameBorder="0"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                        ></iframe>
-                        {/* Subtle overlay for better text contrast */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent pointer-events-none rounded-xl"></div>
-                      </div>
-                      {/* Decorative elements */}
-                      <div className="absolute -top-4 -left-4 w-8 h-8 bg-treasure-500 rounded-full opacity-20 animate-pulse"></div>
-                      <div className="absolute -bottom-4 -right-4 w-6 h-6 bg-treasure-600 rounded-full opacity-30 animate-pulse delay-1000"></div>
-                    </div>
+                    <IntegratedVideoPlayer
+                      videoId="9hmtpNu3_Lk"
+                      title="TreasureHub - How Easy It Is To Get Paid"
+                      aspectRatio="16/10"
+                      showControls={false}
+                      autoplay={true}
+                      muted={true}
+                    />
                   </ScrollSection>
                 </div>
 
                 {/* Text Content - Right Side (2 columns) */}
-                <div className="lg:col-span-2">
+                <div className="lg:col-span-2 order-1 lg:order-2">
                   <ScrollSection animationType="fadeInRight" delay={400}>
                     <div className="text-left">
                       <div className="mb-6">
-                        <div className="flex items-center gap-4 mb-6">
+                        {/* Logo and Title - Stack on mobile, side by side on desktop */}
+                        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 mb-6 text-center sm:text-left">
                           <img
                             src="/TreasureHub - Logo.png"
                             alt="TreasureHub"
-                            className="h-20 w-auto"
+                            className="h-16 sm:h-20 w-auto"
                           />
-                          <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-900 whitespace-nowrap">
+                          <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-900 leading-tight">
                             Sell{" "}
                             <span className="text-treasure-500">
                               Stress-Free
@@ -184,30 +183,30 @@ export default function HomePage() {
                           </h1>
                         </div>
                         <div className="max-w-2xl">
-                          <p className="text-xl lg:text-2xl text-gray-700 mb-8">
+                          <p className="text-lg sm:text-xl lg:text-2xl text-gray-700 mb-6 sm:mb-8 text-center sm:text-left">
                             Turn clutter into cash without the hassle
                           </p>
-                          <ul className="text-lg text-gray-700 mb-6 space-y-3">
-                            <li className="flex items-center">
-                              <span className="text-treasure-500 mr-3 text-xl">
+                          <ul className="text-base sm:text-lg text-gray-700 mb-6 space-y-3 text-left">
+                            <li className="flex items-center justify-start">
+                              <span className="text-treasure-500 mr-3 text-lg sm:text-xl">
                                 •
                               </span>
                               Automatically generated listings
                             </li>
-                            <li className="flex items-center">
-                              <span className="text-treasure-500 mr-3 text-xl">
+                            <li className="flex items-center justify-start">
+                              <span className="text-treasure-500 mr-3 text-lg sm:text-xl">
                                 •
                               </span>
                               Set discount schedules
                             </li>
-                            <li className="flex items-center">
-                              <span className="text-treasure-500 mr-3 text-xl">
+                            <li className="flex items-center justify-start">
+                              <span className="text-treasure-500 mr-3 text-lg sm:text-xl">
                                 •
                               </span>
                               Concierge pick-up/delivery
                             </li>
-                            <li className="flex items-center">
-                              <span className="text-treasure-500 mr-3 text-xl">
+                            <li className="flex items-center justify-start">
+                              <span className="text-treasure-500 mr-3 text-lg sm:text-xl">
                                 •
                               </span>
                               Instant payouts
@@ -215,7 +214,7 @@ export default function HomePage() {
                           </ul>
 
                           {/* Houston Stamp/Seal */}
-                          <div className="mb-8">
+                          <div className="mb-6 sm:mb-8 text-center sm:text-left">
                             <div className="inline-flex items-center gap-2 px-4 py-2 bg-treasure-500/10 border-2 border-treasure-500/30 rounded-full text-sm font-medium text-treasure-600 shadow-lg">
                               <svg
                                 className="w-5 h-5"
@@ -240,21 +239,21 @@ export default function HomePage() {
                       {/* Email Form */}
                       <form
                         onSubmit={handleEmailSubmit}
-                        className="w-full max-w-lg"
+                        className="w-full max-w-lg mx-auto sm:mx-0"
                       >
-                        <div className="flex gap-3">
+                        <div className="flex flex-col sm:flex-row gap-3">
                           <input
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="Enter your email"
-                            className="flex-1 px-6 py-4 bg-white/80 backdrop-blur-md border-2 border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-treasure-500 focus:bg-white transition-all text-lg font-medium shadow-lg"
+                            className="flex-1 px-4 sm:px-6 py-3 sm:py-4 bg-white/80 backdrop-blur-md border-2 border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-treasure-500 focus:bg-white transition-all text-base sm:text-lg font-medium shadow-lg"
                             required
                           />
                           <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="btn btn-primary btn-xl whitespace-nowrap"
+                            className="btn btn-primary btn-xl whitespace-nowrap w-full sm:w-auto"
                           >
                             {isSubmitting ? "Joining..." : "Get Early Access"}
                           </button>
@@ -290,15 +289,15 @@ export default function HomePage() {
         <ScrollSection animationType="fadeInUp" threshold={0.2}>
           <section
             id="how-it-works"
-            className="py-20 px-4 bg-white/80 backdrop-blur-sm"
+            className="py-12 lg:py-20 px-4 bg-white/80 backdrop-blur-sm"
           >
             <div className="max-w-6xl mx-auto">
               <ScrollSection animationType="fadeInUp" delay={200}>
-                <div className="text-center mb-16">
-                  <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+                <div className="text-center mb-12 lg:mb-16">
+                  <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 lg:mb-6">
                     How It Works
                   </h2>
-                  <p className="text-xl text-gray-700 max-w-3xl mx-auto">
+                  <p className="text-lg sm:text-xl text-gray-700 max-w-3xl mx-auto px-4">
                     From listing to payout in 5 simple steps. We handle
                     everything else.
                   </p>
@@ -337,8 +336,8 @@ export default function HomePage() {
                         </p>
                         {/* Arrow inside */}
                         <div className="flex items-center justify-center">
-                          <div className="w-6 h-1 bg-gradient-to-r from-consigncrew-gold to-consigncrew-gold/60"></div>
-                          <div className="w-0 h-0 border-l-3 border-l-consigncrew-gold border-t-1.5 border-t-transparent border-b-1.5 border-b-transparent ml-1"></div>
+                          <div className="w-6 h-1 bg-gradient-to-r from-treasure-500 to-treasure-500/60"></div>
+                          <div className="w-0 h-0 border-l-3 border-l-treasure-500 border-t-1.5 border-t-transparent border-b-1.5 border-b-transparent ml-1"></div>
                         </div>
                       </div>
                     </div>
@@ -368,8 +367,8 @@ export default function HomePage() {
                         <p className="text-gray-500 text-xs mb-3">Instant</p>
                         {/* Arrow inside */}
                         <div className="flex items-center justify-center">
-                          <div className="w-6 h-1 bg-gradient-to-r from-consigncrew-gold to-consigncrew-gold/60"></div>
-                          <div className="w-0 h-0 border-l-3 border-l-consigncrew-gold border-t-1.5 border-t-transparent border-b-1.5 border-b-transparent ml-1"></div>
+                          <div className="w-6 h-1 bg-gradient-to-r from-treasure-500 to-treasure-500/60"></div>
+                          <div className="w-0 h-0 border-l-3 border-l-treasure-500 border-t-1.5 border-t-transparent border-b-1.5 border-b-transparent ml-1"></div>
                         </div>
                       </div>
                     </div>
@@ -401,8 +400,8 @@ export default function HomePage() {
                         </p>
                         {/* Arrow inside */}
                         <div className="flex items-center justify-center">
-                          <div className="w-6 h-1 bg-gradient-to-r from-consigncrew-gold to-consigncrew-gold/60"></div>
-                          <div className="w-0 h-0 border-l-3 border-l-consigncrew-gold border-t-1.5 border-t-transparent border-b-1.5 border-b-transparent ml-1"></div>
+                          <div className="w-6 h-1 bg-gradient-to-r from-treasure-500 to-treasure-500/60"></div>
+                          <div className="w-0 h-0 border-l-3 border-l-treasure-500 border-t-1.5 border-t-transparent border-b-1.5 border-b-transparent ml-1"></div>
                         </div>
                       </div>
                     </div>
@@ -434,8 +433,8 @@ export default function HomePage() {
                         </p>
                         {/* Arrow inside */}
                         <div className="flex items-center justify-center">
-                          <div className="w-6 h-1 bg-gradient-to-r from-consigncrew-gold to-consigncrew-gold/60"></div>
-                          <div className="w-0 h-0 border-l-3 border-l-consigncrew-gold border-t-1.5 border-t-transparent border-b-1.5 border-b-transparent ml-1"></div>
+                          <div className="w-6 h-1 bg-gradient-to-r from-treasure-500 to-treasure-500/60"></div>
+                          <div className="w-0 h-0 border-l-3 border-l-treasure-500 border-t-1.5 border-t-transparent border-b-1.5 border-b-transparent ml-1"></div>
                         </div>
                       </div>
                     </div>
@@ -456,11 +455,11 @@ export default function HomePage() {
                         </svg>
                       </div>
                       <h3 className="text-xl font-bold text-gray-900 mb-2">
-                        Escrow → Payout
+                        Secure Payout
                       </h3>
                       <p className="text-gray-700 text-sm mb-4 flex-grow">
-                        Funds are held securely in escrow and automatically
-                        released once delivery is confirmed.
+                        Funds are held securely and automatically released once
+                        delivery is confirmed.
                       </p>
                       <div className="mt-auto">
                         <p className="text-gray-500 text-xs mb-3">
@@ -498,7 +497,7 @@ export default function HomePage() {
                       ≈ 1 minute total
                     </p>
                     <div className="flex justify-center">
-                      <div className="w-0 h-0 border-l-3 border-l-consigncrew-gold border-t-2 border-t-transparent border-b-2 border-b-transparent"></div>
+                      <div className="w-0 h-0 border-l-3 border-l-treasure-500 border-t-2 border-t-transparent border-b-2 border-b-transparent"></div>
                     </div>
                   </div>
 
@@ -509,7 +508,7 @@ export default function HomePage() {
                     </div>
                     <div className="mb-2 flex justify-center">
                       <svg
-                        className="w-10 h-10 text-consigncrew-gold"
+                        className="w-10 h-10 text-treasure-500"
                         fill="currentColor"
                         viewBox="0 0 24 24"
                       >
@@ -525,7 +524,7 @@ export default function HomePage() {
                     </p>
                     <p className="text-gray-500 text-xs mb-2">Instant</p>
                     <div className="flex justify-center">
-                      <div className="w-0 h-0 border-l-3 border-l-consigncrew-gold border-t-2 border-t-transparent border-b-2 border-b-transparent"></div>
+                      <div className="w-0 h-0 border-l-3 border-l-treasure-500 border-t-2 border-t-transparent border-b-2 border-b-transparent"></div>
                     </div>
                   </div>
 
@@ -536,7 +535,7 @@ export default function HomePage() {
                     </div>
                     <div className="mb-2 flex justify-center">
                       <svg
-                        className="w-10 h-10 text-consigncrew-gold"
+                        className="w-10 h-10 text-treasure-500"
                         fill="currentColor"
                         viewBox="0 0 24 24"
                       >
@@ -552,7 +551,7 @@ export default function HomePage() {
                     </p>
                     <p className="text-gray-500 text-xs mb-2">Days → weeks</p>
                     <div className="flex justify-center">
-                      <div className="w-0 h-0 border-l-3 border-l-consigncrew-gold border-t-2 border-t-transparent border-b-2 border-b-transparent"></div>
+                      <div className="w-0 h-0 border-l-3 border-l-treasure-500 border-t-2 border-t-transparent border-b-2 border-b-transparent"></div>
                     </div>
                   </div>
 
@@ -563,7 +562,7 @@ export default function HomePage() {
                     </div>
                     <div className="mb-2 flex justify-center">
                       <svg
-                        className="w-10 h-10 text-consigncrew-gold"
+                        className="w-10 h-10 text-treasure-500"
                         fill="currentColor"
                         viewBox="0 0 24 24"
                       >
@@ -581,7 +580,7 @@ export default function HomePage() {
                       Same / next day
                     </p>
                     <div className="flex justify-center">
-                      <div className="w-0 h-0 border-l-3 border-l-consigncrew-gold border-t-2 border-t-transparent border-b-2 border-b-transparent"></div>
+                      <div className="w-0 h-0 border-l-3 border-l-treasure-500 border-t-2 border-t-transparent border-b-2 border-b-transparent"></div>
                     </div>
                   </div>
 
@@ -592,7 +591,7 @@ export default function HomePage() {
                     </div>
                     <div className="mb-2 flex justify-center">
                       <svg
-                        className="w-10 h-10 text-consigncrew-gold"
+                        className="w-10 h-10 text-treasure-500"
                         fill="currentColor"
                         viewBox="0 0 24 24"
                       >
@@ -601,19 +600,17 @@ export default function HomePage() {
                       </svg>
                     </div>
                     <h3 className="text-lg font-bold text-gray-900 mb-1">
-                      Escrow → Payout
+                      Secure Payout
                     </h3>
                     <p className="text-gray-700 text-sm mb-1">
-                      Funds are held securely in escrow and automatically
-                      released once delivery is confirmed.
+                      Funds are held securely and automatically released once
+                      delivery is confirmed.
                     </p>
                     <p className="text-gray-500 text-xs mb-2">
                       Money in ≤ 24 h
                     </p>
                     <div className="flex justify-center">
-                      <div className="text-green-600 text-sm font-semibold">
-                        ✓ Complete!
-                      </div>
+                      <div className="w-0 h-0 border-l-3 border-l-treasure-500 border-t-2 border-t-transparent border-b-2 border-b-transparent"></div>
                     </div>
                   </div>
                 </div>
@@ -626,15 +623,15 @@ export default function HomePage() {
         <ScrollSection animationType="fadeInUp" threshold={0.2}>
           <section
             id="pricing"
-            className="py-20 px-4 bg-white/80 backdrop-blur-sm"
+            className="py-12 lg:py-20 px-4 bg-white/80 backdrop-blur-sm"
           >
             <div className="max-w-6xl mx-auto">
               <ScrollSection animationType="fadeInUp" delay={200}>
-                <div className="text-center mb-16">
-                  <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+                <div className="text-center mb-12 lg:mb-16">
+                  <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 lg:mb-6">
                     Transparent Pricing
                   </h2>
-                  <p className="text-xl text-gray-700 max-w-3xl mx-auto">
+                  <p className="text-lg sm:text-xl text-gray-700 max-w-3xl mx-auto px-4">
                     Interactive pricing calculator. See exactly what you'll earn
                     based on your item's value.
                   </p>
@@ -656,14 +653,14 @@ export default function HomePage() {
 
         {/* Final CTA Section */}
         <ScrollSection animationType="fadeInUp" threshold={0.2}>
-          <section className="py-20 px-4 bg-white/80 backdrop-blur-sm">
+          <section className="py-12 lg:py-20 px-4 bg-white/80 backdrop-blur-sm">
             <div className="max-w-4xl mx-auto text-center">
               <ScrollSection animationType="fadeInUp" delay={200}>
-                <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 lg:mb-6">
                   Ready to Sell{" "}
                   <span className="text-treasure-500">Stress-Free</span>?
                 </h2>
-                <p className="text-xl text-gray-700 mb-8 max-w-2xl mx-auto">
+                <p className="text-lg sm:text-xl text-gray-700 mb-6 lg:mb-8 max-w-2xl mx-auto px-4">
                   Join the Crew to maximize value and minimize your hassle.
                 </p>
               </ScrollSection>
@@ -678,13 +675,13 @@ export default function HomePage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="Enter your email"
-                      className="flex-1 px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-consigncrew-gold focus:bg-white transition-colors"
+                      className="flex-1 px-4 sm:px-6 py-3 sm:py-4 bg-white/80 backdrop-blur-sm border-2 border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-treasure-500 focus:bg-white transition-all text-base sm:text-lg font-medium shadow-lg"
                       required
                     />
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="btn btn-primary btn-lg"
+                      className="btn btn-primary btn-xl whitespace-nowrap w-full sm:w-auto"
                     >
                       {isSubmitting ? "Joining..." : "Get Early Access"}
                     </button>

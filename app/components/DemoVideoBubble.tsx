@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useState } from "react";
+import IntegratedVideoPlayer from "./IntegratedVideoPlayer";
 
 const DemoVideoBubble: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -59,14 +60,15 @@ const DemoVideoBubble: React.FC = () => {
                 </svg>
               </button>
             </div>
-            <div className="bg-gray-100 rounded-lg flex items-center justify-center h-48">
-              <div className="text-center text-gray-600">
-                <div className="text-4xl mb-2">📹</div>
-                <p className="text-sm font-medium">Demo Video Coming Soon</p>
-                <p className="text-xs text-gray-500">
-                  YouTube link will be added here
-                </p>
-              </div>
+            <div className="h-48">
+              <IntegratedVideoPlayer
+                videoId="9hmtpNu3_Lk"
+                title="TreasureHub Demo"
+                aspectRatio="16/9"
+                showControls={false}
+                autoplay={false}
+                muted={true}
+              />
             </div>
           </div>
         )}

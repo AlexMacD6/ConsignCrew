@@ -9,7 +9,7 @@ import {
 } from './imageStore';
 
 /**
- * Example usage of the ConsignCrew S3 Image Storage SDK
+ * Example usage of the TreasureHub S3 Image Storage SDK
  * 
  * This file demonstrates how to use the typed S3 SDK for image management.
  */
@@ -180,7 +180,7 @@ export async function processItemImages(itemId: string, files: File[]) {
     }
 
     // Generate QR code for the item
-    const qrCodeKey = await generateQRCode(itemId, `https://consigncrew.com/item/${itemId}`);
+    const qrCodeKey = await generateQRCode(itemId, `https://treasurehub.club/item/${itemId}`);
     results.qrCodeKey = qrCodeKey;
 
     console.log('Image processing complete:', results);

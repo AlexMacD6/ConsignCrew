@@ -9,7 +9,7 @@ import { ModalProvider } from "./contexts/ModalContext";
 export const metadata: Metadata = {
   title: "TreasureHub | Sell Stress-Free",
   icons: {
-    icon: "/favicon.png",
+    icon: "/TreasureHub - Favicon Black.png",
   },
 };
 
