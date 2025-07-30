@@ -374,23 +374,31 @@ export default function ThreeScene() {
 
     const handleError = (error: ErrorEvent) => {
       console.error("Three.js error:", error);
-      setHasError(true);
+      // Only set error if it's a critical WebGL error
+      if (error.message && error.message.includes("WebGL")) {
+        setHasError(true);
+      }
     };
 
     const handleContextLost = (event: Event) => {
-      event.preventDefault();
-      console.warn("WebGL context lost");
-      setHasError(true);
+      try {
+        event.preventDefault();
+        console.warn("WebGL context lost");
+        setHasError(true);
 
-      // Don't retry automatically to prevent the sad face from appearing
-      if (retryCount < 2) {
-        setTimeout(() => {
-          if (!hasError) {
-            resetScene();
-          }
-        }, 2000);
-      } else {
-        setWebglSupported(false);
+        // Don't retry automatically to prevent the sad face from appearing
+        if (retryCount < 2) {
+          setTimeout(() => {
+            if (!hasError) {
+              resetScene();
+            }
+          }, 2000);
+        } else {
+          setWebglSupported(false);
+        }
+      } catch (error) {
+        console.error("Error handling context lost:", error);
+        setHasError(true);
       }
     };
 
@@ -423,9 +431,17 @@ export default function ThreeScene() {
         style={{ background: "#f9fafb" }}
         onError={(error) => {
           console.error("Canvas error:", error);
-          // Prevent the sad face by immediately showing our fallback
-          setWebglSupported(false);
-          setHasError(true);
+          // Only set error for critical WebGL issues
+          if (error && typeof error === "object" && "message" in error) {
+            const errorMessage = String(error.message);
+            if (
+              errorMessage.includes("WebGL") ||
+              errorMessage.includes("context")
+            ) {
+              setWebglSupported(false);
+              setHasError(true);
+            }
+          }
         }}
         gl={{
           powerPreference: "default",
@@ -438,28 +454,39 @@ export default function ThreeScene() {
           logarithmicDepthBuffer: false,
         }}
         onCreated={({ gl }) => {
-          console.log("WebGL context created successfully");
-          gl.setClearColor("#f9fafb", 1);
+          try {
+            console.log("WebGL context created successfully");
+            gl.setClearColor("#f9fafb", 1);
 
-          // Prevent the default Three.js sad face from appearing
-          gl.canvas.addEventListener(
-            "webglcontextlost",
-            (event) => {
-              event.preventDefault();
-              console.warn("WebGL context lost, preventing default sad face");
-              setHasError(true);
-            },
-            false
-          );
+            // Prevent the default Three.js sad face from appearing
+            if (gl && gl.canvas && gl.canvas.addEventListener) {
+              gl.canvas.addEventListener(
+                "webglcontextlost",
+                (event) => {
+                  event.preventDefault();
+                  console.warn(
+                    "WebGL context lost, preventing default sad face"
+                  );
+                  setHasError(true);
+                },
+                false
+              );
 
-          gl.canvas.addEventListener(
-            "webglcontextrestored",
-            () => {
-              console.log("WebGL context restored");
-              setHasError(false);
-            },
-            false
-          );
+              gl.canvas.addEventListener(
+                "webglcontextrestored",
+                () => {
+                  console.log("WebGL context restored");
+                  setHasError(false);
+                },
+                false
+              );
+            } else {
+              console.warn("Canvas not available, skipping event listeners");
+            }
+          } catch (error) {
+            console.error("Error in onCreated:", error);
+            // Don't set error state here, let the scene try to work
+          }
         }}
       >
         <Scene />
