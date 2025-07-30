@@ -14,6 +14,10 @@ const nextConfig: NextConfig = {
 	},
 	// Disable CSS source maps in development to prevent 404 errors
 	productionBrowserSourceMaps: false,
+	// SEO optimizations
+	compress: true,
+	poweredByHeader: false,
+	generateEtags: true,
 	experimental: {
 		serverActions: {
 			allowedOrigins: ['localhost:3000'],

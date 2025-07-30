@@ -23,18 +23,20 @@ const createSESClient = async () => {
 }
 
 /**
- * Send an email using AWS SES
+ * Send an email using AWS SES with improved deliverability features
  * @param to - Recipient email address
  * @param subject - Email subject line
  * @param html - HTML content of the email body
  * @param replyTo - Optional reply-to address
+ * @param textContent - Optional plain text version
  * @returns Promise with the SES send result
  */
 export async function sendEmail(
     to: string, 
     subject: string, 
     html: string, 
-    replyTo?: string
+    replyTo?: string,
+    textContent?: string
 ) {
     // Validate required environment variables
     if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
@@ -43,8 +45,8 @@ export async function sendEmail(
 
     const fromEmail = process.env.AWS_SES_DEFAULT_FROM_EMAIL || 'noreply@treasurehub.club'
     
-    // Use the provided HTML directly since our email templates already include branding
-    const emailHtml = html
+    // Generate plain text version if not provided
+    const plainText = textContent || html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
 
     try {
         console.log(`Sending email to ${to} with subject: ${subject}`)
@@ -65,7 +67,11 @@ export async function sendEmail(
                 },
                 Body: {
                     Html: {
-                        Data: emailHtml,
+                        Data: html,
+                        Charset: 'UTF-8',
+                    },
+                    Text: {
+                        Data: plainText,
                         Charset: 'UTF-8',
                     },
                 },
@@ -73,6 +79,8 @@ export async function sendEmail(
             ...(replyTo && {
                 ReplyToAddresses: [replyTo],
             }),
+            // Add configuration set for tracking and reputation management
+            ConfigurationSetName: process.env.AWS_SES_CONFIGURATION_SET || undefined,
         })
         
         const result = await ses.send(command)
