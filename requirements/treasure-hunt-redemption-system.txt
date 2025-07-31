@@ -1,0 +1,64 @@
+Treasure Hunt Redemption System Requirements
+
+## Overview
+Build a backend system for redeeming hidden treasure envelopes found in Houston, allowing users to claim cash rewards and TreasureHub credits.
+
+## Treasure Hunt Details
+- Hidden envelope with QR code and redemption instructions
+- Code: AB12CD
+- Rewards: $25 cash (Venmo/CashApp/Zelle) + $25 TreasureHub credit + Early Access invite
+- Social media bonus: $10 extra for Instagram post with @TreasureHubClub and #TreasureHubClub
+- One reward per person, 30-day redemption window
+
+## Backend Requirements
+
+### Database Schema
+- Treasure redemption records
+- User information collection
+- Payment tracking
+- Social media verification
+
+### API Endpoints
+- POST /api/treasure/redeem - Process redemption
+- GET /api/treasure/validate-code - Validate redemption code
+- POST /api/treasure/social-verification - Verify social media posts
+
+### Frontend Pages
+- /redeem - Main redemption page
+- /redeem/success - Success confirmation
+- /redeem/error - Error handling
+
+### Payment Integration
+- Venmo API integration
+- CashApp API integration
+- Zelle integration (manual processing)
+- Payment status tracking
+
+### Security Features
+- Code validation
+- Duplicate prevention
+- Rate limiting
+- Input validation
+
+## Implementation Priority
+1. Database schema and models
+2. Basic redemption page
+3. Code validation logic
+4. Payment processing setup
+5. Social media verification
+6. Admin dashboard for tracking
+
+## Technical Stack
+- Next.js API routes
+- Prisma ORM
+- AWS SES for email notifications
+- Payment APIs (Venmo/CashApp)
+- Image upload for selfies
+- QR code generation
+
+## Files to Create
+- Database migration for treasure redemptions
+- API routes for redemption processing
+- Redemption page components
+- Payment processing utilities
+- Admin dashboard for tracking redemptions 

@@ -1,0 +1,71 @@
+Houston Stamp Image Update Requirements
+
+## Overview
+Replace the built-in Houston stamp with a custom image file and position it to the right of the bullet points in the hero component without affecting text formatting.
+
+## Problem
+- Current Houston stamp uses inline SVG and text styling
+- Need to use the custom image file: `built_in_houston_top_right.png`
+- Image should be positioned to the right of the 4 bullet points
+- Text formatting should not be impacted by the image placement
+
+## Solution
+- Replace the current Houston stamp implementation with the custom image
+- Use absolute positioning to overlay the image without affecting text layout
+- Position the image to the right of the bullet points
+- Ensure responsive sizing across different screen sizes
+
+## Implementation Details
+
+### Image Replacement
+- Remove the current Houston stamp div with SVG icon and text
+- Add the custom image using the `img` tag
+- Source: `/built_in_houston_top_right.png`
+- Alt text: "Built in Houston, TX"
+
+### Positioning Strategy
+- Use absolute positioning to overlay the image
+- Add `relative` positioning to the parent container (`max-w-2xl`)
+- Position the image at `top-4 right-0` with transform adjustments
+- Use `z-10` to ensure the image appears above other content
+
+### Responsive Sizing
+- Small screens: `w-20 h-20` (80px x 80px)
+- Medium screens: `w-24 h-24` (96px x 96px)
+- Large screens: `w-28 h-28` (112px x 112px)
+- Use `object-contain` to maintain aspect ratio
+
+### Styling
+- Add `drop-shadow-lg` for visual depth
+- Use `transform translate-x-4 -translate-y-2` for fine-tuned positioning
+- Ensure the image doesn't interfere with text readability
+
+## Files Modified
+- `app/page.tsx` - Hero section layout and Houston stamp implementation
+
+## Technical Specifications
+
+### CSS Classes Used
+- `absolute top-4 right-0` - Positioning
+- `transform translate-x-4 -translate-y-2` - Fine adjustment
+- `z-10` - Layering
+- `w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28` - Responsive sizing
+- `object-contain` - Maintain aspect ratio
+- `drop-shadow-lg` - Visual enhancement
+
+### Parent Container Changes
+- Added `relative` positioning to the `max-w-2xl` container
+- This enables absolute positioning of the child image element
+
+## Benefits
+- Custom branded Houston stamp image
+- No impact on text layout or formatting
+- Responsive design across all screen sizes
+- Professional appearance with drop shadow
+- Maintains visual hierarchy and readability
+
+## Testing Considerations
+- Verify image displays correctly on all screen sizes
+- Ensure text remains readable and properly formatted
+- Check that image positioning works on mobile devices
+- Confirm image doesn't overlap with other important content 

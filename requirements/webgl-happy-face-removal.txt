@@ -1,0 +1,66 @@
+WebGL Happy Face Removal Requirements
+
+## Overview
+Remove the happy face that appears in the top left corner when WebGL context is lost on the main page, ensuring it doesn't show on any device.
+
+## Problem
+- When WebGL context is lost, Three.js shows a happy face in the top left corner
+- This appears on desktop but not consistently on mobile
+- Need to completely prevent this error display from appearing on all devices
+
+## Solution
+- Implement comprehensive error handling to prevent Three.js from showing any error displays
+- Override console.error and console.warn to suppress Three.js error messages
+- Add canvas-level error event prevention
+- Ensure clean fallback without any Three.js artifacts
+
+## Implementation Details
+
+### Console Error Suppression
+- Override console.error to filter out WebGL, Three.js, and context-related messages
+- Override console.warn to filter out similar messages
+- Include filtering for "happy" and "face" keywords
+- Restore original console functions on component cleanup
+
+### Canvas Error Prevention
+- Add error event listeners to the canvas element
+- Prevent default behavior and stop propagation of error events
+- Set pointer-events to 'none' on canvas to prevent interaction with error displays
+
+### WebGL Context Handling
+- Maintain existing WebGL context lost/restored event handling
+- Ensure clean fallback to background color when errors occur
+- Prevent automatic retries that might trigger error displays
+
+## Files Modified
+- `app/components/ThreeScene.tsx` - Enhanced error handling and display prevention
+
+## Technical Specifications
+
+### Error Suppression
+- Filter console.error for: WebGL, Three.js, context, happy, face
+- Filter console.warn for: WebGL, Three.js, context, happy, face
+- Restore original console functions on cleanup
+
+### Canvas Protection
+- Add error event listener with preventDefault and stopPropagation
+- Set canvas pointer-events to 'none'
+- Maintain existing WebGL context event handling
+
+### Fallback Behavior
+- Return clean ErrorFallback component (just background color)
+- No Three.js artifacts or error displays
+- Consistent behavior across all devices
+
+## Benefits
+- No happy face error display on any device
+- Clean error handling without visual artifacts
+- Consistent user experience across desktop and mobile
+- Maintains existing WebGL functionality when working properly
+
+## Testing Considerations
+- Test WebGL context loss on desktop browsers
+- Test WebGL context loss on mobile devices
+- Verify no error displays appear in any scenario
+- Ensure console logging still works for non-Three.js errors
+- Confirm fallback behavior is consistent across devices 

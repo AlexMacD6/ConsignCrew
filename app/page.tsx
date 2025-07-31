@@ -182,7 +182,7 @@ export default function HomePage() {
                             </span>
                           </h1>
                         </div>
-                        <div className="max-w-2xl">
+                        <div className="max-w-2xl relative">
                           <p className="text-lg sm:text-xl lg:text-2xl text-gray-700 mb-6 sm:mb-8 text-center sm:text-left">
                             Turn clutter into cash without the hassle
                           </p>
@@ -213,22 +213,13 @@ export default function HomePage() {
                             </li>
                           </ul>
 
-                          {/* Houston Stamp/Seal */}
-                          <div className="mb-6 sm:mb-8 text-center sm:text-left">
-                            <div className="inline-flex items-center gap-2 px-4 py-2 bg-treasure-500/10 border-2 border-treasure-500/30 rounded-full text-sm font-medium text-treasure-600 shadow-lg">
-                              <svg
-                                className="w-5 h-5"
-                                fill="currentColor"
-                                viewBox="0 0 20 20"
-                              >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                              Built in Houston, TX
-                            </div>
+                          {/* Houston Stamp Image - Positioned absolutely to not affect text layout */}
+                          <div className="absolute top-24 right-0 transform translate-x-4 z-10">
+                            <img
+                              src="/built_in_houston_top_right.png"
+                              alt="Built in Houston, TX"
+                              className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 object-contain drop-shadow-lg"
+                            />
                           </div>
                         </div>
                       </div>
