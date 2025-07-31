@@ -362,6 +362,40 @@ export default function ThreeScene() {
   }, []);
 
   useEffect(() => {
+    // Prevent Three.js from showing any error displays globally
+    const originalError = console.error;
+    const originalWarn = console.warn;
+
+    console.error = (...args) => {
+      const message = args.join(" ");
+      if (
+        message.includes("WebGL") ||
+        message.includes("Three.js") ||
+        message.includes("context") ||
+        message.includes("happy") ||
+        message.includes("face")
+      ) {
+        // Suppress Three.js error displays including happy face
+        return;
+      }
+      originalError.apply(console, args);
+    };
+
+    console.warn = (...args) => {
+      const message = args.join(" ");
+      if (
+        message.includes("WebGL") ||
+        message.includes("Three.js") ||
+        message.includes("context") ||
+        message.includes("happy") ||
+        message.includes("face")
+      ) {
+        // Suppress Three.js warning displays including happy face
+        return;
+      }
+      originalWarn.apply(console, args);
+    };
+
     const isWebGLSupported = checkWebGLSupport();
     setWebglSupported(isWebGLSupported);
 
@@ -411,6 +445,9 @@ export default function ThreeScene() {
       window.removeEventListener("error", handleError);
       window.removeEventListener("webglcontextlost", handleContextLost);
       clearTimeout(timer);
+      // Restore original console functions
+      console.error = originalError;
+      console.warn = originalWarn;
     };
   }, [retryCount, resetScene]);
 
@@ -452,6 +489,8 @@ export default function ThreeScene() {
           preserveDrawingBuffer: false,
           failIfMajorPerformanceCaveat: false,
           logarithmicDepthBuffer: false,
+          // Prevent Three.js from showing error displays
+          onerror: null,
         }}
         onCreated={({ gl }) => {
           try {
@@ -479,6 +518,17 @@ export default function ThreeScene() {
                   setHasError(false);
                 },
                 false
+              );
+
+              // Prevent any Three.js error displays on the canvas
+              gl.canvas.style.pointerEvents = "none";
+              gl.canvas.addEventListener(
+                "error",
+                (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                },
+                true
               );
             } else {
               console.warn("Canvas not available, skipping event listeners");

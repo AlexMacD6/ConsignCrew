@@ -232,3 +232,44 @@ model Contact {
   @@index([email])
   @@index([createdAt])
 }
+
+model TreasureRedemption {
+  id                String   @id @default(cuid())
+  code              String   @unique
+  firstName         String
+  lastName          String
+  email             String
+  phone             String?
+  venmoUsername     String?
+  cashAppUsername   String?
+  zelleEmail        String?
+  paymentMethod     String // "venmo", "cashapp", "zelle"
+  selfieImageUrl    String?
+  socialMediaPost   String? // Instagram post URL
+  socialMediaBonus  Boolean  @default(false)
+  paymentStatus     String   @default("pending") // "pending", "paid", "failed"
+  treasureHubCredit Boolean  @default(false)
+  earlyAccessSent   Boolean  @default(false)
+  ipAddress         String?
+  userAgent         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  expiresAt         DateTime // 30 days from creation
+
+  @@index([code])
+  @@index([email])
+  @@index([paymentStatus])
+}
+
+model TreasureCode {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  isActive    Boolean  @default(true)
+  maxUses     Int      @default(1)
+  currentUses Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([code])
+  @@index([isActive])
+}
