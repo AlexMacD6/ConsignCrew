@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addEmailToMailchimp } from '@/lib/mailchimp';
+import { createLeadEvent, sendServerEvent } from '@/lib/meta-pixel';
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,6 +31,16 @@ export async function POST(request: NextRequest) {
     console.log('addEmailToMailchimp result:', result);
 
     if (result.success) {
+      // Send server-side Meta Pixel event
+      try {
+        const leadEvent = await createLeadEvent(email, source, 0);
+        await sendServerEvent(leadEvent);
+        console.log('Meta Pixel Lead event sent successfully');
+      } catch (metaError) {
+        console.error('Meta Pixel event failed:', metaError);
+        // Don't fail the subscription if Meta Pixel fails
+      }
+
       return NextResponse.json(
         { 
           message: 'Successfully subscribed', 

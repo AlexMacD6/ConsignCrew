@@ -150,7 +150,7 @@ export default function FAQPage() {
     <>
       <SEOHead
         title="Frequently Asked Questions"
-        description="Find answers to common questions about TreasureHub's consignment services, pricing, and how we help you sell your items stress-free."
+        description="Find answers to common questions about TreasureHub's consignment services, pricing, and how we help you sell stress-free."
         keywords={[
           "FAQ",
           "consignment questions",

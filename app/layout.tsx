@@ -6,11 +6,12 @@ import Script from "next/script";
 import NavBar from "./components/NavBar";
 import Footer from "./components/Footer";
 import { ModalProvider } from "./contexts/ModalContext";
+import MetaPixelProvider from "./components/MetaPixelProvider";
 
 export const metadata: Metadata = {
   title: {
     default:
-      "TreasureHub | Sell Your Items Stress-Free - Professional Consignment Service",
+      "TreasureHub | Sell Stress-Free - Professional Consignment Service",
     template: "%s | TreasureHub",
   },
   description:
@@ -44,7 +45,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://treasurehub.club",
     siteName: "TreasureHub",
-    title: "TreasureHub | Sell Your Items Stress-Free",
+    title: "TreasureHub | Sell Stress-Free",
     description:
       "Professional consignment service that handles everything from pickup to sale. Get the most value for your belongings.",
     images: [
@@ -58,7 +59,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "TreasureHub | Sell Your Items Stress-Free",
+    title: "TreasureHub | Sell Stress-Free",
     description:
       "Professional consignment service that handles everything from pickup to sale.",
     images: ["/TreasureHub - Banner Black.png"],
@@ -89,6 +90,17 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
+        {/* Google Tag Manager */}
+        <Script id="google-tag-manager" strategy="beforeInteractive">
+          {`
+            (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+            new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+            'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+            })(window,document,'script','dataLayer','GTM-T9SC7WZX');
+          `}
+        </Script>
+
         {/* Google Analytics */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-B483BLYZEF"
@@ -167,11 +179,26 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
       </head>
       <body className="bg-gray-50 min-h-screen">
-        <ModalProvider>
-          <NavBar />
-          {children}
-          <Footer />
-        </ModalProvider>
+        {/* Google Tag Manager (noscript) */}
+        <noscript>
+          <iframe
+            src="https://www.googletagmanager.com/ns.html?id=GTM-T9SC7WZX"
+            height="0"
+            width="0"
+            style="display:none;visibility:hidden"
+          ></iframe>
+        </noscript>
+        {/* End Google Tag Manager (noscript) */}
+
+        <MetaPixelProvider
+          pixelId={process.env.NEXT_PUBLIC_META_PIXEL_ID || ""}
+        >
+          <ModalProvider>
+            <NavBar />
+            {children}
+            <Footer />
+          </ModalProvider>
+        </MetaPixelProvider>
       </body>
     </html>
   );

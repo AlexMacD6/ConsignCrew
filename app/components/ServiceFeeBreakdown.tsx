@@ -56,7 +56,7 @@ const feeComponents: FeeComponent[] = [
   },
   {
     name: "Logistics",
-    description: "Pickup, first/last-mile shipping, 14-day storage",
+    description: "Pickup, first/last-mile shipping",
     color: "#F59E0B", // Amber - matches brand accent
     percentages: {
       under100: 20,
