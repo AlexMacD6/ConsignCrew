@@ -25,7 +25,7 @@ export default function SEOHead({
 }: SEOHeadProps) {
   const fullTitle = title
     ? `${title} | TreasureHub`
-    : "TreasureHub | Sell Your Items Stress-Free";
+    : "TreasureHub | Sell Stress-Free";
   const fullDescription =
     description ||
     "TreasureHub is a professional consignment service that handles everything from pickup to sale. We clean, photograph, authenticate, and sell your items with transparent pricing.";

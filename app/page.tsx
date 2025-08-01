@@ -10,6 +10,7 @@ import Roadmap from "./components/Roadmap";
 
 import EarlyAccessTracker from "./components/EarlyAccessTracker";
 import IntegratedVideoPlayer from "./components/IntegratedVideoPlayer";
+import { useMetaPixel } from "./components/MetaPixelProvider";
 
 // Dynamically import the 3D background to prevent SSR issues
 const ThreeScene = dynamic(() => import("./components/ThreeScene"), {
@@ -39,11 +40,14 @@ export default function HomePage() {
   const [error, setError] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const { trackLead, trackViewContent } = useMetaPixel();
 
   // Ensure page starts at the top when loaded
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, []);
+    // Track page view for Meta Pixel
+    trackViewContent("TreasureHub Homepage", ["homepage"], 0);
+  }, [trackViewContent]);
 
   // Handle hash navigation from other pages
   useEffect(() => {
@@ -116,6 +120,8 @@ export default function HomePage() {
           setSubmitSuccess(true);
           setEmail("");
           setRefreshTrigger((prev) => prev + 1); // Trigger refresh of tracker
+          // Track lead event for Meta Pixel
+          trackLead(email, 0);
         }
       } else {
         setError(data.error || "Failed to subscribe. Please try again.");
