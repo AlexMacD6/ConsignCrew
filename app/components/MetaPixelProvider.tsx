@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, createContext, useContext, ReactNode } from "react";
+import {
+  useEffect,
+  createContext,
+  useContext,
+  ReactNode,
+  useState,
+} from "react";
 import { initMetaPixel, trackEvent } from "@/lib/meta-pixel";
 
 // Meta Pixel context
@@ -29,6 +35,7 @@ interface MetaPixelContextType {
     currency?: string
   ) => void;
   trackContact: (email?: string, value?: number) => void;
+  isReady: boolean;
 }
 
 const MetaPixelContext = createContext<MetaPixelContextType | null>(null);
@@ -51,16 +58,29 @@ export default function MetaPixelProvider({
   children,
   pixelId,
 }: MetaPixelProviderProps) {
+  const [isReady, setIsReady] = useState(false);
+
   useEffect(() => {
     // Initialize Meta Pixel on client side
     if (pixelId) {
-      initMetaPixel(pixelId);
+      initMetaPixel(pixelId)
+        .then(() => {
+          setIsReady(true);
+        })
+        .catch((error) => {
+          console.error("Failed to initialize Meta Pixel:", error);
+          // Still set as ready to prevent blocking the app
+          setIsReady(true);
+        });
+    } else {
+      // If no pixel ID, still set as ready
+      setIsReady(true);
     }
   }, [pixelId]);
 
-  // Predefined tracking functions
-  const trackLead = (email?: string, value?: number) => {
-    trackEvent("Lead", {
+  // Predefined tracking functions with async handling
+  const trackLead = async (email?: string, value?: number) => {
+    await trackEvent("Lead", {
       content_name: "TreasureHub Lead",
       content_category: "consignment_service",
       value: value,
@@ -70,12 +90,12 @@ export default function MetaPixelProvider({
     });
   };
 
-  const trackViewContent = (
+  const trackViewContent = async (
     contentName: string,
     contentIds?: string[],
     value?: number
   ) => {
-    trackEvent("ViewContent", {
+    await trackEvent("ViewContent", {
       content_name: contentName,
       content_category: "consignment_service",
       content_ids: contentIds,
@@ -85,28 +105,12 @@ export default function MetaPixelProvider({
     });
   };
 
-  const trackAddToCart = (
+  const trackAddToCart = async (
     contentName: string,
     contentIds?: string[],
     value?: number
   ) => {
-    trackEvent("AddToCart", {
-      content_name: contentName,
-      content_category: "consignment_service",
-      content_ids: contentIds,
-      content_type: "product",
-      value: value,
-      currency: "USD",
-      num_items: 1,
-    });
-  };
-
-  const trackInitiateCheckout = (
-    contentName: string,
-    contentIds?: string[],
-    value?: number
-  ) => {
-    trackEvent("InitiateCheckout", {
+    await trackEvent("AddToCart", {
       content_name: contentName,
       content_category: "consignment_service",
       content_ids: contentIds,
@@ -117,13 +121,29 @@ export default function MetaPixelProvider({
     });
   };
 
-  const trackPurchase = (
+  const trackInitiateCheckout = async (
+    contentName: string,
+    contentIds?: string[],
+    value?: number
+  ) => {
+    await trackEvent("InitiateCheckout", {
+      content_name: contentName,
+      content_category: "consignment_service",
+      content_ids: contentIds,
+      content_type: "product",
+      value: value,
+      currency: "USD",
+      num_items: 1,
+    });
+  };
+
+  const trackPurchase = async (
     contentName: string,
     contentIds?: string[],
     value: number,
     currency: string = "USD"
   ) => {
-    trackEvent("Purchase", {
+    await trackEvent("Purchase", {
       content_name: contentName,
       content_category: "consignment_service",
       content_ids: contentIds,
@@ -135,8 +155,8 @@ export default function MetaPixelProvider({
     });
   };
 
-  const trackContact = (email?: string, value?: number) => {
-    trackEvent("Contact", {
+  const trackContact = async (email?: string, value?: number) => {
+    await trackEvent("Contact", {
       content_name: "TreasureHub Contact",
       content_category: "consignment_service",
       value: value,
@@ -154,6 +174,7 @@ export default function MetaPixelProvider({
     trackInitiateCheckout,
     trackPurchase,
     trackContact,
+    isReady,
   };
 
   return (

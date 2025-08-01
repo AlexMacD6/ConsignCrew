@@ -1,0 +1,66 @@
+# Meta Pixel Error Fix Requirements
+
+## Issue Description
+The application was experiencing a JavaScript error: "Uncaught TypeError: window.fbq is not a function" when trying to track Meta Pixel events. This error occurred because the Meta Pixel script was not fully loaded before tracking functions were called.
+
+## Root Cause
+- Race condition between Meta Pixel script loading and event tracking calls
+- No proper error handling or initialization checks
+- Tracking functions were called before the `fbq` function was available on the window object
+
+## Solution Requirements
+
+### 1. Improve Meta Pixel Initialization
+- Add proper async initialization with Promise-based loading
+- Implement initialization state tracking to prevent multiple initialization attempts
+- Add error handling for script loading failures
+- Ensure the `fbq` function is available before any tracking calls
+
+### 2. Update Tracking Functions
+- Make all tracking functions async to wait for initialization
+- Add proper checks to ensure Meta Pixel is ready before tracking
+- Implement graceful fallback when Meta Pixel is not available
+- Add error handling for tracking failures
+
+### 3. Update MetaPixelProvider Component
+- Add `isReady` state to track initialization status
+- Handle async initialization properly
+- Provide initialization status to consuming components
+- Ensure all tracking functions are async
+
+### 4. Update Page Components
+- Check Meta Pixel readiness before calling tracking functions
+- Handle async tracking calls properly
+- Add proper error handling for tracking failures
+
+## Implementation Details
+
+### Files Modified
+- `app/lib/meta-pixel.ts` - Core Meta Pixel utility functions
+- `app/components/MetaPixelProvider.tsx` - React provider component
+- `app/page.tsx` - Main page with tracking calls
+
+### Key Changes
+1. **Async Initialization**: Meta Pixel now initializes asynchronously with proper Promise handling
+2. **State Management**: Added global state tracking for initialization status
+3. **Error Handling**: Comprehensive error handling for script loading and tracking failures
+4. **Ready State**: Added `isReady` property to check if Meta Pixel is available
+5. **Graceful Degradation**: App continues to work even if Meta Pixel fails to load
+
+## Testing Instructions
+1. Load the application and check browser console for Meta Pixel errors
+2. Verify that Meta Pixel events are tracked properly when the pixel ID is configured
+3. Test that the app works normally when Meta Pixel is not configured
+4. Check that tracking functions don't throw errors when Meta Pixel is unavailable
+
+## Environment Variables
+Ensure the following environment variables are properly configured:
+- `NEXT_PUBLIC_META_PIXEL_ID` - Your Meta Pixel ID
+- `META_ACCESS_TOKEN` - Meta API access token for server-side events
+- `META_API_VERSION` - Meta API version (default: v18.0)
+
+## Expected Outcome
+- No more "window.fbq is not a function" errors
+- Meta Pixel events track properly when configured
+- Application continues to function normally regardless of Meta Pixel status
+- Improved error handling and user experience 
