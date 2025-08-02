@@ -4,8 +4,11 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
   try {
+    console.log('Profile API: Request headers:', Object.fromEntries(req.headers.entries()));
+    
     // Get session from Better Auth
     const session = await auth.api.getSession({ headers: req.headers });
+    console.log('Profile API: Session result:', session);
     
     if (!session?.user?.id) {
       console.log('Profile API: No valid session found');
@@ -18,6 +21,8 @@ export async function GET(req: NextRequest) {
     console.log('Profile API: Session found for user:', session.user.id);
 
     // Fetch user from DB
+    console.log('Profile API: Fetching user with ID:', session.user.id);
+    
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
@@ -25,18 +30,18 @@ export async function GET(req: NextRequest) {
         name: true,
         email: true,
         mobilePhone: true,
-        preferredContact: true,
-        shippingAddress: true,
-        alternatePickup: true,
-        payoutMethod: true,
-        payoutAccount: true,
-        profilePhotoUrl: true,
-        governmentIdUrl: true,
-        role: true,
+        emailVerified: true,
+        addressLine1: true,
+        addressLine2: true,
+        city: true,
+        state: true,
+        zipCode: true,
         createdAt: true,
         updatedAt: true,
       }
     });
+    
+    console.log('Profile API: User query result:', user);
 
     if (!user) {
       console.log('Profile API: User not found in database:', session.user.id);
@@ -52,7 +57,8 @@ export async function GET(req: NextRequest) {
     console.error('Profile API: Error fetching user profile:', error);
     return NextResponse.json({ 
       error: "Internal server error",
-      message: "Failed to fetch user profile"
+      message: error instanceof Error ? error.message : "Failed to fetch user profile",
+      details: error instanceof Error ? error.stack : undefined
     }, { status: 500 });
   }
 }
@@ -79,25 +85,23 @@ export async function PUT(req: NextRequest) {
       data: {
         name: body.name,
         mobilePhone: body.mobilePhone,
-        preferredContact: body.preferredContact,
-        shippingAddress: body.shippingAddress,
-        alternatePickup: body.alternatePickup,
-        payoutMethod: body.payoutMethod,
-        payoutAccount: body.payoutAccount,
+        addressLine1: body.addressLine1,
+        addressLine2: body.addressLine2,
+        city: body.city,
+        state: body.state,
+        zipCode: body.zipCode,
       },
       select: {
         id: true,
         name: true,
         email: true,
         mobilePhone: true,
-        preferredContact: true,
-        shippingAddress: true,
-        alternatePickup: true,
-        payoutMethod: true,
-        payoutAccount: true,
-        profilePhotoUrl: true,
-        governmentIdUrl: true,
-        role: true,
+        emailVerified: true,
+        addressLine1: true,
+        addressLine2: true,
+        city: true,
+        state: true,
+        zipCode: true,
         createdAt: true,
         updatedAt: true,
       }

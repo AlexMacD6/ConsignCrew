@@ -18,7 +18,9 @@ export default function NavBar() {
   const router = useRouter();
   const activeClass = "font-bold text-blue-600";
   const inactiveClass = "text-gray-600 hover:text-blue-600";
+
   const { data: session } = authClient.useSession();
+
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { openSignupModal } = useModal();
@@ -63,30 +65,9 @@ export default function NavBar() {
 
       {/* Desktop Navigation Links (hidden on mobile) */}
       <div className="hidden md:flex gap-8 text-[#222] font-medium text-base">
-        <button
-          onClick={() => handleNavigation("how-it-works")}
-          className="hover:text-[#D4AF3D] transition"
-        >
-          How It Works
-        </button>
-        <button
-          onClick={() => handleNavigation("pricing")}
-          className="hover:text-[#D4AF3D] transition"
-        >
-          Pricing
-        </button>
-        <button
-          onClick={() => handleNavigation("why-treasurehub")}
-          className="hover:text-[#D4AF3D] transition"
-        >
-          Why TreasureHub
-        </button>
-        <button
-          onClick={() => handleNavigation("roadmap")}
-          className="hover:text-[#D4AF3D] transition"
-        >
-          Roadmap
-        </button>
+        <Link href="/" className="hover:text-[#D4AF3D] transition">
+          Home
+        </Link>
         <Link href="/faq" className="hover:text-[#D4AF3D] transition">
           FAQ
         </Link>
@@ -164,35 +145,15 @@ export default function NavBar() {
       {mobileMenuOpen && (
         <div className="md:hidden absolute top-full left-0 right-0 bg-white/95 backdrop-blur border-b border-[#eee] shadow-lg">
           <div className="px-6 py-4 space-y-4">
-            {/* Landing Page Sections */}
+            {/* Home Link */}
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-                Sections
-              </h3>
-              <button
-                onClick={() => handleNavigation("how-it-works")}
+              <Link
+                href="/"
                 className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+                onClick={() => setMobileMenuOpen(false)}
               >
-                How It Works
-              </button>
-              <button
-                onClick={() => handleNavigation("pricing")}
-                className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
-              >
-                Pricing
-              </button>
-              <button
-                onClick={() => handleNavigation("why-treasurehub")}
-                className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
-              >
-                Why TreasureHub
-              </button>
-              <button
-                onClick={() => handleNavigation("roadmap")}
-                className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
-              >
-                Roadmap
-              </button>
+                Home
+              </Link>
             </div>
 
             {/* Other Pages */}

@@ -22,6 +22,7 @@ import {
   Edit,
 } from "lucide-react";
 import QuestionsDisplay from "../../../components/QuestionsDisplay";
+import ImageCarousel from "../../../components/ImageCarousel";
 
 // Mock data for transportation history
 const transportationHistory = [
@@ -116,7 +117,6 @@ export default function ListingDetailPage() {
   const router = useRouter();
   const [listing, setListing] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedImage, setSelectedImage] = useState(0);
   const [savedListings, setSavedListings] = useState<Set<string>>(new Set());
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -133,14 +133,76 @@ export default function ListingDetailPage() {
         const data = await response.json();
 
         if (data.success) {
-          setListing(data.listing);
+          // Transform the API data to match the expected format
+          const transformedListing = {
+            item_id: data.listing.itemId,
+            seller_id: data.listing.userId,
+            created_at: data.listing.createdAt,
+            status: data.listing.status,
+            qr_code_url: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${data.listing.itemId}`,
+            image_urls_staged: data.listing.photos.hero
+              ? [data.listing.photos.hero]
+              : [],
+            title: data.listing.title,
+            description: data.listing.description,
+            category_id: `${data.listing.department}_${data.listing.category}_${data.listing.subCategory}`,
+            condition: data.listing.condition,
+            image_urls_original:
+              data.listing.photos.gallery || [data.listing.photos.hero] || [],
+            // Create a comprehensive image array for carousel
+            all_images: [
+              data.listing.photos.hero,
+              data.listing.photos.back,
+              data.listing.photos.proof,
+              ...(data.listing.photos.additional || []),
+            ].filter(Boolean), // Remove any null/undefined values
+            serial_number: data.listing.serialNumber,
+            model_number: data.listing.modelNumber,
+            brand: data.listing.brand,
+            dimensions: data.listing.dimensions,
+            discount_schedule:
+              data.listing.discountSchedule?.type || "Classic-60",
+            zip_code: data.listing.zipCode,
+            list_price: data.listing.price,
+            estimated_retail_price: data.listing.estimatedRetailPrice,
+            seller_name: data.listing.user.name || "Unknown Seller",
+            seller_organization: data.listing.user.organization,
+            location: data.listing.neighborhood,
+            rating: data.listing.rating || null,
+            reviews: data.listing.reviews || 0,
+            views: data.listing.views || 0, // Add views from database
+            timeLeft: "2d 14h", // Default time for now
+            // Additional fields for detail page
+            reserve_price: data.listing.price * 0.8, // Mock reserve price
+            fee_pct: 8.5, // Mock fee percentage
+            price_range_low: data.listing.price * 0.7, // Mock price range
+            price_range_high: data.listing.price * 1.3,
+            gtin: data.listing.gtin || null,
+            insights_query: data.listing.insights_query || null,
+            priceHistory: data.listing.priceHistory || [],
+            user: data.listing.user,
+          };
+          setListing(transformedListing);
+
+          // Track the view for this listing
+          try {
+            await fetch(`/api/listings/${params.id}/view`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            });
+          } catch (viewError) {
+            console.error("Error tracking view:", viewError);
+            // Don't fail the page load if view tracking fails
+          }
         } else {
           throw new Error(data.error || "Failed to fetch listing");
         }
       } catch (error) {
         console.error("Error fetching listing:", error);
-        // Fallback to mock data for now
-        setListing(mockListing);
+        // Don't fallback to mock data - show error instead
+        setListing(null);
       } finally {
         setLoading(false);
       }
@@ -309,37 +371,16 @@ export default function ListingDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Images and Basic Info */}
           <div className="lg:col-span-2">
-            {/* Main Image */}
+            {/* Main Image Carousel */}
             <div className="mb-6">
-              <img
-                src={listing.image_urls_staged[selectedImage]}
+              <ImageCarousel
+                images={listing.all_images}
                 alt={listing.title}
-                className="w-full h-96 object-cover rounded-lg"
+                className="w-full h-96 rounded-lg"
+                showArrows={true}
+                showDots={true}
+                autoPlay={false}
               />
-              {/* Image Thumbnails */}
-              {listing.image_urls_staged.length > 1 && (
-                <div className="flex gap-2 mt-4">
-                  {listing.image_urls_staged.map(
-                    (image: string, index: number) => (
-                      <button
-                        key={index}
-                        onClick={() => setSelectedImage(index)}
-                        className={`w-20 h-20 rounded-lg overflow-hidden border-2 ${
-                          selectedImage === index
-                            ? "border-[#D4AF3D]"
-                            : "border-gray-200"
-                        }`}
-                      >
-                        <img
-                          src={image}
-                          alt={`${listing.title} - Image ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </button>
-                    )
-                  )}
-                </div>
-              )}
             </div>
 
             {/* Price Information */}
@@ -387,6 +428,27 @@ export default function ListingDetailPage() {
                   Make Offer
                 </Button>
               </div>
+
+              {/* Video Component */}
+              {listing.videoUrl && (
+                <div className="mt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                    Product Video
+                  </h3>
+                  <div className="relative w-full aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                    <video
+                      className="w-full h-full object-cover"
+                      controls
+                      preload="metadata"
+                    >
+                      <source src={listing.videoUrl} type="video/mp4" />
+                      <source src={listing.videoUrl} type="video/webm" />
+                      <source src={listing.videoUrl} type="video/ogg" />
+                      Your browser does not support the video tag.
+                    </video>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Item Details */}
@@ -637,7 +699,7 @@ export default function ListingDetailPage() {
                     </span>
                   </div>
                 </div>
-                {listing.reviews > 0 && (
+                {listing.rating && listing.reviews > 0 && (
                   <div className="flex items-center gap-3">
                     <Star className="h-5 w-5 text-yellow-400" />
                     <div>

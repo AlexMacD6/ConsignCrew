@@ -8,29 +8,32 @@ datasource db {
 }
 
 model user {
-  id            String   @id @default(cuid())
-  name          String // Primary name field for all users
-  mobilePhone   String?
-  email         String   @unique
-  emailVerified Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  // Relations for BetterAuth plugins
-  members         Member[]
+  id              String       @id @default(cuid())
+  email           String       @unique
+  mobilePhone     String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  emailVerified   Boolean      @default(false)
+  name            String
+  addressLine1    String?
+  addressLine2    String?
+  city            String?
+  neighborhood    String?
+  state           String?
+  zipCode         String?
   invitationsSent Invitation[] @relation("InvitationsSent")
-  teamMemberships TeamMember[]
-  sessions        session[]
-  accounts        account[]
-  questions       Question[]   @relation("QuestionCreatedBy")
+  listings        Listing[]
+  members         Member[]
   answers         Question[]   @relation("QuestionAnsweredBy")
   approvals       Question[]   @relation("QuestionApprovedBy")
-  listings        Listing[]
+  questions       Question[]   @relation("QuestionCreatedBy")
+  teamMemberships TeamMember[]
+  accounts        account[]
+  sessions        session[]
 
   @@index([email])
+  @@index([zipCode])
 }
-
-/// --- BetterAuth Organization Plugin Models ---
 
 model Organization {
   id          String       @id @default(cuid())
@@ -39,20 +42,20 @@ model Organization {
   logo        String?
   metadata    String?
   createdAt   DateTime     @default(now())
+  invitations Invitation[]
   members     Member[]
   teams       Team[]
-  invitations Invitation[] // Invitations for this organization
-  sessions    session[] // Sessions with this org as active
+  sessions    session[]
 }
 
 model Member {
   id             String       @id @default(cuid())
   userId         String
   organizationId String
-  role           String // e.g. MEMBER, ADMIN, OWNER
+  role           String
   createdAt      DateTime     @default(now())
-  user           user         @relation(fields: [userId], references: [id])
   organization   Organization @relation(fields: [organizationId], references: [id])
+  user           user         @relation(fields: [userId], references: [id])
 }
 
 model Invitation {
@@ -76,7 +79,7 @@ model Team {
   updatedAt      DateTime     @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id])
   teamMembers    TeamMember[]
-  sessions       session[] // Sessions with this team as active
+  sessions       session[]
 }
 
 model TeamMember {
@@ -91,36 +94,34 @@ model TeamMember {
 model session {
   id                   String        @id @default(cuid())
   userId               String
-  token                String        @unique
-  expiresAt            DateTime
-  ipAddress            String?
-  userAgent            String?
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
   activeOrganizationId String?
   activeTeamId         String?
-  user                 user          @relation(fields: [userId], references: [id])
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  expiresAt            DateTime
+  token                String        @unique
+  ipAddress            String?
+  userAgent            String?
   organization         Organization? @relation(fields: [activeOrganizationId], references: [id])
   team                 Team?         @relation(fields: [activeTeamId], references: [id])
+  user                 user          @relation(fields: [userId], references: [id])
 
   @@map("session")
 }
 
-// BetterAuth required models
 model account {
   id                   String    @id @default(cuid())
   userId               String
   providerId           String    @map("provider")
   accountId            String    @map("providerAccountId")
-  password             String? // For credentials (email/password) auth only
   refreshToken         String?   @map("refresh_token")
   accessToken          String?   @map("access_token")
-  accessTokenExpiresAt DateTime? @map("expires_at")
   idToken              String?   @map("id_token")
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
-
-  user user @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessTokenExpiresAt DateTime? @map("expires_at")
+  password             String?
+  user                 user      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([providerId, accountId])
   @@map("account")
@@ -139,7 +140,7 @@ model ZipCode {
   id   String @id @default(cuid())
   code String
   area String
-  type String // 'seller' or 'buyer'
+  type String
 }
 
 model AiResponse {
@@ -158,26 +159,27 @@ model AiResponse {
 
 model Question {
   id             String   @id @default(cuid())
-  listingId      String?
   question       String
   answer         String?
-  createdBy      String
+  createdAt      DateTime @default(now())
   answeredBy     String?
   approvedBy     String?
-  isPublic       Boolean  @default(false)
-  isApproved     Boolean  @default(false)
-  createdAt      DateTime @default(now())
+  createdBy      String
   updatedAt      DateTime @updatedAt
-  createdByUser  user     @relation("QuestionCreatedBy", fields: [createdBy], references: [id])
+  isApproved     Boolean  @default(false)
+  isPublic       Boolean  @default(false)
+  listingId      String?
   answeredByUser user?    @relation("QuestionAnsweredBy", fields: [answeredBy], references: [id])
   approvedByUser user?    @relation("QuestionApprovedBy", fields: [approvedBy], references: [id])
+  createdByUser  user     @relation("QuestionCreatedBy", fields: [createdBy], references: [id])
 }
 
 model Listing {
-  id                   String   @id @default(cuid())
+  id                   String         @id @default(cuid())
   userId               String
-  itemId               String   @unique
-  photos               Json // Store photo keys as JSON
+  itemId               String         @unique
+  photos               Json
+  videoUrl             String?
   department           String
   category             String
   subCategory          String
@@ -192,13 +194,13 @@ model Listing {
   serialNumber         String?
   modelNumber          String?
   estimatedRetailPrice Float?
-  discountSchedule     Json? // Store discount schedule as JSON
-  status               String   @default("active") // active, sold, expired, etc.
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-
-  user         user           @relation(fields: [userId], references: [id])
-  priceHistory PriceHistory[]
+  discountSchedule     Json?
+  status               String         @default("active")
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  views                Int            @default(0)
+  user                 user           @relation(fields: [userId], references: [id])
+  priceHistory         PriceHistory[]
 
   @@index([userId])
   @@index([status])
@@ -211,8 +213,7 @@ model PriceHistory {
   listingId String
   price     Float
   createdAt DateTime @default(now())
-
-  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   @@index([listingId])
   @@index([createdAt])
@@ -222,8 +223,8 @@ model PriceHistory {
 model EarlyAccessSignup {
   id           String   @id @default(cuid())
   email        String   @unique
-  signupNumber Int      @unique // Sequential number for tracking top 200
-  source       String   @default("website") // website, modal, etc.
+  signupNumber Int      @unique
+  source       String   @default("website")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -256,18 +257,18 @@ model TreasureRedemption {
   venmoUsername     String?
   cashAppUsername   String?
   zelleEmail        String?
-  paymentMethod     String // "venmo", "cashapp", "zelle"
+  paymentMethod     String
   selfieImageUrl    String?
-  socialMediaPost   String? // Instagram post URL
+  socialMediaPost   String?
   socialMediaBonus  Boolean  @default(false)
-  paymentStatus     String   @default("pending") // "pending", "paid", "failed"
+  paymentStatus     String   @default("pending")
   treasureHubCredit Boolean  @default(false)
   earlyAccessSent   Boolean  @default(false)
   ipAddress         String?
   userAgent         String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
-  expiresAt         DateTime // 30 days from creation
+  expiresAt         DateTime
 
   @@index([code])
   @@index([email])

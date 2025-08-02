@@ -1,0 +1,89 @@
+# Listing View Tracking Feature
+
+## Problem
+- Profile page was showing "0 views" for all listings because view tracking wasn't implemented
+- No way to track how many times users view listing detail pages
+- Missing valuable analytics data for sellers to understand listing performance
+
+## Solution
+Implement proper view tracking system that increments a counter each time someone visits a listing detail page.
+
+## Changes Made
+
+### 1. Database Schema Update
+- **File**: `prisma/schema.prisma`
+- **Change**: Added `views` field to Listing model
+- **Type**: `Int @default(0)`
+- **Migration**: Created and applied migration `20250802024805_add_views_to_listings`
+
+### 2. View Tracking API
+- **File**: `app/api/listings/[id]/view/route.ts`
+- **Purpose**: API endpoint to increment view count
+- **Method**: POST
+- **Functionality**: 
+  - Increments view count by 1 for the specified listing
+  - Uses Prisma's `increment` operation for atomic updates
+  - Returns updated view count
+  - Handles errors gracefully
+
+### 3. Listing Detail Page Integration
+- **File**: `app/(dashboard)/list-item/[id]/page.tsx`
+- **Change**: Added view tracking call after successful listing fetch
+- **Implementation**: 
+  - Calls `/api/listings/${params.id}/view` endpoint
+  - Non-blocking - doesn't fail page load if view tracking fails
+  - Includes views field in transformed listing data
+
+### 4. API Routes Updated
+- **Files**: `app/api/listings/route.ts`, `app/api/listings/[id]/route.ts`
+- **Change**: Automatically include `views` field in all listing queries
+- **Result**: Views are now included in all listing data responses
+
+## Technical Details
+
+### View Tracking Flow
+1. User visits listing detail page
+2. Page fetches listing data from `/api/listings/[id]`
+3. After successful fetch, page calls `/api/listings/[id]/view` to increment counter
+4. View count is updated atomically in database
+5. Profile page displays actual view counts
+
+### Database Schema
+```prisma
+model Listing {
+  // ... existing fields
+  views                Int      @default(0) // Track number of views
+  // ... other fields
+}
+```
+
+### API Endpoint
+```typescript
+POST /api/listings/[id]/view
+// Increments view count for listing
+// Returns: { success: true, views: number }
+```
+
+## Benefits
+- **Real Analytics**: Sellers can see actual view counts for their listings
+- **Performance Insights**: Helps sellers understand which listings are getting attention
+- **User Experience**: Provides meaningful data instead of fake "0 views"
+- **Atomic Updates**: Uses Prisma's increment for thread-safe view counting
+
+## Testing Instructions
+1. Visit a listing detail page
+2. Check the profile page to see if view count increased
+3. Visit the same listing multiple times to verify counting
+4. Check different listings to ensure counts are independent
+
+## Future Enhancements
+- Add view tracking analytics dashboard
+- Implement view history with timestamps
+- Add unique view tracking (prevent same user from incrementing multiple times)
+- Add view notifications for sellers
+- Implement view-based sorting options
+
+## Dependencies
+- Prisma ORM for database operations
+- Existing listing API infrastructure
+- No new external dependencies required 

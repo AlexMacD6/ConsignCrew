@@ -1,0 +1,126 @@
+# User Address Fields Feature
+
+## Problem
+- Users need to provide their address information before listing or bidding on items
+- The system needs to validate that users are within the correct ZIP code service area
+- Current user profile only has basic information (name, email, phone)
+- No way to verify user location for service area compliance
+
+## Solution
+Add comprehensive address fields to the user profile. ZIP code validation will only occur at checkout to ensure users are within the service area when making purchases.
+
+## Changes Made
+
+### 1. Database Schema Update
+- **File**: `prisma/schema.prisma`
+- **Change**: Added address fields to the `user` model
+- **New Fields**:
+  - `addressLine1` (String?) - Street address
+  - `addressLine2` (String?) - Apartment, suite, etc.
+  - `city` (String?) - City
+  - `state` (String?) - State (2-letter code)
+  - `zipCode` (String?) - ZIP code for service area validation
+  - `neighborhood` (String?) - Auto-populated from ZIP code
+- **Migration**: Created and applied migration `20250802025336_add_address_fields_to_user`
+- **Index**: Added index on `zipCode` for efficient queries
+
+### 2. Profile API Updates
+- **File**: `app/api/profile/route.ts`
+- **Changes**:
+  - Updated `GET` method to include all address fields in response
+  - Updated `PUT` method to accept and update address fields
+  - Added proper error handling for address updates
+
+### 3. Profile Page Enhancements
+- **File**: `app/profile/page.tsx`
+- **Changes**:
+  - Updated `User` interface to include address fields
+  - Added comprehensive address form section in overview tab
+  - Added address validation before profile updates (no ZIP code validation)
+  - Added state dropdown with all US states
+  - Neighborhood field is now user-editable (not auto-populated)
+
+### 4. ZIP Code Validation Integration
+- **Note**: ZIP code validation removed from profile page
+- **Future**: ZIP code validation will be implemented at checkout only
+- **API**: `app/api/zipcodes/validate/route.ts` is available for checkout validation
+
+## Technical Details
+
+### Database Schema
+```prisma
+model user {
+  // ... existing fields
+  addressLine1  String?  // Street address
+  addressLine2  String?  // Apartment, suite, etc.
+  city          String?  // City
+  state         String?  // State (2-letter code)
+  zipCode       String?  // ZIP code for service area validation
+  neighborhood  String?  // Auto-populated from ZIP code
+  // ... other fields
+  @@index([zipCode]) // Index for ZIP code queries
+}
+```
+
+### Address Validation Flow
+1. User enters address information in profile form
+2. System validates that all required fields are filled
+3. Profile update requires complete address (no ZIP code validation)
+4. ZIP code validation will occur at checkout only
+
+### Required Fields for Listing/Bidding
+- Street Address (addressLine1)
+- City
+- State
+- ZIP Code (any valid ZIP code)
+- Neighborhood (user-editable)
+
+## Benefits
+- **Flexible Address Management**: Users can update their address to any location
+- **Complete User Profiles**: Full address information for shipping/billing
+- **Data Integrity**: Required fields prevent incomplete profiles
+- **User Experience**: Simple, straightforward address form
+- **Checkout Validation**: ZIP code validation will occur only when needed at checkout
+
+## User Experience
+1. **Profile Setup**: Users must complete address information
+2. **Flexible Address**: Users can enter any ZIP code and neighborhood
+3. **Simple Form**: No real-time validation or auto-completion
+4. **Error Prevention**: Cannot save incomplete address information
+5. **Clear Feedback**: Simple error messages for missing fields
+
+## Validation Rules
+- All required address fields must be filled
+- ZIP code can be any valid format
+- State must be selected from dropdown
+- Address line 2 is optional
+- Neighborhood is user-editable
+
+## Future Enhancements
+- Add address verification with external services
+- Implement address autocomplete
+- Add multiple address support (shipping vs billing)
+- Add address history tracking
+- Implement address-based shipping calculations
+- Add address validation for international users
+
+## Testing Instructions
+1. Go to user profile page
+2. Click "Edit" to enter edit mode
+3. Fill in address fields:
+   - Street Address (required)
+   - City (required)
+   - State (required, select from dropdown)
+   - ZIP Code (required, any valid format)
+   - Neighborhood (optional, user-editable)
+4. Verify form behavior:
+   - Enter any ZIP code (no validation)
+   - Enter neighborhood manually (not auto-populated)
+   - Check that all required fields are validated
+5. Try to save with incomplete address (should show validation error)
+6. Save with complete address (should succeed)
+
+## Dependencies
+- Existing ZIP code validation API
+- Prisma ORM for database operations
+- No new external dependencies required 

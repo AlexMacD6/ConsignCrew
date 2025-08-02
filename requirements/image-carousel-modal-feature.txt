@@ -1,0 +1,75 @@
+# Image Carousel Modal Feature
+
+## Problem
+- Users wanted to be able to click on photos to see them in full size
+- No way to view images in a larger format for better detail inspection
+- Limited viewing experience when examining product photos
+
+## Changes Made
+
+### 1. Enhanced ImageCarousel Component
+- **File**: `app/components/ImageCarousel.tsx`
+- **New Features Added**:
+  - Click-to-open modal functionality
+  - Full-screen modal overlay with dark background
+  - Expand icon that appears on hover
+  - Cursor pointer on images to indicate clickability
+
+### 2. Modal Functionality
+- **Modal Features**:
+  - Full-screen overlay with 90% opacity black background
+  - Image displayed with `object-contain` to maintain aspect ratio
+  - Close button (X) in top-right corner
+  - Keyboard navigation support (Escape to close, arrow keys to navigate)
+  - Background scroll prevention when modal is open
+
+### 3. Enhanced Navigation in Modal
+- **Modal Navigation**:
+  - Larger navigation arrows for better usability
+  - Image counter showing current position
+  - Dot indicators for jumping to specific images
+  - All navigation features work within the modal
+
+### 4. Improved User Experience
+- **UX Enhancements**:
+  - Hover effects on images (slight opacity change)
+  - Expand icon appears on hover over carousel
+  - Event propagation handling to prevent conflicts
+  - Smooth transitions and animations
+
+### 5. Accessibility Features
+- **Accessibility**:
+  - Proper ARIA labels for all interactive elements
+  - Keyboard navigation support
+  - Screen reader friendly structure
+  - Focus management
+
+## Configuration Options
+- **showModal**: boolean (default: true) - Controls whether modal functionality is enabled
+- **showArrows**: boolean (default: true) - Shows navigation arrows
+- **showDots**: boolean (default: true) - Shows dot indicators
+- **autoPlay**: boolean (default: false) - Controls auto-play functionality
+
+## Testing Instructions
+1. Navigate to any listing with multiple photos
+2. Hover over the image to see the expand icon appear
+3. Click on the image or expand icon to open the modal
+4. Test navigation within the modal using:
+   - Arrow buttons
+   - Dot indicators
+   - Keyboard arrow keys
+5. Test closing the modal using:
+   - Close button (X)
+   - Escape key
+6. Verify that background scrolling is disabled when modal is open
+7. Test on both listings page and detail page
+
+## Keyboard Shortcuts
+- **Escape**: Close modal
+- **Arrow Left**: Previous image
+- **Arrow Right**: Next image
+
+## Dependencies
+- Uses existing Lucide React icons (X, Maximize2)
+- No new external dependencies required
+- Compatible with existing ImageCarousel usage across the app 

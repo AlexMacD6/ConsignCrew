@@ -131,8 +131,8 @@ export default function ListingsPage() {
               seller_organization:
                 listing.user.members?.[0]?.organization || null,
               location: listing.neighborhood,
-              rating: 4.5, // Default rating for now
-              reviews: 0, // Default reviews for now
+              rating: listing.rating || null, // Use actual rating if available
+              reviews: listing.reviews || 0, // Use actual review count if available
               timeLeft: "2d 14h", // Default time for now
             };
           });
@@ -580,16 +580,18 @@ export default function ListingsPage() {
                     </div>
                   )}
 
-                  {/* Rating */}
-                  <div className="flex items-center gap-1 mb-2">
-                    <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                    <span className="text-xs text-gray-600">
-                      {listing.rating}
-                    </span>
-                    <span className="text-xs text-gray-400">
-                      ({listing.reviews})
-                    </span>
-                  </div>
+                  {/* Rating - Only show if there are actual reviews */}
+                  {listing.rating && listing.reviews > 0 && (
+                    <div className="flex items-center gap-1 mb-2">
+                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                      <span className="text-xs text-gray-600">
+                        {listing.rating}
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        ({listing.reviews})
+                      </span>
+                    </div>
+                  )}
 
                   {/* Condition & Location */}
                   <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
@@ -997,20 +999,21 @@ export default function ListingsPage() {
                           </span>
                         </div>
                       </div>
-                      {selectedListing.reviews > 0 && (
-                        <div className="flex items-center gap-3">
-                          <Star className="h-5 w-5 text-yellow-400" />
-                          <div>
-                            <span className="text-sm font-medium text-gray-700">
-                              Rating:
-                            </span>
-                            <span className="ml-2 text-sm text-gray-600">
-                              {selectedListing.rating} (
-                              {selectedListing.reviews} reviews)
-                            </span>
+                      {selectedListing.rating &&
+                        selectedListing.reviews > 0 && (
+                          <div className="flex items-center gap-3">
+                            <Star className="h-5 w-5 text-yellow-400" />
+                            <div>
+                              <span className="text-sm font-medium text-gray-700">
+                                Rating:
+                              </span>
+                              <span className="ml-2 text-sm text-gray-600">
+                                {selectedListing.rating} (
+                                {selectedListing.reviews} reviews)
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
                     </div>
                   </div>
 

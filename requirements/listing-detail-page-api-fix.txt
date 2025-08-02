@@ -1,0 +1,43 @@
+# Listing Detail Page API Fix
+
+## Problem
+- Listing detail page was showing "Failed to fetch listing" error
+- API endpoint was searching by database `id` field instead of `itemId` field
+- Data transformation was missing between API response and frontend expectations
+
+## Changes Made
+
+### 1. Fixed API Endpoint Search Field
+- **File**: `app/api/listings/[id]/route.ts`
+- **Change**: Updated search from `id: id` to `itemId: id`
+- **Reason**: URL parameter contains the human-readable `itemId`, not the database CUID
+
+### 2. Added Data Transformation
+- **File**: `app/(dashboard)/list-item/[id]/page.tsx`
+- **Change**: Added comprehensive data transformation from API response to frontend format
+- **Includes**: 
+  - Converting `itemId` to `item_id`
+  - Transforming photo structure
+  - Adding missing fields with default values
+  - Handling user and organization data
+
+### 3. Improved Error Handling
+- **File**: `app/api/listings/[id]/route.ts`
+- **Change**: Added more specific error message showing the itemId being searched
+- **File**: `app/(dashboard)/list-item/[id]/page.tsx`
+- **Change**: Removed fallback to mock data, now shows proper error state
+
+### 4. Maintained Rating Display Fix
+- **Ensured**: Rating display logic remains consistent with previous fix
+- **Condition**: Only shows ratings when `rating && reviews > 0`
+
+## Testing Instructions
+1. Navigate to listings page
+2. Click "View Details" on any listing
+3. Verify the detail page loads correctly
+4. Check that rating only shows when there are actual reviews
+5. Test with invalid itemId to ensure proper error handling
+
+## Dependencies
+- No new dependencies required
+- Uses existing Prisma ORM and Next.js API routes 

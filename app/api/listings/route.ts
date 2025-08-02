@@ -12,6 +12,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       photos,
+      videoUrl,
       department,
       category,
       subCategory,
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
         userId: session.user.id,
         itemId,
         photos: transformedPhotos,
+        videoUrl: videoUrl || null,
         department,
         category,
         subCategory,
@@ -103,20 +105,28 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') || 'active';
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
+    const userOnly = searchParams.get('userOnly') === 'true';
 
-    // Only allow fetching active listings for public access
-    if (status !== 'active') {
-      // For non-active status, require authentication
-      const session = await auth.api.getSession({ headers: request.headers });
+    // Check authentication for user-specific requests
+    let session = null;
+    if (userOnly || status !== 'active') {
+      session = await auth.api.getSession({ headers: request.headers });
       if (!session?.user?.id) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
     }
 
+    // Build where clause
+    const whereClause: any = {};
+    
+    if (userOnly) {
+      whereClause.userId = session!.user.id;
+    } else {
+      whereClause.status = status;
+    }
+
     const listings = await prisma.listing.findMany({
-      where: {
-        status,
-      },
+      where: whereClause,
       include: {
         user: {
           select: {
@@ -159,6 +169,103 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching listings:', error);
     return NextResponse.json({
       error: error instanceof Error ? error.message : 'Failed to fetch listings'
+    }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const listingId = searchParams.get('id');
+
+    if (!listingId) {
+      return NextResponse.json({ error: 'Listing ID is required' }, { status: 400 });
+    }
+
+    // Check if user owns the listing
+    const listing = await prisma.listing.findFirst({
+      where: {
+        itemId: listingId,
+        userId: session.user.id,
+      },
+    });
+
+    if (!listing) {
+      return NextResponse.json({ error: 'Listing not found or access denied' }, { status: 404 });
+    }
+
+    // Delete the listing
+    await prisma.listing.delete({
+      where: {
+        id: listing.id,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Listing deleted successfully',
+    });
+
+  } catch (error) {
+    console.error('Error deleting listing:', error);
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : 'Failed to delete listing'
+    }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const listingId = searchParams.get('id');
+    const body = await request.json();
+
+    if (!listingId) {
+      return NextResponse.json({ error: 'Listing ID is required' }, { status: 400 });
+    }
+
+    // Check if user owns the listing
+    const listing = await prisma.listing.findFirst({
+      where: {
+        itemId: listingId,
+        userId: session.user.id,
+      },
+    });
+
+    if (!listing) {
+      return NextResponse.json({ error: 'Listing not found or access denied' }, { status: 404 });
+    }
+
+    // Update the listing
+    const updatedListing = await prisma.listing.update({
+      where: {
+        id: listing.id,
+      },
+      data: {
+        ...body,
+        updatedAt: new Date(),
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      listing: updatedListing,
+    });
+
+  } catch (error) {
+    console.error('Error updating listing:', error);
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : 'Failed to update listing'
     }, { status: 500 });
   }
 } 

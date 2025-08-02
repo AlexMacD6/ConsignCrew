@@ -1,5 +1,5 @@
 "use client";
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../../components/ui/button";
 import {
@@ -162,6 +162,19 @@ export default function ListItemPage() {
   const [step, setStep] = useState<1 | 2>(1);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Video upload state
+  const [video, setVideo] = useState<{
+    file: File | null;
+    key: string | null;
+    url: string | null;
+  }>({
+    file: null,
+    key: null,
+    url: null,
+  });
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [videoUploadError, setVideoUploadError] = useState<string | null>(null);
   const [department, setDepartment] = useState<Department | "">("");
   const [category, setCategory] = useState<Category | "">("");
   const [subCategory, setSubCategory] = useState<SubCategory | "">("");
@@ -213,6 +226,68 @@ export default function ListItemPage() {
 
     validateZipCode();
   }, [zipCode]);
+
+  const handleVideoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith("video/")) {
+        setVideoUploadError("Please select a valid video file");
+        return;
+      }
+
+      // Validate file size (max 100MB)
+      if (file.size > 100 * 1024 * 1024) {
+        setVideoUploadError("Video file size must be less than 100MB");
+        return;
+      }
+
+      try {
+        setVideoUploading(true);
+        setVideoUploadError(null);
+
+        // Generate item ID for S3 key
+        const itemId = generateItemId();
+
+        // Upload file using API route
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("itemId", itemId);
+        formData.append("type", "video");
+
+        const uploadResponse = await fetch("/api/upload/video", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json();
+          throw new Error(errorData.error || "Video upload failed");
+        }
+
+        const result = await uploadResponse.json();
+
+        // Update video state
+        setVideo({
+          file,
+          key: result.key,
+          url: result.url,
+        });
+
+        setShowFlash(true);
+        setTimeout(() => {
+          setShowFlash(false);
+        }, 800);
+      } catch (error) {
+        console.error("Error uploading video:", error);
+        setVideoUploadError(
+          error instanceof Error ? error.message : "Video upload failed"
+        );
+      } finally {
+        setVideoUploading(false);
+      }
+    }
+  };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -383,6 +458,11 @@ export default function ListItemPage() {
     }
   };
 
+  const clearVideo = () => {
+    setVideo({ file: null, key: null, url: null });
+    setVideoUploadError(null);
+  };
+
   const clearCurrentPhoto = () => {
     if (currentPhotoType === "additional") {
       // For additional photos, clear the last one added
@@ -477,6 +557,7 @@ export default function ListItemPage() {
             proof: photos.proof?.key,
             additional: photos.additional.map((f) => f.key),
           },
+          videoUrl: video.url,
           department,
           category,
           subCategory,
@@ -947,6 +1028,81 @@ export default function ListItemPage() {
                   </span>
                 </div>
               </label>
+            </div>
+
+            {/* Video Upload Section */}
+            <div className="w-full mt-8">
+              <div className="text-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Product Video (Optional)
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Add a video to showcase your item in action. This helps buyers
+                  better understand the product.
+                </p>
+              </div>
+
+              {/* Video Preview */}
+              {video.url && (
+                <div className="mb-4 relative">
+                  <video
+                    src={video.url}
+                    className="w-full max-w-md mx-auto aspect-video bg-gray-100 rounded-lg"
+                    controls
+                    preload="metadata"
+                  />
+                  <button
+                    type="button"
+                    onClick={clearVideo}
+                    className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+
+              {/* Video Upload Area */}
+              {!video.url && (
+                <label
+                  htmlFor="video-input"
+                  className="w-full flex flex-col items-center cursor-pointer"
+                >
+                  <input
+                    id="video-input"
+                    type="file"
+                    accept="video/*"
+                    className="hidden"
+                    onChange={handleVideoChange}
+                  />
+                  <div className="w-full max-w-md bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center p-8 mb-2">
+                    <div className="text-center">
+                      <div className="text-gray-400 mb-2">
+                        {videoUploading ? (
+                          <div className="flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D4AF3D]"></div>
+                            <span className="ml-2">Uploading video...</span>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="text-4xl mb-2">📹</div>
+                            <span>Tap to upload a video</span>
+                            <div className="text-xs text-gray-500 mt-1">
+                              MP4, WebM, or OGG up to 100MB
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </label>
+              )}
+
+              {/* Video Upload Error */}
+              {videoUploadError && (
+                <div className="text-red-600 text-sm text-center mt-2">
+                  {videoUploadError}
+                </div>
+              )}
             </div>
 
             <p className="text-gray-500 text-sm">

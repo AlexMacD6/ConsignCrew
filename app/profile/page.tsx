@@ -17,9 +17,25 @@ import {
   Edit,
   Save,
   X,
+  Package,
+  DollarSign,
+  Calendar,
+  Star,
+  Heart,
+  Eye as EyeIcon,
+  MoreHorizontal,
+  Filter,
+  Search,
+  CheckCircle,
+  XCircle,
+  ShoppingCart,
+  Clock,
 } from "lucide-react";
 import { SELLER_ZIP_CODES, BUYER_ZIP_CODES } from "../lib/zipcodes";
 import AdminDashboard from "../components/AdminDashboard";
+import { authClient } from "../lib/auth-client";
+import PhoneInput from "react-phone-input-2";
+import "react-phone-input-2/lib/style.css";
 // Remove server-side imports - we'll use API endpoints instead
 
 interface User {
@@ -27,14 +43,14 @@ interface User {
   name: string;
   email: string;
   mobilePhone?: string;
-  preferredContact?: string;
-  shippingAddress?: string;
-  alternatePickup?: string;
-  payoutMethod?: string;
-  payoutAccount?: string;
-  profilePhotoUrl?: string;
-  governmentIdUrl?: string;
-  role?: string;
+  emailVerified?: boolean;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  createdAt?: string;
+  updatedAt?: string;
   isAdmin?: boolean;
 }
 
@@ -73,7 +89,10 @@ const mockUsers = [
 ];
 
 export default function ProfilePage() {
-  const [tab, setTab] = useState("overview");
+  const { data: session, isLoading: sessionLoading } = authClient.useSession();
+  const [tab, setTab] = useState<"overview" | "listings" | "purchases">(
+    "overview"
+  );
   const [adminTab, setAdminTab] = useState("users");
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -96,15 +115,49 @@ export default function ProfilePage() {
     metadata: "",
   });
   const [isAdminUser, setIsAdminUser] = useState(false);
+
+  // ZIP code validation removed - validation will happen at checkout only
+
+  // Listing management state
+  const [listings, setListings] = useState<any[]>([]);
+  const [listingsLoading, setListingsLoading] = useState(false);
+  const [listingsFilter, setListingsFilter] = useState("all"); // all, active, sold, draft
+  const [listingsSearch, setListingsSearch] = useState("");
+  const [selectedListing, setSelectedListing] = useState<any>(null);
+  const [showListingModal, setShowListingModal] = useState(false);
+
+  // Purchase management state
+  const [purchases, setPurchases] = useState<any[]>([]);
+  const [purchasesLoading, setPurchasesLoading] = useState(false);
+  const [purchasesFilter, setPurchasesFilter] = useState("all"); // all, pending, completed, cancelled
+  const [purchasesSearch, setPurchasesSearch] = useState("");
+
   const router = useRouter();
 
   useEffect(() => {
     async function fetchUser() {
+      // Wait for session to load
+      if (sessionLoading) {
+        return;
+      }
+
+      console.log("Profile page: Session from hook:", session);
+      console.log("Profile page: Session loading:", sessionLoading);
+
+      if (!session?.user) {
+        console.log(
+          "Profile page: User not authenticated, redirecting to login"
+        );
+        setUpdateError("Please log in to view your profile");
+        router.push("/login");
+        return;
+      }
+
       setLoading(true);
       setUpdateError("");
       setUpdateSuccess("");
       try {
-        console.log("Profile page: Fetching user profile...");
+        console.log("Profile page: User authenticated, fetching profile...");
         const res = await fetch("/api/profile", {
           credentials: "include", // Ensure cookies are sent
         });
@@ -119,9 +172,20 @@ export default function ProfilePage() {
         }
 
         if (!res.ok) {
-          const errorData = await res.json();
+          let errorData;
+          try {
+            errorData = await res.json();
+          } catch (parseError) {
+            console.error(
+              "Profile page: Failed to parse error response:",
+              parseError
+            );
+            errorData = { message: `HTTP ${res.status}: ${res.statusText}` };
+          }
           console.error("Profile page: API error:", errorData);
-          setUpdateError(errorData.message || "Failed to load profile");
+          setUpdateError(
+            errorData.message || `Failed to load profile (${res.status})`
+          );
           return;
         }
 
@@ -152,6 +216,9 @@ export default function ProfilePage() {
             );
             // Don't fail the whole profile load for admin check
           }
+
+          // Load user's listings
+          await loadUserListings();
         }
       } catch (err) {
         console.error("Profile page: Error fetching user profile:", err);
@@ -161,7 +228,7 @@ export default function ProfilePage() {
       }
     }
     fetchUser();
-  }, [router]);
+  }, [router, session, sessionLoading]);
 
   const loadAdminData = async () => {
     try {
@@ -183,6 +250,78 @@ export default function ProfilePage() {
     }
   };
 
+  const loadUserListings = async () => {
+    try {
+      setListingsLoading(true);
+      const response = await fetch("/api/listings?userOnly=true", {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setListings(data.listings || []);
+      } else {
+        console.error("Failed to load user listings");
+      }
+    } catch (error) {
+      console.error("Error loading user listings:", error);
+    } finally {
+      setListingsLoading(false);
+    }
+  };
+
+  const handleListingAction = async (listingId: string, action: string) => {
+    try {
+      let response;
+
+      if (action === "delete") {
+        response = await fetch(`/api/listings?id=${listingId}`, {
+          method: "DELETE",
+        });
+      } else {
+        response = await fetch(`/api/listings?id=${listingId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: action.toUpperCase() }),
+        });
+      }
+
+      if (response.ok) {
+        await loadUserListings(); // Reload listings
+        setUpdateSuccess(`Listing ${action}ed successfully!`);
+      } else {
+        const error = await response.json();
+        setUpdateError(error.error || `Failed to ${action} listing`);
+      }
+    } catch (error) {
+      setUpdateError(`Failed to ${action} listing`);
+    }
+  };
+
+  const getFilteredListings = () => {
+    let filtered = listings;
+
+    // Apply status filter
+    if (listingsFilter !== "all") {
+      filtered = filtered.filter(
+        (listing) => listing.status === listingsFilter.toUpperCase()
+      );
+    }
+
+    // Apply search filter
+    if (listingsSearch) {
+      filtered = filtered.filter(
+        (listing) =>
+          listing.title.toLowerCase().includes(listingsSearch.toLowerCase()) ||
+          listing.description
+            .toLowerCase()
+            .includes(listingsSearch.toLowerCase())
+      );
+    }
+
+    return filtered;
+  };
+
   const handleEdit = () => {
     setEditMode(true);
     setUpdateError("");
@@ -195,9 +334,33 @@ export default function ProfilePage() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const validateAddress = () => {
+    const requiredFields = ["addressLine1", "city", "state", "zipCode"];
+    const missingFields = requiredFields.filter(
+      (field) => !form[field as keyof typeof form]
+    );
+
+    if (missingFields.length > 0) {
+      setUpdateError(
+        `Please fill in all required address fields: ${missingFields.join(
+          ", "
+        )}`
+      );
+      return false;
+    }
+
+    return true;
+  };
+
   const handleUpdate = async () => {
     setUpdateError("");
     setUpdateSuccess("");
+
+    // Validate address before updating
+    if (!validateAddress()) {
+      return;
+    }
+
     try {
       const res = await fetch("/api/profile", {
         method: "PUT",
@@ -270,6 +433,8 @@ export default function ProfilePage() {
     }
   };
 
+  // ZIP code validation function removed - validation will happen at checkout only
+
   const handleAssignAdmin = async (userId: string, organizationId: string) => {
     try {
       const res = await fetch(`/api/admin/users/${userId}/assign-admin`, {
@@ -320,6 +485,28 @@ export default function ProfilePage() {
               </button>
               <button
                 className={`px-4 py-2 rounded-t font-semibold transition border-b-2 ${
+                  tab === "listings"
+                    ? "border-[#D4AF3D] text-[#D4AF3D]"
+                    : "border-transparent text-gray-500"
+                }`}
+                onClick={() => setTab("listings")}
+              >
+                <Package className="inline w-4 h-4 mr-1" />
+                My Listings
+              </button>
+              <button
+                className={`px-4 py-2 rounded-t font-semibold transition border-b-2 ${
+                  tab === "purchases"
+                    ? "border-[#D4AF3D] text-[#D4AF3D]"
+                    : "border-transparent text-gray-500"
+                }`}
+                onClick={() => setTab("purchases")}
+              >
+                <ShoppingCart className="inline w-4 h-4 mr-1" />
+                My Purchases
+              </button>
+              <button
+                className={`px-4 py-2 rounded-t font-semibold transition border-b-2 ${
                   tab === "settings"
                     ? "border-[#D4AF3D] text-[#D4AF3D]"
                     : "border-transparent text-gray-500"
@@ -345,172 +532,692 @@ export default function ProfilePage() {
           </div>
 
           {tab === "overview" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="flex flex-col items-center">
-                <img
-                  src={
-                    user.profilePhotoUrl ||
-                    "https://ui-avatars.com/api/?name=" +
+            <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex flex-col items-center">
+                  <img
+                    src={
+                      "https://ui-avatars.com/api/?name=" +
                       encodeURIComponent(user.name)
-                  }
-                  alt="Profile"
-                  className="w-32 h-32 rounded-full object-cover border mb-4"
-                />
-                <div className="text-center">
-                  <div className="font-semibold text-lg">
-                    {editMode ? (
-                      <input
-                        name="name"
-                        value={form.name || ""}
-                        onChange={handleChange}
-                        className="border rounded px-2 py-1 w-full"
-                      />
-                    ) : (
-                      user.name
-                    )}
+                    }
+                    alt="Profile"
+                    className="w-32 h-32 rounded-full object-cover border mb-4"
+                  />
+                  <div className="text-center">
+                    <div className="font-semibold text-lg">
+                      {editMode ? (
+                        <input
+                          name="name"
+                          value={form.name || ""}
+                          onChange={handleChange}
+                          className="border rounded px-2 py-1 w-full"
+                        />
+                      ) : (
+                        user.name
+                      )}
+                    </div>
+                    <div className="text-gray-500">
+                      {editMode ? (
+                        <input
+                          name="email"
+                          value={form.email || ""}
+                          onChange={handleChange}
+                          className="border rounded px-2 py-1 w-full"
+                        />
+                      ) : (
+                        user.email
+                      )}
+                    </div>
+                    <div className="text-gray-500">
+                      {editMode ? (
+                        <PhoneInput
+                          country={"us"}
+                          value={form.mobilePhone || ""}
+                          onChange={(value) =>
+                            setForm({ ...form, mobilePhone: value })
+                          }
+                          inputClass="border rounded px-2 py-1 w-full"
+                          inputStyle={{ width: "100%" }}
+                          dropdownStyle={{ textAlign: "left" }}
+                          buttonStyle={{ textAlign: "left" }}
+                          specialLabel=""
+                          inputProps={{
+                            name: "mobilePhone",
+                          }}
+                        />
+                      ) : (
+                        user.mobilePhone || "No phone number"
+                      )}
+                    </div>
                   </div>
-                  <div className="text-gray-500">
-                    {editMode ? (
-                      <input
-                        name="email"
-                        value={form.email || ""}
-                        onChange={handleChange}
-                        className="border rounded px-2 py-1 w-full"
-                      />
-                    ) : (
-                      user.email
-                    )}
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Email Verification Status
+                    </label>
+                    <p className="mt-1 text-base">
+                      {user.emailVerified ? (
+                        <span className="text-green-600 flex items-center">
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          Verified
+                        </span>
+                      ) : (
+                        <span className="text-red-600 flex items-center">
+                          <XCircle className="w-4 h-4 mr-1" />
+                          Not Verified
+                        </span>
+                      )}
+                    </p>
                   </div>
-                  <div className="text-gray-500">
-                    {editMode ? (
-                      <input
-                        name="mobilePhone"
-                        value={form.mobilePhone || ""}
-                        onChange={handleChange}
-                        className="border rounded px-2 py-1 w-full"
-                      />
-                    ) : (
-                      user.mobilePhone || "No phone number"
-                    )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Member Since
+                    </label>
+                    <p className="mt-1 text-base">
+                      {user.createdAt
+                        ? new Date(user.createdAt).toLocaleDateString()
+                        : "Unknown"}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Last Updated
+                    </label>
+                    <p className="mt-1 text-base">
+                      {user.updatedAt
+                        ? new Date(user.updatedAt).toLocaleDateString()
+                        : "Unknown"}
+                    </p>
                   </div>
                 </div>
               </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Preferred Contact
-                  </label>
-                  <p className="mt-1 text-base">
-                    {editMode ? (
-                      <select
-                        name="preferredContact"
-                        value={form.preferredContact || "email"}
-                        onChange={handleChange}
-                        className="border rounded px-2 py-1"
-                      >
-                        <option value="email">Email</option>
-                        <option value="sms">SMS</option>
-                      </select>
-                    ) : user.preferredContact === "email" ? (
-                      "Email"
-                    ) : (
-                      "SMS"
-                    )}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Shipping Address
-                  </label>
-                  <p className="mt-1 text-base">
-                    {editMode ? (
-                      <input
-                        name="shippingAddress"
-                        value={form.shippingAddress || ""}
-                        onChange={handleChange}
-                        className="border rounded px-2 py-1 w-full"
-                      />
-                    ) : (
-                      user.shippingAddress
-                    )}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Alternate Pickup Location
-                  </label>
-                  <p className="mt-1 text-base">
-                    {editMode ? (
-                      <input
-                        name="alternatePickup"
-                        value={form.alternatePickup || ""}
-                        onChange={handleChange}
-                        className="border rounded px-2 py-1 w-full"
-                      />
-                    ) : (
-                      user.alternatePickup || (
-                        <span className="text-gray-400">None</span>
-                      )
-                    )}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Payout Method
-                  </label>
-                  <p className="mt-1 text-base capitalize">
-                    {editMode ? (
-                      <input
-                        name="payoutMethod"
-                        value={form.payoutMethod || ""}
-                        onChange={handleChange}
-                        className="border rounded px-2 py-1 w-full"
-                      />
-                    ) : (
-                      user.payoutMethod
-                    )}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Payout Account
-                  </label>
-                  <p className="mt-1 text-base">
-                    {editMode ? (
-                      <input
-                        name="payoutAccount"
-                        value={form.payoutAccount || ""}
-                        onChange={handleChange}
-                        className="border rounded px-2 py-1 w-full"
-                      />
-                    ) : (
-                      user.payoutAccount
-                    )}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Government ID
-                  </label>
-                  <p className="mt-1 text-base">
-                    {user.governmentIdUrl ? (
-                      <Link
-                        href={user.governmentIdUrl}
-                        className="text-blue-600 underline"
-                        target="_blank"
-                      >
-                        View
-                      </Link>
-                    ) : (
-                      <span className="text-gray-400">Not uploaded</span>
-                    )}
-                  </p>
+
+              {/* Address Section */}
+              <div className="mt-8 border-t pt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Address Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Address Line 1 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Street Address *
+                    </label>
+                    <p className="mt-1 text-base">
+                      {editMode ? (
+                        <input
+                          name="addressLine1"
+                          value={form.addressLine1 || ""}
+                          onChange={handleChange}
+                          className="border rounded px-2 py-1 w-full"
+                          placeholder="Enter your street address"
+                        />
+                      ) : (
+                        user.addressLine1 || ""
+                      )}
+                    </p>
+                  </div>
+
+                  {/* Address Line 2 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Apartment, Suite, etc.
+                    </label>
+                    <p className="mt-1 text-base">
+                      {editMode ? (
+                        <input
+                          name="addressLine2"
+                          value={form.addressLine2 || ""}
+                          onChange={handleChange}
+                          className="border rounded px-2 py-1 w-full"
+                          placeholder="Apartment, suite, unit, etc."
+                        />
+                      ) : (
+                        user.addressLine2 || ""
+                      )}
+                    </p>
+                  </div>
+
+                  {/* City */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      City *
+                    </label>
+                    <p className="mt-1 text-base">
+                      {editMode ? (
+                        <input
+                          name="city"
+                          value={form.city || ""}
+                          onChange={handleChange}
+                          className="border rounded px-2 py-1 w-full"
+                          placeholder="Enter your city"
+                        />
+                      ) : (
+                        user.city || ""
+                      )}
+                    </p>
+                  </div>
+
+                  {/* State */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      State *
+                    </label>
+                    <p className="mt-1 text-base">
+                      {editMode ? (
+                        <select
+                          name="state"
+                          value={form.state || ""}
+                          onChange={handleChange}
+                          className="border rounded px-2 py-1 w-full"
+                        >
+                          <option value="">Select State</option>
+                          <option value="TX">Texas</option>
+                          <option value="AL">Alabama</option>
+                          <option value="AK">Alaska</option>
+                          <option value="AZ">Arizona</option>
+                          <option value="AR">Arkansas</option>
+                          <option value="CA">California</option>
+                          <option value="CO">Colorado</option>
+                          <option value="CT">Connecticut</option>
+                          <option value="DE">Delaware</option>
+                          <option value="FL">Florida</option>
+                          <option value="GA">Georgia</option>
+                          <option value="HI">Hawaii</option>
+                          <option value="ID">Idaho</option>
+                          <option value="IL">Illinois</option>
+                          <option value="IN">Indiana</option>
+                          <option value="IA">Iowa</option>
+                          <option value="KS">Kansas</option>
+                          <option value="KY">Kentucky</option>
+                          <option value="LA">Louisiana</option>
+                          <option value="ME">Maine</option>
+                          <option value="MD">Maryland</option>
+                          <option value="MA">Massachusetts</option>
+                          <option value="MI">Michigan</option>
+                          <option value="MN">Minnesota</option>
+                          <option value="MS">Mississippi</option>
+                          <option value="MO">Missouri</option>
+                          <option value="MT">Montana</option>
+                          <option value="NE">Nebraska</option>
+                          <option value="NV">Nevada</option>
+                          <option value="NH">New Hampshire</option>
+                          <option value="NJ">New Jersey</option>
+                          <option value="NM">New Mexico</option>
+                          <option value="NY">New York</option>
+                          <option value="NC">North Carolina</option>
+                          <option value="ND">North Dakota</option>
+                          <option value="OH">Ohio</option>
+                          <option value="OK">Oklahoma</option>
+                          <option value="OR">Oregon</option>
+                          <option value="PA">Pennsylvania</option>
+                          <option value="RI">Rhode Island</option>
+                          <option value="SC">South Carolina</option>
+                          <option value="SD">South Dakota</option>
+                          <option value="TN">Tennessee</option>
+                          <option value="UT">Utah</option>
+                          <option value="VT">Vermont</option>
+                          <option value="VA">Virginia</option>
+                          <option value="WA">Washington</option>
+                          <option value="WV">West Virginia</option>
+                          <option value="WI">Wisconsin</option>
+                          <option value="WY">Wyoming</option>
+                        </select>
+                      ) : (
+                        user.state || ""
+                      )}
+                    </p>
+                  </div>
+
+                  {/* ZIP Code */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      ZIP Code *
+                    </label>
+                    <p className="mt-1 text-base">
+                      {editMode ? (
+                        <input
+                          name="zipCode"
+                          value={form.zipCode || ""}
+                          onChange={handleChange}
+                          className="border rounded px-2 py-1 w-full"
+                          placeholder="Enter ZIP code"
+                        />
+                      ) : (
+                        user.zipCode || ""
+                      )}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
+          {tab === "listings" && (
+            <div className="space-y-6">
+              {/* Header with stats */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="flex items-center">
+                    <Package className="h-8 w-8 text-blue-600" />
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-blue-600">
+                        Total Listings
+                      </p>
+                      <p className="text-2xl font-bold text-blue-900">
+                        {listings.length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <div className="flex items-center">
+                    <EyeIcon className="h-8 w-8 text-green-600" />
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-green-600">
+                        Active
+                      </p>
+                      <p className="text-2xl font-bold text-green-900">
+                        {listings.filter((l) => l.status === "ACTIVE").length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-yellow-50 p-4 rounded-lg">
+                  <div className="flex items-center">
+                    <DollarSign className="h-8 w-8 text-yellow-600" />
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-yellow-600">
+                        Sold
+                      </p>
+                      <p className="text-2xl font-bold text-yellow-900">
+                        {listings.filter((l) => l.status === "SOLD").length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="flex items-center">
+                    <Calendar className="h-8 w-8 text-gray-600" />
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-gray-600">Draft</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {listings.filter((l) => l.status === "DRAFT").length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Search and Filter */}
+              <div className="flex flex-col md:flex-row gap-4 mb-6">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <input
+                    type="text"
+                    placeholder="Search listings..."
+                    value={listingsSearch}
+                    onChange={(e) => setListingsSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <select
+                    value={listingsFilter}
+                    onChange={(e) => setListingsFilter(e.target.value)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  >
+                    <option value="all">All Listings</option>
+                    <option value="active">Active</option>
+                    <option value="sold">Sold</option>
+                    <option value="draft">Draft</option>
+                  </select>
+                  <Button
+                    onClick={() => router.push("/list-item")}
+                    className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Listing
+                  </Button>
+                </div>
+              </div>
+
+              {/* Listings Grid */}
+              {listingsLoading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D4AF3D] mx-auto"></div>
+                  <p className="mt-2 text-gray-500">Loading your listings...</p>
+                </div>
+              ) : getFilteredListings().length === 0 ? (
+                <div className="text-center py-12">
+                  <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    No listings found
+                  </h3>
+                  <p className="text-gray-500 mb-4">
+                    {listings.length === 0
+                      ? "You haven't created any listings yet."
+                      : "No listings match your current filters."}
+                  </p>
+                  {listings.length === 0 && (
+                    <Button
+                      onClick={() => router.push("/list-item")}
+                      className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Your First Listing
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {getFilteredListings().map((listing) => (
+                    <div
+                      key={listing.id}
+                      className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                    >
+                      {/* Listing Image */}
+                      <div className="relative h-48 bg-gray-100">
+                        {listing.photos?.hero ? (
+                          <img
+                            src={listing.photos.hero}
+                            alt={listing.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Package className="h-12 w-12 text-gray-400" />
+                          </div>
+                        )}
+                        {/* Status Badge */}
+                        <div className="absolute top-2 right-2">
+                          <span
+                            className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              listing.status === "ACTIVE"
+                                ? "bg-green-100 text-green-800"
+                                : listing.status === "SOLD"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {listing.status}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Listing Info */}
+                      <div className="p-4">
+                        <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
+                          {listing.title}
+                        </h3>
+                        <p className="text-2xl font-bold text-[#D4AF3D] mb-2">
+                          ${listing.price}
+                        </p>
+                        <p className="text-sm text-gray-500 mb-3 line-clamp-2">
+                          {listing.description}
+                        </p>
+
+                        {/* Stats */}
+                        <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
+                          <div className="flex items-center">
+                            <EyeIcon className="h-4 w-4 mr-1" />
+                            <span>{listing.views || 0} views</span>
+                          </div>
+                          <div className="flex items-center">
+                            <Calendar className="h-4 w-4 mr-1" />
+                            <span>
+                              {new Date(listing.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() =>
+                              router.push(`/list-item/${listing.itemId}`)
+                            }
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                          >
+                            <EyeIcon className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                          <Button
+                            onClick={() =>
+                              router.push(`/list-item/${listing.itemId}/edit`)
+                            }
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                          >
+                            <Edit className="h-4 w-4 mr-1" />
+                            Edit
+                          </Button>
+                          <Button
+                            onClick={() =>
+                              handleListingAction(listing.itemId, "delete")
+                            }
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {tab === "admin" && <AdminDashboard />}
+
+          {tab === "purchases" && (
+            <div className="space-y-6">
+              {/* Header with stats */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="flex items-center">
+                    <ShoppingCart className="h-8 w-8 text-blue-600" />
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-blue-600">
+                        Total Purchases
+                      </p>
+                      <p className="text-2xl font-bold text-blue-900">
+                        {purchases.length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <div className="flex items-center">
+                    <CheckCircle className="h-8 w-8 text-green-600" />
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-green-600">
+                        Completed
+                      </p>
+                      <p className="text-2xl font-bold text-green-900">
+                        {
+                          purchases.filter((p) => p.status === "completed")
+                            .length
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-yellow-50 p-4 rounded-lg">
+                  <div className="flex items-center">
+                    <Clock className="h-8 w-8 text-yellow-600" />
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-yellow-600">
+                        Pending
+                      </p>
+                      <p className="text-2xl font-bold text-yellow-900">
+                        {purchases.filter((p) => p.status === "pending").length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="flex items-center">
+                    <DollarSign className="h-8 w-8 text-gray-600" />
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-gray-600">
+                        Total Spent
+                      </p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        $
+                        {purchases
+                          .reduce((sum, p) => sum + (p.total || 0), 0)
+                          .toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Search and Filter */}
+              <div className="flex flex-col md:flex-row gap-4 mb-6">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <input
+                    type="text"
+                    placeholder="Search purchases..."
+                    value={purchasesSearch}
+                    onChange={(e) => setPurchasesSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <select
+                    value={purchasesFilter}
+                    onChange={(e) => setPurchasesFilter(e.target.value)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  >
+                    <option value="all">All Purchases</option>
+                    <option value="pending">Pending</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Purchases List */}
+              {purchasesLoading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D4AF3D] mx-auto"></div>
+                  <p className="mt-2 text-gray-500">Loading purchases...</p>
+                </div>
+              ) : purchases.length === 0 ? (
+                <div className="text-center py-12">
+                  <ShoppingCart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    No purchases yet
+                  </h3>
+                  <p className="text-gray-500 mb-4">
+                    When you make purchases, they will appear here.
+                  </p>
+                  <Button
+                    onClick={() => router.push("/listings")}
+                    className="btn btn-primary btn-md"
+                  >
+                    Browse Listings
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {purchases
+                    .filter((purchase) => {
+                      const matchesSearch =
+                        purchase.title
+                          ?.toLowerCase()
+                          .includes(purchasesSearch.toLowerCase()) ||
+                        purchase.sellerName
+                          ?.toLowerCase()
+                          .includes(purchasesSearch.toLowerCase());
+                      const matchesFilter =
+                        purchasesFilter === "all" ||
+                        purchase.status === purchasesFilter;
+                      return matchesSearch && matchesFilter;
+                    })
+                    .map((purchase) => (
+                      <div
+                        key={purchase.id}
+                        className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <h3 className="font-semibold text-lg mb-1">
+                              {purchase.title}
+                            </h3>
+                            <p className="text-sm text-gray-500">
+                              Seller: {purchase.sellerName}
+                            </p>
+                          </div>
+                          <span
+                            className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              purchase.status === "completed"
+                                ? "bg-green-100 text-green-800"
+                                : purchase.status === "pending"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {purchase.status}
+                          </span>
+                        </div>
+
+                        <div className="space-y-2 mb-4">
+                          <p className="text-lg font-bold text-[#D4AF3D]">
+                            ${purchase.total}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            Purchased:{" "}
+                            {new Date(
+                              purchase.purchaseDate
+                            ).toLocaleDateString()}
+                          </p>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() =>
+                              router.push(`/list-item/${purchase.listingId}`)
+                            }
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                          >
+                            <EyeIcon className="h-4 w-4 mr-1" />
+                            View Item
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              // TODO: Implement purchase details view
+                              console.log(
+                                "View purchase details:",
+                                purchase.id
+                              );
+                            }}
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                          >
+                            <FileText className="h-4 w-4 mr-1" />
+                            Details
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex justify-end mt-6">
             {!editMode && tab !== "admin" ? (

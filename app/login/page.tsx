@@ -9,6 +9,7 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -34,9 +35,13 @@ function LoginForm() {
           result.error.message || "Login failed. Please check your credentials."
         );
       } else {
-        // Successful login - redirect to the intended page or profile
-        console.log("Login successful, redirecting to:", redirectTo);
-        router.push(redirectTo);
+        // Successful login - wait a moment for session to be established
+        console.log("Login successful, waiting for session to establish...");
+        setIsRedirecting(true);
+        setTimeout(() => {
+          console.log("Redirecting to:", redirectTo);
+          router.push(redirectTo);
+        }, 1000); // Wait 1 second for session to be established
       }
     } catch (err) {
       setError("Network error. Please try again.");
@@ -82,7 +87,7 @@ function LoginForm() {
           {/* Google OAuth Button */}
           <button
             onClick={() => handleOAuthLogin("google")}
-            disabled={isLoading}
+            disabled={isLoading || isRedirecting}
             className="w-full py-2 px-4 border border-gray-300 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-50 transition disabled:opacity-50"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -109,7 +114,7 @@ function LoginForm() {
           {/* Facebook OAuth Button */}
           <button
             onClick={() => handleOAuthLogin("facebook")}
-            disabled={isLoading}
+            disabled={isLoading || isRedirecting}
             className="w-full py-2 px-4 border border-gray-300 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-50 transition disabled:opacity-50"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#1877F2">
@@ -121,7 +126,7 @@ function LoginForm() {
           {/* TikTok OAuth Button */}
           <button
             onClick={() => handleOAuthLogin("tiktok")}
-            disabled={isLoading}
+            disabled={isLoading || isRedirecting}
             className="w-full py-2 px-4 border border-gray-300 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-50 transition disabled:opacity-50"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#000000">
@@ -169,10 +174,14 @@ function LoginForm() {
           </div>
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || isRedirecting}
             className="btn btn-primary btn-md w-full"
           >
-            {isLoading ? "Signing in..." : "Sign In"}
+            {isLoading
+              ? "Signing in..."
+              : isRedirecting
+              ? "Redirecting..."
+              : "Sign In"}
           </button>
         </form>
 
