@@ -19,6 +19,7 @@ import {
   AlertCircle,
   QrCode,
   ExternalLink,
+  Edit,
 } from "lucide-react";
 import QuestionsDisplay from "../../../components/QuestionsDisplay";
 
@@ -120,10 +121,34 @@ export default function ListingDetailPage() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    // In a real app, fetch listing data based on params.id
-    // For now, use mock data
-    setListing(mockListing);
-    setLoading(false);
+    const fetchListing = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/listings/${params.id}`);
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch listing");
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+          setListing(data.listing);
+        } else {
+          throw new Error(data.error || "Failed to fetch listing");
+        }
+      } catch (error) {
+        console.error("Error fetching listing:", error);
+        // Fallback to mock data for now
+        setListing(mockListing);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (params.id) {
+      fetchListing();
+    }
   }, [params.id]);
 
   const getConditionColor = (condition: string) => {
@@ -147,6 +172,31 @@ export default function ListingDetailPage() {
       month: "short",
       day: "numeric",
     });
+  };
+
+  const hasRecentPriceDrop = (listing: any) => {
+    // Check if listing has price history and if there's been a price drop in last 48 hours
+    if (!listing.priceHistory || listing.priceHistory.length < 2) {
+      return false; // No price history or only initial price
+    }
+
+    const now = new Date();
+    const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+
+    // Get the most recent price change
+    const latestPriceChange = listing.priceHistory[0];
+    const previousPrice = listing.priceHistory[1]?.price;
+
+    // Check if the latest price change was within 48 hours and was a price drop
+    if (latestPriceChange && previousPrice) {
+      const priceChangeTime = new Date(latestPriceChange.createdAt);
+      const isRecent = priceChangeTime > fortyEightHoursAgo;
+      const isPriceDrop = latestPriceChange.price < previousPrice;
+
+      return isRecent && isPriceDrop;
+    }
+
+    return false;
   };
 
   const getTimeUntilNextDrop = (
@@ -220,6 +270,14 @@ export default function ListingDetailPage() {
             <div className="flex items-center gap-4">
               <Button
                 variant="outline"
+                onClick={() => router.push(`/list-item/${params.id}/edit`)}
+                className="flex items-center gap-2 bg-[#D4AF3D] hover:bg-[#b8932f] text-white border-[#D4AF3D]"
+              >
+                <Edit className="h-4 w-4" />
+                Edit Listing
+              </Button>
+              <Button
+                variant="outline"
                 onClick={() => toggleSaved(listing.item_id)}
                 className={`${
                   savedListings.has(listing.item_id)
@@ -290,11 +348,18 @@ export default function ListingDetailPage() {
                 <span className="text-4xl font-bold text-gray-900">
                   ${listing.list_price.toFixed(2)}
                 </span>
-                {listing.list_price <= listing.reserve_price && (
-                  <div className="text-sm bg-green-100 text-green-800 px-3 py-1 rounded font-medium">
-                    Reserve Met
-                  </div>
-                )}
+                <div className="flex gap-2">
+                  {hasRecentPriceDrop(listing) && (
+                    <div className="text-sm bg-red-600 text-white px-3 py-1 rounded font-medium">
+                      Price Drop
+                    </div>
+                  )}
+                  {listing.list_price <= listing.reserve_price && (
+                    <div className="text-sm bg-green-100 text-green-800 px-3 py-1 rounded font-medium">
+                      Reserve Met
+                    </div>
+                  )}
+                </div>
               </div>
               {listing.estimated_retail_price && (
                 <div className="flex items-center gap-3 mb-4">
@@ -337,7 +402,9 @@ export default function ListingDetailPage() {
                       Condition:
                     </span>
                     <span
-                      className={`ml-2 px-2 py-1 rounded text-xs ${getConditionColor(listing.condition)}`}
+                      className={`ml-2 px-2 py-1 rounded text-xs ${getConditionColor(
+                        listing.condition
+                      )}`}
                     >
                       {listing.condition}
                     </span>
@@ -540,10 +607,25 @@ export default function ListingDetailPage() {
                       Seller:
                     </span>
                     <span className="ml-2 text-sm text-[#D4AF3D] font-medium">
-                      {listing.seller_name}
+                      {listing.user?.name || "Unknown Seller"}
                     </span>
                   </div>
                 </div>
+                {listing.user?.organization && (
+                  <div className="flex items-center gap-3">
+                    <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
+                      <span className="text-xs font-bold">🏢</span>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-700">
+                        Organization:
+                      </span>
+                      <span className="ml-2 text-sm text-[#D4AF3D] font-medium">
+                        {listing.user.organization.name}
+                      </span>
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center gap-3">
                   <MapPin className="h-5 w-5 text-gray-400" />
                   <div>
@@ -555,17 +637,19 @@ export default function ListingDetailPage() {
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Star className="h-5 w-5 text-yellow-400" />
-                  <div>
-                    <span className="text-sm font-medium text-gray-700">
-                      Rating:
-                    </span>
-                    <span className="ml-2 text-sm text-gray-600">
-                      {listing.rating} ({listing.reviews} reviews)
-                    </span>
+                {listing.reviews > 0 && (
+                  <div className="flex items-center gap-3">
+                    <Star className="h-5 w-5 text-yellow-400" />
+                    <div>
+                      <span className="text-sm font-medium text-gray-700">
+                        Rating:
+                      </span>
+                      <span className="ml-2 text-sm text-gray-600">
+                        {listing.rating} ({listing.reviews} reviews)
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 

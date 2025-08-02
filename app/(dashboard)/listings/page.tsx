@@ -127,7 +127,9 @@ export default function ListingsPage() {
               zip_code: listing.zipCode,
               list_price: listing.price,
               estimated_retail_price: listing.estimatedRetailPrice,
-              seller_name: `${listing.user.firstName} ${listing.user.lastName}`,
+              seller_name: listing.user.name || "Unknown Seller",
+              seller_organization:
+                listing.user.members?.[0]?.organization || null,
               location: listing.neighborhood,
               rating: 4.5, // Default rating for now
               reviews: 0, // Default reviews for now
@@ -276,6 +278,31 @@ export default function ListingsPage() {
   };
 
   // Calculate time until next price drop based on discount schedule
+  const hasRecentPriceDrop = (listing: any) => {
+    // Check if listing has price history and if there's been a price drop in last 48 hours
+    if (!listing.priceHistory || listing.priceHistory.length < 2) {
+      return false; // No price history or only initial price
+    }
+
+    const now = new Date();
+    const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+
+    // Get the most recent price change
+    const latestPriceChange = listing.priceHistory[0];
+    const previousPrice = listing.priceHistory[1]?.price;
+
+    // Check if the latest price change was within 48 hours and was a price drop
+    if (latestPriceChange && previousPrice) {
+      const priceChangeTime = new Date(latestPriceChange.createdAt);
+      const isRecent = priceChangeTime > fortyEightHoursAgo;
+      const isPriceDrop = latestPriceChange.price < previousPrice;
+
+      return isRecent && isPriceDrop;
+    }
+
+    return false;
+  };
+
   const getTimeUntilNextDrop = (
     discountSchedule: string,
     createdAt: string
@@ -474,21 +501,12 @@ export default function ListingsPage() {
                       ) : null;
                     })()}
 
-                  {/* Price Drop Badge - Show for price drops in last 3 days */}
-                  {isClient &&
-                    (() => {
-                      // Mock price drop data - in real app this would come from price history
-                      // Use a deterministic approach based on listing ID to prevent hydration issues
-                      const hasRecentPriceDrop =
-                        listing.item_id.charCodeAt(listing.item_id.length - 1) %
-                          3 ===
-                        0; // 33% chance based on ID
-                      return hasRecentPriceDrop ? (
-                        <div className="absolute top-2 right-2 bg-red-600 text-white px-2 py-1 rounded text-xs font-medium">
-                          Price Drop
-                        </div>
-                      ) : null;
-                    })()}
+                  {/* Price Drop Badge - Show for price drops in last 48 hours */}
+                  {isClient && hasRecentPriceDrop(listing) && (
+                    <div className="absolute top-2 right-2 bg-red-600 text-white px-2 py-1 rounded text-xs font-medium">
+                      Price Drop
+                    </div>
+                  )}
 
                   {/* Next Price Drop Badge */}
                   {(() => {
@@ -576,7 +594,9 @@ export default function ListingsPage() {
                   {/* Condition & Location */}
                   <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
                     <span
-                      className={`px-2 py-1 rounded ${getConditionColor(listing.condition)}`}
+                      className={`px-2 py-1 rounded ${getConditionColor(
+                        listing.condition
+                      )}`}
                     >
                       {listing.condition}
                     </span>
@@ -802,7 +822,9 @@ export default function ListingsPage() {
                             Condition:
                           </span>
                           <span
-                            className={`ml-2 px-2 py-1 rounded text-xs ${getConditionColor(selectedListing.condition)}`}
+                            className={`ml-2 px-2 py-1 rounded text-xs ${getConditionColor(
+                              selectedListing.condition
+                            )}`}
                           >
                             {selectedListing.condition}
                           </span>
@@ -949,6 +971,21 @@ export default function ListingsPage() {
                           </span>
                         </div>
                       </div>
+                      {selectedListing.seller_organization && (
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
+                            <span className="text-xs font-bold">🏢</span>
+                          </div>
+                          <div>
+                            <span className="text-sm font-medium text-gray-700">
+                              Organization:
+                            </span>
+                            <span className="ml-2 text-sm text-[#D4AF3D] font-medium">
+                              {selectedListing.seller_organization.name}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                       <div className="flex items-center gap-3 mb-3">
                         <MapPin className="h-5 w-5 text-gray-400" />
                         <div>
@@ -960,18 +997,20 @@ export default function ListingsPage() {
                           </span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <Star className="h-5 w-5 text-yellow-400" />
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">
-                            Rating:
-                          </span>
-                          <span className="ml-2 text-sm text-gray-600">
-                            {selectedListing.rating} ({selectedListing.reviews}{" "}
-                            reviews)
-                          </span>
+                      {selectedListing.reviews > 0 && (
+                        <div className="flex items-center gap-3">
+                          <Star className="h-5 w-5 text-yellow-400" />
+                          <div>
+                            <span className="text-sm font-medium text-gray-700">
+                              Rating:
+                            </span>
+                            <span className="ml-2 text-sm text-gray-600">
+                              {selectedListing.rating} (
+                              {selectedListing.reviews} reviews)
+                            </span>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
 

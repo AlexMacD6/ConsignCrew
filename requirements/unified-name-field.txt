@@ -1,0 +1,147 @@
+# Unified Name Field Requirements
+
+## Issue Description
+The registration system was using separate `firstName` and `lastName` fields, which created complexity when integrating with BetterAuth OAuth providers that send a single `name` field. This caused registration failures and inconsistent data handling.
+
+## Root Cause
+- BetterAuth OAuth providers send a single `name` field
+- The existing system used separate `firstName` and `lastName` fields
+- This mismatch caused registration errors and data inconsistency
+- Complex field mapping logic was required to handle both approaches
+
+## Solution Requirements
+
+### 1. Unified Name Field Approach
+- Use a single `name` field for all users
+- Remove `firstName` and `lastName` fields from the database
+- Simplify the registration form to use one name input
+- Make the `name` field required for all users
+
+### 2. Database Migration
+- Migrate existing `firstName` and `lastName` data to the `name` field
+- Handle edge cases (users with only firstName or only lastName)
+- Set default values for any remaining NULL names
+- Drop the old firstName and lastName columns
+
+### 3. Update Registration System
+- Modify registration form to use single "Full Name" field
+- Update BetterAuth configuration to only use the `name` field
+- Simplify the registration API to handle single name field
+- Ensure OAuth and email/password registration work consistently
+
+## Implementation Details
+
+### Files Modified
+- `prisma/schema.prisma` - Removed firstName/lastName, made name required
+- `app/lib/auth.ts` - Updated BetterAuth configuration for single name field
+- `app/register/page.tsx` - Simplified registration form to single name input
+- `app/api/auth/registerUser.ts` - Updated to handle single name field
+- `prisma/migrations/20250801193945_remove_firstname_lastname_fields/` - Data migration
+
+### Changes Made
+1. **Database Schema**: Removed firstName/lastName, made name required
+2. **Data Migration**: Migrated existing data to unified name field
+3. **Registration Form**: Single "Full Name" input instead of separate fields
+4. **BetterAuth Config**: Simplified to only use name field
+5. **API Updates**: Updated registration function for single name field
+
+### Code Changes
+```prisma
+// Prisma Schema
+model user {
+  id            String   @id @default(cuid())
+  name          String   // Primary name field for all users
+  mobilePhone   String?
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  // ... other fields
+}
+```
+
+```typescript
+// BetterAuth Configuration
+additionalFields: {
+  name: { type: "string", required: true }, // Primary name field for all users
+  mobilePhone: { type: "string", required: false },
+  // ... other fields
+}
+```
+
+```typescript
+// Registration Form
+const [name, setName] = useState("");
+
+// Single name input
+<input
+  type="text"
+  required
+  value={name}
+  onChange={(e) => setName(e.target.value)}
+  placeholder="Enter your full name"
+/>
+```
+
+## Data Migration Strategy
+
+### Existing Data Handling
+1. **Users with both firstName and lastName**: `name = "firstName lastName"`
+2. **Users with only firstName**: `name = "firstName"`
+3. **Users with only lastName**: `name = "lastName"`
+4. **Users with no name data**: `name = "Unknown User"`
+
+### Migration SQL
+```sql
+-- Combine firstName and lastName
+UPDATE "user" 
+SET "name" = CONCAT("firstName", ' ', "lastName")
+WHERE "firstName" IS NOT NULL AND "lastName" IS NOT NULL;
+
+-- Handle partial data
+UPDATE "user" 
+SET "name" = COALESCE("firstName", "lastName")
+WHERE "name" IS NULL AND ("firstName" IS NOT NULL OR "lastName" IS NOT NULL);
+
+-- Set defaults for remaining NULL values
+UPDATE "user" 
+SET "name" = 'Unknown User'
+WHERE "name" IS NULL;
+```
+
+## Testing Instructions
+
+1. **Test Email/Password Registration**:
+   - Try registering with email and password
+   - Verify that the single name field works correctly
+   - Check that the user is created with the name field populated
+
+2. **Test OAuth Registration**:
+   - Try registering with Google OAuth
+   - Verify that the OAuth name is stored correctly
+   - Check that no field mapping errors occur
+
+3. **Test Existing Users**:
+   - Verify that existing users have their names migrated correctly
+   - Check that no data was lost during migration
+
+4. **Test Database Schema**:
+   - Confirm that only the `name` field exists
+   - Verify that firstName and lastName columns were removed
+   - Check that the `name` field is required
+
+## Expected Outcome
+
+- **✅ Unified Data Model**: Single name field for all users
+- **✅ Simplified Registration**: One name input instead of two
+- **✅ BetterAuth Compatibility**: Natural integration with OAuth providers
+- **✅ Data Consistency**: All users have names in the same format
+- **✅ No Complex Logic**: No field mapping or transformation required
+- **✅ Backward Compatible**: Existing user data preserved and migrated
+
+## Benefits
+
+- **Simplified Architecture**: Single name field reduces complexity
+- **Better UX**: Simpler registration form with one name input
+- **OAuth Native**: Works naturally with BetterAuth OAuth providers
+- **Data Consistency**: All users have names in the same format
+- **Easier Maintenance**: No complex field mapping logic to maintain
+- **Future-Proof**: Ready for any OAuth provider that sends name data 

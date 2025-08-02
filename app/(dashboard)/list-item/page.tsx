@@ -17,9 +17,9 @@ import {
   Loader2,
 } from "lucide-react";
 import {
-  isApprovedZipCode,
-  getNeighborhoodName,
-  getApprovedZipCodes,
+  isApprovedZipCodeFromDB,
+  getNeighborhoodNameFromDB,
+  getApprovedZipCodesFromDB,
 } from "../../lib/zipcodes";
 
 const taxonomy = {
@@ -183,8 +183,36 @@ export default function ListItemPage() {
     (typeof discountSchedules)[number] | ""
   >("");
 
+  // Zip code validation state
+  const [zipCodeValidation, setZipCodeValidation] = useState<{
+    isValid: boolean | null;
+    neighborhood: string | null;
+  }>({ isValid: null, neighborhood: null });
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+
+  // Validate zip code when it changes
+  useEffect(() => {
+    const validateZipCode = async () => {
+      if (zipCode && zipCode.length === 5) {
+        try {
+          const [isValid, neighborhood] = await Promise.all([
+            isApprovedZipCodeFromDB(zipCode),
+            getNeighborhoodNameFromDB(zipCode),
+          ]);
+          setZipCodeValidation({ isValid, neighborhood });
+        } catch (error) {
+          console.error("Error validating zip code:", error);
+          setZipCodeValidation({ isValid: false, neighborhood: null });
+        }
+      } else {
+        setZipCodeValidation({ isValid: null, neighborhood: null });
+      }
+    };
+
+    validateZipCode();
+  }, [zipCode]);
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -436,7 +464,7 @@ export default function ListItemPage() {
     price &&
     description &&
     zipCode &&
-    isApprovedZipCode(zipCode);
+    zipCodeValidation.isValid === true;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -457,7 +485,7 @@ export default function ListItemPage() {
           price: parseFloat(price),
           description,
           zipCode,
-          neighborhood: getNeighborhoodName(zipCode),
+          neighborhood: zipCodeValidation.neighborhood || "Unknown Area",
           brand,
           dimensions,
           serialNumber,
@@ -498,8 +526,6 @@ export default function ListItemPage() {
       }
     }
   };
-
-  const approvedZipCodes = getApprovedZipCodes();
 
   // Generate auto-generated fields preview
   const generateItemId = () => {
@@ -812,7 +838,7 @@ export default function ListItemPage() {
                 {currentPhotoType === "additional" && (
                   <>
                     <p className="font-medium mb-2">
-                      Additional Photos (4-10):
+                      Additional Photos (up to 10):
                     </p>
                     <p>
                       Show unique features, damage, accessories, or different
@@ -897,7 +923,7 @@ export default function ListItemPage() {
                   (currentPhotoType === "proof" &&
                     (photos.proof?.file || photos.proof?.url)) ||
                   (currentPhotoType === "additional" &&
-                    photos.additional.length > 0)
+                    photos.additional.length >= 10)
                     ? "hidden"
                     : ""
                 }`}
@@ -914,7 +940,9 @@ export default function ListItemPage() {
                 <div className="w-64 h-64 bg-gray-100 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center mb-2">
                   <span className="text-gray-400">
                     {currentPhotoType === "additional"
-                      ? "Add another photo"
+                      ? photos.additional.length >= 10
+                        ? "Maximum photos reached"
+                        : `Add photo ${photos.additional.length + 1} of 10`
                       : "Tap to take or choose a photo"}
                   </span>
                 </div>
@@ -923,7 +951,9 @@ export default function ListItemPage() {
 
             <p className="text-gray-500 text-sm">
               {currentPhotoType === "additional"
-                ? "Add more photos (optional)"
+                ? photos.additional.length >= 10
+                  ? "Maximum of 10 additional photos reached"
+                  : `Add more photos (optional) - ${photos.additional.length}/10`
                 : "Tap to take or choose a photo"}
             </p>
 
@@ -1699,23 +1729,30 @@ export default function ListItemPage() {
                         />
                         <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                           {zipCode &&
-                            (isApprovedZipCode(zipCode) ? (
+                            zipCode.length === 5 &&
+                            (zipCodeValidation.isValid === true ? (
                               <CheckCircleIcon className="h-5 w-5 text-green-500" />
-                            ) : (
+                            ) : zipCodeValidation.isValid === false ? (
                               <AlertCircle className="h-5 w-5 text-red-500" />
+                            ) : (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#D4AF3D]"></div>
                             ))}
                         </div>
                       </div>
-                      {zipCode && (
+                      {zipCode && zipCode.length === 5 && (
                         <div className="mt-2">
-                          {isApprovedZipCode(zipCode) ? (
+                          {zipCodeValidation.isValid === true ? (
                             <div className="flex items-center gap-2 text-sm text-green-600">
                               <MapPin className="h-4 w-4" />
-                              <span>{getNeighborhoodName(zipCode)}</span>
+                              <span>{zipCodeValidation.neighborhood}</span>
                             </div>
-                          ) : (
+                          ) : zipCodeValidation.isValid === false ? (
                             <div className="text-sm text-red-600">
                               ZIP code not in approved service area
+                            </div>
+                          ) : (
+                            <div className="text-sm text-gray-500">
+                              Validating ZIP code...
                             </div>
                           )}
                         </div>

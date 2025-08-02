@@ -199,8 +199,7 @@ export async function assignUserAsAdmin(userId: string, organizationId: string) 
           user: {
             select: {
               id: true,
-              firstName: true,
-              lastName: true,
+              name: true,
               email: true,
             },
           },
@@ -225,8 +224,7 @@ export async function assignUserAsAdmin(userId: string, organizationId: string) 
           user: {
             select: {
               id: true,
-              firstName: true,
-              lastName: true,
+              name: true,
               email: true,
             },
           },

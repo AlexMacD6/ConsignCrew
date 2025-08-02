@@ -7,7 +7,6 @@ import {
   submitContactForm,
   type ContactFormData,
 } from "../lib/contact-actions";
-import { useMetaPixel } from "../components/MetaPixelProvider";
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -20,7 +19,6 @@ export default function ContactPage() {
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [error, setError] = useState("");
   const { openSignupModal } = useModal();
-  const { trackContact } = useMetaPixel();
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -50,8 +48,6 @@ export default function ContactPage() {
           subject: "",
           message: "",
         });
-        // Track contact event for Meta Pixel
-        trackContact(formData.email, 0);
       } else {
         setError(result.message);
       }

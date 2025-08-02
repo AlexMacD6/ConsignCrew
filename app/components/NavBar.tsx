@@ -146,9 +146,17 @@ export default function NavBar() {
             </Popover>
           </>
         ) : (
-          <button onClick={openSignupModal} className="btn btn-primary btn-md">
-            Get Early Access
-          </button>
+          <div className="flex items-center gap-3">
+            <Link href="/listings" className="btn btn-secondary btn-md">
+              Listings
+            </Link>
+            <button
+              onClick={openSignupModal}
+              className="btn btn-primary btn-md"
+            >
+              Get Early Access
+            </button>
+          </div>
         )}
       </div>
 
@@ -205,6 +213,13 @@ export default function NavBar() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Contact
+              </Link>
+              <Link
+                href="/listings"
+                className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Listings
               </Link>
               <Link
                 href="/our-origin"

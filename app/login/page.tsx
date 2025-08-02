@@ -1,16 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { authClient } from "../lib/auth-client";
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect") || "/profile";
 
   /**
    * Handle email/password login using Better Auth
@@ -32,8 +34,9 @@ export default function LoginPage() {
           result.error.message || "Login failed. Please check your credentials."
         );
       } else {
-        // Successful login - redirect to profile or dashboard
-        router.push("/profile");
+        // Successful login - redirect to the intended page or profile
+        console.log("Login successful, redirecting to:", redirectTo);
+        router.push(redirectTo);
       }
     } catch (err) {
       setError("Network error. Please try again.");
@@ -187,5 +190,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

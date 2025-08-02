@@ -241,7 +241,25 @@ export function getBuyerZipCodes(): string[] {
 }
 
 /**
+ * Get all approved ZIP codes as an array from database
+ */
+export async function getApprovedZipCodesFromDB(): Promise<string[]> {
+  try {
+    const { prisma } = await import('./prisma');
+    const zipCodes = await prisma.zipCode.findMany({
+      select: { code: true }
+    });
+    return zipCodes.map(zc => zc.code);
+  } catch (error) {
+    console.error('Error fetching zip codes from database:', error);
+    // Fallback to existing method if database fails
+    return [...getSellerZipCodes(), ...getBuyerZipCodes()];
+  }
+}
+
+/**
  * Get all approved ZIP codes as an array (synchronous, fallback)
+ * @deprecated Use getApprovedZipCodesFromDB() instead
  */
 export function getApprovedZipCodes(): string[] {
   return [...getSellerZipCodes(), ...getBuyerZipCodes()];
@@ -262,14 +280,51 @@ export function isApprovedBuyerZipCode(zipCode: string): boolean {
 }
 
 /**
+ * Check if a ZIP code is approved using database
+ */
+export async function isApprovedZipCodeFromDB(zipCode: string): Promise<boolean> {
+  try {
+    const { prisma } = await import('./prisma');
+    const zipCodeRecord = await prisma.zipCode.findFirst({
+      where: { code: zipCode }
+    });
+    return !!zipCodeRecord;
+  } catch (error) {
+    console.error('Error checking zip code from database:', error);
+    // Fallback to existing method if database fails
+    return isApprovedSellerZipCode(zipCode) || isApprovedBuyerZipCode(zipCode);
+  }
+}
+
+/**
  * Check if a ZIP code is approved (synchronous, fallback)
+ * @deprecated Use isApprovedZipCodeFromDB() instead
  */
 export function isApprovedZipCode(zipCode: string): boolean {
   return isApprovedSellerZipCode(zipCode) || isApprovedBuyerZipCode(zipCode);
 }
 
 /**
+ * Get neighborhood name for a ZIP code from database
+ */
+export async function getNeighborhoodNameFromDB(zipCode: string): Promise<string> {
+  try {
+    const { prisma } = await import('./prisma');
+    const zipCodeRecord = await prisma.zipCode.findFirst({
+      where: { code: zipCode },
+      select: { area: true }
+    });
+    return zipCodeRecord?.area || 'Unknown Area';
+  } catch (error) {
+    console.error('Error fetching neighborhood name from database:', error);
+    // Fallback to existing method if database fails
+    return SELLER_ZIP_CODES_FALLBACK[zipCode] || BUYER_ZIP_CODES_FALLBACK[zipCode] || 'Unknown Area';
+  }
+}
+
+/**
  * Get neighborhood name for a ZIP code (synchronous, fallback)
+ * @deprecated Use getNeighborhoodNameFromDB() instead
  */
 export function getNeighborhoodName(zipCode: string): string {
   return SELLER_ZIP_CODES_FALLBACK[zipCode] || BUYER_ZIP_CODES_FALLBACK[zipCode] || 'Unknown Area';

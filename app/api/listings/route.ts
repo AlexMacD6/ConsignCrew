@@ -75,6 +75,11 @@ export async function POST(request: NextRequest) {
         modelNumber: modelNumber || null,
         estimatedRetailPrice: estimatedRetailPrice ? parseFloat(estimatedRetailPrice) : null,
         discountSchedule: discountSchedule || null,
+        priceHistory: {
+          create: {
+            price: parseFloat(price),
+          },
+        },
       },
     });
 
@@ -94,15 +99,19 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: request.headers });
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') || 'active';
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
+
+    // Only allow fetching active listings for public access
+    if (status !== 'active') {
+      // For non-active status, require authentication
+      const session = await auth.api.getSession({ headers: request.headers });
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+    }
 
     const listings = await prisma.listing.findMany({
       where: {
@@ -112,10 +121,26 @@ export async function GET(request: NextRequest) {
         user: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            name: true,
             email: true,
+            members: {
+              include: {
+                organization: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                  },
+                },
+              },
+            },
           },
+        },
+        priceHistory: {
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 10, // Get last 10 price changes
         },
       },
       orderBy: {

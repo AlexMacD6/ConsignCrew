@@ -23,16 +23,15 @@ import AdminDashboard from "../components/AdminDashboard";
 // Remove server-side imports - we'll use API endpoints instead
 
 interface User {
-  id: number;
-  firstName: string;
-  lastName: string;
+  id: string;
+  name: string;
   email: string;
-  mobilePhone: string;
-  preferredContact: string;
-  shippingAddress: string;
+  mobilePhone?: string;
+  preferredContact?: string;
+  shippingAddress?: string;
   alternatePickup?: string;
-  payoutMethod: string;
-  payoutAccount: string;
+  payoutMethod?: string;
+  payoutAccount?: string;
   profilePhotoUrl?: string;
   governmentIdUrl?: string;
   role?: string;
@@ -105,30 +104,58 @@ export default function ProfilePage() {
       setUpdateError("");
       setUpdateSuccess("");
       try {
-        const res = await fetch("/api/profile");
+        console.log("Profile page: Fetching user profile...");
+        const res = await fetch("/api/profile", {
+          credentials: "include", // Ensure cookies are sent
+        });
+
         if (res.status === 401) {
+          console.log(
+            "Profile page: User not authenticated, redirecting to login"
+          );
+          setUpdateError("Please log in to view your profile");
           router.push("/login");
           return;
         }
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          console.error("Profile page: API error:", errorData);
+          setUpdateError(errorData.message || "Failed to load profile");
+          return;
+        }
+
         const data = await res.json();
+        console.log("Profile page: Successfully loaded user profile");
         setUser(data.user);
         setForm(data.user);
 
         // Check if user is admin
         if (data.user?.id) {
-          const adminRes = await fetch("/api/admin/check-status");
-          if (adminRes.ok) {
-            const adminData = await adminRes.json();
-            setIsAdminUser(adminData.isAdmin);
+          try {
+            const adminRes = await fetch("/api/admin/check-status", {
+              credentials: "include",
+            });
+            if (adminRes.ok) {
+              const adminData = await adminRes.json();
+              setIsAdminUser(adminData.isAdmin);
 
-            if (adminData.isAdmin) {
-              // Load admin data
-              await loadAdminData();
+              if (adminData.isAdmin) {
+                // Load admin data
+                await loadAdminData();
+              }
             }
+          } catch (adminErr) {
+            console.error(
+              "Profile page: Error checking admin status:",
+              adminErr
+            );
+            // Don't fail the whole profile load for admin check
           }
         }
       } catch (err) {
-        setUpdateError("Failed to load profile");
+        console.error("Profile page: Error fetching user profile:", err);
+        setUpdateError("Failed to load profile. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -324,7 +351,7 @@ export default function ProfilePage() {
                   src={
                     user.profilePhotoUrl ||
                     "https://ui-avatars.com/api/?name=" +
-                      encodeURIComponent(user.firstName + " " + user.lastName)
+                      encodeURIComponent(user.name)
                   }
                   alt="Profile"
                   className="w-32 h-32 rounded-full object-cover border mb-4"
@@ -333,23 +360,13 @@ export default function ProfilePage() {
                   <div className="font-semibold text-lg">
                     {editMode ? (
                       <input
-                        name="firstName"
-                        value={form.firstName || ""}
+                        name="name"
+                        value={form.name || ""}
                         onChange={handleChange}
-                        className="border rounded px-2 py-1 w-24 mr-1"
+                        className="border rounded px-2 py-1 w-full"
                       />
                     ) : (
-                      user.firstName
-                    )}{" "}
-                    {editMode ? (
-                      <input
-                        name="lastName"
-                        value={form.lastName || ""}
-                        onChange={handleChange}
-                        className="border rounded px-2 py-1 w-24"
-                      />
-                    ) : (
-                      user.lastName
+                      user.name
                     )}
                   </div>
                   <div className="text-gray-500">
@@ -373,7 +390,7 @@ export default function ProfilePage() {
                         className="border rounded px-2 py-1 w-full"
                       />
                     ) : (
-                      user.mobilePhone
+                      user.mobilePhone || "No phone number"
                     )}
                   </div>
                 </div>

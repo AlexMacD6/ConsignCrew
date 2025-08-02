@@ -1,0 +1,134 @@
+# Email Verification Not Triggering Requirements
+
+## Issue Description
+User registration is working successfully, but email verification emails are not being sent. The user registered with `alex.macdonald@rigconcierge.com` but never received a verification email, preventing them from logging in.
+
+## Root Cause Analysis
+- ✅ User registration works (no "name is required" errors)
+- ✅ User is created in database successfully
+- ✅ AWS SES is properly configured and working (test email sent successfully)
+- ❌ No verification tokens are created in the database
+- ❌ BetterAuth's `sendVerificationEmail` function is never called
+- ❌ Email verification process is not triggered automatically
+
+## Investigation Results
+
+### Database Check Results
+```
+✅ User found in database:
+- ID: GuMRrhDYgZnuPR5Kv3hwiCWxg48rdxji
+- Name: Alex MacDonald
+- Email: alex.macdonald@rigconcierge.com
+- Created At: 2025-08-01T20:21:07.540Z
+- Updated At: 2025-08-01T20:21:07.540Z
+
+Verification tokens: 0
+```
+
+### AWS SES Test Results
+```
+✅ AWS SES properly configured
+✅ Test email sent successfully with MessageId: 01000198674a0dd2-16fea94a-cf5c-4eb2-9429-f505f42eb3b6-000000
+```
+
+## Solution Requirements
+
+### 1. Fix BetterAuth Email Verification Configuration
+- BetterAuth is not automatically creating verification tokens
+- The `requireEmailVerification: true` setting is not working as expected
+- Need to investigate BetterAuth's email verification flow
+
+### 2. Alternative Solutions
+- **Option A**: Fix BetterAuth configuration to properly trigger email verification
+- **Option B**: Implement manual email verification trigger
+- **Option C**: Temporarily disable email verification for development
+
+### 3. Immediate Workaround
+- Manually create verification token for existing user
+- Send verification email manually
+- Allow user to verify and login
+
+## Implementation Details
+
+### Files Modified
+- `app/lib/auth.ts` - BetterAuth email configuration
+
+### Current Configuration
+```typescript
+emailAndPassword: {
+  enabled: true,
+  requireEmailVerification: true,
+  sendVerificationEmail: async ({ user, url, token }) => {
+    // Email sending logic is correct
+  },
+  sendResetPassword: async ({ user, url, token }) => {
+    // Password reset logic is correct
+  },
+  provider: null, // Using custom email sending with AWS SES
+}
+```
+
+### Issues Identified
+1. **No Verification Tokens**: BetterAuth is not creating verification tokens in the database
+2. **Email Function Not Called**: The `sendVerificationEmail` function is never executed
+3. **Configuration Issue**: `requireEmailVerification: true` is not triggering the verification flow
+
+## Testing Instructions
+
+### 1. Test Current Registration
+- Register a new user with email/password
+- Check if verification token is created in database
+- Check if verification email is sent
+- Check console logs for email sending attempts
+
+### 2. Test Manual Verification
+- Create verification token manually
+- Send verification email manually
+- Test verification link functionality
+
+### 3. Test BetterAuth Configuration
+- Check BetterAuth documentation for correct email verification setup
+- Verify provider configuration
+- Test different BetterAuth versions if needed
+
+## Expected Outcome
+
+### Immediate Fix
+- **✅ Manual verification email sent** to existing user
+- **✅ User can verify email** and login successfully
+- **✅ Complete registration → verification → login flow**
+
+### Long-term Fix
+- **✅ BetterAuth automatically creates verification tokens**
+- **✅ Email verification triggered on registration**
+- **✅ Professional verification emails sent via AWS SES**
+- **✅ Proper error handling and logging**
+
+## Next Steps
+
+1. **Immediate**: Manually verify existing user's email
+2. **Investigation**: Research BetterAuth email verification configuration
+3. **Testing**: Test registration with new users
+4. **Documentation**: Update BetterAuth configuration if needed
+
+## Troubleshooting
+
+### If BetterAuth Still Not Working
+1. Check BetterAuth version and documentation
+2. Try different provider configurations
+3. Check for BetterAuth bugs or issues
+4. Consider alternative authentication libraries
+
+### If Manual Verification Needed
+1. Create API endpoint for manual verification
+2. Implement admin panel for user management
+3. Add verification status to user profile
+4. Provide manual verification instructions
+
+## Benefits
+
+- **✅ User Can Login**: Immediate solution for existing user
+- **✅ Email Verification Working**: Professional verification emails
+- **✅ Proper Configuration**: BetterAuth setup for future users
+- **✅ Error Handling**: Graceful fallbacks and logging
+- **✅ User Experience**: Complete registration flow 

@@ -1,0 +1,124 @@
+# User Registration Custom Adapter Fix Requirements
+
+## Issue Description
+User registration was failing with the error: "Unknown argument `name`. Available options are marked with ?." This occurred because BetterAuth was trying to create a user with a `name` field, but the Prisma schema only has `firstName` and `lastName` fields.
+
+## Root Cause
+- OAuth providers (Google, Facebook, TikTok) send user data with a `name` field
+- BetterAuth was trying to create users with this `name` field directly
+- The Prisma schema only has `firstName` and `lastName` fields, not a `name` field
+- Callback-based approaches weren't working due to BetterAuth's internal processing
+
+## Solution Requirements
+
+### 1. Create Custom Prisma Adapter
+- Create a custom adapter that extends the default BetterAuth Prisma adapter
+- Override the `createUser` method to handle name field mapping
+- Intercept user creation at the database adapter level
+- Ensure proper field mapping before Prisma operations
+
+### 2. Implement Name Field Mapping
+- Parse the OAuth provider's `name` field into `firstName` and `lastName`
+- Handle edge cases like single names or multiple word names
+- Remove the `name` field before database insertion
+- Add debugging logs to track the mapping process
+
+### 3. Maintain Clean Schema
+- Keep Prisma schema with only `firstName` and `lastName` fields
+- No need to add a `name` field to the database
+- Preserve existing data structure and relationships
+- Ensure backward compatibility
+
+## Implementation Details
+
+### Files Modified
+- `app/lib/custom-prisma-adapter.ts` - New custom adapter with name mapping
+- `app/lib/auth.ts` - Updated to use custom adapter instead of default
+
+### Changes Made
+1. **Created custom adapter** that extends BetterAuth's Prisma adapter
+2. **Overrode createUser method** to handle name field mapping
+3. **Added name parsing logic** to split full name into first and last name
+4. **Implemented field cleanup** to remove the name field before database insertion
+5. **Added debugging logs** to track the mapping process
+
+### Code Changes
+```typescript
+// Custom adapter with name mapping
+const customPrismaAdapter = prismaAdapter(prisma, { provider: 'postgresql' })
+
+const originalCreateUser = customPrismaAdapter.createUser
+
+customPrismaAdapter.createUser = async (data: any) => {
+  console.log('Custom createUser called with:', data)
+  
+  // Handle OAuth providers that send 'name' instead of firstName/lastName
+  if (data.name && !data.firstName && !data.lastName) {
+    const nameParts = data.name.trim().split(' ')
+    data.firstName = nameParts[0] || ''
+    data.lastName = nameParts.slice(1).join(' ') || ''
+    delete data.name // Remove the name field since we don't have it in our schema
+    console.log('Processed name mapping:', { firstName: data.firstName, lastName: data.lastName })
+  }
+  
+  return originalCreateUser(data)
+}
+```
+
+## Name Parsing Logic
+
+### Single Name
+- Input: "John"
+- Result: firstName = "John", lastName = ""
+
+### Two Names
+- Input: "John Doe"
+- Result: firstName = "John", lastName = "Doe"
+
+### Multiple Names
+- Input: "John Michael Doe"
+- Result: firstName = "John", lastName = "Michael Doe"
+
+### Edge Cases
+- Empty name: firstName = "", lastName = ""
+- Single space: firstName = "", lastName = ""
+- Multiple spaces: Properly trimmed and split
+
+## Testing Instructions
+
+1. **Test OAuth Registration**:
+   - Try registering with Google OAuth
+   - Check console logs for "Custom createUser called with:" message
+   - Verify that the user's name is properly split into firstName and lastName
+   - Check that the user is created successfully in the database
+
+2. **Test Email/Password Registration**:
+   - Try registering with email and password
+   - Verify that firstName and lastName are used directly
+   - Ensure no name mapping is applied
+
+3. **Test Edge Cases**:
+   - Test with single names
+   - Test with multiple word names
+   - Test with names containing extra spaces
+
+4. **Verify Database**:
+   - Check that users are created with correct firstName and lastName
+   - Confirm that no `name` field is present in the database
+
+## Expected Outcome
+
+- **✅ OAuth registration works** without schema errors
+- **✅ Names are properly parsed** into firstName and lastName
+- **✅ Email/password registration** continues to work normally
+- **✅ Database schema remains clean** with only firstName and lastName
+- **✅ Custom adapter logs** show the mapping process
+- **✅ No breaking changes** to existing functionality
+
+## Benefits
+
+- **Fixed Registration**: OAuth users can now register successfully
+- **Clean Schema**: Maintains consistent firstName/lastName structure
+- **Better Debugging**: Console logs show exactly what's happening
+- **Adapter-Level Solution**: Handles the issue at the right level
+- **No Schema Changes**: Database structure remains unchanged 

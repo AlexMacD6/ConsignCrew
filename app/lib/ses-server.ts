@@ -43,7 +43,7 @@ export async function sendEmail(
         throw new Error('AWS credentials not configured')
     }
 
-    const fromEmail = process.env.AWS_SES_DEFAULT_FROM_EMAIL || 'noreply@treasurehub.club'
+    const fromEmail = process.env.AWS_SES_DEFAULT_FROM_EMAIL || 'no-reply@treasurehub.club'
     
     // Generate plain text version if not provided
     const plainText = textContent || html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
@@ -79,8 +79,21 @@ export async function sendEmail(
             ...(replyTo && {
                 ReplyToAddresses: [replyTo],
             }),
-            // Add configuration set for tracking and reputation management
-            ConfigurationSetName: process.env.AWS_SES_CONFIGURATION_SET || undefined,
+            // Add configuration set for tracking and reputation management (only if it exists and is not empty)
+            ...(process.env.AWS_SES_CONFIGURATION_SET && process.env.AWS_SES_CONFIGURATION_SET.trim() !== '' && {
+                ConfigurationSetName: process.env.AWS_SES_CONFIGURATION_SET,
+            }),
+            // Add email tags for better tracking and categorization
+            Tags: [
+                {
+                    Name: 'EmailType',
+                    Value: 'Transactional'
+                },
+                {
+                    Name: 'Service',
+                    Value: 'TreasureHub'
+                }
+            ]
         })
         
         const result = await ses.send(command)

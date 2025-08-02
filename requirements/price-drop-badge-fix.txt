@@ -1,0 +1,119 @@
+# Price Drop Badge Fix Requirements
+
+## Problem
+The price drop badge was incorrectly showing based on mock data (33% chance based on listing ID) instead of actual price history. The badge should only show when a listing's price has actually dropped from its original list price within the last 48 hours.
+
+## Requirements
+
+### 1. Remove Mock Price Drop Logic
+- Remove the fake 33% chance logic based on listing ID
+- Remove any hardcoded price drop indicators
+- Base price drop badges on actual price history data
+
+### 2. Add Price History Tracking
+- Create PriceHistory model to track all price changes
+- Automatically create initial price history entry when listing is created
+- Track price changes over time with timestamps
+
+### 3. Implement Real Price Drop Detection
+- Check if listing has had a price drop in the last 48 hours
+- Compare current price with previous price in history
+- Only show badge if price actually decreased within time window
+
+### 4. Update All Price Drop Badge Locations
+- Fix price drop badges on listings page
+- Fix price drop badges on listing detail page
+- Ensure consistent logic across all components
+
+## Changes Made
+
+### 1. Database Schema Updates (`prisma/schema.prisma`)
+- Added `PriceHistory` model with fields:
+  - `id`: Unique identifier
+  - `listingId`: Reference to listing
+  - `price`: Price at this point in time
+  - `createdAt`: Timestamp of price change
+- Added relation from `Listing` to `PriceHistory`
+- Created migration: `20250802020306_add_price_history`
+
+### 2. API Updates
+- **`app/api/listings/route.ts`**:
+  - Updated POST method to create initial price history entry
+  - Updated GET method to include price history in response
+- **`app/api/listings/[id]/route.ts`**:
+  - Updated to include price history for single listing
+
+### 3. Frontend Logic Updates
+- **`app/(dashboard)/listings/page.tsx`**:
+  - Added `hasRecentPriceDrop()` function to check for actual price drops
+  - Replaced mock logic with real price history check
+  - Updated price drop badge to only show for real price drops
+- **`app/(dashboard)/list-item/[id]/page.tsx`**:
+  - Added same `hasRecentPriceDrop()` function
+  - Added price drop badge to listing detail page
+  - Updated price information section to show price drop badge
+
+### 4. Price Drop Detection Logic
+```typescript
+const hasRecentPriceDrop = (listing: any) => {
+  // Check if listing has price history and if there's been a price drop in last 48 hours
+  if (!listing.priceHistory || listing.priceHistory.length < 2) {
+    return false; // No price history or only initial price
+  }
+
+  const now = new Date();
+  const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+  
+  // Get the most recent price change
+  const latestPriceChange = listing.priceHistory[0];
+  const previousPrice = listing.priceHistory[1]?.price;
+  
+  // Check if the latest price change was within 48 hours and was a price drop
+  if (latestPriceChange && previousPrice) {
+    const priceChangeTime = new Date(latestPriceChange.createdAt);
+    const isRecent = priceChangeTime > fortyEightHoursAgo;
+    const isPriceDrop = latestPriceChange.price < previousPrice;
+    
+    return isRecent && isPriceDrop;
+  }
+  
+  return false;
+};
+```
+
+## Technical Implementation
+
+### Database Schema
+```prisma
+model PriceHistory {
+  id        String   @id @default(cuid())
+  listingId String
+  price     Float
+  createdAt DateTime @default(now())
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@index([createdAt])
+  @@map("price_history")
+}
+```
+
+### Price Drop Criteria
+- Listing must have at least 2 price history entries
+- Most recent price change must be within last 48 hours
+- Current price must be lower than previous price
+- Badge shows red "Price Drop" text
+
+### Benefits
+- ✅ Accurate price drop detection based on real data
+- ✅ No more false positive price drop badges
+- ✅ Proper tracking of price history over time
+- ✅ Consistent logic across all pages
+- ✅ Scalable for future price tracking features
+
+## Testing
+- New listings should NOT show price drop badge (no price history)
+- Only listings with actual price drops in last 48 hours show badge
+- Badge disappears after 48 hours from price drop
+- Price increases do not trigger the badge 

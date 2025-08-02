@@ -1,0 +1,109 @@
+# Simple Name Field Fix Requirements
+
+## Issue Description
+User registration was failing with the error: "Unknown argument `name`. Available options are marked with ?." This occurred because BetterAuth automatically includes a `name` field from OAuth providers, but this field wasn't present in the Prisma schema.
+
+## Root Cause
+- BetterAuth automatically maps OAuth provider data and includes a `name` field
+- The Prisma schema didn't have a `name` field to store this data
+- BetterAuth tried to create users with the `name` field, but Prisma rejected it
+- This caused a schema mismatch during user creation
+
+## Solution Requirements
+
+### 1. Add Name Field to Prisma Schema
+- Add `name: String?` field to the user model
+- Make it optional since not all registration methods provide it
+- Keep existing `firstName` and `lastName` fields for backward compatibility
+
+### 2. Simplify BetterAuth Configuration
+- Keep the `name` field in BetterAuth `additionalFields` configuration
+- Remove complex callback logic for name mapping
+- Let BetterAuth handle the field mapping naturally
+
+### 3. Maintain Data Consistency
+- OAuth providers will populate the `name` field
+- Email/password registration can optionally populate the `name` field
+- Existing `firstName` and `lastName` fields remain for structured data
+
+## Implementation Details
+
+### Files Modified
+- `prisma/schema.prisma` - Added name field to user model
+- `app/lib/auth.ts` - Simplified BetterAuth configuration
+
+### Changes Made
+1. **Added name field** to Prisma schema as optional String
+2. **Created database migration** to add the field
+3. **Simplified BetterAuth configuration** by removing complex callbacks
+4. **Kept name field** in BetterAuth additionalFields
+
+### Code Changes
+```prisma
+// Prisma Schema
+model user {
+  id            String   @id @default(cuid())
+  name          String?  // BetterAuth expects this field from OAuth providers
+  firstName     String
+  lastName      String
+  // ... other fields
+}
+```
+
+```typescript
+// BetterAuth Configuration
+additionalFields: {
+  name: { type: "string", required: false }, // Allow BetterAuth to pass name field
+  firstName: { type: "string", required: true },
+  lastName: { type: "string", required: true },
+  // ... other fields
+}
+```
+
+## Data Handling
+
+### OAuth Provider Registration
+- Input: `{ name: "John Doe", email: "..." }`
+- Result: `{ name: "John Doe", firstName: "", lastName: "", email: "..." }`
+
+### Email/Password Registration
+- Input: `{ firstName: "John", lastName: "Doe", email: "..." }`
+- Result: `{ name: null, firstName: "John", lastName: "Doe", email: "..." }`
+
+### Mixed Registration
+- Input: `{ name: "John Doe", firstName: "John", lastName: "Smith", email: "..." }`
+- Result: `{ name: "John Doe", firstName: "John", lastName: "Smith", email: "..." }`
+
+## Testing Instructions
+
+1. **Test OAuth Registration**:
+   - Try registering with Google OAuth
+   - Verify that the user is created successfully without errors
+   - Check that the `name` field is populated in the database
+
+2. **Test Email/Password Registration**:
+   - Try registering with email and password
+   - Verify that firstName and lastName are used
+   - Check that the `name` field is null in the database
+
+3. **Test Database Schema**:
+   - Verify that users are created with the correct fields
+   - Confirm that the `name` field is present and optional
+
+## Expected Outcome
+
+- **✅ OAuth registration works** without schema errors
+- **✅ Name field is stored** in the database for OAuth users
+- **✅ Email/password registration** continues to work normally
+- **✅ Database schema supports** both registration methods
+- **✅ No complex mapping logic** required
+- **✅ BetterAuth compatibility** achieved naturally
+
+## Benefits
+
+- **Simple Solution**: Minimal code changes required
+- **BetterAuth Native**: Works with BetterAuth's natural field mapping
+- **Flexible Data**: Supports both structured (firstName/lastName) and unstructured (name) data
+- **Backward Compatible**: Existing functionality preserved
+- **Easy Maintenance**: No complex callback logic to maintain
+- **Database Consistency**: All data is properly stored 

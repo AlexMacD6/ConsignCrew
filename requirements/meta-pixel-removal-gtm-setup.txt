@@ -1,0 +1,89 @@
+# Meta Pixel Removal and Google Tag Manager Setup Requirements
+
+## Overview
+Remove all Meta Pixel (Facebook Pixel) code from the application and prepare for Google Tag Manager integration for better tag management and analytics.
+
+## Meta Pixel Removal Requirements
+
+### 1. Remove Meta Pixel Files
+- Delete `app/lib/meta-pixel.ts` - Core Meta Pixel utility functions
+- Delete `app/components/MetaPixelProvider.tsx` - React provider component
+- Delete `app/api/meta-conversions/route.ts` - Meta Conversions API endpoint
+- Delete `requirements/meta-pixel-setup.txt` - Meta Pixel setup requirements
+- Delete `requirements/meta-pixel-error-fix.txt` - Meta Pixel error fix requirements
+- Delete `pr-templates/meta-pixel-setup.md` - Meta Pixel setup PR template
+- Delete `pr-templates/meta-pixel-error-fix.md` - Meta Pixel error fix PR template
+
+### 2. Remove Meta Pixel References
+- Remove MetaPixelProvider import and usage from `app/layout.tsx`
+- Remove Meta Pixel tracking calls from `app/page.tsx`
+- Remove Meta Pixel tracking calls from `app/contact/page.tsx`
+- Remove Meta Pixel server-side events from `app/api/subscribe/route.ts`
+- Remove Meta Pixel environment variables from `env.example`
+
+### 3. Clean Up Environment Variables
+- Remove `NEXT_PUBLIC_META_PIXEL_ID`
+- Remove `META_ACCESS_TOKEN`
+- Remove `META_API_VERSION`
+
+## Google Tag Manager Preparation
+
+### 1. Current GTM Setup
+- Google Tag Manager is already configured in `app/layout.tsx`
+- GTM ID: `GTM-T9SC7WZX`
+- Google Analytics 4 is already configured with ID: `G-B483BLYZEF`
+
+### 2. GTM Benefits
+- Centralized tag management
+- No code changes required for new tracking implementations
+- Better performance and loading optimization
+- Easier debugging and testing
+- Support for multiple tracking platforms (Google Analytics, Facebook Pixel, etc.)
+
+### 3. Recommended GTM Configuration
+- Set up Facebook Pixel through GTM (if needed in the future)
+- Configure conversion tracking through GTM
+- Set up custom events and triggers
+- Implement proper data layer for enhanced tracking
+
+## Implementation Details
+
+### Files Modified
+- `app/layout.tsx` - Removed MetaPixelProvider wrapper
+- `app/page.tsx` - Removed Meta Pixel tracking calls
+- `app/contact/page.tsx` - Removed Meta Pixel tracking calls
+- `app/api/subscribe/route.ts` - Removed Meta Pixel server-side events
+- `env.example` - Removed Meta Pixel environment variables
+
+### Files Deleted
+- `app/lib/meta-pixel.ts`
+- `app/components/MetaPixelProvider.tsx`
+- `app/api/meta-conversions/route.ts`
+- `requirements/meta-pixel-setup.txt`
+- `requirements/meta-pixel-error-fix.txt`
+- `pr-templates/meta-pixel-setup.md`
+- `pr-templates/meta-pixel-error-fix.md`
+
+## Testing Instructions
+
+1. Load the application and verify no console errors related to Meta Pixel
+2. Test email subscription functionality (should work without Meta Pixel tracking)
+3. Test contact form functionality (should work without Meta Pixel tracking)
+4. Verify Google Tag Manager is loading properly
+5. Check that Google Analytics is still tracking page views
+6. Test that the application functions normally without Meta Pixel dependencies
+
+## Expected Outcome
+
+- No more Meta Pixel related errors or dependencies
+- Cleaner codebase with centralized tag management through GTM
+- Better performance without Meta Pixel script loading
+- Easier future tag management through GTM interface
+- Maintained functionality for all existing features
+
+## Future Considerations
+
+- Configure Facebook Pixel through GTM if needed
+- Set up conversion tracking through GTM
+- Implement custom events and enhanced ecommerce tracking
+- Consider implementing data layer for better tracking capabilities 
