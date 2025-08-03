@@ -28,6 +28,16 @@ export async function POST(request: NextRequest) {
       modelNumber,
       estimatedRetailPrice,
       discountSchedule,
+      reservePrice,
+      height,
+      width,
+      depth,
+      // Facebook Shop Integration Fields
+      facebookShopEnabled,
+      facebookBrand,
+      facebookCategory,
+      facebookCondition,
+      facebookGtin,
     } = body;
 
     // Validate required fields
@@ -49,6 +59,7 @@ export async function POST(request: NextRequest) {
     const { getPublicUrl } = await import('../../../src/aws/imageStore');
     
     const transformedPhotos = {
+      staged: photos.staged || null, // AI-generated staged photo URL
       hero: photos.hero?.url ? photos.hero.url : (typeof photos.hero === 'string' ? getPublicUrl(photos.hero) : photos.hero),
       back: photos.back?.url ? photos.back.url : (typeof photos.back === 'string' ? getPublicUrl(photos.back) : photos.back),
       proof: photos.proof?.url ? photos.proof.url : (typeof photos.proof === 'string' ? getPublicUrl(photos.proof) : photos.proof),
@@ -68,15 +79,24 @@ export async function POST(request: NextRequest) {
         title,
         condition,
         price: parseFloat(price),
+        reservePrice: reservePrice ? parseFloat(reservePrice) : parseFloat(price) * 0.6,
         description,
         zipCode,
         neighborhood,
         brand: brand || null,
-        dimensions: dimensions || null,
+        height: height || null,
+        width: width || null,
+        depth: depth || null,
         serialNumber: serialNumber || null,
         modelNumber: modelNumber || null,
         estimatedRetailPrice: estimatedRetailPrice ? parseFloat(estimatedRetailPrice) : null,
         discountSchedule: discountSchedule || null,
+        // Facebook Shop Integration Fields
+        facebookShopEnabled: facebookShopEnabled !== undefined ? facebookShopEnabled : true,
+        facebookBrand: facebookBrand || null,
+        facebookCategory: facebookCategory || null,
+        facebookCondition: facebookCondition || null,
+        facebookGtin: facebookGtin || null,
         priceHistory: {
           create: {
             price: parseFloat(price),

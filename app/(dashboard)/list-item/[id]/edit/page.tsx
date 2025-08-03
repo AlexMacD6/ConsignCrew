@@ -125,7 +125,10 @@ export default function EditListingPage() {
   const [zipCode, setZipCode] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
   const [brand, setBrand] = useState("");
-  const [dimensions, setDimensions] = useState("");
+  const [height, setHeight] = useState("");
+  const [width, setWidth] = useState("");
+  const [depth, setDepth] = useState("");
+  const [dimensionsConfirmed, setDimensionsConfirmed] = useState(false);
   const [serialNumber, setSerialNumber] = useState("");
   const [modelNumber, setModelNumber] = useState("");
   const [discountSchedule, setDiscountSchedule] = useState("Classic-60");
@@ -152,6 +155,8 @@ export default function EditListingPage() {
   });
   const [videoUploading, setVideoUploading] = useState(false);
   const [videoUploadError, setVideoUploadError] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState("");
+  const [useVideoUpload, setUseVideoUpload] = useState(false);
 
   // Validation state
   const [zipCodeValid, setZipCodeValid] = useState<boolean | null>(null);
@@ -188,7 +193,12 @@ export default function EditListingPage() {
           setZipCode(listingData.zipCode);
           setNeighborhood(listingData.neighborhood);
           setBrand(listingData.brand || "");
-          setDimensions(listingData.dimensions || "");
+          setHeight(listingData.height || "");
+          setWidth(listingData.width || "");
+          setDepth(listingData.depth || "");
+          setDimensionsConfirmed(
+            !!(listingData.height || listingData.width || listingData.depth)
+          );
           setSerialNumber(listingData.serialNumber || "");
           setModelNumber(listingData.modelNumber || "");
           setDiscountSchedule(
@@ -209,6 +219,7 @@ export default function EditListingPage() {
             key: null,
             url: listingData.videoUrl || null,
           });
+          setVideoUrl(listingData.videoUrl || "");
 
           // Initialize photo order
           const order = [];
@@ -337,6 +348,16 @@ export default function EditListingPage() {
     setVideoUploadError(null);
   };
 
+  const handleVideoUrlChange = (url: string) => {
+    setVideoUrl(url);
+    setVideo({
+      file: null,
+      key: null,
+      url: url || null,
+    });
+    setVideoUploadError(null);
+  };
+
   // Drag and drop functions for photo reordering
   const handleDragStart = (e: React.DragEvent, photoId: string) => {
     setDraggedPhoto(photoId);
@@ -394,29 +415,49 @@ export default function EditListingPage() {
     if (!files || files.length === 0) return;
 
     const file = files[0];
-    const formData = new FormData();
-    formData.append("file", file);
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      setError("Please select a valid image file");
+      return;
+    }
 
     try {
+      // Create form data with required parameters
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("photoType", "additional"); // For edit page, treat as additional photo
+      formData.append("itemId", params.id as string);
+
       const response = await fetch("/api/upload/photo", {
         method: "POST",
         body: formData,
       });
 
       if (!response.ok) {
-        throw new Error("Failed to upload image");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to upload image");
       }
 
       const data = await response.json();
 
-      // Update photos state based on current photo type
+      // Add the new photo to the additional photos array
       setPhotos((prev) => ({
         ...prev,
-        hero: data.url,
+        additional: [...prev.additional, data.url],
       }));
+
+      // Add to photo order
+      const newPhotoId = `additional-${photos.additional.length}`;
+      setPhotoOrder((prev) => [...prev, newPhotoId]);
+
+      // Clear any previous errors
+      setError(null);
     } catch (error) {
       console.error("Error uploading image:", error);
-      setError("Failed to upload image");
+      setError(
+        error instanceof Error ? error.message : "Failed to upload image"
+      );
     }
   };
 
@@ -453,7 +494,9 @@ export default function EditListingPage() {
           zipCode,
           neighborhood,
           brand: brand || null,
-          dimensions: dimensions || null,
+          height: height || null,
+          width: width || null,
+          depth: depth || null,
           serialNumber: serialNumber || null,
           modelNumber: modelNumber || null,
           estimatedRetailPrice: estimatedRetailPrice
@@ -461,7 +504,7 @@ export default function EditListingPage() {
             : null,
           discountSchedule: { type: discountSchedule },
           photos,
-          videoUrl: video.url,
+          videoUrl: useVideoUpload ? video.url : videoUrl,
         }),
       });
 
@@ -808,18 +851,72 @@ export default function EditListingPage() {
                 />
               </div>
 
-              {/* Dimensions */}
+              {/* Product Dimensions */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Dimensions
+                  Product Dimensions (inches)
                 </label>
-                <input
-                  type="text"
-                  value={dimensions}
-                  onChange={(e) => setDimensions(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                  placeholder='e.g., 24" W x 18" D x 36" H'
-                />
+                <div className="grid grid-cols-3 gap-3">
+                  {/* Height */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Height
+                    </label>
+                    <input
+                      type="number"
+                      value={height}
+                      onChange={(e) => setHeight(e.target.value)}
+                      min="0"
+                      step="0.1"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                      placeholder="H"
+                    />
+                  </div>
+
+                  {/* Width */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Width
+                    </label>
+                    <input
+                      type="number"
+                      value={width}
+                      onChange={(e) => setWidth(e.target.value)}
+                      min="0"
+                      step="0.1"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                      placeholder="W"
+                    />
+                  </div>
+
+                  {/* Depth */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Depth
+                    </label>
+                    <input
+                      type="number"
+                      value={depth}
+                      onChange={(e) => setDepth(e.target.value)}
+                      min="0"
+                      step="0.1"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                      placeholder="D"
+                    />
+                  </div>
+                </div>
+
+                {/* Dimensions Summary */}
+                {(height || width || depth) && (
+                  <div className="mt-2 p-2 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Dimensions:</span>{" "}
+                      {height ? `${height}"` : "—"} H ×{" "}
+                      {width ? `${width}"` : "—"} W ×{" "}
+                      {depth ? `${depth}"` : "—"} D
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Serial Number */}
@@ -953,18 +1050,54 @@ export default function EditListingPage() {
               better understand the product.
             </p>
 
+            {/* Video Upload Toggle */}
+            <div className="mb-6">
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="videoOption"
+                    checked={!useVideoUpload}
+                    onChange={() => setUseVideoUpload(false)}
+                    className="text-[#D4AF3D] focus:ring-[#D4AF3D]"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Video URL
+                  </span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="videoOption"
+                    checked={useVideoUpload}
+                    onChange={() => setUseVideoUpload(true)}
+                    className="text-[#D4AF3D] focus:ring-[#D4AF3D]"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Upload Video File
+                  </span>
+                </label>
+              </div>
+            </div>
+
             {/* Video Preview */}
-            {video.url && (
+            {(video.url || videoUrl) && (
               <div className="mb-4 relative">
                 <video
-                  src={video.url}
+                  src={useVideoUpload ? video.url : videoUrl}
                   className="w-full max-w-md aspect-video bg-gray-100 rounded-lg"
                   controls
                   preload="metadata"
                 />
                 <button
                   type="button"
-                  onClick={clearVideo}
+                  onClick={() => {
+                    if (useVideoUpload) {
+                      clearVideo();
+                    } else {
+                      handleVideoUrlChange("");
+                    }
+                  }}
                   className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
                 >
                   <X className="h-4 w-4" />
@@ -972,11 +1105,31 @@ export default function EditListingPage() {
               </div>
             )}
 
-            {/* Video Upload Area */}
-            {!video.url && (
+            {/* Video URL Input */}
+            {!useVideoUpload && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Upload Video
+                  Video URL
+                </label>
+                <input
+                  type="url"
+                  value={videoUrl}
+                  onChange={(e) => handleVideoUrlChange(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  placeholder="https://example.com/video.mp4"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter a direct link to your video (YouTube, Vimeo, or direct
+                  file URL)
+                </p>
+              </div>
+            )}
+
+            {/* Video File Upload */}
+            {useVideoUpload && !video.url && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Upload Video File
                 </label>
                 <input
                   type="file"

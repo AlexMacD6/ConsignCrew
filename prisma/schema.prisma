@@ -23,6 +23,7 @@ model user {
   zipCode         String?
   invitationsSent Invitation[] @relation("InvitationsSent")
   listings        Listing[]
+  videos          Video[]
   members         Member[]
   answers         Question[]   @relation("QuestionAnsweredBy")
   approvals       Question[]   @relation("QuestionApprovedBy")
@@ -175,9 +176,9 @@ model Question {
 }
 
 model Listing {
-  id                   String         @id @default(cuid())
+  id                   String   @id @default(cuid())
   userId               String
-  itemId               String         @unique
+  itemId               String   @unique
   photos               Json
   videoUrl             String?
   department           String
@@ -186,26 +187,43 @@ model Listing {
   title                String
   condition            String
   price                Float
+  reservePrice         Float?
   description          String
   zipCode              String
   neighborhood         String
   brand                String?
-  dimensions           String?
+  height               String?
+  width                String?
+  depth                String?
   serialNumber         String?
   modelNumber          String?
   estimatedRetailPrice Float?
   discountSchedule     Json?
-  status               String         @default("active")
-  createdAt            DateTime       @default(now())
-  updatedAt            DateTime       @updatedAt
-  views                Int            @default(0)
-  user                 user           @relation(fields: [userId], references: [id])
-  priceHistory         PriceHistory[]
+  status               String   @default("active")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  views                Int      @default(0)
+
+  // Facebook Shop Integration Fields
+  facebookShopId      String?   @unique // Unique ID for Facebook Shop
+  facebookCategory    String? // Facebook product category
+  facebookCondition   String? // new/used/refurbished for Facebook
+  facebookBrand       String? // Brand name for Facebook
+  facebookGtin        String? // GTIN/UPC code (optional)
+  facebookShopEnabled Boolean   @default(true) // Enable/disable Facebook sync
+  facebookLastSync    DateTime? // Last successful sync timestamp
+  facebookSyncStatus  String? // success/error/pending
+
+  user         user           @relation(fields: [userId], references: [id])
+  videos       Video[]
+  priceHistory PriceHistory[]
 
   @@index([userId])
   @@index([status])
   @@index([department])
   @@index([zipCode])
+  @@index([facebookShopEnabled])
+  @@index([facebookLastSync])
 }
 
 model PriceHistory {
@@ -247,9 +265,30 @@ model Contact {
   @@index([createdAt])
 }
 
+model TreasureDrop {
+  id             String        @id @default(cuid())
+  name           String
+  location       Json // { lat: number, lng: number }
+  radius         Float         @default(328) // Radius in feet (100 meters = ~328 feet)
+  status         String        @default("active") // "active" | "found"
+  clue           String
+  image          String?
+  reward         String
+  foundBy        String?
+  foundAt        DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  treasureCodeId String?       @unique
+  treasureCode   TreasureCode? @relation(fields: [treasureCodeId], references: [id])
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([treasureCodeId])
+}
+
 model TreasureRedemption {
-  id                String   @id @default(cuid())
-  code              String   @unique
+  id                String       @id @default(cuid())
+  treasureCodeId    String
   firstName         String
   lastName          String
   email             String
@@ -260,30 +299,81 @@ model TreasureRedemption {
   paymentMethod     String
   selfieImageUrl    String?
   socialMediaPost   String?
-  socialMediaBonus  Boolean  @default(false)
-  paymentStatus     String   @default("pending")
-  treasureHubCredit Boolean  @default(false)
-  earlyAccessSent   Boolean  @default(false)
+  socialMediaBonus  Boolean      @default(false)
+  paymentStatus     String       @default("pending")
+  treasureHubCredit Boolean      @default(false)
+  earlyAccessSent   Boolean      @default(false)
   ipAddress         String?
   userAgent         String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
   expiresAt         DateTime
+  treasureCode      TreasureCode @relation(fields: [treasureCodeId], references: [id])
 
-  @@index([code])
+  @@index([treasureCodeId])
   @@index([email])
   @@index([paymentStatus])
 }
 
 model TreasureCode {
-  id          String   @id @default(cuid())
-  code        String   @unique
-  isActive    Boolean  @default(true)
-  maxUses     Int      @default(1)
-  currentUses Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String               @id @default(cuid())
+  code         String               @unique
+  isActive     Boolean              @default(true)
+  maxUses      Int                  @default(1)
+  currentUses  Int                  @default(0)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  treasureDrop TreasureDrop?
+  redemptions  TreasureRedemption[]
 
   @@index([code])
   @@index([isActive])
+}
+
+model FacebookApiKey {
+  id         String    @id @default(cuid())
+  name       String // Human-readable name for the key
+  apiKey     String    @unique // The actual API key
+  isActive   Boolean   @default(true)
+  lastUsed   DateTime?
+  usageCount Int       @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  createdBy  String // User ID who created the key
+
+  @@index([apiKey])
+  @@index([isActive])
+  @@index([createdBy])
+}
+
+model Video {
+  id               String  @id @default(cuid())
+  userId           String
+  originalFilename String
+  originalSize     Int // File size in bytes
+  duration         Float? // Video duration in seconds
+  resolution       String? // e.g., "1920x1080"
+
+  // File paths in S3
+  rawVideoKey       String // Raw uploaded video
+  processedVideoKey String? // Compressed video
+  thumbnailKey      String? // Preview thumbnail
+  frameKeys         Json? // Array of AI frame keys
+
+  // Processing status
+  status          String  @default("pending") // pending, processing, completed, failed
+  processingError String? // Error message if processing failed
+
+  // Metadata
+  mimeType  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user     user      @relation(fields: [userId], references: [id])
+  listings Listing[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
 }

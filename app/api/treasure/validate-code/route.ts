@@ -14,6 +14,21 @@ export async function POST(request: NextRequest) {
     // Check if code exists and is active
     const treasureCode = await prisma.treasureCode.findUnique({
       where: { code },
+      include: {
+        treasureDrop: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            reward: true,
+          },
+        },
+        redemptions: {
+          select: {
+            id: true,
+          },
+        },
+      },
     });
 
     if (!treasureCode) {
@@ -36,6 +51,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if treasure drop exists and is active
+    if (!treasureCode.treasureDrop) {
+      return NextResponse.json(
+        { 
+          valid: false, 
+          error: "Treasure drop not found for this code" 
+        },
+        { status: 200 }
+      );
+    }
+
+    if (treasureCode.treasureDrop.status !== "active") {
+      return NextResponse.json(
+        { 
+          valid: false, 
+          error: "This treasure has already been found" 
+        },
+        { status: 200 }
+      );
+    }
+
     // Check if code has been used up
     if (treasureCode.currentUses >= treasureCode.maxUses) {
       return NextResponse.json(
@@ -48,11 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if this specific code has already been redeemed
-    const existingRedemption = await prisma.treasureRedemption.findUnique({
-      where: { code },
-    });
-
-    if (existingRedemption) {
+    if (treasureCode.redemptions.length > 0) {
       return NextResponse.json(
         { 
           valid: false, 

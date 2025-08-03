@@ -1,196 +1,149 @@
-# TreasureHub - Packing Tetris Landing Page
+# TreasureHub
 
-A stunning 3D interactive landing page featuring boxes "Tetris-dropping" into a shipping crate. When the crate fills up, the camera dives inside to reveal an email signup modal.
+A comprehensive marketplace platform for buying and selling items with AI-powered listing generation.
 
-## 🚀 Features
+## Features
 
-- **3D Physics Simulation**: Realistic box dropping with physics using @react-three/cannon
-- **Interactive Experience**: Watch colorful boxes fall and stack naturally
-- **Camera Animation**: Smooth camera transition when crate fills
-- **Email Signup**: Beautiful modal for collecting early access emails
-- **Accessibility**: Skip animation option and reduced motion support
-- **Responsive Design**: Works on desktop and mobile devices
-- **Performance Optimized**: Efficient rendering with shared geometries
+- **AI-Powered Listing Generation**: Automatically generates comprehensive product listings using GPT-4o
+- **Video Upload & Processing**: Upload videos with automatic compression, thumbnail generation, and frame extraction
+- **Photo Management**: Multi-step photo upload with S3 integration
+- **Facebook Shop Integration**: Seamless integration with Facebook Marketplace
+- **User Authentication**: Secure authentication with BetterAuth
+- **Zip Code Validation**: Location-based service area validation
 
-## 🛠️ Tech Stack
+## Prerequisites
 
-- **React 18** with **Next.js** for fast development
-- **@react-three/fiber** for Three.js integration
-- **@react-three/cannon** for physics simulation
-- **@react-three/drei** for helpful utilities
-- **@react-spring/three** for smooth animations
-- **Tailwind CSS** for styling
+### FFmpeg Installation (Required for Video Processing)
 
-## 📦 Installation
+The video upload feature requires FFmpeg to be installed on your system for video processing, compression, and frame extraction.
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd treasurehub-packing-tetris
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Start development server**
-   ```bash
-   npm run dev
-   ```
-
-4. **Open your browser**
-   Navigate to `http://localhost:3000`
-
-## 🏗️ Build & Deploy
-
+#### Windows
 ```bash
-# Build for production
-npm run build
+# Using winget (recommended)
+winget install ffmpeg
 
-# Preview production build
-npm run preview
+# Using Chocolatey
+choco install ffmpeg
+
+# Manual installation
+# 1. Download FFmpeg from https://ffmpeg.org/download.html
+# 2. Extract the files to a folder (e.g., C:\ffmpeg)
+# 3. Add the bin folder to your system PATH
+# 4. Restart your terminal/command prompt
 ```
 
-## 🎮 How It Works
+#### macOS
+```bash
+# Using Homebrew
+brew install ffmpeg
 
-1. **Box Spawning**: Colorful boxes spawn every 0.8-1.4 seconds with random sizes and positions
-2. **Physics Simulation**: Boxes fall naturally with gravity and collision detection
-3. **Crate Monitoring**: The system tracks the highest box position and total box count
-4. **Trigger Conditions**: Animation triggers when either:
-   - Maximum Y position > 5 units, OR
-   - 15+ boxes have been spawned
-5. **Camera Animation**: Camera smoothly moves inside the crate
-6. **Box Fading**: Boxes fade to 20% opacity over 0.8 seconds
-7. **Signup Modal**: Email collection modal appears with backdrop blur
-
-## 🔧 Configuration
-
-### Physics Settings
-- **Gravity**: `[0, -9.81, 0]` (realistic Earth gravity)
-- **Box Friction**: 0.3 (realistic friction)
-- **Box Restitution**: 0.2 (slight bounce)
-
-### Animation Settings
-- **Spawn Interval**: 0.8-1.4 seconds (randomized)
-- **Box Sizes**: 0.8-1.4 units (randomized)
-- **Camera Transition**: 2 seconds duration
-- **Box Fade**: 0.8 seconds duration
-
-## 📧 Email Integration
-
-The app currently uses a mock API endpoint. To integrate with a real email service:
-
-1. **Replace the API call** in `SignupModal.jsx`:
-   ```javascript
-   // Replace this mock call:
-   const response = await fetch('/api/subscribe', {
-     method: 'POST',
-     headers: { 'Content-Type': 'application/json' },
-     body: JSON.stringify({ email }),
-   })
-   ```
-
-2. **Popular Email Services**:
-   - **Mailchimp**: Use their API with your list ID
-   - **Airtable**: Create a base with email column
-   - **ConvertKit**: Use their subscriber API
-   - **SendGrid**: Use their contacts API
-
-### Example Mailchimp Integration:
-```javascript
-const response = await fetch(`https://us1.api.mailchimp.com/3.0/lists/${LIST_ID}/members`, {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${API_KEY}`,
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    email_address: email,
-    status: 'subscribed',
-  }),
-})
+# Or using MacPorts
+sudo port install ffmpeg
 ```
 
-## 🎨 Customization
-
-### Colors
-Update `tailwind.config.js` to customize the color scheme:
-```javascript
-colors: {
-  'consigncrew-gold': '#D4AF3D',
-  'consigncrew-dark': '#1a1a1a',
-}
+#### Linux (Ubuntu/Debian)
+```bash
+sudo apt update
+sudo apt install ffmpeg
 ```
 
-### Box Colors
-Modify the `boxColors` array in `BoxSpawner.jsx`:
-```javascript
-const boxColors = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1',
-  // Add your custom colors here
-]
+#### Linux (CentOS/RHEL)
+```bash
+sudo yum install ffmpeg
+# Or for newer versions
+sudo dnf install ffmpeg
 ```
 
-### Crate Dimensions
-Adjust crate size in `Crate.jsx`:
-```javascript
-// Current: 8x6x8 units
-args: [8, 6, 0.1] // width, height, depth
+### Verify Installation
+After installation, verify FFmpeg is working:
+```bash
+ffmpeg -version
+ffprobe -version
 ```
 
-## ♿ Accessibility
+## Environment Variables
 
-- **Skip Animation**: "Skip Animation" button in top-right corner
-- **Reduced Motion**: Automatically detects `prefers-reduced-motion` and shows static version
-- **Keyboard Navigation**: Arrow keys work for navigation
-- **Screen Reader**: Proper ARIA labels and semantic HTML
+Create a `.env` file in the root directory with the following variables:
 
-## 📱 Mobile Support
+```env
+# Database
+DATABASE_URL="your_database_url"
 
-- **Touch Controls**: Works with touch gestures
-- **Responsive Design**: Adapts to different screen sizes
-- **Performance**: Optimized for mobile devices
+# AWS Configuration
+AWS_REGION="us-east-1"
+AWS_ACCESS_KEY_ID="your_aws_access_key"
+AWS_SECRET_ACCESS_KEY="your_aws_secret_key"
+S3_BUCKET="your_s3_bucket_name"
 
-## 🔍 Performance Tips
+# BetterAuth Configuration
+BETTER_AUTH_SECRET="your_betterauth_secret"
+BETTER_AUTH_URL="http://localhost:3000"
 
-- **Shared Geometries**: Boxes reuse the same geometry and material
-- **Pixel Ratio**: Limited to 2x for performance
-- **Box Cleanup**: Automatically removes boxes that fall too far
-- **Efficient Rendering**: Only renders visible elements
+# CDN Configuration
+NEXT_PUBLIC_CDN_URL="https://your-cdn-domain.com"
 
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **Physics not working**: Ensure @react-three/cannon is properly installed
-2. **Performance issues**: Check if too many boxes are being spawned
-3. **Camera not moving**: Verify @react-spring/three is installed
-4. **Modal not appearing**: Check if the crate full condition is being met
-
-### Debug Mode
-Add this to see physics debug info:
-```javascript
-// In App.jsx, add debug prop to Physics
-<Physics gravity={[0, -9.81, 0]} debug>
+# OpenAI Configuration (for AI features)
+OPENAI_API_KEY="your_openai_api_key"
 ```
 
-## 📄 License
+## Installation
 
-This project is licensed under the MIT License.
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd TreasureHub
+```
 
-## 🤝 Contributing
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Set up the database:
+```bash
+npx prisma generate
+npx prisma migrate dev
+```
+
+4. Start the development server:
+```bash
+npm run dev
+```
+
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Video Processing
+
+The video upload feature includes:
+- **Automatic Compression**: Videos are compressed to ~720p H.264 with CRF 28
+- **Thumbnail Generation**: Preview thumbnails are generated at 3 seconds
+- **Frame Extraction**: 5 AI-readable frames are extracted for analysis
+- **Background Processing**: Videos are processed asynchronously while users continue with other steps
+
+If FFmpeg is not installed, the system will gracefully fall back to using the raw video without processing.
+
+## API Endpoints
+
+### Video Upload
+- `POST /api/upload/video/presigned-url` - Generate presigned URL for video upload
+- `POST /api/upload/video/process` - Trigger video processing
+- `GET /api/upload/video/status/[videoId]` - Check video processing status
+
+### Photo Upload
+- `POST /api/upload/photo/presigned-url` - Generate presigned URL for photo upload
+
+### AI Services
+- `POST /api/ai/generate-comprehensive-listing` - Generate AI-powered listing
+- `POST /api/ai/generate-form-fields` - Generate form fields from photos
+
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test thoroughly
+4. Add tests if applicable
 5. Submit a pull request
 
-## 📞 Support
+## License
 
-For questions or issues, please open an issue on GitHub or contact the development team.
-
----
-
-**Built with ❤️ for TreasureHub**
+This project is licensed under the MIT License.

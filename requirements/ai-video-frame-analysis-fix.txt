@@ -1,0 +1,54 @@
+# AI Video Frame Analysis and Dimension Parsing Fix
+
+## Problem
+The AI was not properly analyzing video keyframes and was returning non-numeric values for dimensions (e.g., "Approximately 48 inches" instead of "48"), causing form parsing errors.
+
+## Issues Identified
+1. **Video keyframes not being analyzed**: AI prompt wasn't explicit enough about analyzing video frames
+2. **Non-numeric dimensions**: AI was returning descriptive text instead of exact numbers
+3. **Missing video analysis in descriptions**: AI wasn't mentioning video observations in descriptions
+4. **Video frame URLs not being passed correctly**: Video processing modal was expecting wrong data structure from API
+
+## Solution Implemented
+
+### 1. Enhanced AI Prompt
+- Added explicit instructions to analyze video keyframes at specific timestamps (0%, 10%, 25%, 50%, 90%)
+- Required AI to mention video observations in detailed descriptions
+- Added critical requirements section for exact numerical values
+
+### 2. Dimension Requirements
+- **EXACT NUMERICAL VALUES ONLY**: AI must return "48" not "Approximately 48 inches"
+- Clear instruction to use null if dimensions cannot be determined
+- Prevents form parsing errors
+
+### 3. Video Analysis Integration
+- AI must explicitly mention video frame observations in descriptions
+- Enhanced understanding of product functionality through video analysis
+- Cross-reference visual findings with user-provided information
+
+### 4. Video Frame URL Fix
+- Fixed video processing modal to correctly extract frame URLs from API response
+- Updated data structure mapping: `statusData.urls.frames` instead of `statusData.frameUrls`
+- Ensured proper thumbnail and duration data extraction
+
+## Technical Changes
+- Updated `app/api/ai/generate-comprehensive-listing/route.ts`
+- Enhanced prompt with critical requirements section
+- Added explicit video frame analysis instructions
+- Required exact numerical values for dimensions
+- Fixed `app/components/VideoProcessingModal.tsx` to correctly extract video frame URLs
+- Updated data structure mapping for video processing completion
+
+## Testing
+- Verify AI analyzes video keyframes when available
+- Confirm dimensions are returned as exact numbers
+- Check that video observations are mentioned in descriptions
+- Ensure form inputs can parse dimension values without errors
+
+## Dependencies
+- Video upload and processing system must be working
+- FFmpeg must be installed for video frame extraction
+- CloudFront URLs must be accessible to OpenAI API
+
+## Status
+COMPLETED ✅ 

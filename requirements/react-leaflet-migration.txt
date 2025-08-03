@@ -1,0 +1,120 @@
+# React Leaflet Migration
+
+## Overview
+Migrated from Google Maps to React Leaflet for the interactive map in the Treasure Hunt admin page. This provides a free, open-source mapping solution that doesn't require API keys.
+
+## Changes Made
+
+### 1. Dependencies Added
+- **react-leaflet**: React wrapper for Leaflet maps
+- **leaflet**: Core mapping library
+- **@types/leaflet**: TypeScript definitions for Leaflet
+
+### 2. Component Architecture
+- **InteractiveMap.tsx**: Main wrapper component with client-side rendering
+- **MapComponent.tsx**: Actual Leaflet map implementation
+- **Dynamic Import**: Used Next.js dynamic imports to avoid SSR issues
+
+### 3. Features Implemented
+- **Custom Markers**: Gold markers for active drops, gray for found drops
+- **Interactive Popups**: Click markers to see drop details
+- **Auto-fit Bounds**: Map automatically adjusts to show all markers
+- **Responsive Design**: Works on all screen sizes
+- **Smooth Animations**: Hover effects and transitions
+
+### 4. Styling
+- **Custom CSS**: Added Leaflet-specific styles to globals.css
+- **Custom Markers**: Styled markers with treasure hunt theme
+- **Popup Styling**: Rounded corners and shadows for popups
+- **Hover Effects**: Scale animation on marker hover
+
+## Technical Implementation
+
+### Map Features
+- **OpenStreetMap Tiles**: Free map tiles from OpenStreetMap
+- **Custom Icons**: DivIcon markers with treasure hunt colors
+- **Event Handling**: Click events trigger the same modal as before
+- **Bounds Management**: Automatic zoom and pan to show all markers
+- **Single Marker Handling**: Closer zoom when only one marker exists
+
+### Performance Optimizations
+- **Dynamic Loading**: Map only loads on client side
+- **SSR Avoidance**: Prevents hydration mismatches
+- **Efficient Rendering**: Only re-renders when drops change
+- **Memory Management**: Proper cleanup of map instances
+
+### Accessibility
+- **Keyboard Navigation**: Full keyboard support
+- **Screen Reader Support**: Proper ARIA labels and descriptions
+- **High Contrast**: Clear visual indicators for different states
+
+## Benefits
+
+### Cost Savings
+- **No API Key Required**: Completely free to use
+- **No Usage Limits**: Unlimited map views and interactions
+- **No Billing Setup**: No need to manage Google Cloud billing
+
+### Performance
+- **Faster Loading**: No external API calls required
+- **Better Reliability**: No dependency on Google's services
+- **Offline Capability**: Can work with cached tiles
+
+### Developer Experience
+- **Open Source**: Full control over the mapping solution
+- **Better Documentation**: Extensive community resources
+- **Easier Debugging**: No API key management issues
+
+## Migration Details
+
+### Removed
+- Google Maps API key requirement
+- Google Maps JavaScript API dependency
+- Fallback map view (no longer needed)
+- API key environment variable
+
+### Added
+- React Leaflet components
+- Custom marker styling
+- Leaflet CSS imports
+- Map bounds management
+
+### Preserved
+- All existing functionality
+- Click behavior for treasure drops
+- Filter support (active/found/all)
+- Modal integration
+- Responsive design
+
+## Setup Instructions
+
+### Installation
+```bash
+npm install react-leaflet leaflet @types/leaflet --legacy-peer-deps
+```
+
+### Usage
+The map now works out of the box without any additional configuration:
+1. Navigate to `/admin/treasure-hunt`
+2. Map loads automatically with OpenStreetMap tiles
+3. Treasure drops appear as interactive markers
+4. Click markers to view/edit drop details
+
+### Customization
+- **Marker Colors**: Modify the `createCustomIcon` function
+- **Map Style**: Change the TileLayer URL for different map styles
+- **Popup Content**: Customize the popup HTML in MapComponent
+- **Map Controls**: Add/remove zoom, pan, and other controls
+
+## Future Enhancements
+- **Custom Map Styles**: Add different tile providers
+- **Clustering**: Group nearby markers for better performance
+- **Search Integration**: Add location search functionality
+- **Drawing Tools**: Allow drawing areas or routes
+- **Export Features**: Export map views or marker data
+
+## Technical Notes
+- Uses OpenStreetMap tiles (free, requires attribution)
+- Custom markers are HTML-based for better styling control
+- Map bounds are calculated automatically based on marker positions
+- All interactions maintain the same API as the previous Google Maps implementation 

@@ -521,9 +521,77 @@ canvas {
   }
 
   .btn-loading::after {
-    content: '';
-    @apply inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin ml-2;
-  }
+	content: '';
+	@apply inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin ml-2;
+}
+
+/* Leaflet Map Styles */
+.leaflet-container {
+	height: 100%;
+	width: 100%;
+	z-index: 1;
+}
+
+.leaflet-popup-content-wrapper {
+	border-radius: 8px;
+	box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.leaflet-popup-content {
+	margin: 0;
+	padding: 0;
+}
+
+.leaflet-popup-tip {
+	background: white;
+}
+
+.custom-marker {
+	background: transparent !important;
+	border: none !important;
+}
+
+.custom-marker div {
+	transition: transform 0.2s ease;
+}
+
+.custom-marker:hover div {
+	transform: scale(1.1);
+}
+
+/* Modal and map interaction styles */
+.modal-open .leaflet-popup {
+	z-index: 9998 !important;
+}
+
+/* When modal is open, reduce map interactivity and dim it */
+.modal-open .leaflet-container {
+	pointer-events: none;
+	filter: brightness(0.7) contrast(0.8);
+	opacity: 0.6;
+	transition: all 0.3s ease;
+}
+
+.modal-open .leaflet-container .leaflet-popup {
+	pointer-events: auto;
+}
+
+/* Ensure modal appears above all map elements */
+.modal-overlay {
+	z-index: 9999 !important;
+}
+
+/* Force map to stay in background when modal is open */
+.modal-open .leaflet-container,
+.modal-open .leaflet-control-container,
+.modal-open .leaflet-pane {
+	z-index: 1 !important;
+}
+
+/* Ensure modal content is above everything */
+.modal-overlay > div {
+	z-index: 10000 !important;
+}
 }
 
 

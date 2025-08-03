@@ -32,7 +32,7 @@ import {
   Clock,
 } from "lucide-react";
 import { SELLER_ZIP_CODES, BUYER_ZIP_CODES } from "../lib/zipcodes";
-import AdminDashboard from "../components/AdminDashboard";
+
 import { authClient } from "../lib/auth-client";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
@@ -516,17 +516,13 @@ export default function ProfilePage() {
                 Settings
               </button>
               {isAdminUser && (
-                <button
-                  className={`px-4 py-2 rounded-t font-semibold transition border-b-2 ${
-                    tab === "admin"
-                      ? "border-[#D4AF3D] text-[#D4AF3D]"
-                      : "border-transparent text-gray-500"
-                  }`}
-                  onClick={() => setTab("admin")}
+                <Link
+                  href="/admin"
+                  className="px-4 py-2 rounded-t font-semibold transition border-b-2 border-transparent text-gray-500 hover:text-[#D4AF3D] hover:border-[#D4AF3D]"
                 >
                   <Shield className="inline w-4 h-4 mr-1" />
-                  Admin
-                </button>
+                  Admin Dashboard
+                </Link>
               )}
             </div>
           </div>
@@ -1014,8 +1010,6 @@ export default function ProfilePage() {
               )}
             </div>
           )}
-
-          {tab === "admin" && <AdminDashboard />}
 
           {tab === "purchases" && (
             <div className="space-y-6">

@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "TreasureDrop" ADD COLUMN     "radius" DOUBLE PRECISION NOT NULL DEFAULT 100;

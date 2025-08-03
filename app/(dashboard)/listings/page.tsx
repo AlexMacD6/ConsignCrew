@@ -32,6 +32,10 @@ import {
 import { getNeighborhoodName } from "../../lib/zipcodes";
 import QuestionsDisplay from "../../components/QuestionsDisplay";
 import ImageCarousel from "../../components/ImageCarousel";
+import {
+  getFacebookCategories,
+  mapToFacebookCategory,
+} from "../../lib/category-mapping";
 
 // Helper function to convert S3 keys to CloudFront URLs
 function getPhotoUrl(photoData: any): string | null {
@@ -162,15 +166,25 @@ export default function ListingsPage() {
   // Filter and sort listings
   const filteredListings = listings
     .filter((listing) => {
+      // Map the listing's categories to Facebook category for filtering
+      const listingFacebookCategory = mapToFacebookCategory(
+        listing.department || listing.category_id?.split("_")[0] || "general",
+        listing.category || listing.category_id?.split("_")[1] || "general",
+        listing.subCategory || listing.category_id?.split("_")[2]
+      );
+
       const matchesSearch =
         listing.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        listing.category_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        listing.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        listing.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         listing.seller_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         listing.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
         listing.location.toLowerCase().includes(searchTerm.toLowerCase());
+
       const matchesCategory =
         selectedCategory === "All" ||
-        listing.category_id.includes(selectedCategory.toLowerCase());
+        listingFacebookCategory === selectedCategory;
+
       const isHidden = hiddenListings.has(listing.item_id);
       const isSaved = savedListings.has(listing.item_id);
       const shouldShowHidden = showHidden || !isHidden;
@@ -243,14 +257,8 @@ export default function ListingsPage() {
     );
   };
 
-  const categories = [
-    "All",
-    "Furniture",
-    "Electronics",
-    "Sports & Outdoors",
-    "Home & Living",
-    "Fashion",
-  ];
+  // Use Facebook Marketplace categories for consistent filtering
+  const categories = ["All", ...getFacebookCategories()];
 
   const getConditionColor = (condition: string) => {
     switch (condition) {

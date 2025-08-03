@@ -1,0 +1,1218 @@
+"use client";
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { Button } from "../components/ui/button";
+import {
+  MapPin,
+  Gift,
+  Users,
+  BarChart3,
+  Settings,
+  Shield,
+  ArrowRight,
+  Plus,
+  Trash2,
+  Edit,
+  Save,
+  X,
+  Mail,
+  UserPlus,
+  Building,
+  Users2,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  MessageSquare,
+  FileText,
+  ExternalLink,
+} from "lucide-react";
+import QuestionManagement from "../components/QuestionManagement";
+
+interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  mobilePhone?: string;
+  role?: string;
+  organizations?: any[];
+}
+
+interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+  logo?: string;
+  metadata?: string;
+  members?: any[];
+  teams?: any[];
+  invitations?: any[];
+  _count?: {
+    members: number;
+    teams: number;
+  };
+}
+
+interface Invitation {
+  id: string;
+  email: string;
+  role: string;
+  status: string;
+  expiresAt: string;
+  organization: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  inviter: {
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+}
+
+interface Team {
+  id: string;
+  name: string;
+  teamMembers?: any[];
+}
+
+interface ZipCode {
+  id: string;
+  code: string;
+  area: string;
+  type: string;
+}
+
+export default function AdminDashboard() {
+  const [activeTab, setActiveTab] = useState("overview");
+  const [activeSubTab, setActiveSubTab] = useState("users");
+  const [users, setUsers] = useState<User[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+  const [pendingInvitations, setPendingInvitations] = useState<Invitation[]>(
+    []
+  );
+  const [pendingQuestions, setPendingQuestions] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  // Zip code states
+  const [zipCodes, setZipCodes] = useState<ZipCode[]>([]);
+  const [editingZipCode, setEditingZipCode] = useState<ZipCode | null>(null);
+  const [newZipCode, setNewZipCode] = useState({
+    code: "",
+    area: "",
+    type: "buyer",
+  });
+
+  // Organization states
+  const [newOrganization, setNewOrganization] = useState({
+    name: "",
+    slug: "",
+    logo: "",
+    metadata: "",
+  });
+  const [editingOrganization, setEditingOrganization] =
+    useState<Organization | null>(null);
+
+  // Invitation states
+  const [newInvitation, setNewInvitation] = useState({
+    email: "",
+    role: "member",
+  });
+
+  // Team states
+  const [newTeam, setNewTeam] = useState({
+    name: "",
+  });
+
+  const adminModules = [
+    {
+      title: "Treasure Hunt",
+      description:
+        "Manage treasure drops, monitor hunt activity, and track user discoveries",
+      icon: MapPin,
+      href: "/admin/treasure-hunt",
+      color: "bg-[#D4AF3D]",
+      stats: "3 Active Drops",
+    },
+    {
+      title: "Treasure Redemptions",
+      description: "View and manage treasure redemption requests and rewards",
+      icon: Gift,
+      href: "/admin/treasure-redemptions",
+      color: "bg-green-500",
+      stats: "12 Pending",
+    },
+    {
+      title: "User Management",
+      description: "Manage user accounts, permissions, and activity",
+      icon: Users,
+      href: "#",
+      color: "bg-blue-500",
+      stats: `${users.length} Users`,
+      onClick: () => setActiveTab("users"),
+    },
+    {
+      title: "Organizations",
+      description: "Manage organizations, teams, and member permissions",
+      icon: Building,
+      href: "#",
+      color: "bg-purple-500",
+      stats: `${organizations.length} Organizations`,
+      onClick: () => setActiveTab("organizations"),
+    },
+    {
+      title: "System Settings",
+      description:
+        "Configure platform settings, integrations, and system preferences",
+      icon: Settings,
+      href: "#",
+      color: "bg-gray-500",
+      stats: "Configure",
+      onClick: () => setActiveTab("settings"),
+    },
+    {
+      title: "Security",
+      description:
+        "Monitor security events, manage access controls, and audit logs",
+      icon: Shield,
+      href: "#",
+      color: "bg-red-500",
+      stats: "Monitor",
+      onClick: () => setActiveTab("security"),
+    },
+  ];
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      // Load users
+      const usersResponse = await fetch("/api/admin/users");
+      if (usersResponse.ok) {
+        const usersData = await usersResponse.json();
+        setUsers(usersData.users || []);
+      }
+
+      // Load organizations
+      const orgsResponse = await fetch("/api/admin/organizations");
+      if (orgsResponse.ok) {
+        const orgsData = await orgsResponse.json();
+        setOrganizations(orgsData.organizations || []);
+      }
+
+      // Load pending invitations
+      const invitationsResponse = await fetch(
+        "/api/admin/organizations/invitations"
+      );
+      if (invitationsResponse.ok) {
+        const invitationsData = await invitationsResponse.json();
+        setPendingInvitations(invitationsData.invitations || []);
+      }
+
+      // Load zip codes
+      const zipCodesResponse = await fetch("/api/admin/zipcodes");
+      if (zipCodesResponse.ok) {
+        const zipCodesData = await zipCodesResponse.json();
+        setZipCodes(zipCodesData.zipCodes || []);
+      }
+
+      // Load pending questions count
+      const questionsResponse = await fetch("/api/admin/questions");
+      if (questionsResponse.ok) {
+        const questionsData = await questionsResponse.json();
+        setPendingQuestions(questionsData.pendingCount || 0);
+      }
+    } catch (err) {
+      setError("Failed to load admin data");
+      console.error("Error loading admin data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateOrganization = async () => {
+    try {
+      const response = await fetch("/api/admin/organizations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newOrganization),
+      });
+
+      if (response.ok) {
+        setSuccess("Organization created successfully!");
+        setNewOrganization({ name: "", slug: "", logo: "", metadata: "" });
+        loadData();
+      } else {
+        const error = await response.json();
+        setError(error.error || "Failed to create organization");
+      }
+    } catch (err) {
+      setError("Failed to create organization");
+    }
+  };
+
+  const handleUpdateOrganization = async () => {
+    if (!editingOrganization) return;
+
+    try {
+      const response = await fetch(
+        `/api/admin/organizations/${editingOrganization.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(editingOrganization),
+        }
+      );
+
+      if (response.ok) {
+        setSuccess("Organization updated successfully!");
+        setEditingOrganization(null);
+        loadData();
+      } else {
+        const error = await response.json();
+        setError(error.error || "Failed to update organization");
+      }
+    } catch (err) {
+      setError("Failed to update organization");
+    }
+  };
+
+  const handleDeleteOrganization = async (orgId: string) => {
+    if (!confirm("Are you sure you want to delete this organization?")) return;
+
+    try {
+      const response = await fetch(`/api/admin/organizations/${orgId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        setSuccess("Organization deleted successfully!");
+        loadData();
+      } else {
+        const error = await response.json();
+        setError(error.error || "Failed to delete organization");
+      }
+    } catch (err) {
+      setError("Failed to delete organization");
+    }
+  };
+
+  const handleInviteUser = async (orgId: string) => {
+    try {
+      const response = await fetch(
+        `/api/admin/organizations/${orgId}/invitations`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newInvitation),
+        }
+      );
+
+      if (response.ok) {
+        setSuccess("Invitation sent successfully!");
+        setNewInvitation({ email: "", role: "member" });
+        loadData();
+      } else {
+        const error = await response.json();
+        setError(error.error || "Failed to send invitation");
+      }
+    } catch (err) {
+      setError("Failed to send invitation");
+    }
+  };
+
+  const handleAcceptInvitation = async (invitationId: string) => {
+    try {
+      const response = await fetch(`/api/invitations/accept`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invitationId }),
+      });
+
+      if (response.ok) {
+        setSuccess("Invitation accepted successfully!");
+        loadData();
+      } else {
+        const error = await response.json();
+        setError(error.error || "Failed to accept invitation");
+      }
+    } catch (err) {
+      setError("Failed to accept invitation");
+    }
+  };
+
+  const handleCreateTeam = async (orgId: string) => {
+    try {
+      const response = await fetch(`/api/admin/organizations/${orgId}/teams`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newTeam),
+      });
+
+      if (response.ok) {
+        setSuccess("Team created successfully!");
+        setNewTeam({ name: "" });
+        loadData();
+      } else {
+        const error = await response.json();
+        setError(error.error || "Failed to create team");
+      }
+    } catch (err) {
+      setError("Failed to create team");
+    }
+  };
+
+  const handleUpdateUserRole = async (
+    userId: string,
+    orgId: string,
+    newRole: string
+  ) => {
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/assign-admin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ organizationId: orgId, role: newRole }),
+      });
+
+      if (response.ok) {
+        setSuccess("User role updated successfully!");
+        loadData();
+      } else {
+        const error = await response.json();
+        setError(error.error || "Failed to update user role");
+      }
+    } catch (err) {
+      setError("Failed to update user role");
+    }
+  };
+
+  const handleRemoveUser = async (userId: string, orgId: string) => {
+    if (
+      !confirm(
+        "Are you sure you want to remove this user from the organization?"
+      )
+    )
+      return;
+
+    try {
+      const response = await fetch(
+        `/api/admin/organizations/${orgId}/members`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId }),
+        }
+      );
+
+      if (response.ok) {
+        setSuccess("User removed successfully!");
+        loadData();
+      } else {
+        const error = await response.json();
+        setError(error.error || "Failed to remove user");
+      }
+    } catch (err) {
+      setError("Failed to remove user");
+    }
+  };
+
+  const handleAddZipCode = async () => {
+    try {
+      const response = await fetch("/api/admin/zipcodes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newZipCode),
+      });
+
+      if (response.ok) {
+        setSuccess("Zip code added successfully!");
+        setNewZipCode({ code: "", area: "", type: "buyer" });
+        loadData();
+      } else {
+        const error = await response.json();
+        setError(error.error || "Failed to add zip code");
+      }
+    } catch (err) {
+      setError("Failed to add zip code");
+    }
+  };
+
+  const handleUpdateZipCode = async () => {
+    if (!editingZipCode) return;
+
+    try {
+      const response = await fetch(`/api/admin/zipcodes/${editingZipCode.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editingZipCode),
+      });
+
+      if (response.ok) {
+        setSuccess("Zip code updated successfully!");
+        setEditingZipCode(null);
+        loadData();
+      } else {
+        const error = await response.json();
+        setError(error.error || "Failed to update zip code");
+      }
+    } catch (err) {
+      setError("Failed to update zip code");
+    }
+  };
+
+  const handleDeleteZipCode = async (zipId: string) => {
+    if (!confirm("Are you sure you want to delete this zip code?")) return;
+
+    try {
+      const response = await fetch(`/api/admin/zipcodes/${zipId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        setSuccess("Zip code deleted successfully!");
+        loadData();
+      } else {
+        const error = await response.json();
+        setError(error.error || "Failed to delete zip code");
+      }
+    } catch (err) {
+      setError("Failed to delete zip code");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#D4AF3D] mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading admin dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="py-6">
+            <h1 className="text-3xl font-bold text-gray-900">
+              Admin Dashboard
+            </h1>
+            <p className="mt-2 text-gray-600">
+              Manage your TreasureHub platform and monitor system activity
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation Tabs */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex space-x-8">
+            <button
+              onClick={() => setActiveTab("overview")}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "overview"
+                  ? "border-[#D4AF3D] text-[#D4AF3D]"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              Overview
+            </button>
+            <button
+              onClick={() => setActiveTab("users")}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "users"
+                  ? "border-[#D4AF3D] text-[#D4AF3D]"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              Users
+            </button>
+            <button
+              onClick={() => setActiveTab("organizations")}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "organizations"
+                  ? "border-[#D4AF3D] text-[#D4AF3D]"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              Organizations
+            </button>
+            <button
+              onClick={() => setActiveTab("settings")}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "settings"
+                  ? "border-[#D4AF3D] text-[#D4AF3D]"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              Settings
+            </button>
+            <button
+              onClick={() => setActiveTab("security")}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "security"
+                  ? "border-[#D4AF3D] text-[#D4AF3D]"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              Security
+            </button>
+            <button
+              onClick={() => setActiveTab("facebook-shop")}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "facebook-shop"
+                  ? "border-[#D4AF3D] text-[#D4AF3D]"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              Facebook Shop
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+            {success}
+          </div>
+        )}
+
+        {activeTab === "overview" && (
+          <>
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center">
+                  <div className="p-2 bg-[#D4AF3D] rounded-lg">
+                    <MapPin className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">
+                      Active Drops
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">3</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center">
+                  <div className="p-2 bg-green-500 rounded-lg">
+                    <Gift className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">
+                      Pending Redemptions
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">12</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center">
+                  <div className="p-2 bg-blue-500 rounded-lg">
+                    <Users className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">
+                      Total Users
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {users.length}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center">
+                  <div className="p-2 bg-purple-500 rounded-lg">
+                    <Building className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">
+                      Organizations
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {organizations.length}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Admin Modules */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {adminModules.map((module, index) => (
+                <div
+                  key={index}
+                  className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
+                >
+                  <div className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center">
+                        <div className={`p-3 rounded-lg ${module.color}`}>
+                          <module.icon className="h-6 w-6 text-white" />
+                        </div>
+                        <div className="ml-4">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {module.title}
+                          </h3>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {module.stats}
+                          </p>
+                        </div>
+                      </div>
+                      <ArrowRight className="h-5 w-5 text-gray-400" />
+                    </div>
+
+                    <p className="text-sm text-gray-600 mt-4 mb-4">
+                      {module.description}
+                    </p>
+
+                    {module.onClick ? (
+                      <Button
+                        onClick={module.onClick}
+                        className="w-full bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                      >
+                        Access Module
+                      </Button>
+                    ) : (
+                      <Link href={module.href}>
+                        <Button className="w-full bg-[#D4AF3D] hover:bg-[#b8932f] text-white">
+                          Access Module
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Recent Activity */}
+            <div className="mt-8 bg-white rounded-lg shadow-sm border border-gray-200">
+              <div className="p-6 border-b border-gray-200">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Recent Activity
+                </h2>
+              </div>
+              <div className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-2 h-2 bg-[#D4AF3D] rounded-full"></div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-900">
+                        New treasure drop "Riverwalk Riddle" was created
+                      </p>
+                      <p className="text-xs text-gray-500">2 hours ago</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-900">
+                        User "John Doe" found "Museum District Mystery"
+                      </p>
+                      <p className="text-xs text-gray-500">1 day ago</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-900">
+                        New user registration: "Jane Smith"
+                      </p>
+                      <p className="text-xs text-gray-500">2 days ago</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {activeTab === "users" && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-900">
+                User Management
+              </h2>
+              <Button className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white">
+                <UserPlus className="h-4 w-4 mr-2" />
+                Add User
+              </Button>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+              <div className="p-6">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          User
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Email
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Phone
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Role
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {users.map((user) => (
+                        <tr key={user.id}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="flex-shrink-0 h-10 w-10">
+                                <div className="h-10 w-10 rounded-full bg-[#D4AF3D] flex items-center justify-center">
+                                  <span className="text-white font-medium">
+                                    {user.firstName?.[0]}
+                                    {user.lastName?.[0]}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="ml-4">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {user.firstName} {user.lastName}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {user.email}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {user.mobilePhone || "N/A"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                              {user.role || "User"}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mr-2"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "organizations" && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-900">
+                Organizations
+              </h2>
+              <Button
+                onClick={handleCreateOrganization}
+                className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create Organization
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {organizations.map((org) => (
+                <div
+                  key={org.id}
+                  className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {org.name}
+                      </h3>
+                      <p className="text-sm text-gray-500">@{org.slug}</p>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditingOrganization(org)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteOrganization(org.id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center text-sm text-gray-600">
+                      <Users2 className="h-4 w-4 mr-2" />
+                      {org._count?.members || 0} members
+                    </div>
+                    <div className="flex items-center text-sm text-gray-600">
+                      <Building className="h-4 w-4 mr-2" />
+                      {org._count?.teams || 0} teams
+                    </div>
+                  </div>
+
+                  <div className="flex space-x-2">
+                    <Button variant="outline" size="sm" className="flex-1">
+                      <Users2 className="h-4 w-4 mr-1" />
+                      Members
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1">
+                      <Mail className="h-4 w-4 mr-1" />
+                      Invite
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "settings" && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-gray-900">
+              System Settings
+            </h2>
+
+            {/* Zip Code Management */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Zip Code Management
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <input
+                  type="text"
+                  placeholder="Zip Code"
+                  value={newZipCode.code}
+                  onChange={(e) =>
+                    setNewZipCode({ ...newZipCode, code: e.target.value })
+                  }
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                />
+                <input
+                  type="text"
+                  placeholder="Area"
+                  value={newZipCode.area}
+                  onChange={(e) =>
+                    setNewZipCode({ ...newZipCode, area: e.target.value })
+                  }
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                />
+                <select
+                  value={newZipCode.type}
+                  onChange={(e) =>
+                    setNewZipCode({ ...newZipCode, type: e.target.value })
+                  }
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                >
+                  <option value="buyer">Buyer</option>
+                  <option value="seller">Seller</option>
+                </select>
+              </div>
+
+              <Button
+                onClick={handleAddZipCode}
+                className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Zip Code
+              </Button>
+
+              <div className="mt-6">
+                <h4 className="text-md font-medium text-gray-900 mb-3">
+                  Current Zip Codes
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {zipCodes.map((zip) => (
+                    <div
+                      key={zip.id}
+                      className="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
+                    >
+                      <div>
+                        <p className="font-medium">{zip.code}</p>
+                        <p className="text-sm text-gray-500">
+                          {zip.area} ({zip.type})
+                        </p>
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditingZipCode(zip)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteZipCode(zip.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Question Management */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Question Management
+              </h3>
+              <QuestionManagement />
+            </div>
+          </div>
+        )}
+
+        {activeTab === "security" && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-gray-900">
+              Security & Monitoring
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Pending Invitations
+                </h3>
+                <div className="space-y-3">
+                  {pendingInvitations.map((invitation) => (
+                    <div
+                      key={invitation.id}
+                      className="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
+                    >
+                      <div>
+                        <p className="font-medium">{invitation.email}</p>
+                        <p className="text-sm text-gray-500">
+                          {invitation.organization.name} - {invitation.role}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleAcceptInvitation(invitation.id)}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Accept
+                      </Button>
+                    </div>
+                  ))}
+                  {pendingInvitations.length === 0 && (
+                    <p className="text-gray-500 text-center py-4">
+                      No pending invitations
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  System Status
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">
+                      Database
+                    </span>
+                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                      Online
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">
+                      Email Service
+                    </span>
+                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                      Online
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">
+                      File Storage
+                    </span>
+                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                      Online
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "facebook-shop" && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-900">
+                Facebook Shop Integration
+              </h2>
+              <Link href="/admin/facebook-shop">
+                <Button className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white">
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Manage Integration
+                </Button>
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Quick Setup
+                </h3>
+                <div className="space-y-4">
+                  <div className="p-4 bg-blue-50 rounded-lg">
+                    <h4 className="font-medium text-blue-900 mb-2">
+                      Step 1: Create API Key
+                    </h4>
+                    <p className="text-sm text-blue-700 mb-3">
+                      Generate a secure API key to connect your listings to
+                      Facebook Shop.
+                    </p>
+                    <Link href="/admin/facebook-shop">
+                      <Button
+                        size="sm"
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        Create API Key
+                      </Button>
+                    </Link>
+                  </div>
+
+                  <div className="p-4 bg-green-50 rounded-lg">
+                    <h4 className="font-medium text-green-900 mb-2">
+                      Step 2: Configure Facebook
+                    </h4>
+                    <p className="text-sm text-green-700 mb-3">
+                      Set up your Facebook Business Manager and configure the
+                      product feed.
+                    </p>
+                    <a
+                      href="https://business.facebook.com/commerce_manager"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        Open Facebook Business Manager
+                      </Button>
+                    </a>
+                  </div>
+
+                  <div className="p-4 bg-yellow-50 rounded-lg">
+                    <h4 className="font-medium text-yellow-900 mb-2">
+                      Step 3: Add Feed URL
+                    </h4>
+                    <p className="text-sm text-yellow-700">
+                      Use the feed URL from your API key in Facebook's product
+                      catalog settings.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Integration Status
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">
+                      API Keys
+                    </span>
+                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                      Manage
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">
+                      Product Feed
+                    </span>
+                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                      Active
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">
+                      Sync Status
+                    </span>
+                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                      Manual Setup Required
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                  <h4 className="font-medium text-gray-900 mb-2">Need Help?</h4>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Check our documentation for detailed setup instructions.
+                  </p>
+                  <Link href="/admin/facebook-shop">
+                    <Button size="sm" variant="outline">
+                      View Documentation
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,56 @@
+# Edit Listing Photo Upload Fix
+
+## Issue
+The photo upload functionality in the edit listing page was failing with "Failed to upload image" error because the `handleImageChange` function was not providing the required parameters to the photo upload API.
+
+## Root Cause
+The photo upload API (`/api/upload/photo`) requires three parameters:
+- `file` - The image file
+- `photoType` - The type of photo (hero, back, proof, additional)
+- `itemId` - The listing item ID
+
+The original `handleImageChange` function was only sending the file, missing the required `photoType` and `itemId` parameters.
+
+## Solution Implemented
+
+### 1. Enhanced handleImageChange Function
+- Added proper FormData creation with all required parameters
+- Set `photoType` to "additional" for edit page uploads
+- Used the listing's `itemId` from URL parameters
+- Added file type validation
+- Improved error handling with detailed error messages
+
+### 2. Photo Management Integration
+- New photos are added to the `additional` photos array
+- Photos are automatically added to the photo order for drag-and-drop functionality
+- Error state is cleared on successful upload
+- Better error messages for debugging
+
+### 3. User Experience Improvements
+- File type validation prevents invalid uploads
+- Clear error messages help users understand issues
+- Photos appear immediately in the drag-and-drop grid
+- Seamless integration with existing photo management system
+
+## Files Modified
+- `app/(dashboard)/list-item/[id]/edit/page.tsx` - Fixed handleImageChange function
+
+## Technical Details
+```typescript
+// Before: Missing required parameters
+const formData = new FormData();
+formData.append("file", file);
+
+// After: Complete parameter set
+const formData = new FormData();
+formData.append("file", file);
+formData.append("photoType", "additional");
+formData.append("itemId", params.id as string);
+```
+
+## Benefits
+- Fixes photo upload functionality in edit listing page
+- Maintains consistency with photo upload API requirements
+- Improves error handling and user feedback
+- Integrates seamlessly with drag-and-drop photo management
+- Prevents invalid file uploads with proper validation 

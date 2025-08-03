@@ -1,0 +1,83 @@
+# Questions Section Collapsible Fix
+
+## Issue
+The Questions and Answers section currently has two "Ask a Question" buttons:
+1. One in the header next to the section title
+2. One in the "No Questions State" section
+
+This creates confusion and redundancy since the "Ask a Question" functionality is already available through the Save button in the listing creation flow.
+
+## Solution Implemented
+
+### 1. Removed Duplicate Buttons
+- **Removed header button**: The "Ask a Question" button in the header has been replaced with a collapsible toggle
+- **Removed "No Questions State" button**: The button in the empty state has been removed to eliminate redundancy
+
+### 2. Implemented Collapsible Design
+- **Added expand/collapse state**: New `isExpanded` state to control visibility
+- **Plus/Minus toggle button**: Replaced the "Ask a Question" button with a Show/Hide toggle
+- **Conditional content rendering**: All Q&A content is now wrapped in `{isExpanded && (...)}`
+
+### 3. Enhanced User Experience
+- **Minimized by default**: Section starts collapsed to save space
+- **Clear visual indicators**: Plus icon for expand, minus icon for collapse
+- **Consistent with design**: Uses outline button style to match other UI elements
+
+## Files Modified
+- `app/components/QuestionsDisplay.tsx` - Updated to be collapsible and remove duplicate buttons
+
+## Technical Changes
+
+### State Management
+```typescript
+const [isExpanded, setIsExpanded] = useState(false);
+```
+
+### Header Button Replacement
+```typescript
+// Before: Ask a Question button
+<Button onClick={() => setShowModal(true)} className="bg-[#D4AF3D] hover:bg-[#b8932f]">
+  <MessageSquare className="w-4 h-4 mr-2" />
+  Ask a Question
+</Button>
+
+// After: Collapsible toggle
+<Button onClick={() => setIsExpanded(!isExpanded)} variant="outline" size="sm">
+  {isExpanded ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+  {isExpanded ? 'Hide' : 'Show'}
+</Button>
+```
+
+### Content Wrapping
+```typescript
+{/* Expanded Content */}
+{isExpanded && (
+  <>
+    {/* All Q&A content wrapped here */}
+  </>
+)}
+```
+
+## Benefits
+
+### For Users
+- **Cleaner interface**: No duplicate buttons causing confusion
+- **Space efficient**: Section is minimized by default
+- **Better UX**: Clear expand/collapse functionality
+- **Consistent flow**: "Ask a Question" only available through the main Save button
+
+### For Platform
+- **Reduced redundancy**: Eliminates duplicate functionality
+- **Improved design**: More consistent with modern UI patterns
+- **Better organization**: Q&A section is properly contained and collapsible
+
+## User Flow
+1. **Default state**: Q&A section is collapsed with a "Show" button
+2. **User clicks "Show"**: Section expands to reveal questions and answers
+3. **User clicks "Hide"**: Section collapses back to minimized state
+4. **Ask Question**: Available through the main Save button in the listing flow
+
+## Future Considerations
+- **Auto-expand**: Could auto-expand when there are new questions
+- **Animation**: Could add smooth expand/collapse animations
+- **Persistence**: Could remember user's preference for expanded/collapsed state 

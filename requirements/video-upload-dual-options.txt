@@ -1,0 +1,133 @@
+# Video Upload Dual Options for Edit Listing Page
+
+## Problem
+The edit listing page currently only offers file upload for videos, but users may want to use existing video URLs from platforms like YouTube, Vimeo, or other hosting services.
+
+## Solution Implemented
+
+### 1. Dual Upload Options
+- **Video URL (Default)**: Users can enter a direct URL to their video
+- **Upload Video File**: Users can upload a video file directly to the platform
+
+### 2. Toggle Interface
+- **Radio button selection**: Clear choice between URL and file upload
+- **Default to URL**: URL option is selected by default for better UX
+- **Dynamic interface**: Form changes based on selected option
+
+### 3. Enhanced User Experience
+- **Video preview**: Shows preview for both URL and uploaded videos
+- **Clear instructions**: Helpful text for each option
+- **Error handling**: Proper validation and error messages
+- **Consistent styling**: Matches existing design patterns
+
+## Files Modified
+- `app/(dashboard)/list-item/[id]/edit/page.tsx` - Updated video upload section
+
+## Technical Changes
+
+### State Management
+```typescript
+const [videoUrl, setVideoUrl] = useState("");
+const [useVideoUpload, setUseVideoUpload] = useState(false);
+```
+
+### URL Handling Function
+```typescript
+const handleVideoUrlChange = (url: string) => {
+  setVideoUrl(url);
+  setVideo({
+    file: null,
+    key: null,
+    url: url || null,
+  });
+  setVideoUploadError(null);
+};
+```
+
+### Form Submission Logic
+```typescript
+videoUrl: useVideoUpload ? video.url : videoUrl,
+```
+
+### UI Components
+
+#### Radio Button Toggle
+```typescript
+<div className="flex items-center gap-4">
+  <label className="flex items-center gap-2">
+    <input
+      type="radio"
+      name="videoOption"
+      checked={!useVideoUpload}
+      onChange={() => setUseVideoUpload(false)}
+      className="text-[#D4AF3D] focus:ring-[#D4AF3D]"
+    />
+    <span className="text-sm font-medium text-gray-700">Video URL</span>
+  </label>
+  <label className="flex items-center gap-2">
+    <input
+      type="radio"
+      name="videoOption"
+      checked={useVideoUpload}
+      onChange={() => setUseVideoUpload(true)}
+      className="text-[#D4AF3D] focus:ring-[#D4AF3D]"
+    />
+    <span className="text-sm font-medium text-gray-700">Upload Video File</span>
+  </label>
+</div>
+```
+
+#### URL Input Field
+```typescript
+<input
+  type="url"
+  value={videoUrl}
+  onChange={(e) => handleVideoUrlChange(e.target.value)}
+  placeholder="https://example.com/video.mp4"
+/>
+```
+
+#### Conditional Video Preview
+```typescript
+{(video.url || videoUrl) && (
+  <video
+    src={useVideoUpload ? video.url : videoUrl}
+    controls
+    preload="metadata"
+  />
+)}
+```
+
+## Benefits
+
+### For Users
+- **Flexibility**: Choose between URL and file upload based on preference
+- **Convenience**: Use existing hosted videos without re-uploading
+- **Cost savings**: Avoid bandwidth costs for large video files
+- **Faster workflow**: URL input is quicker than file upload
+
+### For Platform
+- **Reduced storage**: Less server storage needed for URL-based videos
+- **Better performance**: Faster page loads with external video hosting
+- **Scalability**: Reduced bandwidth usage for video serving
+- **User choice**: Accommodates different user preferences and workflows
+
+## User Flow
+1. **Default state**: Video URL option is selected
+2. **URL input**: User enters video URL (YouTube, Vimeo, direct link)
+3. **Toggle to upload**: User switches to file upload if needed
+4. **File upload**: User uploads video file directly
+5. **Preview**: Video preview shows for both options
+6. **Save**: Form submits with appropriate video URL
+
+## Supported URL Types
+- YouTube video URLs
+- Vimeo video URLs
+- Direct video file URLs (MP4, WebM, OGG)
+- Other video hosting platform URLs
+
+## Future Considerations
+- **URL validation**: Add validation for supported video platforms
+- **Thumbnail generation**: Auto-generate thumbnails from video URLs
+- **Embed support**: Enhanced embedding for platform-specific videos
+- **Analytics**: Track which option users prefer 

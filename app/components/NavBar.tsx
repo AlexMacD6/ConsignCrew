@@ -65,9 +65,40 @@ export default function NavBar() {
 
       {/* Desktop Navigation Links (hidden on mobile) */}
       <div className="hidden md:flex gap-8 text-[#222] font-medium text-base">
-        <Link href="/" className="hover:text-[#D4AF3D] transition">
-          Home
-        </Link>
+        {session?.user ? (
+          // Logged in: Show consolidated Home link
+          <Link href="/" className="hover:text-[#D4AF3D] transition">
+            Home
+          </Link>
+        ) : (
+          // Logged out: Show individual landing page links
+          <>
+            <button
+              onClick={() => handleNavigation("how-it-works")}
+              className="hover:text-[#D4AF3D] transition"
+            >
+              How It Works
+            </button>
+            <button
+              onClick={() => handleNavigation("pricing")}
+              className="hover:text-[#D4AF3D] transition"
+            >
+              Pricing
+            </button>
+            <button
+              onClick={() => handleNavigation("why-treasurehub")}
+              className="hover:text-[#D4AF3D] transition"
+            >
+              Why TreasureHub
+            </button>
+            <button
+              onClick={() => handleNavigation("roadmap")}
+              className="hover:text-[#D4AF3D] transition"
+            >
+              Roadmap
+            </button>
+          </>
+        )}
         <Link href="/faq" className="hover:text-[#D4AF3D] transition">
           FAQ
         </Link>
@@ -76,6 +107,12 @@ export default function NavBar() {
         </Link>
         <Link href="/our-origin" className="hover:text-[#D4AF3D] transition">
           Our Origin
+        </Link>
+        <Link
+          href="/treasure-hunt"
+          className="text-[#D4AF3D] font-semibold hover:text-[#b8932f] transition"
+        >
+          Treasure Hunt
         </Link>
       </div>
 
@@ -147,13 +184,59 @@ export default function NavBar() {
           <div className="px-6 py-4 space-y-4">
             {/* Home Link */}
             <div className="space-y-2">
-              <Link
-                href="/"
-                className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Home
-              </Link>
+              {session?.user ? (
+                // Logged in: Show consolidated Home link
+                <Link
+                  href="/"
+                  className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Home
+                </Link>
+              ) : (
+                // Logged out: Show individual landing page links
+                <>
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                    Landing Page
+                  </h3>
+                  <button
+                    onClick={() => {
+                      handleNavigation("how-it-works");
+                      setMobileMenuOpen(false);
+                    }}
+                    className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+                  >
+                    How It Works
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleNavigation("pricing");
+                      setMobileMenuOpen(false);
+                    }}
+                    className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+                  >
+                    Pricing
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleNavigation("why-treasurehub");
+                      setMobileMenuOpen(false);
+                    }}
+                    className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+                  >
+                    Why TreasureHub
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleNavigation("roadmap");
+                      setMobileMenuOpen(false);
+                    }}
+                    className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+                  >
+                    Roadmap
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Other Pages */}
@@ -188,6 +271,13 @@ export default function NavBar() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Our Origin
+              </Link>
+              <Link
+                href="/treasure-hunt"
+                className="block w-full text-left py-2 text-[#D4AF3D] font-semibold hover:text-[#b8932f] transition"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Treasure Hunt
               </Link>
             </div>
           </div>

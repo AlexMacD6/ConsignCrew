@@ -1,0 +1,119 @@
+# Facebook Shop Listing Form Integration Requirements
+
+## Overview
+Add Facebook Shop integration fields to the listing creation form to allow users to control how their listings appear on Facebook Shop and ensure all required Facebook fields are captured.
+
+## Problem
+Currently, new listings default to Facebook Shop sync but users have no control over Facebook-specific fields. This can result in suboptimal Facebook Shop listings and missed opportunities for better visibility.
+
+## Solution
+Add a dedicated Facebook Shop section to the listing creation form with all required Facebook fields and user-friendly controls.
+
+## Implementation Details
+
+### 1. Form Fields Added
+- **Facebook Shop Toggle**: Enable/disable Facebook sync per listing
+- **Facebook Brand Name**: Brand name specifically for Facebook Shop
+- **Facebook Category**: Facebook-specific category selection
+- **Facebook Condition**: Facebook-specific condition (new/used/refurbished)
+- **GTIN/UPC Code**: Global Trade Item Number for better Facebook matching
+
+### 2. User Experience
+- **Collapsible Section**: Facebook fields only appear when Facebook sync is enabled
+- **Smart Defaults**: Fields auto-populate from main listing data when possible
+- **Clear Labels**: All fields have helpful descriptions and placeholders
+- **Visual Design**: Facebook section has distinct styling with Facebook branding
+
+### 3. Data Flow
+- **Form Submission**: All Facebook fields included in listing creation API
+- **Database Storage**: Facebook fields stored in existing Facebook Shop columns
+- **Fallback Logic**: Empty Facebook fields fall back to main listing data
+- **Validation**: Optional fields with proper null handling
+
+### 4. Field Descriptions
+
+#### Facebook Shop Toggle
+- **Purpose**: Enable/disable Facebook Shop sync for this listing
+- **Default**: Enabled (true)
+- **Behavior**: When disabled, listing won't appear in Facebook Shop feed
+
+#### Facebook Brand Name
+- **Purpose**: Brand name specifically for Facebook Shop
+- **Placeholder**: Uses main brand field if available
+- **Fallback**: Uses main brand field if empty
+
+#### Facebook Category
+- **Purpose**: Facebook-specific category for better categorization
+- **Options**: Predefined Facebook Shop categories
+- **Fallback**: Uses main category mapping if empty
+
+#### Facebook Condition
+- **Purpose**: Facebook-specific condition (new/used/refurbished)
+- **Options**: new, used, refurbished
+- **Fallback**: Maps from main condition if empty
+
+#### GTIN/UPC Code
+- **Purpose**: Global Trade Item Number for better Facebook matching
+- **Format**: 13-digit UPC or GTIN
+- **Optional**: Helps Facebook match products to existing catalog
+
+### 5. Technical Implementation
+
+#### Frontend Changes
+- **State Management**: Added Facebook field state variables
+- **Form Validation**: Facebook fields are optional
+- **UI Components**: Toggle switch, text inputs, select dropdowns
+- **Styling**: Facebook-themed section with blue accent colors
+
+#### Backend Changes
+- **API Endpoint**: Updated `/api/listings` to handle Facebook fields
+- **Database**: Uses existing Facebook Shop columns
+- **Validation**: Proper null handling for optional fields
+- **Default Values**: Sensible defaults for all Facebook fields
+
+### 6. Benefits
+- **User Control**: Users can customize Facebook Shop appearance
+- **Better Visibility**: Optimized Facebook Shop listings
+- **Flexibility**: Optional fields don't burden users who don't need them
+- **Consistency**: Maintains existing Facebook Shop integration
+- **Scalability**: Easy to add more Facebook-specific fields in future
+
+### 7. Testing Requirements
+
+#### Form Functionality
+- Test Facebook Shop toggle enables/disables Facebook fields
+- Verify all Facebook fields save correctly to database
+- Test fallback behavior when Facebook fields are empty
+- Validate form submission with various Facebook field combinations
+
+#### User Experience
+- Test form layout and styling on different screen sizes
+- Verify Facebook section is visually distinct
+- Test placeholder text and help text display correctly
+- Validate toggle switch animation and behavior
+
+#### Data Integrity
+- Verify Facebook fields are properly stored in database
+- Test API endpoint handles all Facebook field combinations
+- Validate null handling for optional fields
+- Test Facebook Shop feed still works with new fields
+
+## Usage Instructions
+
+### For Users:
+1. **Enable Facebook Sync**: Toggle "Enable Facebook Shop Sync" to on
+2. **Customize Facebook Fields**: Fill in Facebook-specific information
+3. **Use Fallbacks**: Leave fields empty to use main listing data
+4. **Submit Listing**: Facebook fields will be saved with the listing
+
+### For Developers:
+1. **Form State**: Facebook fields are managed in component state
+2. **API Integration**: Facebook fields included in listing creation payload
+3. **Database**: Facebook fields stored in existing Facebook Shop columns
+4. **Feed Integration**: Facebook Shop feed uses these fields when available
+
+## Future Enhancements
+- **Auto-mapping**: Automatically map main fields to Facebook fields
+- **Bulk Operations**: Enable/disable Facebook sync for multiple listings
+- **Analytics**: Track Facebook Shop performance per listing
+- **Advanced Fields**: Add more Facebook-specific fields as needed 

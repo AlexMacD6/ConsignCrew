@@ -1,0 +1,161 @@
+# Facebook Shop Integration
+
+## Overview
+Automatically sync TreasureHub listings to Facebook Marketplace/Shop via a secure API endpoint. This allows Facebook to fetch product catalog data and display listings on Facebook Shop.
+
+## Facebook Shop Requirements
+
+### Product Feed Format
+Facebook requires a specific XML/JSON format for product feeds:
+- Product ID (unique identifier)
+- Title
+- Description
+- Price
+- Currency
+- Availability
+- Condition (new/used)
+- Image URLs
+- Category
+- Brand
+- GTIN/UPC (optional)
+
+### Authentication & Security
+- **API Key Authentication**: Secure endpoint with API key validation
+- **Rate Limiting**: Prevent abuse and ensure fair usage
+- **HTTPS Required**: Facebook requires secure connections
+- **CORS Headers**: Allow Facebook's servers to access the feed
+
+## Implementation Plan
+
+### 1. Database Schema Updates
+- **Add Facebook-specific fields** to listings:
+  - `facebookShopId`: Unique ID for Facebook Shop
+  - `facebookCategory`: Facebook product category
+  - `facebookCondition`: new/used/refurbished
+  - `facebookBrand`: Brand name
+  - `facebookGtin`: GTIN/UPC code (optional)
+  - `facebookShopEnabled`: Boolean to enable/disable Facebook sync
+
+### 2. API Endpoints
+- **`/api/facebook-shop/feed`**: Main product feed endpoint
+- **`/api/facebook-shop/health`**: Health check endpoint
+- **`/api/facebook-shop/status`**: Feed status and statistics
+
+### 3. Authentication System
+- **API Key Management**: Generate and manage API keys
+- **Admin Interface**: Create/manage API keys in admin dashboard
+- **Key Validation**: Validate API keys on each request
+
+### 4. Data Transformation
+- **Listing to Product Mapping**: Convert TreasureHub listings to Facebook format
+- **Image Processing**: Ensure images meet Facebook requirements
+- **Category Mapping**: Map TreasureHub categories to Facebook categories
+
+### 5. Admin Interface Updates
+- **Facebook Shop Settings**: Enable/disable sync per listing
+- **API Key Management**: Generate and manage API keys
+- **Sync Status**: View sync status and errors
+- **Manual Sync**: Trigger manual sync for specific listings
+
+## Technical Implementation
+
+### API Key System
+```typescript
+// Generate secure API keys
+const apiKey = crypto.randomBytes(32).toString('hex');
+
+// Validate API keys
+const validateApiKey = (key: string) => {
+  // Check against stored valid keys
+  // Rate limiting per key
+  // Log usage for monitoring
+};
+```
+
+### Product Feed Format
+```json
+{
+  "products": [
+    {
+      "id": "treasurehub_123",
+      "title": "Vintage Gold Coin Collection",
+      "description": "Rare collection of vintage gold coins...",
+      "price": "1500.00",
+      "currency": "USD",
+      "availability": "in stock",
+      "condition": "used",
+      "image_url": "https://treasurehub.com/images/coin.jpg",
+      "category": "Collectibles",
+      "brand": "TreasureHub",
+      "url": "https://treasurehub.com/listings/123"
+    }
+  ],
+  "last_updated": "2024-01-15T10:30:00Z",
+  "total_products": 150
+}
+```
+
+### Security Measures
+- **API Key Authentication**: Required for all endpoints
+- **Rate Limiting**: Max 1000 requests per hour per key
+- **Request Logging**: Log all requests for monitoring
+- **IP Whitelisting**: Optional IP restrictions for Facebook servers
+
+## Facebook Shop Setup Process
+
+### 1. Facebook Business Manager
+- Create Facebook Business Manager account
+- Set up Facebook Shop
+- Configure product catalog
+
+### 2. Product Feed Configuration
+- **Feed URL**: `https://treasurehub.com/api/facebook-shop/feed?api_key=YOUR_API_KEY`
+- **Update Schedule**: Real-time or scheduled updates
+- **Feed Format**: JSON or XML
+- **Authentication**: API key in URL or headers
+
+### 3. Product Approval Process
+- Facebook reviews products before publishing
+- Compliance with Facebook's commerce policies
+- Image and description quality requirements
+
+## Benefits
+
+### For Business
+- **Increased Reach**: Tap into Facebook's massive user base
+- **Automated Sync**: No manual work required for new listings
+- **Real-time Updates**: Changes reflect immediately on Facebook
+- **Analytics**: Track performance across platforms
+
+### For Users
+- **Multiple Platforms**: Find products on both TreasureHub and Facebook
+- **Trusted Platform**: Facebook's reputation adds credibility
+- **Easy Discovery**: Facebook's recommendation algorithms
+
+## Monitoring & Maintenance
+
+### Health Checks
+- **Feed Availability**: Monitor feed endpoint uptime
+- **Data Quality**: Validate product data format
+- **Sync Status**: Track successful/failed syncs
+- **Performance**: Monitor response times
+
+### Error Handling
+- **Invalid Data**: Handle missing or invalid product data
+- **Image Issues**: Validate image URLs and formats
+- **API Errors**: Graceful error responses
+- **Rate Limit Exceeded**: Proper error messages
+
+## Future Enhancements
+
+### Advanced Features
+- **Inventory Sync**: Real-time inventory updates
+- **Price Synchronization**: Keep prices in sync across platforms
+- **Order Management**: Handle orders from Facebook
+- **Analytics Dashboard**: Track performance metrics
+
+### Integration Options
+- **Google Shopping**: Extend to Google Shopping feeds
+- **Instagram Shop**: Sync to Instagram Shopping
+- **Pinterest**: Pinterest product pins
+- **TikTok Shop**: TikTok commerce integration 

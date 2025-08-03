@@ -1,0 +1,123 @@
+# Facebook Marketplace Category Alignment Requirements
+
+## Overview
+Align TreasureHub's internal category system with Facebook Marketplace categories to ensure perfect mapping between the two platforms for seamless product synchronization.
+
+## Current State Analysis
+
+### TreasureHub Current Categories (Listings Page)
+- All
+- Furniture
+- Electronics
+- Sports & Outdoors
+- Home & Living
+- Fashion
+
+### TreasureHub Current Taxonomy (List Item Page)
+- Furniture (Chairs, Tables, Storage & Shelving, Seating, Bedroom Furniture, Office Furniture, Outdoor Furniture)
+- Electronics (Computers & Tablets, Mobile Phones & Accessories, Audio Equipment, Cameras & Photo, Gaming Consoles & Accessories, Smart Home Devices)
+- Home & Living (Home Décor, Lighting, Rugs & Textiles, Candles & Fragrance, Storage & Organization)
+- Art & Collectibles (Art Prints, Paintings, Sculptures, Vintage Collectibles, Memorabilia)
+- Books & Media (Books, Vinyl Records, CDs & DVDs, Video Games)
+- Sports & Outdoors (Camping & Hiking Gear, Bicycles & Accessories, Fitness Equipment, Water Sports Gear, Team Sports Equipment)
+- Toys & Games (Board Games, Puzzles, Action Figures, Educational Toys, Dolls & Plush)
+- Tools & Hardware (Power Tools, Hand Tools, Tool Storage, Safety Equipment)
+- Kitchen & Dining (Cookware, Dinnerware, Small Appliances, Kitchen Utensils)
+- Office Supplies (Office Furniture, Stationery & Paper, Desk Accessories, Office Electronics)
+- Beauty & Personal Care (Skincare, Haircare, Fragrances, Grooming Tools)
+- Automotive Parts & Accessories (Interior Accessories, Exterior Accessories, Performance Parts, Car Care & Detailing)
+- Garden & Outdoor (Gardening Tools, Planters & Pots, Outdoor Décor, Grills & Outdoor Cooking)
+- Pet Supplies (Beds & Furniture, Toys & Enrichment, Grooming & Health, Bowls & Feeders)
+
+### Facebook Marketplace Categories (Target)
+- Antiques
+- Appliances
+- Arts & Crafts
+- Automotive
+- Baby & Kids
+- Beauty & Health
+- Books & Magazines
+- Clothing & Accessories
+- Collectibles
+- Electronics
+- Entertainment
+- Free Stuff
+- Furniture
+- Garden & Outdoor
+- Health & Beauty
+- Home & Garden
+- Jewelry & Watches
+- Music
+- Office & Business
+- Pet Supplies
+- Sporting Goods
+- Tools & Hardware
+- Toys & Games
+- Video Games & Consoles
+
+## Requirements
+
+### 1. Category Mapping System
+- Create a comprehensive mapping between TreasureHub categories and Facebook Marketplace categories
+- Ensure each TreasureHub category maps to the most appropriate Facebook category
+- Handle edge cases where categories don't have direct equivalents
+- Support subcategory mapping for better precision
+
+### 2. Database Schema Updates
+- Add Facebook category mapping fields to the Listing model
+- Store both internal category and Facebook category for each listing
+- Ensure backward compatibility with existing listings
+
+### 3. Frontend Updates
+- Update the listings page category filter to use Facebook Marketplace categories
+- Update the list-item page taxonomy to align with Facebook categories
+- Ensure the category selection process is intuitive and matches Facebook's structure
+
+### 4. API Updates
+- Update the Facebook Shop feed to use the new category mapping
+- Ensure all listings are properly categorized for Facebook
+- Add validation to ensure category mapping is complete
+
+### 5. Admin Interface Updates
+- Add category management to the admin dashboard
+- Allow admins to view and edit category mappings
+- Provide tools to bulk update existing listings with proper Facebook categories
+
+### 6. Data Migration
+- Create a migration script to update existing listings with proper Facebook categories
+- Ensure no data loss during the migration process
+- Validate the migration results
+
+## Technical Implementation
+
+### Category Mapping Strategy
+1. **Direct Mapping**: Where TreasureHub categories have direct Facebook equivalents
+2. **Subcategory Mapping**: Use subcategories to determine the best Facebook category
+3. **Fallback Mapping**: Default to "Other" for categories without clear equivalents
+
+### Priority Categories
+1. Electronics (high volume, clear mapping)
+2. Furniture (high value, clear mapping)
+3. Clothing & Accessories (high volume, needs Fashion category)
+4. Home & Garden (broad category, needs consolidation)
+5. Sports & Outdoors (clear mapping to Sporting Goods)
+
+### Benefits
+- Perfect synchronization with Facebook Marketplace
+- Improved product discovery on Facebook
+- Better category-based filtering and search
+- Consistent user experience across platforms
+- Enhanced admin tools for category management
+
+## Dependencies
+- Facebook Shop integration (already implemented)
+- Prisma database schema
+- Admin dashboard functionality
+- Listings and list-item pages
+
+## Testing Requirements
+- Verify category mapping accuracy
+- Test Facebook Shop feed with new categories
+- Validate admin interface functionality
+- Ensure backward compatibility
+- Test data migration process 

@@ -1,0 +1,122 @@
+# FFmpeg Installation Requirement
+
+## Overview
+FFmpeg is a **REQUIRED** system dependency for the video upload and processing feature in TreasureHub. Without FFmpeg installed, video processing will fail and users will not be able to upload videos for AI analysis.
+
+## Why FFmpeg is Required
+- Video compression and optimization
+- Thumbnail generation from video files
+- Keyframe extraction for AI analysis
+- Video format conversion and processing
+- Metadata extraction (duration, resolution, etc.)
+
+## Installation Instructions
+
+### Windows
+```bash
+# Method 1: Using winget (recommended)
+winget install ffmpeg
+
+# Method 2: Using Chocolatey
+choco install ffmpeg
+
+# Method 3: Manual installation
+# 1. Download from https://ffmpeg.org/download.html
+# 2. Extract to C:\ffmpeg
+# 3. Add C:\ffmpeg\bin to system PATH
+# 4. Restart terminal
+```
+
+### macOS
+```bash
+# Using Homebrew (recommended)
+brew install ffmpeg
+
+# Using MacPorts
+sudo port install ffmpeg
+```
+
+### Linux (Ubuntu/Debian)
+```bash
+sudo apt update
+sudo apt install ffmpeg
+```
+
+### Linux (CentOS/RHEL)
+```bash
+# CentOS 7
+sudo yum install ffmpeg
+
+# CentOS 8/RHEL 8+
+sudo dnf install ffmpeg
+```
+
+### Linux (Other distributions)
+```bash
+# Download and compile from source
+# Visit https://ffmpeg.org/download.html for instructions
+```
+
+## Verification
+After installation, verify FFmpeg is working:
+```bash
+ffmpeg -version
+ffprobe -version
+```
+
+Expected output should show version information and available codecs.
+
+## System Integration
+The TreasureHub application will:
+1. Check for FFmpeg availability on startup
+2. Wait for FFmpeg to become available if not found initially
+3. Retry video processing if FFmpeg becomes available later
+4. Show appropriate error messages if FFmpeg is permanently unavailable
+
+## Production Deployment
+For production servers:
+1. **Install FFmpeg before deploying the application**
+2. Verify installation with version commands
+3. Ensure FFmpeg has necessary permissions
+4. Monitor FFmpeg process availability
+5. Set up alerts for FFmpeg failures
+
+## Troubleshooting
+- **"ffmpeg: command not found"**: FFmpeg not installed or not in PATH
+- **"Permission denied"**: FFmpeg lacks execution permissions
+- **"No such file or directory"**: FFmpeg binary missing or corrupted
+- **Processing failures**: Check FFmpeg logs and system resources
+
+## Dependencies
+FFmpeg requires:
+- Sufficient disk space for video processing
+- Adequate RAM for video operations
+- CPU resources for encoding/decoding
+- Network access for downloading codecs (if needed)
+
+## Security Considerations
+- FFmpeg processes user-uploaded content
+- Ensure proper file permissions
+- Monitor for malicious video files
+- Keep FFmpeg updated for security patches
+
+## Performance Impact
+- Video processing is CPU and memory intensive
+- Large files may require significant processing time
+- Consider server specifications for video processing load
+- Monitor system resources during peak usage
+
+## Alternative Solutions
+If FFmpeg cannot be installed:
+1. Disable video upload feature
+2. Use cloud-based video processing services
+3. Implement client-side video processing (limited)
+4. Use alternative video processing libraries
+
+## Documentation Updates
+This requirement must be included in:
+- README.md
+- Deployment guides
+- System requirements documentation
+- Docker configurations (if applicable)
+- CI/CD pipeline documentation 
