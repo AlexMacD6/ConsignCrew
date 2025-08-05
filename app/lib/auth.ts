@@ -5,12 +5,7 @@ import { nextCookies } from 'better-auth/next-js'
 // import { stripePlugin } from '@better-auth/stripe' // Uncomment if using Stripe
 // import { sesEmailProvider } from 'better-auth/email/ses' // TODO: Add SES provider if available in your better-auth version
 
-console.log('=== BETTERAUTH CONFIGURATION LOADING ===');
-console.log('Environment variables:');
-console.log('- BETTER_AUTH_SECRET:', process.env.BETTER_AUTH_SECRET ? 'Set' : 'Not set');
-console.log('- BETTER_AUTH_URL:', process.env.BETTER_AUTH_URL || 'http://localhost:3000');
-console.log('- AWS_ACCESS_KEY_ID:', process.env.AWS_ACCESS_KEY_ID ? 'Set' : 'Not set');
-console.log('- AWS_SECRET_ACCESS_KEY:', process.env.AWS_SECRET_ACCESS_KEY ? 'Set' : 'Not set');
+// Environment variables are loaded at runtime from Vercel
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
@@ -30,8 +25,8 @@ export const auth = betterAuth({
         console.log('BetterAuth: sendVerificationEmail called for user');
         console.log('BetterAuth: Verification URL generated');
         
-        // Use production domain for email verification links
-        const productionUrl = url.replace('http://localhost:3000', 'https://treasurehub.club');
+        // Use the correct domain for email verification links
+        const productionUrl = url.replace('http://localhost:3000', process.env.BETTER_AUTH_URL || 'https://treasurehub.club');
         console.log('BetterAuth: Production verification URL generated');
         
         const { sendEmail } = await import('./ses-server');
@@ -131,8 +126,8 @@ export const auth = betterAuth({
         console.log('BetterAuth: sendResetPassword called for user');
         console.log('BetterAuth: Reset URL generated');
         
-        // Use production domain for password reset links
-        const productionUrl = url.replace('http://localhost:3000', 'https://treasurehub.club');
+        // Use the correct domain for password reset links
+        const productionUrl = url.replace('http://localhost:3000', process.env.BETTER_AUTH_URL || 'https://treasurehub.club');
         console.log('BetterAuth: Production reset URL generated');
         
         const { sendEmail } = await import('./ses-server');
@@ -255,8 +250,8 @@ export const auth = betterAuth({
         console.log('BetterAuth: sendInvitationEmail called for user');
         console.log('BetterAuth: Invitation URL generated');
         
-        // Use production domain for invitation links
-        const productionUrl = url.replace('http://localhost:3000', 'https://treasurehub.club');
+        // Use the correct domain for invitation links
+        const productionUrl = url.replace('http://localhost:3000', process.env.BETTER_AUTH_URL || 'https://treasurehub.club');
         console.log('BetterAuth: Production invitation URL generated');
         
         const { sendEmail } = await import('./ses-server');
@@ -373,5 +368,4 @@ export const auth = betterAuth({
   },
 })
 
-console.log('=== BETTERAUTH CONFIGURATION LOADED ===');
-console.log('BetterAuth instance created successfully');
+// BetterAuth instance created successfully
