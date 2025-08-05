@@ -57,8 +57,7 @@ export async function POST(request: NextRequest) {
 
     // Create verification URL
     const baseUrl = process.env.BETTER_AUTH_URL || 'http://localhost:3000';
-    const productionUrl = baseUrl.replace('http://localhost:3000', 'https://treasurehub.club');
-    const verificationUrl = `${productionUrl}/api/auth/[...betterauth]?action=verifyEmail&token=${verificationToken}&identifier=${encodeURIComponent(user.email)}`;
+    const verificationUrl = `${baseUrl}/api/auth/[...betterauth]?action=verifyEmail&token=${verificationToken}&identifier=${encodeURIComponent(user.email)}`;
 
     // Send verification email using SES
     const { sendEmail } = await import('../../../lib/ses-server');
