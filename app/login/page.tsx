@@ -47,26 +47,45 @@ function LoginForm() {
           setShowResendButton(true);
         } else if (
           errorMessage.toLowerCase().includes("email") ||
-          errorMessage.toLowerCase().includes("verify")
+          errorMessage.toLowerCase().includes("verify") ||
+          errorMessage.toLowerCase().includes("unverified")
         ) {
           errorMessage =
             "Please verify your email address before signing in. Check your inbox for a verification link.";
           setShowResendButton(true);
         } else if (
           errorMessage.toLowerCase().includes("invalid") ||
-          errorMessage.toLowerCase().includes("credentials")
+          errorMessage.toLowerCase().includes("credentials") ||
+          errorMessage.toLowerCase().includes("password") ||
+          errorMessage.toLowerCase().includes("unauthorized") ||
+          result.error.status === 401
         ) {
           errorMessage =
-            "Invalid email or password. Please check your credentials and try again.";
-        } else if (errorMessage.toLowerCase().includes("not found")) {
+            "Invalid email or password. Please check your credentials and try again. If you've forgotten your password, you can reset it.";
+        } else if (
+          errorMessage.toLowerCase().includes("not found") ||
+          errorMessage.toLowerCase().includes("user not found") ||
+          errorMessage.toLowerCase().includes("account not found")
+        ) {
           errorMessage =
             "No account found with this email address. Please check your email or create a new account.";
         } else if (
           errorMessage.toLowerCase().includes("network") ||
-          errorMessage.toLowerCase().includes("connection")
+          errorMessage.toLowerCase().includes("connection") ||
+          errorMessage.toLowerCase().includes("timeout")
         ) {
           errorMessage =
             "Connection error. Please check your internet connection and try again.";
+        } else if (
+          errorMessage.toLowerCase().includes("rate limit") ||
+          errorMessage.toLowerCase().includes("too many")
+        ) {
+          errorMessage =
+            "Too many login attempts. Please wait a few minutes before trying again.";
+        } else {
+          // Generic fallback with more helpful message
+          errorMessage =
+            "Login failed. Please check your email and password, and ensure your email is verified.";
         }
 
         setError(errorMessage);
@@ -117,10 +136,34 @@ function LoginForm() {
         );
         setShowResendButton(false);
       } else {
-        setResendMessage(
+        // Improve error messaging for resend verification
+        let errorMessage =
           data.error ||
-            "Unable to send verification email. Please try again in a few minutes."
-        );
+          "Unable to send verification email. Please try again in a few minutes.";
+
+        if (response.status === 400) {
+          if (data.error?.toLowerCase().includes("already verified")) {
+            errorMessage =
+              "Your email is already verified. You can now sign in with your email and password.";
+            setShowResendButton(false);
+          } else if (data.error?.toLowerCase().includes("not found")) {
+            errorMessage =
+              "No account found with this email address. Please check your email or create a new account.";
+          } else {
+            errorMessage =
+              "Unable to send verification email. Please check your email address and try again.";
+          }
+        } else if (response.status === 404) {
+          errorMessage =
+            "No account found with this email address. Please check your email or create a new account.";
+        } else if (response.status === 429) {
+          errorMessage =
+            "Too many verification requests. Please wait a few minutes before trying again.";
+        } else if (response.status >= 500) {
+          errorMessage = "Server error. Please try again in a few minutes.";
+        }
+
+        setResendMessage(errorMessage);
       }
     } catch (error) {
       setResendMessage("Network error. Please try again.");

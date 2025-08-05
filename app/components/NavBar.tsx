@@ -108,12 +108,14 @@ export default function NavBar() {
         <Link href="/our-origin" className="hover:text-[#D4AF3D] transition">
           Our Origin
         </Link>
-        <Link
-          href="/treasure-hunt"
-          className="text-[#D4AF3D] font-semibold hover:text-[#b8932f] transition"
-        >
-          Treasure Hunt
-        </Link>
+        {session?.user && (
+          <Link
+            href="/treasure-hunt"
+            className="text-[#D4AF3D] font-semibold hover:text-[#b8932f] transition"
+          >
+            Treasure Hunt
+          </Link>
+        )}
       </div>
 
       {/* Mobile Menu Button and Session-aware buttons (right) */}
@@ -272,13 +274,15 @@ export default function NavBar() {
               >
                 Our Origin
               </Link>
-              <Link
-                href="/treasure-hunt"
-                className="block w-full text-left py-2 text-[#D4AF3D] font-semibold hover:text-[#b8932f] transition"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Treasure Hunt
-              </Link>
+              {session?.user && (
+                <Link
+                  href="/treasure-hunt"
+                  className="block w-full text-left py-2 text-[#D4AF3D] font-semibold hover:text-[#b8932f] transition"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Treasure Hunt
+                </Link>
+              )}
             </div>
           </div>
         </div>
