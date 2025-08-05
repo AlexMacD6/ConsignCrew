@@ -1,0 +1,52 @@
+# Facebook Shop Video URL Fix Requirements
+
+## Problem
+The Facebook Shop CSV export was not properly including video URLs in the `video_url` field. The export was only checking the direct `videoUrl` field on the Listing model, but many listings have videos stored in the related Video model.
+
+## Changes Made
+
+### Updated Facebook Shop CSV Export
+- `app/api/facebook-shop/export/route.ts`
+
+#### 1. Enhanced Video Data Fetching
+- Added `videos` relation to the Prisma query to fetch related videos
+- Filtered videos to only include those with `status: "completed"`
+- Selected `processedVideoKey` and `rawVideoKey` fields from videos
+
+#### 2. Improved Video URL Logic
+- First checks the direct `listing.videoUrl` field
+- If no direct video URL, checks related videos
+- Prioritizes `processedVideoKey` over `rawVideoKey` for better quality
+- Constructs full S3 URLs using environment variables:
+  - `AWS_S3_BUCKET`
+  - `AWS_REGION`
+- Format: `https://{bucket}.s3.{region}.amazonaws.com/{videoKey}`
+
+#### 3. Video URL Priority Order
+1. Direct `listing.videoUrl` field (if available)
+2. First completed video's `processedVideoKey` (preferred)
+3. First completed video's `rawVideoKey` (fallback)
+4. Empty string if no videos available
+
+## Technical Details
+
+### Database Schema
+- `Listing.videoUrl`: Direct video URL field (optional)
+- `Listing.videos`: Many-to-many relationship with Video model
+- `Video.processedVideoKey`: Compressed/processed video file key
+- `Video.rawVideoKey`: Original uploaded video file key
+- `Video.status`: Processing status ("pending", "processing", "completed", "failed")
+
+### Environment Variables Required
+- `AWS_S3_BUCKET`: S3 bucket name for video storage
+- `AWS_REGION`: AWS region for S3 bucket
+
+## Testing
+- Verify that listings with videos now include video URLs in the CSV export
+- Check that both direct videoUrl and related videos are properly handled
+- Ensure S3 URLs are correctly constructed with proper bucket and region
+
+## Impact
+- Facebook Shop CSV export now includes video URLs for listings with videos
+- Improved video content visibility in Facebook Shop
+- Better user experience with video previews in Facebook marketplace 

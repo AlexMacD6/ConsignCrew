@@ -1,0 +1,59 @@
+# Admin API Field Mapping Fix Requirements
+
+## Problem
+The admin dashboard was experiencing 500 Internal Server Errors when trying to fetch data from admin API endpoints. The root cause was that the API routes were trying to access `firstName` and `lastName` fields on the user model, but the Prisma schema only defines a `name` field.
+
+## Changes Made
+
+### 1. Fixed Admin API Routes
+Updated the following API routes to use the correct field names:
+
+- `app/api/admin/users/route.ts`
+  - Changed `firstName` and `lastName` to `name` in user data transformation
+  - Updated `orderBy` from `firstName` to `name`
+  - Removed non-existent fields like `preferredContact`, `shippingAddress`, etc.
+  - Added proper user fields: `addressLine1`, `addressLine2`, `city`, `state`, `zipCode`, `country`, `createdAt`, `updatedAt`, `emailVerified`
+
+- `app/api/admin/organizations/route.ts`
+  - Updated user selection in members and teams to use `name` instead of `firstName`/`lastName`
+
+- `app/api/admin/organizations/[id]/invitations/route.ts`
+  - Updated inviter selection to use `name` instead of `firstName`/`lastName`
+
+- `app/api/admin/check-status/route.ts`
+  - Updated user data response to use `name` instead of `firstName`/`lastName`
+
+- `app/api/admin/questions/route.ts`
+  - Updated all user selections (createdBy, answeredBy, approvedBy) to use `name` instead of `firstName`/`lastName`
+
+- `app/api/admin/organizations/[id]/route.ts`
+  - Updated user selections in members, teams, and invitations to use `name` instead of `firstName`/`lastName`
+
+- `app/api/admin/organizations/[id]/members/route.ts`
+  - Updated user selections in both GET and POST operations to use `name` instead of `firstName`/`lastName`
+
+- `app/api/admin/organizations/[id]/teams/route.ts`
+  - Updated user selections in team members to use `name` instead of `firstName`/`lastName`
+
+- `app/api/admin/organizations/[id]/teams/[teamId]/members/route.ts`
+  - Updated user selections in team members to use `name` instead of `firstName`/`lastName`
+
+- `app/api/invitations/pending/route.ts`
+  - Updated inviter selection to use `name` instead of `firstName`/`lastName`
+
+### 2. Fixed Register API Route
+- `app/api/register/route.ts`
+  - Updated to use Prisma instead of the old `db` import
+  - Combined `firstName` and `lastName` into a single `name` field when creating users
+  - Removed dependency on `safeDbOperation` utility
+
+## Testing
+- Verified that admin API endpoints now return 401 Unauthorized instead of 500 Internal Server Error when not authenticated
+- This indicates the field mapping issues have been resolved
+- Admin dashboard should now load properly for authenticated admin users
+
+## Impact
+- Resolves 500 Internal Server Errors on admin dashboard
+- Ensures proper data display in admin interface
+- Maintains compatibility with BetterAuth's organization-based role system
+- Aligns with the current Prisma schema structure 

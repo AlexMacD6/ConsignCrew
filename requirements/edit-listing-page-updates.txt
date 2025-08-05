@@ -1,0 +1,116 @@
+# Edit Listing Page Updates
+
+## Overview
+Updated the edit listing page to pull zip code from user profile, get neighborhood from zipcode table, and replace Product Video URL section with VideoUpload component.
+
+## Changes Made
+
+### 1. User Profile Integration
+- **Zip Code Auto-Population**: Modified the edit listing page to fetch user profile data and automatically populate the zip code field from the user's profile
+- **API Integration**: Added calls to `/api/profile` to get user data including zip code
+- **Fallback Logic**: Only updates zip code if not already set from the listing data
+
+### 2. Neighborhood Lookup
+- **Zipcode Table Integration**: Added automatic neighborhood lookup using the `/api/zipcodes/validate` endpoint
+- **Auto-Population**: When user zip code is fetched, the system automatically looks up the corresponding neighborhood from the zipcode table
+- **Data Flow**: User zip code → zipcode validation API → neighborhood name from database
+
+### 3. Video Upload Component Integration
+- **Replaced Product Video URL Section**: Removed the old video URL input and file upload toggle system
+- **VideoUpload Component**: Integrated the same VideoUpload component used in the list-item page
+- **Consistent Experience**: Users now have the same video upload experience across both create and edit listing pages
+- **State Management**: Updated video state to match the VideoUpload component's expected data structure
+
+### 4. Additional Fields Integration
+- **Reserve Price**: Added reserve price field with auto-calculation (70% of original price)
+- **Facebook Shop Integration**: Added complete Facebook Marketplace integration fields
+  - Facebook Shop Enabled toggle
+  - Facebook Brand field
+  - Facebook Condition field  
+  - Facebook GTIN (Global Trade Item Number) field
+- **Updated Condition Options**: Changed from 5-tier system to 3-tier system (new, used, refurbished)
+- **Updated Discount Schedule**: Added support for Turbo-30 and Classic-60 options
+
+### 5. Technical Implementation Details
+
+#### User Profile Fetching
+```typescript
+// Fetch user profile data to get zip code and neighborhood
+const profileResponse = await fetch("/api/profile");
+if (profileResponse.ok) {
+  const profileData = await profileResponse.json();
+  if (profileData.user?.zipCode) {
+    // Update zip code if not already set from listing
+    if (!zipCode) {
+      setZipCode(profileData.user.zipCode);
+    }
+    
+    // Get neighborhood from zipcode table
+    const zipResponse = await fetch("/api/zipcodes/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ zipCode: profileData.user.zipCode }),
+    });
+    
+    if (zipResponse.ok) {
+      const zipData = await zipResponse.json();
+      if (zipData.success && zipData.isValid && zipData.area) {
+        setNeighborhood(zipData.area);
+      }
+    }
+  }
+}
+```
+
+#### Video Upload Integration
+```typescript
+// Video upload handlers
+const handleVideoUploaded = async (data: {
+  videoId: string;
+  frameUrls: string[];
+  thumbnailUrl: string;
+  duration: number;
+}) => {
+  setVideoData({
+    videoId: data.videoId,
+    frameUrls: data.frameUrls,
+    thumbnailUrl: data.thumbnailUrl,
+    duration: data.duration,
+    uploaded: true,
+    processing: false,
+    error: null,
+  });
+};
+```
+
+### 6. Bug Fixes
+- **List Item Page Fix**: Fixed incorrect property access in list-item page where `userData.zipCode` was used instead of `userData.user.zipCode`
+
+### 7. User Experience Improvements
+- **Seamless Data Flow**: Users no longer need to manually enter zip code and neighborhood - they're automatically populated from their profile
+- **Consistent Video Upload**: Same video upload experience across create and edit listing pages
+- **Better Error Handling**: Improved error handling for video uploads with proper state management
+- **Complete Field Parity**: All fields from the create listing page are now available in the edit listing page
+- **Auto-Calculation**: Reserve price automatically calculates as 70% of the original price
+- **Facebook Integration**: Complete Facebook Shop integration with toggle and specific fields
+
+## Files Modified
+- `app/(dashboard)/list-item/[id]/edit/page.tsx` - Main edit listing page
+- `app/(dashboard)/list-item/page.tsx` - Fixed user data access bug
+
+## Dependencies
+- VideoUpload component from `app/components/VideoUpload.tsx`
+- Profile API endpoint at `/api/profile`
+- Zipcode validation API at `/api/zipcodes/validate`
+
+## Testing Requirements
+1. Verify zip code auto-populates from user profile when editing a listing
+2. Verify neighborhood auto-populates from zipcode table based on user's zip code
+3. Test video upload functionality in edit listing page
+4. Verify video upload works consistently between create and edit listing pages
+5. Test error handling for video uploads
+6. Verify form submission includes video data correctly
+7. Test reserve price auto-calculation and manual editing
+8. Verify Facebook Shop integration fields are properly saved and loaded
+9. Test condition field with new options (new, used, refurbished)
+10. Verify all fields match between create and edit listing pages 

@@ -37,8 +37,7 @@ export async function GET(
         inviter: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            name: true,
             email: true,
           },
         },

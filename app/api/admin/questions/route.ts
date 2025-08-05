@@ -47,23 +47,20 @@ export async function GET(request: NextRequest) {
         createdBy: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            name: true,
             email: true,
           },
         },
         answeredBy: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            name: true,
           },
         },
         approvedBy: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            name: true,
           },
         },
       },
@@ -133,8 +130,7 @@ export async function PUT(request: NextRequest) {
         createdBy: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            name: true,
             email: true,
           },
         },

@@ -592,6 +592,91 @@ canvas {
 .modal-overlay > div {
 	z-index: 10000 !important;
 }
+
+/* Custom Map Styling for Treasure Hunt */
+.custom-map-style {
+	filter: hue-rotate(0deg) saturate(1.1) contrast(1.1);
+}
+
+/* Custom map controls styling */
+.leaflet-control-zoom a {
+	background-color: #D4AF3D !important;
+	border-color: #b8932f !important;
+	color: white !important;
+	font-weight: 600 !important;
+}
+
+.leaflet-control-zoom a:hover {
+	background-color: #b8932f !important;
+}
+
+.leaflet-control-zoom a.leaflet-control-zoom-in,
+.leaflet-control-zoom a.leaflet-control-zoom-out {
+	font-family: 'Poppins', Arial, Helvetica, sans-serif !important;
+}
+
+/* Custom popup styling */
+.leaflet-popup-content-wrapper {
+	background: white !important;
+	border-radius: 12px !important;
+	box-shadow: 0 4px 20px rgba(212, 175, 61, 0.15) !important;
+	border: 2px solid #D4AF3D !important;
+}
+
+.leaflet-popup-content {
+	font-family: 'Poppins', Arial, Helvetica, sans-serif !important;
+	color: #333 !important;
+}
+
+.leaflet-popup-tip {
+	background: white !important;
+	border: 2px solid #D4AF3D !important;
+}
+
+/* Custom marker hover effects */
+.custom-marker:hover {
+	transform: scale(1.1);
+	transition: transform 0.2s ease;
+}
+
+/* Map attribution styling */
+.leaflet-control-attribution {
+	background: rgba(212, 175, 61, 0.9) !important;
+	color: white !important;
+	font-family: 'Poppins', Arial, Helvetica, sans-serif !important;
+	font-size: 11px !important;
+}
+
+.leaflet-control-attribution a {
+	color: white !important;
+	text-decoration: underline !important;
+}
+
+.leaflet-control-attribution a:hover {
+	color: #b8932f !important;
+}
+
+/* Treasure Hunt Map Container */
+.treasure-hunt-map {
+	border: 2px solid #D4AF3D !important;
+	border-radius: 12px !important;
+	overflow: hidden !important;
+	box-shadow: 0 8px 32px rgba(212, 175, 61, 0.2) !important;
+}
+
+.treasure-hunt-map .leaflet-container {
+	border-radius: 10px !important;
+}
+
+/* Enhanced circle styling */
+.treasure-hunt-map .leaflet-interactive {
+	transition: all 0.3s ease !important;
+}
+
+.treasure-hunt-map .leaflet-interactive:hover {
+	filter: brightness(1.1) !important;
+	stroke-width: 3px !important;
+}
 }
 
 

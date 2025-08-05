@@ -18,11 +18,7 @@ import {
   CheckCircle,
   Edit,
 } from "lucide-react";
-import {
-  isApprovedZipCodeFromDB,
-  getNeighborhoodNameFromDB,
-  getApprovedZipCodesFromDB,
-} from "../../lib/zipcodes";
+import { getApprovedZipCodesFromDB } from "../../lib/zipcodes";
 import {
   // generateStagedPhoto, // TODO: Re-enable in Phase 2
   ComprehensiveListingData,
@@ -34,6 +30,7 @@ import {
 } from "../../lib/ai-form-generator";
 import VideoUpload from "../../components/VideoUpload";
 import VideoProcessingModal from "../../components/VideoProcessingModal";
+import CustomQRCode from "../../components/CustomQRCode";
 import {
   ConfidenceBadge,
   ConfidenceSummary,
@@ -398,26 +395,17 @@ export default function ListItemPage() {
     return Array.isArray(array) ? array.map(callback) : [];
   };
 
-  // Validate zip code when it changes
+  // Set neighborhood based on zip code (simplified without validation)
   useEffect(() => {
-    const validateZipCode = async () => {
-      if (zipCode && zipCode.length === 5) {
-        try {
-          const [isValid, neighborhood] = await Promise.all([
-            isApprovedZipCodeFromDB(zipCode),
-            getNeighborhoodNameFromDB(zipCode),
-          ]);
-          setZipCodeValidation({ isValid, neighborhood });
-        } catch (error) {
-          console.error("Error validating zip code:", error);
-          setZipCodeValidation({ isValid: false, neighborhood: null });
-        }
-      } else {
-        setZipCodeValidation({ isValid: null, neighborhood: null });
-      }
-    };
-
-    validateZipCode();
+    if (zipCode && zipCode.length === 5) {
+      // For now, just set a default neighborhood
+      setZipCodeValidation({
+        isValid: true,
+        neighborhood: "Houston Area",
+      });
+    } else {
+      setZipCodeValidation({ isValid: null, neighborhood: null });
+    }
   }, [zipCode]);
 
   // Validate minimum photo requirements when step changes
@@ -443,14 +431,14 @@ export default function ListItemPage() {
         setUploading(true);
         setUploadError(null);
 
-        // Generate item ID for S3 key
-        const itemId = generateItemId();
+        // Use stored itemId for S3 key
+        const uploadItemId = itemId || generateItemId();
 
         // Upload file using API route
         const formData = new FormData();
         formData.append("file", file);
         formData.append("photoType", currentPhotoType);
-        formData.append("itemId", itemId);
+        formData.append("itemId", uploadItemId);
 
         const uploadResponse = await fetch("/api/upload/photo", {
           method: "POST",
@@ -750,11 +738,11 @@ export default function ListItemPage() {
       setFacebookCondition(listingData.facebookCondition || "");
       setFacebookGtin(listingData.facebookGtin || "");
 
-      // Generate QR code and listing ID when form fields are generated
-      const newListingId = generateItemId();
-      const newQRCode = generateQRCode(newListingId);
-      setGeneratedListingId(newListingId);
-      setGeneratedQRCode(newQRCode);
+      // Use stored itemId for QR code and listing ID when form fields are generated
+      const listingId = itemId || generateItemId();
+      const qrCode = generateQRCode(listingId);
+      setGeneratedListingId(listingId);
+      setGeneratedQRCode(qrCode);
 
       // Generate staged photo with comprehensive data (non-blocking)
       if (photos.hero?.url || photos.hero?.key) {
@@ -925,8 +913,9 @@ export default function ListItemPage() {
           facebookBrand: brand || null, // Use main brand field
           facebookCondition: condition || null, // Use main condition field
           facebookGtin: facebookGtin || null,
-          itemId: generatedListingId || generateItemId(),
-          qrCodeUrl: generatedQRCode || generateQRCode(generateItemId()),
+          itemId: generatedListingId || itemId,
+          qrCodeUrl: generatedQRCode || generateQRCode(itemId),
+          videoId: videoData.videoId || null, // Add video ID to link video to listing
         };
 
         console.log("Submitting listing with data:", formData);
@@ -977,16 +966,18 @@ export default function ListItemPage() {
 
   // Generate auto-generated fields preview
   const generateItemId = () => {
-    const now = new Date();
-    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
-    const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, "");
-    return `cc_${Math.floor(Math.random() * 1000)
-      .toString()
-      .padStart(3, "0")}_${dateStr}_${timeStr}`;
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let result = "";
+    for (let i = 0; i < 6; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
   };
 
   const generateQRCode = (itemId: string) => {
-    return `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${itemId}`;
+    // Generate the full URL for the QR code
+    const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+    return `${baseUrl}/list-item/${itemId}`;
   };
 
   const calculateFee = (price: number) => {
@@ -994,6 +985,14 @@ export default function ListItemPage() {
   };
 
   const [reservePrice, setReservePrice] = useState<string>("");
+  const [itemId, setItemId] = useState<string>("");
+
+  // Generate itemId once when component mounts
+  useEffect(() => {
+    if (!itemId) {
+      setItemId(generateItemId());
+    }
+  }, [itemId]);
 
   const calculateReservePrice = (price: number) => {
     return price * 0.6; // 60% of list price
@@ -1013,8 +1012,8 @@ export default function ListItemPage() {
         const response = await fetch("/api/profile");
         if (response.ok) {
           const userData = await response.json();
-          if (userData.zipCode && !zipCode) {
-            setZipCode(userData.zipCode);
+          if (userData.user?.zipCode && !zipCode) {
+            setZipCode(userData.user.zipCode);
           }
         }
       } catch (error) {
@@ -2077,7 +2076,7 @@ export default function ListItemPage() {
                         <div className="flex items-center gap-2">
                           <input
                             type="text"
-                            value={generateItemId()}
+                            value={itemId || "Generating..."}
                             disabled
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
                           />
@@ -2091,12 +2090,12 @@ export default function ListItemPage() {
                           QR Code
                         </label>
                         <div className="space-y-2">
-                          {generatedQRCode && (
+                          {(generatedListingId || itemId) && (
                             <div className="flex justify-center">
-                              <img
-                                src={generatedQRCode}
-                                alt="QR Code"
-                                className="w-32 h-32 border border-gray-200 rounded-lg"
+                              <CustomQRCode
+                                itemId={generatedListingId || itemId}
+                                size={150}
+                                className="border border-gray-200 rounded-lg p-4 bg-white"
                               />
                             </div>
                           )}
@@ -2105,7 +2104,9 @@ export default function ListItemPage() {
                               type="text"
                               value={
                                 generatedQRCode ||
-                                "Generate form fields to create QR code"
+                                (itemId
+                                  ? generateQRCode(itemId)
+                                  : "Generating...")
                               }
                               disabled
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 text-xs"
@@ -2124,8 +2125,7 @@ export default function ListItemPage() {
                           <input
                             type="text"
                             value={
-                              generatedListingId ||
-                              "Generate form fields to create listing ID"
+                              generatedListingId || itemId || "Generating..."
                             }
                             disabled
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"

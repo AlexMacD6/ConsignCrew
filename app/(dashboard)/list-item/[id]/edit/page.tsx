@@ -20,89 +20,187 @@ import {
   X,
   Play,
 } from "lucide-react";
+import VideoUpload from "../../../../components/VideoUpload";
 // ZIP code validation now handled via API endpoint
 
+const discountSchedules = ["Turbo-30", "Classic-60"] as const;
+
 const taxonomy = {
+  // Facebook Marketplace Categories - Primary Categories
   Furniture: {
-    Chairs: ["Dining Chairs", "Office Chairs", "Accent Chairs", "Recliners"],
-    Tables: ["Coffee Tables", "Dining Tables", "Side Tables", "Console Tables"],
-    "Storage & Shelving": [],
-    Seating: ["Sofas", "Loveseats", "Sectionals"],
-    "Bedroom Furniture": ["Beds", "Dressers"],
-    "Office Furniture": [],
-    "Outdoor Furniture": [],
-    "Bundles & Sets": [],
+    "Living Room": [
+      "Sofas",
+      "Loveseats",
+      "Sectionals",
+      "Coffee Tables",
+      "Side Tables",
+      "Console Tables",
+    ],
+    "Dining Room": [
+      "Dining Tables",
+      "Dining Chairs",
+      "Buffets",
+      "China Cabinets",
+    ],
+    Bedroom: ["Beds", "Dressers", "Nightstands", "Wardrobes", "Vanities"],
+    Office: ["Desks", "Office Chairs", "Filing Cabinets", "Bookshelves"],
+    Storage: ["Wardrobes", "Chests", "Shelving Units", "Storage Bins"],
+    Outdoor: ["Patio Sets", "Garden Chairs", "Outdoor Tables"],
+    Kids: ["Children's Beds", "Kids' Desks", "Toy Storage"],
   },
   Electronics: {
-    "Computers & Tablets": ["Laptops", "Desktops", "Tablets", "Monitors"],
-    "Mobile Phones & Accessories": [],
-    "Audio Equipment": [
-      "Bluetooth Speakers",
-      "Studio Headphones",
-      "Turntables",
+    "Computers & Tablets": [
+      "Laptops",
+      "Desktops",
+      "Tablets",
+      "Monitors",
+      "Keyboards",
+      "Mice",
     ],
-    "Cameras & Photo": [],
-    "Gaming Consoles & Accessories": [],
-    "Smart Home Devices": [],
-    "Bundles & Sets": [],
+    "Mobile Phones": [
+      "Smartphones",
+      "Phone Cases",
+      "Chargers",
+      "Screen Protectors",
+    ],
+    "Audio Equipment": ["Speakers", "Headphones", "Microphones", "Amplifiers"],
+    "Cameras & Photo": ["Digital Cameras", "Lenses", "Tripods", "Camera Bags"],
+    "TVs & Video": [
+      "Televisions",
+      "Projectors",
+      "DVD Players",
+      "Streaming Devices",
+    ],
+    "Smart Home": ["Smart Speakers", "Security Cameras", "Smart Thermostats"],
+    Gaming: ["Gaming Consoles", "Gaming PCs", "Controllers", "Gaming Headsets"],
   },
-  "Home & Living": {
-    "Home Décor": ["Wall Mirrors", "Decorative Vases", "Throw Pillows"],
-    Lighting: ["Lamps", "Chandeliers", "Sconces"],
-    "Rugs & Textiles": [],
-    "Candles & Fragrance": [],
-    "Storage & Organization": [],
-    "Bundles & Sets": [],
+  "Home & Garden": {
+    "Home Décor": ["Wall Art", "Mirrors", "Vases", "Throw Pillows", "Curtains"],
+    Lighting: ["Lamps", "Chandeliers", "Sconces", "Light Bulbs"],
+    "Kitchen & Dining": [
+      "Cookware",
+      "Dinnerware",
+      "Kitchen Utensils",
+      "Small Appliances",
+    ],
+    Bathroom: ["Towels", "Shower Curtains", "Bathroom Accessories"],
+    "Storage & Organization": [
+      "Closet Organizers",
+      "Storage Bins",
+      "Hooks",
+      "Shelving",
+    ],
+    "Rugs & Textiles": ["Area Rugs", "Carpets", "Blankets", "Throws"],
   },
-  "Art & Collectibles": {
-    "Art Prints": [],
-    Paintings: [],
-    Sculptures: [],
-    "Vintage Collectibles": [],
-    Memorabilia: [],
-    "Bundles & Sets": [],
+  "Clothing & Accessories": {
+    "Men's Clothing": ["Shirts", "Pants", "Jackets", "Shoes", "Accessories"],
+    "Women's Clothing": ["Dresses", "Tops", "Bottoms", "Shoes", "Accessories"],
+    "Kids' Clothing": [
+      "Boys' Clothing",
+      "Girls' Clothing",
+      "Baby Clothes",
+      "Shoes",
+    ],
+    "Jewelry & Watches": ["Necklaces", "Rings", "Watches", "Bracelets"],
+    "Bags & Purses": ["Handbags", "Backpacks", "Wallets", "Luggage"],
+    Shoes: ["Sneakers", "Boots", "Sandals", "Formal Shoes"],
   },
-  "Books & Media": {
-    Books: [],
-    "Vinyl Records": [],
-    "CDs & DVDs": [],
-    "Video Games": [],
-    "Bundles & Sets": [],
-  },
-  "Sports & Outdoors": {
-    "Camping & Hiking Gear": ["Tents", "Sleeping Bags", "Backpacks"],
-    "Bicycles & Accessories": [],
-    "Fitness Equipment": [],
-    "Water Sports Gear": [],
-    "Team Sports Equipment": [],
-    "Bundles & Sets": [],
+  "Sporting Goods": {
+    "Fitness Equipment": [
+      "Treadmills",
+      "Weights",
+      "Yoga Mats",
+      "Exercise Bikes",
+    ],
+    "Team Sports": [
+      "Basketballs",
+      "Soccer Balls",
+      "Baseball Equipment",
+      "Tennis Rackets",
+    ],
+    "Outdoor Sports": [
+      "Bicycles",
+      "Camping Gear",
+      "Hiking Equipment",
+      "Fishing Gear",
+    ],
+    "Water Sports": ["Swimming Gear", "Surfboards", "Kayaks", "Life Jackets"],
+    "Winter Sports": ["Skis", "Snowboards", "Winter Clothing", "Boots"],
   },
   "Toys & Games": {
-    "Board Games": ["Strategy Games", "Family Games", "Party Games"],
-    Puzzles: [],
-    "Action Figures": [],
-    "Educational Toys": [],
-    "Dolls & Plush": [],
-    "Bundles & Sets": [],
+    "Board Games": ["Strategy Games", "Family Games", "Party Games", "Puzzles"],
+    "Action Figures": ["Collectible Figures", "Dolls", "Plush Toys"],
+    Educational: ["Learning Toys", "Science Kits", "Art Supplies"],
+    "Outdoor Toys": ["Bikes", "Scooters", "Playground Equipment"],
+    "Video Games": ["Game Consoles", "Game Cartridges", "Controllers"],
   },
   "Tools & Hardware": {
-    "Power Tools": ["Drills", "Saws", "Sanders"],
-    "Hand Tools": [],
-    "Tool Storage": [],
-    "Safety Equipment": [],
-    "Bundles & Sets": [],
+    "Power Tools": ["Drills", "Saws", "Sanders", "Grinders", "Nail Guns"],
+    "Hand Tools": ["Hammers", "Screwdrivers", "Wrenches", "Pliers"],
+    "Garden Tools": ["Shovels", "Rakes", "Pruners", "Watering Cans"],
+    Automotive: ["Car Parts", "Motorcycle Parts", "Boat Parts"],
+    "Building Materials": ["Lumber", "Hardware", "Fasteners", "Adhesives"],
   },
-  "Kitchen & Dining": {
-    Cookware: ["Non-stick Pans", "Cast-Iron Skillets", "Baking Sheets"],
-    Dinnerware: [],
-    "Small Appliances": [],
-    "Kitchen Utensils": [],
-    "Bundles & Sets": [],
+  "Books & Media": {
+    Books: ["Fiction", "Non-Fiction", "Textbooks", "Children's Books"],
+    "Movies & TV": ["DVDs", "Blu-rays", "Digital Codes", "VHS Tapes"],
+    Music: ["CDs", "Vinyl Records", "Digital Downloads", "Instruments"],
+    Magazines: ["Current Issues", "Back Issues", "Subscriptions"],
+    Collectibles: ["Comic Books", "Trading Cards", "Memorabilia"],
+  },
+  "Health & Beauty": {
+    "Personal Care": ["Skincare", "Haircare", "Oral Care", "Fragrances"],
+    "Health & Wellness": ["Vitamins", "Supplements", "Medical Devices"],
+    "Beauty Tools": ["Makeup Brushes", "Hair Tools", "Mirrors"],
+    "Fitness & Nutrition": ["Protein Powder", "Workout Gear", "Supplements"],
+    "Baby & Kids": ["Diapers", "Baby Food", "Toys", "Clothing"],
+  },
+  "Pet Supplies": {
+    "Dog Supplies": ["Food", "Toys", "Beds", "Collars", "Leashes"],
+    "Cat Supplies": ["Food", "Toys", "Litter", "Scratchers", "Beds"],
+    "Other Pets": ["Bird Supplies", "Fish Supplies", "Small Animal Supplies"],
+    "Pet Health": ["Medications", "Grooming", "Vaccines", "Treatments"],
+    "Pet Services": ["Grooming", "Training", "Boarding", "Veterinary"],
+  },
+  Automotive: {
+    "Cars & Trucks": ["Sedans", "SUVs", "Trucks", "Vans", "Motorcycles"],
+    "Auto Parts": ["Engine Parts", "Body Parts", "Interior Parts", "Tires"],
+    "Auto Accessories": ["Audio Systems", "Navigation", "Covers", "Mats"],
+    "Auto Services": ["Repair", "Maintenance", "Towing", "Insurance"],
+    Motorcycles: ["Sport Bikes", "Cruisers", "Scooters", "Parts"],
+  },
+  "Real Estate": {
+    "Homes for Sale": ["Single Family", "Condos", "Townhouses", "Land"],
+    "Homes for Rent": ["Apartments", "Houses", "Rooms", "Vacation Rentals"],
+    Commercial: ["Office Space", "Retail Space", "Warehouses", "Land"],
+    "Real Estate Services": ["Agents", "Mortgage", "Insurance", "Legal"],
+    "Property Management": ["Rental Management", "Maintenance", "Utilities"],
+  },
+  Services: {
+    "Professional Services": ["Legal", "Accounting", "Consulting", "Design"],
+    "Home Services": ["Cleaning", "Repair", "Landscaping", "Moving"],
+    "Health Services": ["Medical", "Dental", "Therapy", "Fitness"],
+    "Beauty Services": ["Hair", "Nails", "Massage", "Spa"],
+    Education: ["Tutoring", "Classes", "Training", "Lessons"],
+  },
+  Jobs: {
+    "Full-Time": ["Administrative", "Customer Service", "Sales", "Technology"],
+    "Part-Time": ["Retail", "Food Service", "Delivery", "Childcare"],
+    Contract: ["Freelance", "Consulting", "Project-Based", "Seasonal"],
+    Remote: ["Work from Home", "Virtual", "Online", "Telecommute"],
+    Internships: ["Paid", "Unpaid", "Academic Credit", "Experience"],
+  },
+  "Free Stuff": {
+    Household: ["Furniture", "Appliances", "Decor", "Kitchen Items"],
+    Clothing: ["Men's", "Women's", "Kids'", "Baby", "Shoes"],
+    Electronics: ["Computers", "Phones", "TVs", "Audio", "Gaming"],
+    "Books & Media": ["Books", "Movies", "Music", "Magazines", "Games"],
+    Miscellaneous: ["Tools", "Sports", "Toys", "Pet Items", "Other"],
   },
 };
 
 type Department = keyof typeof taxonomy;
-type Category = string;
+type Category = keyof (typeof taxonomy)[Department] | string;
 type SubCategory = string;
 
 export default function EditListingPage() {
@@ -119,8 +217,11 @@ export default function EditListingPage() {
   const [subCategory, setSubCategory] = useState<SubCategory>("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [condition, setCondition] = useState("EXCELLENT");
+  const [condition, setCondition] = useState<
+    "new" | "used" | "refurbished" | ""
+  >("");
   const [price, setPrice] = useState("");
+  const [reservePrice, setReservePrice] = useState("");
   const [estimatedRetailPrice, setEstimatedRetailPrice] = useState("");
   const [zipCode, setZipCode] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
@@ -131,7 +232,15 @@ export default function EditListingPage() {
   const [dimensionsConfirmed, setDimensionsConfirmed] = useState(false);
   const [serialNumber, setSerialNumber] = useState("");
   const [modelNumber, setModelNumber] = useState("");
-  const [discountSchedule, setDiscountSchedule] = useState("Classic-60");
+  const [discountSchedule, setDiscountSchedule] = useState<
+    (typeof discountSchedules)[number] | ""
+  >("");
+
+  // Facebook Shop Integration Fields
+  const [facebookShopEnabled, setFacebookShopEnabled] = useState(true);
+  const [facebookBrand, setFacebookBrand] = useState("");
+  const [facebookCondition, setFacebookCondition] = useState("");
+  const [facebookGtin, setFacebookGtin] = useState("");
 
   // Photo state with drag-and-drop support
   const [photos, setPhotos] = useState({
@@ -144,33 +253,44 @@ export default function EditListingPage() {
   const [photoOrder, setPhotoOrder] = useState<string[]>([]);
 
   // Video state
-  const [video, setVideo] = useState<{
-    file: File | null;
-    key: string | null;
-    url: string | null;
+  const [videoData, setVideoData] = useState<{
+    videoId: string | null;
+    frameUrls: string[];
+    thumbnailUrl: string | null;
+    duration: number | null;
+    uploaded: boolean;
+    processing: boolean;
+    error: string | null;
   }>({
-    file: null,
-    key: null,
-    url: null,
+    videoId: null,
+    frameUrls: [],
+    thumbnailUrl: null,
+    duration: null,
+    uploaded: false,
+    processing: false,
+    error: null,
   });
-  const [videoUploading, setVideoUploading] = useState(false);
-  const [videoUploadError, setVideoUploadError] = useState<string | null>(null);
-  const [videoUrl, setVideoUrl] = useState("");
-  const [useVideoUpload, setUseVideoUpload] = useState(false);
 
   // Validation state
   const [zipCodeValid, setZipCodeValid] = useState<boolean | null>(null);
   const [zipCodeValidating, setZipCodeValidating] = useState(false);
 
-  // Load existing listing data
+  // Load existing listing data and user profile
   useEffect(() => {
-    const fetchListing = async () => {
+    const fetchListingAndUserData = async () => {
       try {
         setLoading(true);
+
+        // Fetch listing data
+        console.log("Fetching listing with ID:", params.id);
         const response = await fetch(`/api/listings/${params.id}`);
 
         if (!response.ok) {
-          throw new Error("Failed to fetch listing");
+          const errorText = await response.text();
+          console.error("Failed to fetch listing:", response.status, errorText);
+          throw new Error(
+            `Failed to fetch listing: ${response.status} ${response.statusText}`
+          );
         }
 
         const data = await response.json();
@@ -179,55 +299,73 @@ export default function EditListingPage() {
           const listingData = data.listing;
           setListing(listingData);
 
-          // Populate form with existing data
-          setDepartment(listingData.department);
-          setCategory(listingData.category);
-          setSubCategory(listingData.subCategory);
-          setTitle(listingData.title);
-          setDescription(listingData.description);
-          setCondition(listingData.condition);
-          setPrice(listingData.price.toString());
-          setEstimatedRetailPrice(
-            listingData.estimatedRetailPrice?.toString() || ""
+          // Populate form with existing data - ensure all values are strings to prevent controlled/uncontrolled input errors
+          setDepartment(listingData.department || "Furniture");
+          setCategory(listingData.category || "");
+          setSubCategory(listingData.subCategory || "");
+          setTitle(listingData.title || "");
+          setDescription(listingData.description || "");
+          setCondition(listingData.condition || "");
+          setPrice(listingData.price ? listingData.price.toString() : "");
+          setReservePrice(
+            listingData.reservePrice ? listingData.reservePrice.toString() : ""
           );
-          setZipCode(listingData.zipCode);
-          setNeighborhood(listingData.neighborhood);
+          setEstimatedRetailPrice(
+            listingData.estimatedRetailPrice
+              ? listingData.estimatedRetailPrice.toString()
+              : ""
+          );
+          setZipCode(listingData.zipCode || "");
+          setNeighborhood(listingData.neighborhood || "");
           setBrand(listingData.brand || "");
-          setHeight(listingData.height || "");
-          setWidth(listingData.width || "");
-          setDepth(listingData.depth || "");
+          setHeight(listingData.height ? listingData.height.toString() : "");
+          setWidth(listingData.width ? listingData.width.toString() : "");
+          setDepth(listingData.depth ? listingData.depth.toString() : "");
           setDimensionsConfirmed(
             !!(listingData.height || listingData.width || listingData.depth)
           );
           setSerialNumber(listingData.serialNumber || "");
           setModelNumber(listingData.modelNumber || "");
           setDiscountSchedule(
-            listingData.discountSchedule?.type || "Classic-60"
+            listingData.discountSchedule?.type ||
+              listingData.discountSchedule ||
+              ""
           );
 
-          // Set photos
+          // Facebook Shop Integration Fields
+          setFacebookShopEnabled(listingData.facebookShopEnabled ?? true);
+          setFacebookBrand(listingData.facebookBrand || "");
+          setFacebookCondition(listingData.facebookCondition || "");
+          setFacebookGtin(listingData.facebookGtin || "");
+
+          // Set photos - ensure all values are properly handled
           setPhotos({
-            hero: listingData.photos.hero,
-            back: listingData.photos.back,
-            proof: listingData.photos.proof,
-            additional: listingData.photos.additional || [],
+            hero: listingData.photos?.hero || null,
+            back: listingData.photos?.back || null,
+            proof: listingData.photos?.proof || null,
+            additional: listingData.photos?.additional || [],
           });
 
-          // Set video
-          setVideo({
-            file: null,
-            key: null,
-            url: listingData.videoUrl || null,
-          });
-          setVideoUrl(listingData.videoUrl || "");
+          // Set video data
+          if (listingData.videoUrl) {
+            setVideoData({
+              videoId: null,
+              frameUrls: [],
+              thumbnailUrl: null,
+              duration: null,
+              uploaded: true,
+              processing: false,
+              error: null,
+            });
+          }
 
-          // Initialize photo order
+          // Initialize photo order - ensure safe access to photos
           const order = [];
-          if (listingData.photos.hero) order.push("hero");
-          if (listingData.photos.back) order.push("back");
-          if (listingData.photos.proof) order.push("proof");
-          if (listingData.photos.additional) {
-            listingData.photos.additional.forEach((_, index) => {
+          if (listingData.photos?.hero) order.push("hero");
+          if (listingData.photos?.back) order.push("back");
+          if (listingData.photos?.proof) order.push("proof");
+          if (listingData.photos?.additional) {
+            listingData.photos.additional.forEach((_: any, index: number) => {
               order.push(`additional-${index}`);
             });
           }
@@ -240,6 +378,26 @@ export default function EditListingPage() {
         } else {
           throw new Error(data.error || "Failed to fetch listing");
         }
+
+        // Fetch user profile data to get zip code and neighborhood
+        try {
+          console.log("Fetching user profile...");
+          const profileResponse = await fetch("/api/profile");
+          if (profileResponse.ok) {
+            const profileData = await profileResponse.json();
+            if (profileData.user?.zipCode) {
+              // Update zip code if not already set from listing
+              if (!zipCode) {
+                setZipCode(profileData.user.zipCode);
+              }
+
+              // Set default neighborhood for Houston area
+              setNeighborhood("Houston Area");
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching user profile:", error);
+        }
       } catch (error) {
         console.error("Error fetching listing:", error);
         setError("Failed to load listing data");
@@ -249,34 +407,18 @@ export default function EditListingPage() {
     };
 
     if (params.id) {
-      fetchListing();
+      fetchListingAndUserData();
     }
   }, [params.id]);
 
   const validateZipCode = async (zip: string) => {
     setZipCodeValidating(true);
     try {
-      const response = await fetch("/api/zipcodes/validate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ zipCode: zip }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to validate ZIP code");
-      }
-
-      const data = await response.json();
-
-      if (data.success) {
-        setZipCodeValid(data.isValid);
-        if (data.isValid && data.area) {
-          setNeighborhood(data.area);
-        }
-      } else {
-        setZipCodeValid(false);
+      // Simplified validation - just check if it's a 5-digit code
+      const isValid = /^\d{5}$/.test(zip);
+      setZipCodeValid(isValid);
+      if (isValid) {
+        setNeighborhood("Houston Area");
       }
     } catch (error) {
       console.error("Error validating zip code:", error);
@@ -286,77 +428,54 @@ export default function EditListingPage() {
     }
   };
 
-  const handleVideoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Validate file type
-      if (!file.type.startsWith("video/")) {
-        setVideoUploadError("Please select a valid video file");
-        return;
-      }
-
-      // Validate file size (max 100MB)
-      if (file.size > 100 * 1024 * 1024) {
-        setVideoUploadError("Video file size must be less than 100MB");
-        return;
-      }
-
-      try {
-        setVideoUploading(true);
-        setVideoUploadError(null);
-
-        // Generate item ID for S3 key
-        const itemId = params.id as string;
-
-        // Upload file using API route
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("itemId", itemId);
-        formData.append("type", "video");
-
-        const uploadResponse = await fetch("/api/upload/video", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!uploadResponse.ok) {
-          const errorData = await uploadResponse.json();
-          throw new Error(errorData.error || "Video upload failed");
-        }
-
-        const result = await uploadResponse.json();
-
-        // Update video state
-        setVideo({
-          file,
-          key: result.key,
-          url: result.url,
-        });
-      } catch (error) {
-        console.error("Error uploading video:", error);
-        setVideoUploadError(
-          error instanceof Error ? error.message : "Video upload failed"
-        );
-      } finally {
-        setVideoUploading(false);
-      }
-    }
-  };
-
-  const clearVideo = () => {
-    setVideo({ file: null, key: null, url: null });
-    setVideoUploadError(null);
-  };
-
-  const handleVideoUrlChange = (url: string) => {
-    setVideoUrl(url);
-    setVideo({
-      file: null,
-      key: null,
-      url: url || null,
+  // Video upload handlers
+  const handleVideoUploaded = async (data: {
+    videoId: string;
+    frameUrls: string[];
+    thumbnailUrl: string;
+    duration: number;
+  }) => {
+    console.log("Video uploaded successfully:", data);
+    setVideoData({
+      videoId: data.videoId,
+      frameUrls: data.frameUrls,
+      thumbnailUrl: data.thumbnailUrl,
+      duration: data.duration,
+      uploaded: true,
+      processing: false,
+      error: null,
     });
-    setVideoUploadError(null);
   };
+
+  const handleVideoError = (error: string) => {
+    console.error("Video upload error:", error);
+    setVideoData((prev) => ({
+      ...prev,
+      error,
+      processing: false,
+    }));
+  };
+
+  const handleVideoStarted = () => {
+    console.log("Video upload started");
+    setVideoData((prev) => ({
+      ...prev,
+      processing: true,
+      error: null,
+    }));
+  };
+
+  // Calculate reserve price (minimum acceptable price)
+  const calculateReservePrice = (price: number) => {
+    return Math.round(price * 0.7 * 100) / 100; // 70% of original price
+  };
+
+  // Auto-calculate reserve price when price changes
+  useEffect(() => {
+    if (price && !reservePrice) {
+      setReservePrice(calculateReservePrice(parseFloat(price)).toFixed(2));
+    }
+  }, [price, reservePrice]);
 
   // Drag and drop functions for photo reordering
   const handleDragStart = (e: React.DragEvent, photoId: string) => {
@@ -502,9 +621,15 @@ export default function EditListingPage() {
           estimatedRetailPrice: estimatedRetailPrice
             ? parseFloat(estimatedRetailPrice)
             : null,
+          reservePrice: reservePrice ? parseFloat(reservePrice) : null,
           discountSchedule: { type: discountSchedule },
+          // Facebook Shop Integration Fields
+          facebookShopEnabled,
+          facebookBrand: facebookBrand || null,
+          facebookCondition: facebookCondition || null,
+          facebookGtin: facebookGtin || null,
           photos,
-          videoUrl: useVideoUpload ? video.url : videoUrl,
+          videoUrl: videoData.uploaded ? videoData.thumbnailUrl : null,
         }),
       });
 
@@ -643,16 +768,19 @@ export default function EditListingPage() {
                   required
                 >
                   <option value="">Select Category</option>
-                  {Object.keys(taxonomy[department]).map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
+                  {Object.keys(taxonomy[department] as Record<string, any>).map(
+                    (cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    )
+                  )}
                 </select>
               </div>
 
               {/* Sub Category */}
-              {taxonomy[department][category]?.length > 0 && (
+              {(taxonomy[department] as Record<string, any>)[category]?.length >
+                0 && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Sub Category
@@ -663,7 +791,9 @@ export default function EditListingPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
                   >
                     <option value="">Select Sub Category</option>
-                    {taxonomy[department][category].map((subCat) => (
+                    {(taxonomy[department] as Record<string, any>)[
+                      category
+                    ]?.map((subCat: string) => (
                       <option key={subCat} value={subCat}>
                         {subCat}
                       </option>
@@ -710,7 +840,7 @@ export default function EditListingPage() {
               Pricing & Condition
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
               {/* Price */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -729,6 +859,28 @@ export default function EditListingPage() {
                     required
                   />
                 </div>
+              </div>
+
+              {/* Reserve Price */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Reserve Price
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-gray-500">$</span>
+                  <input
+                    type="number"
+                    value={reservePrice}
+                    onChange={(e) => setReservePrice(e.target.value)}
+                    step="0.01"
+                    min="0"
+                    className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                    placeholder="0.00"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Minimum acceptable price (auto-calculated as 70% of price)
+                </p>
               </div>
 
               {/* Estimated Retail Price */}
@@ -757,16 +909,46 @@ export default function EditListingPage() {
                 </label>
                 <select
                   value={condition}
-                  onChange={(e) => setCondition(e.target.value)}
+                  onChange={(e) =>
+                    setCondition(
+                      e.target.value as "new" | "used" | "refurbished"
+                    )
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
                   required
                 >
-                  <option value="NEW">New</option>
-                  <option value="EXCELLENT">Excellent</option>
-                  <option value="GOOD">Good</option>
-                  <option value="FAIR">Fair</option>
-                  <option value="POOR">Poor</option>
+                  <option value="">Select Condition</option>
+                  <option value="new">New</option>
+                  <option value="used">Used</option>
+                  <option value="refurbished">Refurbished</option>
                 </select>
+              </div>
+
+              {/* Discount Schedule */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Discount Schedule
+                </label>
+                <select
+                  value={discountSchedule}
+                  onChange={(e) =>
+                    setDiscountSchedule(
+                      e.target.value as (typeof discountSchedules)[number]
+                    )
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                >
+                  <option value="">Select Schedule</option>
+                  {discountSchedules.map((schedule) => (
+                    <option key={schedule} value={schedule}>
+                      {schedule}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Turbo-30: 30% off every 30 days | Classic-60: 10% off every 60
+                  days
+                </p>
               </div>
             </div>
           </div>
@@ -949,6 +1131,98 @@ export default function EditListingPage() {
             </div>
           </div>
 
+          {/* Facebook Shop Integration */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Facebook Shop Integration
+            </h2>
+            <p className="text-sm text-gray-600 mb-6">
+              Configure settings for Facebook Marketplace integration.
+            </p>
+
+            <div className="space-y-6">
+              {/* Facebook Shop Enabled */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Enable Facebook Shop
+                  </label>
+                  <p className="text-xs text-gray-500">
+                    List this item on Facebook Marketplace
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={facebookShopEnabled}
+                    onChange={(e) => setFacebookShopEnabled(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#D4AF3D] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#D4AF3D]"></div>
+                </label>
+              </div>
+
+              {facebookShopEnabled && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Facebook Brand */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Facebook Brand
+                    </label>
+                    <input
+                      type="text"
+                      value={facebookBrand}
+                      onChange={(e) => setFacebookBrand(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                      placeholder="Brand name for Facebook"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Leave empty to use main brand field
+                    </p>
+                  </div>
+
+                  {/* Facebook Condition */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Facebook Condition
+                    </label>
+                    <select
+                      value={facebookCondition}
+                      onChange={(e) => setFacebookCondition(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                    >
+                      <option value="">Use main condition</option>
+                      <option value="new">New</option>
+                      <option value="used">Used</option>
+                      <option value="refurbished">Refurbished</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Leave empty to use main condition field
+                    </p>
+                  </div>
+
+                  {/* Facebook GTIN */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Facebook GTIN (Global Trade Item Number)
+                    </label>
+                    <input
+                      type="text"
+                      value={facebookGtin}
+                      onChange={(e) => setFacebookGtin(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                      placeholder="UPC, EAN, or ISBN"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Product identifier for better Facebook Marketplace
+                      visibility
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Photos Management */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Photos</h2>
@@ -1050,115 +1324,64 @@ export default function EditListingPage() {
               better understand the product.
             </p>
 
-            {/* Video Upload Toggle */}
-            <div className="mb-6">
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="videoOption"
-                    checked={!useVideoUpload}
-                    onChange={() => setUseVideoUpload(false)}
-                    className="text-[#D4AF3D] focus:ring-[#D4AF3D]"
+            <div className="w-full">
+              {!videoData.uploaded ? (
+                <>
+                  <VideoUpload
+                    onVideoUploaded={handleVideoUploaded}
+                    onError={handleVideoError}
+                    onStarted={handleVideoStarted}
+                    disabled={videoData.processing}
                   />
-                  <span className="text-sm font-medium text-gray-700">
-                    Video URL
-                  </span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="videoOption"
-                    checked={useVideoUpload}
-                    onChange={() => setUseVideoUpload(true)}
-                    className="text-[#D4AF3D] focus:ring-[#D4AF3D]"
-                  />
-                  <span className="text-sm font-medium text-gray-700">
-                    Upload Video File
-                  </span>
-                </label>
-              </div>
-            </div>
 
-            {/* Video Preview */}
-            {(video.url || videoUrl) && (
-              <div className="mb-4 relative">
-                <video
-                  src={useVideoUpload ? video.url : videoUrl}
-                  className="w-full max-w-md aspect-video bg-gray-100 rounded-lg"
-                  controls
-                  preload="metadata"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (useVideoUpload) {
-                      clearVideo();
-                    } else {
-                      handleVideoUrlChange("");
+                  {videoData.error && (
+                    <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                      <p className="text-red-800">{videoData.error}</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center">
+                  <div className="mb-6">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <CheckCircleIcon className="w-8 h-8 text-green-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-green-800 mb-2">
+                      Video Uploaded Successfully
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Your video has been uploaded and processed.
+                    </p>
+                    {videoData.thumbnailUrl && (
+                      <div className="mt-4">
+                        <img
+                          src={videoData.thumbnailUrl}
+                          alt="Video thumbnail"
+                          className="w-32 h-20 object-cover rounded-lg mx-auto"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setVideoData({
+                        videoId: null,
+                        frameUrls: [],
+                        thumbnailUrl: null,
+                        duration: null,
+                        uploaded: false,
+                        processing: false,
+                        error: null,
+                      })
                     }
-                  }}
-                  className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            )}
-
-            {/* Video URL Input */}
-            {!useVideoUpload && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Video URL
-                </label>
-                <input
-                  type="url"
-                  value={videoUrl}
-                  onChange={(e) => handleVideoUrlChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                  placeholder="https://example.com/video.mp4"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Enter a direct link to your video (YouTube, Vimeo, or direct
-                  file URL)
-                </p>
-              </div>
-            )}
-
-            {/* Video File Upload */}
-            {useVideoUpload && !video.url && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Upload Video File
-                </label>
-                <input
-                  type="file"
-                  accept="video/*"
-                  onChange={handleVideoChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  MP4, WebM, or OGG up to 100MB
-                </p>
-              </div>
-            )}
-
-            {/* Video Upload Error */}
-            {videoUploadError && (
-              <div className="text-red-600 text-sm mt-2">
-                {videoUploadError}
-              </div>
-            )}
-
-            {/* Video Upload Progress */}
-            {videoUploading && (
-              <div className="flex items-center gap-2 mt-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm text-gray-600">
-                  Uploading video...
-                </span>
-              </div>
-            )}
+                    className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                  >
+                    Remove Video
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Submit Button */}

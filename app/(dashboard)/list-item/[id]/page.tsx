@@ -2,27 +2,27 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "../../../components/ui/button";
+import { authClient } from "../../../lib/auth-client";
 import {
   ArrowLeft,
   MapPin,
   Star,
   Tag,
-  Clock,
   Calendar,
   User,
   Package,
-  DollarSign,
-  TrendingDown,
   Bookmark,
-  Truck,
   CheckCircle,
   AlertCircle,
-  QrCode,
   ExternalLink,
   Edit,
+  TrendingDown,
+  Shield,
 } from "lucide-react";
 import QuestionsDisplay from "../../../components/QuestionsDisplay";
 import ImageCarousel from "../../../components/ImageCarousel";
+import ListingHistory from "../../../components/ListingHistory";
+import CustomQRCode from "../../../components/CustomQRCode";
 
 // Mock data for transportation history
 const transportationHistory = [
@@ -118,21 +118,100 @@ export default function ListingDetailPage() {
   const [listing, setListing] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [savedListings, setSavedListings] = useState<Set<string>>(new Set());
+  const { data: session } = authClient.useSession();
+  const isAuthenticated = !!session?.user;
+  const currentUserId = session?.user?.id || null;
   const [isAdmin, setIsAdmin] = useState(false);
+
+  // Function to generate video URL from video record
+  const generateVideoUrl = (videoRecord: any) => {
+    console.log("generateVideoUrl called with:", videoRecord);
+
+    if (!videoRecord) {
+      console.log("No videoRecord, returning null");
+      return null;
+    }
+
+    // Try to use processed video first, then raw video
+    const videoKey = videoRecord.processedVideoKey || videoRecord.rawVideoKey;
+
+    if (!videoKey) {
+      console.log("No processedVideoKey or rawVideoKey, returning null");
+      return null;
+    }
+
+    // Use CloudFront domain if available, otherwise fallback to S3
+    const cfDomain = process.env.NEXT_PUBLIC_CDN_URL;
+    console.log("CloudFront domain:", cfDomain);
+    console.log("CloudFront domain type:", typeof cfDomain);
+    console.log("Using video key:", videoKey);
+
+    if (cfDomain) {
+      const cleanDomain = cfDomain
+        .replace("https://", "")
+        .replace("http://", "");
+      const url = `https://${cleanDomain}/${videoKey}`;
+      console.log("Generated CloudFront URL:", url);
+      return url;
+    }
+
+    // Fallback to S3 URL - using known values from the project
+    const bucketName = "consigncrew"; // From env.example
+    const region = "us-east-1"; // From env.example
+    const url = `https://${bucketName}.s3.${region}.amazonaws.com/${videoKey}`;
+    console.log("Generated S3 URL:", url);
+    return url;
+  };
 
   useEffect(() => {
     const fetchListing = async () => {
       try {
         setLoading(true);
+
         const response = await fetch(`/api/listings/${params.id}`);
 
         if (!response.ok) {
-          throw new Error("Failed to fetch listing");
+          const errorData = await response.json();
+          throw new Error(
+            errorData.error || `HTTP ${response.status}: ${response.statusText}`
+          );
         }
 
         const data = await response.json();
 
         if (data.success) {
+          // Debug logging for video data
+          console.log("Raw listing data:", data.listing);
+          console.log("Video data from API:", data.listing.video);
+          console.log("VideoUrl from API:", data.listing.videoUrl);
+
+          // Generate video URL from video record if available
+          let videoUrl = null;
+          if (
+            data.listing.video &&
+            (data.listing.video.rawVideoKey ||
+              data.listing.video.processedVideoKey)
+          ) {
+            videoUrl = generateVideoUrl(data.listing.video);
+            console.log("Generated video URL from video record:", videoUrl);
+          } else if (data.listing.videoUrl) {
+            // Fallback to direct videoUrl if available
+            videoUrl = data.listing.videoUrl;
+            console.log("Using fallback videoUrl:", videoUrl);
+          }
+
+          console.log("Final videoUrl for component:", videoUrl);
+          console.log(
+            "Video metadata:",
+            data.listing.video
+              ? {
+                  duration: data.listing.video.duration,
+                  resolution: data.listing.video.resolution,
+                  thumbnailUrl: data.listing.video.thumbnailKey || null,
+                }
+              : null
+          );
+
           // Transform the API data to match the expected format
           const transformedListing = {
             item_id: data.listing.itemId,
@@ -146,6 +225,9 @@ export default function ListingDetailPage() {
             title: data.listing.title,
             description: data.listing.description,
             category_id: `${data.listing.department}_${data.listing.category}_${data.listing.subCategory}`,
+            department: data.listing.department,
+            category: data.listing.category,
+            subCategory: data.listing.subCategory,
             condition: data.listing.condition,
             image_urls_original:
               data.listing.photos.gallery || [data.listing.photos.hero] || [],
@@ -160,10 +242,15 @@ export default function ListingDetailPage() {
             model_number: data.listing.modelNumber,
             brand: data.listing.brand,
             dimensions: data.listing.dimensions,
+            height: data.listing.height,
+            width: data.listing.width,
+            depth: data.listing.depth,
             discount_schedule:
               data.listing.discountSchedule?.type || "Classic-60",
             zip_code: data.listing.zipCode,
             list_price: data.listing.price,
+            reserve_price:
+              data.listing.reservePrice || data.listing.price * 0.8,
             estimated_retail_price: data.listing.estimatedRetailPrice,
             seller_name: data.listing.user.name || "Unknown Seller",
             seller_organization: data.listing.user.organization,
@@ -173,7 +260,6 @@ export default function ListingDetailPage() {
             views: data.listing.views || 0, // Add views from database
             timeLeft: "2d 14h", // Default time for now
             // Additional fields for detail page
-            reserve_price: data.listing.price * 0.8, // Mock reserve price
             fee_pct: 8.5, // Mock fee percentage
             price_range_low: data.listing.price * 0.7, // Mock price range
             price_range_high: data.listing.price * 1.3,
@@ -181,7 +267,23 @@ export default function ListingDetailPage() {
             insights_query: data.listing.insights_query || null,
             priceHistory: data.listing.priceHistory || [],
             user: data.listing.user,
+            // Facebook Shop fields
+            facebookShopEnabled: data.listing.facebookShopEnabled || false,
+            facebookBrand: data.listing.facebookBrand || null,
+            facebookCondition: data.listing.facebookCondition || null,
+            facebookGtin: data.listing.facebookGtin || null,
+            // Video URL - generated from video record or fallback
+            videoUrl: videoUrl,
+            // Video metadata if available
+            video: data.listing.video
+              ? {
+                  duration: data.listing.video.duration,
+                  resolution: data.listing.video.resolution,
+                  thumbnailUrl: data.listing.video.thumbnailKey || null,
+                }
+              : null,
           };
+
           setListing(transformedListing);
 
           // Track the view for this listing
@@ -212,6 +314,19 @@ export default function ListingDetailPage() {
       fetchListing();
     }
   }, [params.id]);
+
+  // Debug logging for video component
+  useEffect(() => {
+    if (listing) {
+      console.log("Video component debug - videoUrl:", listing.videoUrl);
+      console.log("Video component debug - video data:", listing.video);
+      if (listing.videoUrl || listing.video) {
+        console.log("Video component should be rendered");
+      } else {
+        console.log("No video data available, component not rendered");
+      }
+    }
+  }, [listing]);
 
   const getConditionColor = (condition: string) => {
     switch (condition) {
@@ -261,14 +376,6 @@ export default function ListingDetailPage() {
     return false;
   };
 
-  const getTimeUntilNextDrop = (
-    discountSchedule: string,
-    createdAt: string
-  ) => {
-    // Mock implementation - in real app this would calculate actual time
-    return "1d 6h";
-  };
-
   const toggleSaved = (id: string) => {
     setSavedListings((prev) => {
       const newSet = new Set(prev);
@@ -301,15 +408,27 @@ export default function ListingDetailPage() {
             Listing Not Found
           </h2>
           <p className="text-gray-600 mb-4">
-            The listing you're looking for doesn't exist.
+            The listing you're looking for doesn't exist or may have been
+            removed.
           </p>
-          <Button
-            onClick={() => router.back()}
-            className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Go Back
-          </Button>
+          <div className="space-y-2">
+            <Button
+              onClick={() => router.back()}
+              className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Go Back
+            </Button>
+            <div>
+              <Button
+                variant="outline"
+                onClick={() => router.push("/list-item")}
+                className="mt-2"
+              >
+                Browse All Listings
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -330,38 +449,34 @@ export default function ListingDetailPage() {
               Back to Listings
             </Button>
             <div className="flex items-center gap-4">
-              <Button
-                variant="outline"
-                onClick={() => router.push(`/list-item/${params.id}/edit`)}
-                className="flex items-center gap-2 bg-[#D4AF3D] hover:bg-[#b8932f] text-white border-[#D4AF3D]"
-              >
-                <Edit className="h-4 w-4" />
-                Edit Listing
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => toggleSaved(listing.item_id)}
-                className={`${
-                  savedListings.has(listing.item_id)
-                    ? "bg-[#D4AF3D] text-white border-[#D4AF3D]"
-                    : ""
-                }`}
-              >
-                <Bookmark
-                  className={`h-4 w-4 mr-2 ${
-                    savedListings.has(listing.item_id) ? "fill-current" : ""
+              {isAuthenticated && listing?.user?.id === currentUserId && (
+                <Button
+                  variant="outline"
+                  onClick={() => router.push(`/list-item/${params.id}/edit`)}
+                  className="flex items-center gap-2 bg-[#D4AF3D] hover:bg-[#b8932f] text-white border-[#D4AF3D]"
+                >
+                  <Edit className="h-4 w-4" />
+                  Edit Listing
+                </Button>
+              )}
+              {isAuthenticated && (
+                <Button
+                  variant="outline"
+                  onClick={() => toggleSaved(listing.item_id)}
+                  className={`${
+                    savedListings.has(listing.item_id)
+                      ? "bg-[#D4AF3D] text-white border-[#D4AF3D]"
+                      : ""
                   }`}
-                />
-                {savedListings.has(listing.item_id) ? "Saved" : "Save"}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => window.open(listing.qr_code_url, "_blank")}
-                className="flex items-center gap-2"
-              >
-                <QrCode className="h-4 w-4" />
-                QR Code
-              </Button>
+                >
+                  <Bookmark
+                    className={`h-4 w-4 mr-2 ${
+                      savedListings.has(listing.item_id) ? "fill-current" : ""
+                    }`}
+                  />
+                  {savedListings.has(listing.item_id) ? "Saved" : "Save"}
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -375,11 +490,31 @@ export default function ListingDetailPage() {
             <div className="mb-6">
               <ImageCarousel
                 images={listing.all_images}
+                video={
+                  listing.videoUrl
+                    ? {
+                        src: listing.videoUrl,
+                        poster: listing.video?.thumbnailUrl,
+                        duration: listing.video?.duration,
+                      }
+                    : undefined
+                }
                 alt={listing.title}
                 className="w-full h-96 rounded-lg"
                 showArrows={true}
                 showDots={true}
                 autoPlay={false}
+                photoFlaws={
+                  listing.flawData?.flaws?.reduce(
+                    (acc: any, photoFlaw: any) => {
+                      if (photoFlaw.photoUrl && photoFlaw.flaws) {
+                        acc[photoFlaw.photoUrl] = photoFlaw.flaws;
+                      }
+                      return acc;
+                    },
+                    {}
+                  ) || {}
+                }
               />
             </div>
 
@@ -398,6 +533,12 @@ export default function ListingDetailPage() {
                   {listing.list_price <= listing.reserve_price && (
                     <div className="text-sm bg-green-100 text-green-800 px-3 py-1 rounded font-medium">
                       Reserve Met
+                    </div>
+                  )}
+                  {listing.qualityChecked && (
+                    <div className="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded font-medium flex items-center gap-1">
+                      <Shield className="h-3 w-3" />
+                      Quality Checked
                     </div>
                   )}
                 </div>
@@ -421,42 +562,38 @@ export default function ListingDetailPage() {
                 </div>
               )}
               <div className="flex gap-3">
-                <Button className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white">
-                  Buy it Now
-                </Button>
-                <Button variant="outline" className="flex-1">
-                  Make Offer
-                </Button>
-              </div>
-
-              {/* Video Component */}
-              {listing.videoUrl && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                    Product Video
-                  </h3>
-                  <div className="relative w-full aspect-video bg-gray-100 rounded-lg overflow-hidden">
-                    <video
-                      className="w-full h-full object-cover"
-                      controls
-                      preload="metadata"
+                {isAuthenticated ? (
+                  <Button className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white">
+                    Buy it Now
+                  </Button>
+                ) : (
+                  <div className="flex gap-2 w-full">
+                    <Button
+                      className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                      onClick={() => router.push("/login")}
                     >
-                      <source src={listing.videoUrl} type="video/mp4" />
-                      <source src={listing.videoUrl} type="video/webm" />
-                      <source src={listing.videoUrl} type="video/ogg" />
-                      Your browser does not support the video tag.
-                    </video>
+                      Log In to Buy
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => router.push("/contact")}
+                    >
+                      Ask a Question
+                    </Button>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Item Details */}
             <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">
                 Item Details
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+              {/* Basic Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div className="flex items-center gap-3">
                   <Package className="h-5 w-5 text-gray-400" />
                   <div>
@@ -468,10 +605,11 @@ export default function ListingDetailPage() {
                         listing.condition
                       )}`}
                     >
-                      {listing.condition}
+                      {listing.condition.toUpperCase()}
                     </span>
                   </div>
                 </div>
+
                 <div className="flex items-center gap-3">
                   <Calendar className="h-5 w-5 text-gray-400" />
                   <div>
@@ -483,38 +621,7 @@ export default function ListingDetailPage() {
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Clock className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <span className="text-sm font-medium text-gray-700">
-                      Time Left:
-                    </span>
-                    <span className="ml-2 text-sm text-gray-600">
-                      {listing.timeLeft}
-                    </span>
-                  </div>
-                </div>
-                {(() => {
-                  const nextDrop = getTimeUntilNextDrop(
-                    listing.discount_schedule,
-                    listing.created_at
-                  );
-                  return (
-                    nextDrop && (
-                      <div className="flex items-center gap-3">
-                        <TrendingDown className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">
-                            Next Price Drop:
-                          </span>
-                          <span className="ml-2 text-sm text-gray-600">
-                            {nextDrop}
-                          </span>
-                        </div>
-                      </div>
-                    )
-                  );
-                })()}
+
                 {listing.brand && (
                   <div className="flex items-center gap-3">
                     <Tag className="h-5 w-5 text-gray-400" />
@@ -528,59 +635,202 @@ export default function ListingDetailPage() {
                     </div>
                   </div>
                 )}
-                {listing.dimensions && (
+
+                {listing.qualityChecked && (
                   <div className="flex items-center gap-3">
-                    <Package className="h-5 w-5 text-gray-400" />
+                    <Shield className="h-5 w-5 text-green-500" />
                     <div>
                       <span className="text-sm font-medium text-gray-700">
-                        Dimensions:
+                        Quality:
                       </span>
-                      <span className="ml-2 text-sm text-gray-600">
-                        {listing.dimensions}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                {listing.serial_number && (
-                  <div className="flex items-center gap-3">
-                    <Tag className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <span className="text-sm font-medium text-gray-700">
-                        Serial Number:
-                      </span>
-                      <span className="ml-2 text-sm text-gray-600">
-                        {listing.serial_number}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                {listing.model_number && (
-                  <div className="flex items-center gap-3">
-                    <Tag className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <span className="text-sm font-medium text-gray-700">
-                        Model Number:
-                      </span>
-                      <span className="ml-2 text-sm text-gray-600">
-                        {listing.model_number}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                {listing.gtin && (
-                  <div className="flex items-center gap-3">
-                    <Tag className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <span className="text-sm font-medium text-gray-700">
-                        GTIN:
-                      </span>
-                      <span className="ml-2 text-sm text-gray-600">
-                        {listing.gtin}
+                      <span className="ml-2 px-2 py-1 rounded text-xs bg-green-100 text-green-800 font-medium">
+                        Quality Checked
                       </span>
                     </div>
                   </div>
                 )}
               </div>
+
+              {/* Categories Section */}
+              <div className="border-t border-gray-200 pt-6 mb-6">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                  Categories
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex items-center gap-3">
+                    <Tag className="h-5 w-5 text-gray-400" />
+                    <div>
+                      <span className="text-sm font-medium text-gray-700">
+                        Department:
+                      </span>
+                      <span className="ml-2 text-sm text-gray-600">
+                        {listing.department}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Tag className="h-5 w-5 text-gray-400" />
+                    <div>
+                      <span className="text-sm font-medium text-gray-700">
+                        Category:
+                      </span>
+                      <span className="ml-2 text-sm text-gray-600">
+                        {listing.category}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Tag className="h-5 w-5 text-gray-400" />
+                    <div>
+                      <span className="text-sm font-medium text-gray-700">
+                        Sub-category:
+                      </span>
+                      <span className="ml-2 text-sm text-gray-600">
+                        {listing.subCategory}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dimensions Section */}
+              {(listing.height ||
+                listing.width ||
+                listing.depth ||
+                listing.dimensions) && (
+                <div className="border-t border-gray-200 pt-6 mb-6">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                    Dimensions
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Height */}
+                    {listing.height && (
+                      <div className="flex items-center gap-3">
+                        <Package className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Height:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600">
+                            {listing.height}"
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {/* Width */}
+                    {listing.width && (
+                      <div className="flex items-center gap-3">
+                        <Package className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Width:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600">
+                            {listing.width}"
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {/* Depth */}
+                    {listing.depth && (
+                      <div className="flex items-center gap-3">
+                        <Package className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Depth:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600">
+                            {listing.depth}"
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {/* Combined Dimensions (fallback) */}
+                    {!listing.height &&
+                      !listing.width &&
+                      !listing.depth &&
+                      listing.dimensions && (
+                        <div className="flex items-center gap-3">
+                          <Package className="h-5 w-5 text-gray-400" />
+                          <div>
+                            <span className="text-sm font-medium text-gray-700">
+                              Dimensions:
+                            </span>
+                            <span className="ml-2 text-sm text-gray-600">
+                              {listing.dimensions}"
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                  </div>
+                </div>
+              )}
+
+              {/* Product Information */}
+              {(listing.serial_number ||
+                listing.model_number ||
+                listing.gtin ||
+                (listing.facebookShopEnabled && listing.facebookGtin)) && (
+                <div className="border-t border-gray-200 pt-6">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                    Product Information
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {listing.serial_number && (
+                      <div className="flex items-center gap-3">
+                        <Tag className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Serial Number:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600">
+                            {listing.serial_number}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {listing.model_number && (
+                      <div className="flex items-center gap-3">
+                        <Tag className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Model Number:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600">
+                            {listing.model_number}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {listing.gtin && (
+                      <div className="flex items-center gap-3">
+                        <Tag className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            GTIN:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600">
+                            {listing.gtin}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {listing.facebookShopEnabled && listing.facebookGtin && (
+                      <div className="flex items-center gap-3">
+                        <Tag className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Facebook GTIN:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600">
+                            {listing.facebookGtin}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Description */}
@@ -591,56 +841,6 @@ export default function ListingDetailPage() {
               <p className="text-gray-700 leading-relaxed">
                 {listing.description}
               </p>
-            </div>
-
-            {/* Transportation History */}
-            <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                Transportation History
-              </h2>
-              <div className="space-y-4">
-                {transportationHistory.map((step, index) => (
-                  <div key={step.id} className="flex items-start gap-4">
-                    <div className="flex flex-col items-center">
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                          step.completed
-                            ? "bg-green-500 text-white"
-                            : "bg-gray-200 text-gray-500"
-                        }`}
-                      >
-                        {step.completed ? (
-                          <CheckCircle className="h-5 w-5" />
-                        ) : (
-                          <span className="text-sm font-medium">
-                            {index + 1}
-                          </span>
-                        )}
-                      </div>
-                      {index < transportationHistory.length - 1 && (
-                        <div
-                          className={`w-0.5 h-8 mt-2 ${
-                            step.completed ? "bg-green-500" : "bg-gray-200"
-                          }`}
-                        />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-900">
-                        {step.status}
-                      </h3>
-                      <p className="text-sm text-gray-600 mt-1">
-                        {step.description}
-                      </p>
-                      {step.timestamp && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          {formatDate(step.timestamp)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
 
             {/* Questions & Answers */}
@@ -712,68 +912,40 @@ export default function ListingDetailPage() {
                     </div>
                   </div>
                 )}
+                {listing.views > 0 && (
+                  <div className="flex items-center gap-3">
+                    <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
+                      <span className="text-xs">👁️</span>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-700">
+                        Views:
+                      </span>
+                      <span className="ml-2 text-sm text-gray-600">
+                        {listing.views}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Pricing Details */}
+            {/* QR Code */}
             <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Pricing Details
+                QR Code
               </h3>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">List Price:</span>
-                  <span className="text-sm font-medium">
-                    ${listing.list_price.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Reserve Price:</span>
-                  <span className="text-sm font-medium">
-                    ${listing.reserve_price.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Fee:</span>
-                  <span className="text-sm font-medium">
-                    {listing.fee_pct}%
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Price Range:</span>
-                  <span className="text-sm font-medium">
-                    ${listing.price_range_low} - ${listing.price_range_high}
-                  </span>
-                </div>
+              <div className="text-center">
+                <CustomQRCode
+                  itemId={listing.item_id}
+                  size={150}
+                  className="mx-auto"
+                />
               </div>
             </div>
 
-            {/* Item ID and QR Code */}
-            <div className="bg-white p-6 rounded-lg shadow-sm">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Item Information
-              </h3>
-              <div className="space-y-3">
-                <div>
-                  <span className="text-sm font-medium text-gray-700">
-                    Item ID:
-                  </span>
-                  <p className="text-sm text-gray-600 mt-1 font-mono">
-                    {listing.item_id}
-                  </p>
-                </div>
-                <div className="text-center">
-                  <img
-                    src={listing.qr_code_url}
-                    alt="QR Code"
-                    className="w-32 h-32 mx-auto border border-gray-200 rounded"
-                  />
-                  <p className="text-xs text-gray-500 mt-2">
-                    Scan to view this listing
-                  </p>
-                </div>
-              </div>
-            </div>
+            {/* History */}
+            <ListingHistory listingId={listing.item_id} />
           </div>
         </div>
       </div>

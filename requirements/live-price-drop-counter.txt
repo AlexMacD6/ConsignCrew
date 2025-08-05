@@ -1,0 +1,76 @@
+# Live Price Drop Counter Feature
+
+## Overview
+Implemented a live price drop counter in the listing history component that shows the time until the next price drop and the target price.
+
+## Features Implemented
+
+### 1. API Endpoint
+- **File**: `app/api/listings/[id]/next-price-drop/route.ts`
+- **Purpose**: Provides next price drop information for a listing
+- **Returns**:
+  - `hasPriceDrop`: Boolean indicating if price drops are active
+  - `timeUntilNextDrop`: Time string (e.g., "2h 30m")
+  - `nextDropPrice`: Target price after next drop
+  - `currentPrice`: Current listing price
+  - `originalPrice`: Original listing price
+  - `reservePrice`: Reserve price (if set)
+  - `scheduleType`: Discount schedule type (Turbo-30/Classic-60)
+  - `nextDropPercentage`: Percentage discount after next drop
+
+### 2. Price Drop Counter Component
+- **File**: `app/components/PriceDropCounter.tsx`
+- **Features**:
+  - Live countdown timer showing days, hours, and minutes
+  - Displays target price after next drop
+  - Shows discount schedule type
+  - Progress bar indicating price drop progress
+  - Auto-refreshes when countdown reaches zero
+  - Only displays when price drops are active
+
+### 3. Integration with Listing History
+- **File**: `app/components/ListingHistory.tsx`
+- **Integration**: PriceDropCounter component added at the top of history list
+- **Behavior**: Only shows when there's an active price drop schedule
+
+## Technical Details
+
+### Countdown Logic
+- Parses time strings from API (e.g., "2h 30m")
+- Converts to total minutes for countdown calculation
+- Updates every second with live countdown
+- Shows "Any moment now..." when countdown reaches zero
+- Auto-refreshes price drop info after countdown expires
+
+### Price Drop Calculations
+- Uses existing `discount-schedule.ts` utility functions
+- Calculates next drop price based on original price and schedule
+- Respects reserve price limits
+- Shows progress from original price to reserve price
+
+### Visual Design
+- Red color scheme for urgency
+- Trending down icon for price drops
+- Clock icon for countdown timer
+- Progress bar showing price drop progress
+- Consistent with existing history timeline design
+
+## User Experience
+- Shows immediately after listing creation
+- Updates in real-time without page refresh
+- Disappears when at reserve price or schedule expires
+- Provides clear visual indication of price drop timing
+- Helps buyers understand when to expect price changes
+
+## Dependencies
+- Existing discount schedule system
+- Prisma database with price history
+- BetterAuth for authentication
+- Lucide React icons
+
+## Testing
+- Test with Turbo-30 schedule (30-minute intervals)
+- Test with Classic-60 schedule (60-minute intervals)
+- Test with reserve price scenarios
+- Test countdown accuracy and auto-refresh
+- Test visual display on different screen sizes 

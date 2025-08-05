@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
         city: true,
         state: true,
         zipCode: true,
+        country: true,
         createdAt: true,
         updatedAt: true,
       }
@@ -90,6 +91,7 @@ export async function PUT(req: NextRequest) {
         city: body.city,
         state: body.state,
         zipCode: body.zipCode,
+        country: body.country,
       },
       select: {
         id: true,
@@ -102,6 +104,7 @@ export async function PUT(req: NextRequest) {
         city: true,
         state: true,
         zipCode: true,
+        country: true,
         createdAt: true,
         updatedAt: true,
       }

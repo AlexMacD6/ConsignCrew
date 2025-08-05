@@ -1,0 +1,56 @@
+# Price Drop Counter API Optimization
+
+## Overview
+Fix the excessive API calls issue in the PriceDropCounter component by implementing efficient client-side countdown logic and reducing unnecessary server requests.
+
+## Issues to Address
+
+### 1. Excessive API Calls
+- **Problem**: Price drop counter makes API calls every second when countdown reaches zero
+- **Root Cause**: Component refreshes data every 2 seconds after countdown completion
+- **Solution**: Implement efficient client-side countdown with minimal API refreshes
+
+### 2. Incorrect Time Parsing
+- **Problem**: Component tries to parse new day-based format with old hourly parsing logic
+- **Root Cause**: `parseTimeString` function doesn't handle "3 days", "1 day" format
+- **Solution**: Update parsing logic to handle new day-based format correctly
+
+### 3. Inefficient Countdown Intervals
+- **Problem**: Uses 1-second intervals even for day-based countdowns
+- **Root Cause**: Fixed interval regardless of countdown duration
+- **Solution**: Use adaptive intervals based on countdown duration
+
+## Technical Changes Required
+
+### Time Parsing Updates
+- Update `parseTimeString` to handle new day-based format
+- Support "3 days", "1 day", "Any moment now..." formats
+- Maintain backward compatibility with old hourly format
+
+### Countdown Logic Optimization
+- Use adaptive intervals: 1 minute for day-based, 1 second for hour-based countdowns
+- Implement proper refresh timeout management to prevent multiple simultaneous refreshes
+- Increase refresh delay from 2 seconds to 45 seconds to reduce API load
+- Add refs to track and prevent duplicate refresh calls
+
+### Memory Management
+- Proper cleanup of intervals and timeouts on component unmount
+- Clear existing intervals before setting new ones
+- Prevent memory leaks from multiple simultaneous timers
+
+## Files Modified
+- `app/components/PriceDropCounter.tsx` - Updated countdown logic and time parsing
+
+## Testing Instructions
+1. Navigate to a listing with price drop schedule configured
+2. Verify countdown displays correctly without excessive API calls
+3. Check that "Any moment now..." state doesn't trigger rapid API calls
+4. Test with different countdown durations (days vs hours)
+5. Verify proper cleanup when component unmounts
+
+## Expected Outcomes
+- Significantly reduced API calls (from every 2 seconds to every 45 seconds)
+- Correct parsing of day-based time formats
+- Efficient countdown intervals based on duration
+- No memory leaks from timer management
+- Smooth user experience without server overload 

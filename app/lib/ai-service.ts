@@ -442,6 +442,38 @@ export async function estimateProductPricing(
 }
 
 /**
+ * Detect flaws and imperfections in product photos
+ */
+export async function detectPhotoFlaws(photoUrls: string[]): Promise<{
+  flawData: any;
+  analysis: string;
+}> {
+  try {
+    const response = await fetch('/api/ai/detect-flaws', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ photoUrls }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to detect flaws');
+    }
+
+    const data = await response.json();
+    return {
+      flawData: data.flawData,
+      analysis: data.analysis
+    };
+  } catch (error) {
+    console.error('Error detecting photo flaws:', error);
+    throw new Error(error instanceof Error ? error.message : 'Failed to detect photo flaws');
+  }
+}
+
+/**
  * Generate a professional staged photo using AI with comprehensive listing data
  */
 export async function generateStagedPhoto(request: StagedPhotoRequest): Promise<StagedPhotoResponse> {

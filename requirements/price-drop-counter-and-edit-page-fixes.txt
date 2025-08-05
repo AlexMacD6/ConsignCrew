@@ -1,0 +1,57 @@
+# Price Drop Counter and Edit Listing Page Fixes
+
+## Issues to Fix
+
+### 1. Price Drop Counter Blinking Issue
+- **Problem**: The price drop counter keeps blinking between "Next Price Drop" and "Loading" states
+- **Root Cause**: Unnecessary re-renders and improper interval management in the countdown timer
+- **Solution**: 
+  - Use `useCallback` for `fetchPriceDropInfo` to prevent unnecessary re-renders
+  - Properly manage countdown intervals with `useRef` to prevent memory leaks
+  - Clear existing intervals before setting new ones
+  - Add cleanup on component unmount
+  - Optimize useEffect dependencies
+
+### 2. Edit Listing Page Taxonomy Mismatch
+- **Problem**: Department, category, and sub-category dropdowns don't match the listing data
+- **Root Cause**: Different taxonomy structure between create and edit listing pages
+- **Solution**:
+  - Update taxonomy object in edit page to match create page exactly
+  - Ensure all categories and sub-categories are consistent
+
+### 3. Missing Discount Schedule Field
+- **Problem**: Discount schedule field is not visible in edit listing page
+- **Root Cause**: Missing `discountSchedules` constant definition
+- **Solution**:
+  - Add `discountSchedules` constant to edit page
+  - Ensure proper type definitions for discount schedule state
+
+## Technical Changes Required
+
+### PriceDropCounter Component
+- Import `useCallback` from React
+- Wrap `fetchPriceDropInfo` in `useCallback` with proper dependencies
+- Add `countdownIntervalRef` to manage intervals
+- Clear existing intervals before setting new ones
+- Add cleanup effect for component unmount
+- Update useEffect dependencies to include `fetchPriceDropInfo`
+
+### Edit Listing Page
+- Add `discountSchedules` constant: `["Turbo-30", "Classic-60"] as const`
+- Update taxonomy object to match create listing page exactly
+- Ensure proper type definitions for Category type
+- Verify discount schedule field is properly populated from listing data
+
+## Testing Instructions
+1. Navigate to a listing with price drop schedule configured
+2. Verify price drop counter shows consistent countdown without blinking
+3. Navigate to edit listing page for an existing listing
+4. Verify department, category, and sub-category match the listing data
+5. Verify discount schedule field is visible and populated correctly
+6. Test editing and saving changes to ensure all fields work properly
+
+## Expected Outcomes
+- Price drop counter displays smooth countdown without blinking
+- Edit listing page shows correct taxonomy values matching the listing
+- Discount schedule field is visible and functional
+- All form fields maintain proper state management 

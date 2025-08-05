@@ -21,6 +21,7 @@ model user {
   neighborhood    String?
   state           String?
   zipCode         String?
+  country         String?
   invitationsSent Invitation[] @relation("InvitationsSent")
   listings        Listing[]
   videos          Video[]
@@ -189,8 +190,6 @@ model Listing {
   price                Float
   reservePrice         Float?
   description          String
-  zipCode              String
-  neighborhood         String
   brand                String?
   height               String?
   width                String?
@@ -213,15 +212,16 @@ model Listing {
   facebookShopEnabled Boolean   @default(true) // Enable/disable Facebook sync
   facebookLastSync    DateTime? // Last successful sync timestamp
   facebookSyncStatus  String? // success/error/pending
+  qualityChecked      Boolean   @default(false) // Quality check status
 
-  user         user           @relation(fields: [userId], references: [id])
+  user         user             @relation(fields: [userId], references: [id])
   videos       Video[]
   priceHistory PriceHistory[]
+  history      ListingHistory[]
 
   @@index([userId])
   @@index([status])
   @@index([department])
-  @@index([zipCode])
   @@index([facebookShopEnabled])
   @@index([facebookLastSync])
 }
@@ -236,6 +236,22 @@ model PriceHistory {
   @@index([listingId])
   @@index([createdAt])
   @@map("price_history")
+}
+
+model ListingHistory {
+  id          String   @id @default(cuid())
+  listingId   String
+  eventType   String // "created", "status_changed", "price_changed", "sold", "in_transit", etc.
+  eventTitle  String // Human-readable title like "Listing Created", "Status Changed to Sold"
+  description String // Detailed description of the event
+  metadata    Json? // Additional data like old_value, new_value, etc.
+  createdAt   DateTime @default(now())
+  listing     Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("listing_history")
 }
 
 model EarlyAccessSignup {

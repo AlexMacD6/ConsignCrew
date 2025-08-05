@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { calculateAllFieldConfidence, ConfidenceFactors } from '@/lib/ai-confidence-scorer';
-import { AI_SERVICE_PHASE_1_PROMPT, mapConditionToFacebook, ensureFacebookTaxonomy } from '@/lib/ai-service';
+import { AI_SERVICE_PHASE_1_PROMPT, mapConditionToFacebook, ensureFacebookTaxonomy, detectPhotoFlaws } from '@/lib/ai-service';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -371,11 +371,27 @@ Focus on accuracy, detail, and maximizing the item's perceived value while maint
 
     const confidenceScores = calculateAllFieldConfidence(validatedData, confidenceFactors);
 
+    // Detect flaws in photos if we have accessible photo URLs
+    let flawData = null;
+    if (accessiblePhotoUrls.length > 0) {
+      try {
+        console.log('🔍 Starting flaw detection for', accessiblePhotoUrls.length, 'photos');
+        const flawResult = await detectPhotoFlaws(accessiblePhotoUrls);
+        flawData = flawResult.flawData;
+        console.log('✅ Flaw detection completed:', flawData);
+      } catch (flawError) {
+        console.error('❌ Flaw detection failed:', flawError);
+        // Don't fail the entire request if flaw detection fails
+        flawData = { flaws: [], summary: "Flaw detection unavailable" };
+      }
+    }
+
     return NextResponse.json({
       success: true,
       listingData: validatedData,
       confidenceScores,
       analysis: responseText,
+      flawData,
     });
 
   } catch (error) {

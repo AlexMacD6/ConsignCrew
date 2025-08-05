@@ -19,6 +19,7 @@ interface InteractiveMapProps {
   drops: TreasureDrop[];
   onPinClick: (drop: TreasureDrop) => void;
   filter: "all" | "active" | "found";
+  selectedDrop?: TreasureDrop | null;
 }
 
 // Dynamically import the entire map component to avoid SSR issues
@@ -38,6 +39,7 @@ export default function InteractiveMap({
   drops,
   onPinClick,
   filter,
+  selectedDrop,
 }: InteractiveMapProps) {
   const [isClient, setIsClient] = useState(false);
 
@@ -64,7 +66,11 @@ export default function InteractiveMap({
 
   return (
     <div className="relative h-96 bg-gray-100 rounded-b-lg overflow-hidden">
-      <MapComponent drops={filteredDrops} onPinClick={onPinClick} />
+      <MapComponent
+        drops={filteredDrops}
+        onPinClick={onPinClick}
+        selectedDrop={selectedDrop}
+      />
     </div>
   );
 }

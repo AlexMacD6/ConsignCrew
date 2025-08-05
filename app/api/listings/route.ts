@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { createHistoryEvent, HistoryEvents } from '@/lib/listing-history';
+
+// Generate a random 6-character ID using letters and numbers
+function generateRandomId(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,8 +31,6 @@ export async function POST(request: NextRequest) {
       condition,
       price,
       description,
-      zipCode,
-      neighborhood,
       brand,
       dimensions,
       serialNumber,
@@ -38,6 +47,8 @@ export async function POST(request: NextRequest) {
       facebookCategory,
       facebookCondition,
       facebookGtin,
+      itemId, // Add itemId to destructuring
+      videoId, // Add videoId to destructuring
     } = body;
 
     // Validate required fields
@@ -47,13 +58,8 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Generate unique item ID
-    const now = new Date();
-    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
-    const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, "");
-    const itemId = `cc_${Math.floor(Math.random() * 1000)
-      .toString()
-      .padStart(3, "0")}_${dateStr}_${timeStr}`;
+    // Use provided itemId or generate one if not provided
+    const finalItemId = itemId || generateRandomId();
 
     // Transform photos to use CloudFront URLs instead of S3 keys
     const { getPublicUrl } = await import('../../../src/aws/imageStore');
@@ -70,7 +76,7 @@ export async function POST(request: NextRequest) {
     const listing = await prisma.listing.create({
       data: {
         userId: session.user.id,
-        itemId,
+        itemId: finalItemId,
         photos: transformedPhotos,
         videoUrl: videoUrl || null,
         department,
@@ -81,8 +87,6 @@ export async function POST(request: NextRequest) {
         price: parseFloat(price),
         reservePrice: reservePrice ? parseFloat(reservePrice) : parseFloat(price) * 0.6,
         description,
-        zipCode,
-        neighborhood,
         brand: brand || null,
         height: height || null,
         width: width || null,
@@ -97,6 +101,12 @@ export async function POST(request: NextRequest) {
         facebookCategory: facebookCategory || null,
         facebookCondition: facebookCondition || null,
         facebookGtin: facebookGtin || null,
+        // Link video to listing if videoId is provided
+        videos: videoId ? {
+          connect: {
+            id: videoId
+          }
+        } : undefined,
         priceHistory: {
           create: {
             price: parseFloat(price),
@@ -105,10 +115,13 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Create initial history event for listing creation
+    await createHistoryEvent(finalItemId, HistoryEvents.LISTING_CREATED(title));
+
     return NextResponse.json({
       success: true,
       listing,
-      itemId,
+      itemId: finalItemId,
     });
 
   } catch (error) {
@@ -153,6 +166,7 @@ export async function GET(request: NextRequest) {
             id: true,
             name: true,
             email: true,
+            zipCode: true,
             members: {
               include: {
                 organization: {
@@ -180,9 +194,33 @@ export async function GET(request: NextRequest) {
       skip: offset,
     });
 
+    // Fetch zip code data for all unique zip codes
+    const uniqueZipCodes = [...new Set(listings.map(listing => listing.user.zipCode).filter((zipCode): zipCode is string => zipCode !== null))];
+    const zipCodeData = await prisma.zipCode.findMany({
+      where: {
+        code: {
+          in: uniqueZipCodes,
+        },
+      },
+    });
+
+    // Create a map for quick lookup
+    const zipCodeMap = new Map(zipCodeData.map(zip => [zip.code, zip.area]));
+
+    // Transform listings to include proper neighborhood data
+    const transformedListings = listings.map(listing => {
+      const userZipCode = listing.user.zipCode;
+      const neighborhood = userZipCode ? zipCodeMap.get(userZipCode) || 'Unknown Area' : 'Unknown Area';
+      
+      return {
+        ...listing,
+        neighborhood,
+      } as typeof listing & { neighborhood: string };
+    });
+
     return NextResponse.json({
       success: true,
-      listings,
+      listings: transformedListings,
     });
 
   } catch (error) {
@@ -266,6 +304,30 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Listing not found or access denied' }, { status: 404 });
     }
 
+    // Track changes for history events
+    const changes: string[] = [];
+    
+    if (body.status && body.status !== listing.status) {
+      changes.push('status');
+      await createHistoryEvent(listingId, HistoryEvents.STATUS_CHANGED(listing.status, body.status));
+    }
+    
+    if (body.price && body.price !== listing.price) {
+      changes.push('price');
+      if (body.price < listing.price) {
+        await createHistoryEvent(listingId, HistoryEvents.PRICE_DROP(listing.price, body.price));
+      } else {
+        await createHistoryEvent(listingId, HistoryEvents.PRICE_INCREASE(listing.price, body.price));
+      }
+    }
+    
+    if (body.condition && body.condition !== listing.condition) {
+      changes.push('condition');
+      await createHistoryEvent(listingId, HistoryEvents.CONDITION_CHANGED(listing.condition, body.condition));
+    }
+    
+
+
     // Update the listing
     const updatedListing = await prisma.listing.update({
       where: {
@@ -276,6 +338,11 @@ export async function PATCH(request: NextRequest) {
         updatedAt: new Date(),
       },
     });
+
+    // Create a general "edited" event if there were changes
+    if (changes.length > 0) {
+      await createHistoryEvent(listingId, HistoryEvents.EDITED(changes.join(', ')));
+    }
 
     return NextResponse.json({
       success: true,

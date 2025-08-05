@@ -1,0 +1,82 @@
+# Address Modal Simplification - Places New API
+
+## Requirements
+
+- Replace the complex AddressModal component with a simple implementation using Google Places New API
+- Use a standard input field with autocomplete functionality
+- Maintain the same interface and functionality for address selection
+- Keep the modal structure but simplify the implementation
+- Use the Places New API for address predictions and details
+- Use the same API key configuration (NEXT_PUBLIC_GOOGLE_MAPS_API_KEY)
+- Maintain compatibility with existing usage in profile page and test page
+
+## Changes Made
+
+- Completely rewrote AddressModal.tsx to use Places New API
+- Removed Google Maps Extended Component Library dependency
+- Implemented custom autocomplete with Places New API endpoints
+- Fixed API request format to match Places New API specification
+  - Changed from `input` to `textQuery` parameter
+  - Added `X-Goog-FieldMask` headers for optimized responses
+  - Updated response parsing to handle `places` array format
+- Added proper loading states and error handling
+- Kept the same props interface for backward compatibility
+- Maintained the address parsing logic for place selection
+- Added click-outside-to-close functionality
+- Added manual address input as fallback
+- **Enhanced AddressModal with full address fields**
+  - Added individual input fields for street address, apartment, city, state, postal code, and country
+  - Implemented form state management for all address components
+  - Added manual form editing capability alongside autocomplete
+  - Updated modal to populate form fields when address is selected from autocomplete
+- **Integrated address display in profile overview**
+  - Added dedicated address information section in profile overview tab
+  - Display all address fields (street, city, state, postal code, country)
+  - Added "Edit Address" button within the address section
+  - Removed generic "Edit Profile" button, replaced with specific address editing
+  - Added empty state message when no address is provided
+- **Database integration for address updates**
+  - Address changes are automatically saved to the database via profile API
+  - Real-time UI updates with loading states and success/error feedback
+  - Proper error handling and user feedback for database operations
+  - Address validation before saving to ensure data integrity
+
+## Files Modified
+
+- `app/components/AddressModal.tsx` - Complete rewrite using Places New API with enhanced address fields
+- `app/profile/page.tsx` - Added address information display in overview tab
+
+## API Endpoints Used
+
+- `https://places.googleapis.com/v1/places:autocomplete` - For address predictions
+  - Uses POST method with textQuery parameter
+  - Includes X-Goog-FieldMask header for optimized response
+  - Returns places array with id, displayName, and formattedAddress
+- `https://places.googleapis.com/v1/places/{place_id}` - For place details
+  - Uses GET method with fields parameter
+  - Includes X-Goog-FieldMask header for specific fields
+  - Returns detailed address components for parsing
+
+## Features
+
+- Real-time address autocomplete as user types
+- Structured address parsing (street, city, state, postal code, country)
+- Loading indicators during API calls
+- Fallback to manual address input if API fails
+- Clean dropdown UI for predictions
+- Proper error handling and user feedback
+
+## Testing
+
+- Test address selection functionality in profile page
+- Verify autocomplete suggestions work correctly
+- Ensure address data is properly parsed and returned
+- Test modal open/close behavior
+- Verify API key configuration works
+- Test with Places New API enabled
+
+## API Requirements
+
+- Google Places New API must be enabled in Google Cloud Console
+- API key must have access to Places New API
+- No additional JavaScript libraries required 

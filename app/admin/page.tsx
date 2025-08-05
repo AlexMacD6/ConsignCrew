@@ -97,6 +97,33 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [processingPriceDrops, setProcessingPriceDrops] = useState(false);
+
+  const handleProcessPriceDrops = async () => {
+    try {
+      setProcessingPriceDrops(true);
+      setError("");
+      setSuccess("");
+
+      const response = await fetch("/api/admin/process-price-drops", {
+        method: "POST",
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccess(
+          `Price drops processed successfully! ${data.result.dropped} prices dropped, ${data.result.processed} listings processed.`
+        );
+      } else {
+        setError(data.error || "Failed to process price drops");
+      }
+    } catch (error) {
+      setError("Failed to process price drops");
+    } finally {
+      setProcessingPriceDrops(false);
+    }
+  };
 
   // Zip code states
   const [zipCodes, setZipCodes] = useState<ZipCode[]>([]);
@@ -183,6 +210,42 @@ export default function AdminDashboard() {
       color: "bg-red-500",
       stats: "Monitor",
       onClick: () => setActiveTab("security"),
+    },
+    {
+      title: "Price Drops",
+      description:
+        "Process automatic price drops for active listings based on discount schedules",
+      icon: BarChart3,
+      href: "#",
+      color: "bg-orange-500",
+      stats: "Process",
+      onClick: handleProcessPriceDrops,
+    },
+    {
+      title: "Facebook Shop Export",
+      description:
+        "Export all listings with Facebook Shop enabled to CSV format for upload",
+      icon: ExternalLink,
+      href: "/fbshop.csv",
+      color: "bg-blue-600",
+      stats: "Export CSV",
+    },
+    {
+      title: "Facebook Shop Management",
+      description: "Manage which listings are enabled for Facebook Shop export",
+      icon: Settings,
+      href: "/admin/facebook-shop",
+      color: "bg-indigo-600",
+      stats: "Manage",
+    },
+    {
+      title: "Quality Check Management",
+      description:
+        "Manage quality check status for listings and display badges to buyers",
+      icon: Shield,
+      href: "/admin/quality-check",
+      color: "bg-green-600",
+      stats: "Manage",
     },
   ];
 

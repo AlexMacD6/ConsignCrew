@@ -50,8 +50,7 @@ export async function GET(request: NextRequest) {
       adminOrganizations,
       user: {
         id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        name: user.name,
         email: user.email,
       }
     });

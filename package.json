@@ -49,19 +49,22 @@
     "lucide-react": "^0.525.0",
     "next": "^15.4.4",
     "openai": "^5.11.0",
+    "qrcode": "^1.5.4",
+    "qrcode.react": "^4.2.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-icons": "^5.5.0",
     "react-intersection-observer": "^9.16.0",
     "react-leaflet": "^5.0.0",
     "react-phone-input-2": "^2.15.1",
+    "react-qr-code": "^2.0.18",
     "react-scrollama": "^2.4.2",
     "scrollama": "^3.2.0",
     "supports-color": "^10.0.0",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.178.0",
-    "zod": "^4.0.10"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/mailchimp__mailchimp_marketing": "^3.0.21",

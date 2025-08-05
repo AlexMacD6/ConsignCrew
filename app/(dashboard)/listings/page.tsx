@@ -32,6 +32,7 @@ import {
 import { getNeighborhoodName } from "../../lib/zipcodes";
 import QuestionsDisplay from "../../components/QuestionsDisplay";
 import ImageCarousel from "../../components/ImageCarousel";
+import CustomQRCode from "../../components/CustomQRCode";
 import {
   getFacebookCategories,
   mapToFacebookCategory,
@@ -275,6 +276,32 @@ export default function ListingsPage() {
     }
   };
 
+  const getStatusBadge = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case "in_transit":
+      case "in-transit":
+      case "transit":
+        return {
+          text: "In Transit",
+          className: "bg-blue-600 text-white",
+        };
+      case "sold":
+      case "completed":
+        return {
+          text: "Sold",
+          className: "bg-gray-600 text-white",
+        };
+      case "pending":
+        return {
+          text: "Pending",
+          className: "bg-yellow-600 text-white",
+        };
+      default:
+        // Don't show any badge for active/available listings
+        return null;
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -322,44 +349,50 @@ export default function ListingsPage() {
 
     const now = new Date();
     const created = new Date(createdAt);
-    const elapsed = now.getTime() - created.getTime();
+    const daysSinceCreation = Math.floor(
+      (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)
+    );
 
-    let dropInterval: number;
-    let totalDuration: number;
+    // Define the discount schedules based on the new methodology
+    const schedules = {
+      "Turbo-30": {
+        dropIntervals: [0, 3, 6, 9, 12, 15, 18, 21, 24, 30],
+        totalDuration: 30,
+      },
+      "Classic-60": {
+        dropIntervals: [0, 7, 14, 21, 28, 35, 42, 49, 56, 60],
+        totalDuration: 60,
+      },
+    };
 
-    switch (discountSchedule) {
-      case "Turbo-30":
-        dropInterval = 30 * 60 * 1000; // 30 minutes in milliseconds
-        totalDuration = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
-        break;
-      case "Classic-60":
-        dropInterval = 60 * 60 * 1000; // 60 minutes in milliseconds
-        totalDuration = 14 * 24 * 60 * 60 * 1000; // 14 days in milliseconds
-        break;
-      default:
-        return null;
-    }
-
-    // If listing has expired, return null
-    if (elapsed >= totalDuration) {
+    const schedule = schedules[discountSchedule as keyof typeof schedules];
+    if (!schedule) {
       return null;
     }
 
-    // Calculate time until next drop
-    const timeSinceLastDrop = elapsed % dropInterval;
-    const timeUntilNextDrop = dropInterval - timeSinceLastDrop;
-
-    // Convert to hours and minutes
-    const hours = Math.floor(timeUntilNextDrop / (60 * 60 * 1000));
-    const minutes = Math.floor(
-      (timeUntilNextDrop % (60 * 60 * 1000)) / (60 * 1000)
-    );
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    } else {
-      return `${minutes}m`;
+    // If listing has expired, no more drops
+    if (daysSinceCreation >= schedule.totalDuration) {
+      return null;
     }
+
+    // Find the next drop
+    for (let i = 0; i < schedule.dropIntervals.length; i++) {
+      if (schedule.dropIntervals[i] > daysSinceCreation) {
+        const daysUntilNextDrop = schedule.dropIntervals[i] - daysSinceCreation;
+
+        if (daysUntilNextDrop === 0) {
+          return "Any moment now...";
+        }
+
+        if (daysUntilNextDrop === 1) {
+          return "1 day";
+        }
+
+        return `${daysUntilNextDrop} days`;
+      }
+    }
+
+    return null;
   };
 
   return (
@@ -503,7 +536,7 @@ export default function ListingsPage() {
                         (now.getTime() - createdDate.getTime()) /
                         (1000 * 60 * 60 * 24);
                       return daysDiff <= 7 ? (
-                        <div className="absolute top-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-xs font-medium">
+                        <div className="absolute top-2 right-2 bg-green-600 text-white px-2 py-1 rounded text-xs font-medium">
                           Newly Listed
                         </div>
                       ) : null;
@@ -511,7 +544,7 @@ export default function ListingsPage() {
 
                   {/* Price Drop Badge - Show for price drops in last 48 hours */}
                   {isClient && hasRecentPriceDrop(listing) && (
-                    <div className="absolute top-2 right-2 bg-red-600 text-white px-2 py-1 rounded text-xs font-medium">
+                    <div className="absolute top-12 right-2 bg-red-600 text-white px-2 py-1 rounded text-xs font-medium">
                       Price Drop
                     </div>
                   )}
@@ -540,6 +573,18 @@ export default function ListingsPage() {
                     <QrCode className="h-4 w-4 text-gray-600" />
                   </div>
 
+                  {/* Status Badge */}
+                  {(() => {
+                    const statusBadge = getStatusBadge(listing.status);
+                    return statusBadge ? (
+                      <div
+                        className={`absolute top-2 left-2 px-2 py-1 rounded text-xs font-medium ${statusBadge.className}`}
+                      >
+                        {statusBadge.text}
+                      </div>
+                    ) : null;
+                  })()}
+
                   {/* Hidden Badge */}
                   {isHidden && (
                     <div className="absolute top-2 left-12 bg-gray-600 text-white px-2 py-1 rounded text-xs font-bold">
@@ -551,7 +596,10 @@ export default function ListingsPage() {
                 {/* Content */}
                 <div className="p-4">
                   {/* Title */}
-                  <h3 className="font-semibold text-gray-900 text-sm line-clamp-2 mb-2 hover:text-[#D4AF3D] cursor-pointer">
+                  <h3
+                    className="font-semibold text-gray-900 text-sm line-clamp-2 mb-2 hover:text-[#D4AF3D] cursor-pointer"
+                    onClick={() => navigateToListingDetail(listing.item_id)}
+                  >
                     {listing.title}
                   </h3>
 
@@ -704,9 +752,21 @@ export default function ListingsPage() {
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900">
-                {selectedListing.title}
-              </h2>
+              <div className="flex items-center gap-4">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {selectedListing.title}
+                </h2>
+                {(() => {
+                  const statusBadge = getStatusBadge(selectedListing.status);
+                  return statusBadge ? (
+                    <div
+                      className={`px-3 py-1 rounded text-sm font-medium ${statusBadge.className}`}
+                    >
+                      {statusBadge.text}
+                    </div>
+                  ) : null;
+                })()}
+              </div>
               <button
                 onClick={closeModal}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
@@ -838,6 +898,28 @@ export default function ListingsPage() {
                           >
                             {selectedListing.condition}
                           </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
+                          <span className="text-xs font-bold">📋</span>
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Status:
+                          </span>
+                          {(() => {
+                            const statusBadge = getStatusBadge(
+                              selectedListing.status
+                            );
+                            return statusBadge ? (
+                              <span
+                                className={`ml-2 px-2 py-1 rounded text-xs font-medium ${statusBadge.className}`}
+                              >
+                                {statusBadge.text}
+                              </span>
+                            ) : null;
+                          })()}
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
@@ -1022,6 +1104,20 @@ export default function ListingsPage() {
                             </div>
                           </div>
                         )}
+                    </div>
+                  </div>
+
+                  {/* QR Code */}
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                      QR Code
+                    </h3>
+                    <div className="text-center">
+                      <CustomQRCode
+                        itemId={selectedListing.item_id}
+                        size={120}
+                        className="mx-auto"
+                      />
                     </div>
                   </div>
 

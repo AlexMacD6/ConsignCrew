@@ -36,6 +36,8 @@ import { SELLER_ZIP_CODES, BUYER_ZIP_CODES } from "../lib/zipcodes";
 import { authClient } from "../lib/auth-client";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
+import AddressModal from "../components/AddressModal";
+
 // Remove server-side imports - we'll use API endpoints instead
 
 interface User {
@@ -49,6 +51,7 @@ interface User {
   city?: string;
   state?: string;
   zipCode?: string;
+  country?: string;
   createdAt?: string;
   updatedAt?: string;
   isAdmin?: boolean;
@@ -100,6 +103,10 @@ export default function ProfilePage() {
   const [form, setForm] = useState<User | Partial<User>>({} as User);
   const [updateError, setUpdateError] = useState("");
   const [updateSuccess, setUpdateSuccess] = useState("");
+  const [isAddressUpdating, setIsAddressUpdating] = useState(false);
+
+  // Debug log for form state
+
   const [users, setUsers] = useState<any[]>([]);
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [editingZipCode, setEditingZipCode] = useState<string | null>(null);
@@ -125,6 +132,7 @@ export default function ProfilePage() {
   const [listingsSearch, setListingsSearch] = useState("");
   const [selectedListing, setSelectedListing] = useState<any>(null);
   const [showListingModal, setShowListingModal] = useState(false);
+  const [showAddressModal, setShowAddressModal] = useState(false);
 
   // Purchase management state
   const [purchases, setPurchases] = useState<any[]>([]);
@@ -141,13 +149,7 @@ export default function ProfilePage() {
         return;
       }
 
-      console.log("Profile page: Session from hook:", session);
-      console.log("Profile page: Session loading:", sessionLoading);
-
       if (!session?.user) {
-        console.log(
-          "Profile page: User not authenticated, redirecting to login"
-        );
         setUpdateError("Please log in to view your profile");
         router.push("/login");
         return;
@@ -157,15 +159,11 @@ export default function ProfilePage() {
       setUpdateError("");
       setUpdateSuccess("");
       try {
-        console.log("Profile page: User authenticated, fetching profile...");
         const res = await fetch("/api/profile", {
           credentials: "include", // Ensure cookies are sent
         });
 
         if (res.status === 401) {
-          console.log(
-            "Profile page: User not authenticated, redirecting to login"
-          );
           setUpdateError("Please log in to view your profile");
           router.push("/login");
           return;
@@ -190,9 +188,7 @@ export default function ProfilePage() {
         }
 
         const data = await res.json();
-        console.log("Profile page: Successfully loaded user profile");
         setUser(data.user);
-        setForm(data.user);
 
         // Check if user is admin
         if (data.user?.id) {
@@ -228,7 +224,14 @@ export default function ProfilePage() {
       }
     }
     fetchUser();
-  }, [router, session, sessionLoading]);
+  }, [router, session, sessionLoading, editMode]);
+
+  // Separate useEffect to initialize form data when user data changes
+  useEffect(() => {
+    if (user && !editMode) {
+      setForm(user);
+    }
+  }, [user, editMode]);
 
   const loadAdminData = async () => {
     try {
@@ -326,12 +329,89 @@ export default function ProfilePage() {
     setEditMode(true);
     setUpdateError("");
     setUpdateSuccess("");
+    // Initialize form with current user data
+    if (user) {
+      const initialForm = {
+        id: user.id,
+        name: user.name || "",
+        email: user.email || "",
+        mobilePhone: user.mobilePhone || "",
+        emailVerified: user.emailVerified || false,
+        addressLine1: user.addressLine1 || "",
+        addressLine2: user.addressLine2 || "",
+        city: user.city || "",
+        state: user.state || "",
+        zipCode: user.zipCode || "",
+        country: user.country || "",
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        isAdmin: user.isAdmin || false,
+      };
+      setForm(initialForm);
+    }
   };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleAddressSelect = async (addressData: any) => {
+    // Update form with address components from Google Places
+    const updatedForm = {
+      ...form,
+      addressLine1: addressData.streetAddress,
+      addressLine2: addressData.apartment || "",
+      city: addressData.city,
+      state: addressData.state,
+      zipCode: addressData.postalCode,
+      country: addressData.country,
+    };
+
+    // Update the form state
+    setForm(updatedForm);
+
+    // Also update the user state to reflect changes immediately
+    setUser((prev) =>
+      prev
+        ? {
+            ...prev,
+            addressLine1: addressData.streetAddress,
+            addressLine2: addressData.apartment || "",
+            city: addressData.city,
+            state: addressData.state,
+            zipCode: addressData.postalCode,
+            country: addressData.country,
+          }
+        : null
+    );
+
+    // Save the address to the database
+    try {
+      setIsAddressUpdating(true);
+      setUpdateError("");
+      setUpdateSuccess("");
+
+      const res = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedForm),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setUpdateSuccess("Address updated successfully!");
+        // Update user state with the response from server
+        setUser(data.user);
+      } else {
+        setUpdateError(data.error || "Failed to update address");
+      }
+    } catch (err) {
+      setUpdateError("Server error. Please try again.");
+    } finally {
+      setIsAddressUpdating(false);
+    }
   };
 
   const validateAddress = () => {
@@ -629,163 +709,119 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Address Section */}
+              {/* Address Information Section */}
               <div className="mt-8 border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Address Information
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Address Line 1 */}
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                    <MapPin className="w-5 h-5 mr-2 text-[#D4AF3D]" />
+                    Address Information
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowAddressModal(true);
+                      setUpdateError("");
+                      setUpdateSuccess("");
+                    }}
+                    disabled={isAddressUpdating}
+                    className={`text-sm font-medium flex items-center ${
+                      isAddressUpdating
+                        ? "text-gray-400 cursor-not-allowed"
+                        : "text-[#D4AF3D] hover:text-[#b8932f]"
+                    }`}
+                  >
+                    {isAddressUpdating ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400 mr-1"></div>
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <Edit className="w-4 h-4 mr-1" />
+                        Edit Address
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Street Address *
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Street Address
                     </label>
-                    <p className="mt-1 text-base">
-                      {editMode ? (
-                        <input
-                          name="addressLine1"
-                          value={form.addressLine1 || ""}
-                          onChange={handleChange}
-                          className="border rounded px-2 py-1 w-full"
-                          placeholder="Enter your street address"
-                        />
-                      ) : (
-                        user.addressLine1 || ""
-                      )}
+                    <p className="text-base text-gray-900">
+                      {user.addressLine1 || "Not provided"}
+                    </p>
+                    {user.addressLine2 && (
+                      <p className="text-base text-gray-900">
+                        {user.addressLine2}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      City
+                    </label>
+                    <p className="text-base text-gray-900">
+                      {user.city || "Not provided"}
                     </p>
                   </div>
 
-                  {/* Address Line 2 */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Apartment, Suite, etc.
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      State/Province
                     </label>
-                    <p className="mt-1 text-base">
-                      {editMode ? (
-                        <input
-                          name="addressLine2"
-                          value={form.addressLine2 || ""}
-                          onChange={handleChange}
-                          className="border rounded px-2 py-1 w-full"
-                          placeholder="Apartment, suite, unit, etc."
-                        />
-                      ) : (
-                        user.addressLine2 || ""
-                      )}
+                    <p className="text-base text-gray-900">
+                      {user.state || "Not provided"}
                     </p>
                   </div>
 
-                  {/* City */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      City *
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Postal Code
                     </label>
-                    <p className="mt-1 text-base">
-                      {editMode ? (
-                        <input
-                          name="city"
-                          value={form.city || ""}
-                          onChange={handleChange}
-                          className="border rounded px-2 py-1 w-full"
-                          placeholder="Enter your city"
-                        />
-                      ) : (
-                        user.city || ""
-                      )}
+                    <p className="text-base text-gray-900">
+                      {user.zipCode || "Not provided"}
                     </p>
                   </div>
 
-                  {/* State */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      State *
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Country
                     </label>
-                    <p className="mt-1 text-base">
-                      {editMode ? (
-                        <select
-                          name="state"
-                          value={form.state || ""}
-                          onChange={handleChange}
-                          className="border rounded px-2 py-1 w-full"
-                        >
-                          <option value="">Select State</option>
-                          <option value="TX">Texas</option>
-                          <option value="AL">Alabama</option>
-                          <option value="AK">Alaska</option>
-                          <option value="AZ">Arizona</option>
-                          <option value="AR">Arkansas</option>
-                          <option value="CA">California</option>
-                          <option value="CO">Colorado</option>
-                          <option value="CT">Connecticut</option>
-                          <option value="DE">Delaware</option>
-                          <option value="FL">Florida</option>
-                          <option value="GA">Georgia</option>
-                          <option value="HI">Hawaii</option>
-                          <option value="ID">Idaho</option>
-                          <option value="IL">Illinois</option>
-                          <option value="IN">Indiana</option>
-                          <option value="IA">Iowa</option>
-                          <option value="KS">Kansas</option>
-                          <option value="KY">Kentucky</option>
-                          <option value="LA">Louisiana</option>
-                          <option value="ME">Maine</option>
-                          <option value="MD">Maryland</option>
-                          <option value="MA">Massachusetts</option>
-                          <option value="MI">Michigan</option>
-                          <option value="MN">Minnesota</option>
-                          <option value="MS">Mississippi</option>
-                          <option value="MO">Missouri</option>
-                          <option value="MT">Montana</option>
-                          <option value="NE">Nebraska</option>
-                          <option value="NV">Nevada</option>
-                          <option value="NH">New Hampshire</option>
-                          <option value="NJ">New Jersey</option>
-                          <option value="NM">New Mexico</option>
-                          <option value="NY">New York</option>
-                          <option value="NC">North Carolina</option>
-                          <option value="ND">North Dakota</option>
-                          <option value="OH">Ohio</option>
-                          <option value="OK">Oklahoma</option>
-                          <option value="OR">Oregon</option>
-                          <option value="PA">Pennsylvania</option>
-                          <option value="RI">Rhode Island</option>
-                          <option value="SC">South Carolina</option>
-                          <option value="SD">South Dakota</option>
-                          <option value="TN">Tennessee</option>
-                          <option value="UT">Utah</option>
-                          <option value="VT">Vermont</option>
-                          <option value="VA">Virginia</option>
-                          <option value="WA">Washington</option>
-                          <option value="WV">West Virginia</option>
-                          <option value="WI">Wisconsin</option>
-                          <option value="WY">Wyoming</option>
-                        </select>
-                      ) : (
-                        user.state || ""
-                      )}
-                    </p>
-                  </div>
-
-                  {/* ZIP Code */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      ZIP Code *
-                    </label>
-                    <p className="mt-1 text-base">
-                      {editMode ? (
-                        <input
-                          name="zipCode"
-                          value={form.zipCode || ""}
-                          onChange={handleChange}
-                          className="border rounded px-2 py-1 w-full"
-                          placeholder="Enter ZIP code"
-                        />
-                      ) : (
-                        user.zipCode || ""
-                      )}
+                    <p className="text-base text-gray-900">
+                      {user.country || "Not provided"}
                     </p>
                   </div>
                 </div>
+
+                {!user.addressLine1 &&
+                  !user.city &&
+                  !user.state &&
+                  !user.zipCode && (
+                    <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                      <p className="text-sm text-gray-600 text-center">
+                        No address information provided. Click "Edit Address" to
+                        add your address.
+                      </p>
+                    </div>
+                  )}
+
+                {/* Address update status messages */}
+                {updateSuccess && (
+                  <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-sm text-green-700 text-center">
+                      {updateSuccess}
+                    </p>
+                  </div>
+                )}
+                {updateError && (
+                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-700 text-center">
+                      {updateError}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1214,11 +1250,7 @@ export default function ProfilePage() {
           )}
 
           <div className="flex justify-end mt-6">
-            {!editMode && tab !== "admin" ? (
-              <button className="btn btn-primary btn-md" onClick={handleEdit}>
-                Edit Profile
-              </button>
-            ) : editMode && tab !== "admin" ? (
+            {editMode && tab !== "admin" ? (
               <button className="btn btn-primary btn-md" onClick={handleUpdate}>
                 Update Profile
               </button>
@@ -1244,6 +1276,22 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+
+      {/* Address Modal */}
+      <AddressModal
+        isOpen={showAddressModal}
+        onClose={() => setShowAddressModal(false)}
+        onAddressSelect={handleAddressSelect}
+        currentAddress={form.addressLine1 || ""}
+        currentAddressData={{
+          streetAddress: form.addressLine1 || "",
+          apartment: form.addressLine2 || "",
+          city: form.city || "",
+          state: form.state || "",
+          postalCode: form.zipCode || "",
+          country: form.country || "",
+        }}
+      />
     </div>
   );
 }

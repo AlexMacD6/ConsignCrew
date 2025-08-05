@@ -46,24 +46,25 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: {
-        firstName: 'asc',
+        name: 'asc',
       },
     });
 
     // Transform the data to include role and organization info
     const usersWithOrganizations = users.map(user => ({
       id: user.id,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      name: user.name,
       email: user.email,
       mobilePhone: user.mobilePhone,
-      preferredContact: user.preferredContact,
-      shippingAddress: user.shippingAddress,
-      alternatePickup: user.alternatePickup,
-      payoutMethod: user.payoutMethod,
-      payoutAccount: user.payoutAccount,
-      profilePhotoUrl: user.profilePhotoUrl,
-      governmentIdUrl: user.governmentIdUrl,
+      addressLine1: user.addressLine1,
+      addressLine2: user.addressLine2,
+      city: user.city,
+      state: user.state,
+      zipCode: user.zipCode,
+      country: user.country,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      emailVerified: user.emailVerified,
       role: user.members.length > 0 ? user.members[0].role : 'USER',
       organizations: user.members.map(member => ({
         id: member.organization.id,

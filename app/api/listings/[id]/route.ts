@@ -8,11 +8,20 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const session = await auth.api.getSession({ headers: request.headers });
 
     if (!id) {
       return NextResponse.json(
         { error: "Listing ID is required" },
         { status: 400 }
+      );
+    }
+
+    // Check if user is authenticated for edit access
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
       );
     }
 
@@ -26,6 +35,7 @@ export async function GET(
             id: true,
             name: true,
             email: true,
+            zipCode: true,
             members: {
               include: {
                 organization: {
@@ -45,6 +55,27 @@ export async function GET(
           },
           take: 10, // Get last 10 price changes
         },
+        videos: {
+          select: {
+            id: true,
+            rawVideoKey: true,
+            processedVideoKey: true,
+            thumbnailKey: true,
+            frameKeys: true,
+            duration: true,
+            resolution: true,
+            status: true,
+            originalFilename: true,
+            originalSize: true,
+            mimeType: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 1, // Get the most recent video
+        },
       },
     });
 
@@ -55,14 +86,36 @@ export async function GET(
       );
     }
 
-    // Transform the data to include organization information
+    // Check if the user owns this listing
+    if (listing.userId !== session.user.id) {
+      return NextResponse.json(
+        { error: "You can only edit your own listings" },
+        { status: 403 }
+      );
+    }
+
+    // Look up neighborhood from user's zip code
+    let neighborhood = 'Unknown Area';
+    if (listing.user.zipCode) {
+      const zipCodeRecord = await prisma.zipCode.findFirst({
+        where: { code: listing.user.zipCode },
+      });
+      if (zipCodeRecord) {
+        neighborhood = zipCodeRecord.area;
+      }
+    }
+
+    // Transform the data to include organization information and video
     const transformedListing = {
       ...listing,
+      neighborhood, // Add the looked-up neighborhood
       user: {
         ...listing.user,
         organization: listing.user.members[0]?.organization || null,
         organizations: listing.user.members.map(member => member.organization),
       },
+      // Get the first (most recent) video from the videos array
+      video: listing.videos[0] || null,
     };
 
     return NextResponse.json({
@@ -131,8 +184,6 @@ export async function PUT(
       condition,
       price,
       description,
-      zipCode,
-      neighborhood,
       brand,
       height,
       width,
@@ -146,7 +197,7 @@ export async function PUT(
     } = body;
 
     // Validate required fields
-    if (!title || !price || !condition || !description || !zipCode) {
+    if (!title || !price || !condition || !description) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -164,8 +215,6 @@ export async function PUT(
         condition,
         price: parseFloat(price),
         description,
-        zipCode,
-        neighborhood,
         brand: brand || null,
         height: height || null,
         width: width || null,

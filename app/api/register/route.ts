@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, safeDbOperation } from "@/lib/db";
+import { prisma } from "../../lib/prisma";
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,25 +8,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
     
-    // Safely execute database operations
-    const existing = await safeDbOperation(async () => {
-      return await db.user.findUnique({ where: { email } });
-    });
+    // Combine firstName and lastName into name field
+    const name = `${firstName} ${lastName}`.trim();
+    
+    // Check if user already exists
+    const existing = await prisma.user.findUnique({ where: { email } });
 
     if (existing) {
       return NextResponse.json({ error: "User already exists" }, { status: 409 });
     }
     
-    // Create user (password and other fields omitted for now)
-    await safeDbOperation(async () => {
-      return await db.user.create({
-        data: {
-          firstName,
-          lastName,
-          email,
-          mobilePhone,
-        },
-      });
+    // Create user with name field instead of firstName/lastName
+    await prisma.user.create({
+      data: {
+        name,
+        email,
+        mobilePhone,
+      },
     });
     
     return NextResponse.json({ success: true });
