@@ -27,13 +27,12 @@ export const auth = betterAuth({
     verificationTokenExpiry: 60 * 60 * 24, // 24 hours
     sendVerificationEmail: async ({ user, url, token }: { user: any; url: string; token: string }, request: any) => {
       try {
-        console.log('BetterAuth: sendVerificationEmail called for user:', user.email);
-        console.log('BetterAuth: Verification URL:', url);
-        console.log('BetterAuth: Verification token:', token);
+        console.log('BetterAuth: sendVerificationEmail called for user');
+        console.log('BetterAuth: Verification URL generated');
         
         // Use production domain for email verification links
         const productionUrl = url.replace('http://localhost:3000', 'https://treasurehub.club');
-        console.log('BetterAuth: Production verification URL:', productionUrl);
+        console.log('BetterAuth: Production verification URL generated');
         
         const { sendEmail } = await import('./ses-server');
         
@@ -119,22 +118,22 @@ export const auth = betterAuth({
         `;
         
         await sendEmail(user.email, subject, html);
-        console.log(`✅ Verification email sent successfully to ${user.email}`);
+        console.log('✅ Verification email sent successfully');
       } catch (error) {
         console.error('❌ Failed to send verification email:', error);
         // Fallback to console log for development
-        console.log(`📧 Send verification email to ${user.email} with link: ${url} and token: ${token}`);
+        console.log('📧 Send verification email with link and token');
         throw error; // Re-throw to let BetterAuth handle the error
       }
     },
     sendResetPassword: async ({ user, url, token }: { user: any; url: string; token: string }, request: any) => {
       try {
-        console.log('BetterAuth: sendResetPassword called for user:', user.email);
-        console.log('BetterAuth: Reset URL:', url);
+        console.log('BetterAuth: sendResetPassword called for user');
+        console.log('BetterAuth: Reset URL generated');
         
         // Use production domain for password reset links
         const productionUrl = url.replace('http://localhost:3000', 'https://treasurehub.club');
-        console.log('BetterAuth: Production reset URL:', productionUrl);
+        console.log('BetterAuth: Production reset URL generated');
         
         const { sendEmail } = await import('./ses-server');
         
@@ -177,11 +176,11 @@ export const auth = betterAuth({
         `;
         
         await sendEmail(user.email, subject, html);
-        console.log(`Password reset email sent to ${user.email}`);
+        console.log('Password reset email sent successfully');
       } catch (error) {
         console.error('Failed to send password reset email:', error);
         // Fallback to console log for development
-        console.log(`Send password reset email to ${user.email} with link: ${url} and token: ${token}`);
+        console.log('Send password reset email with link and token');
       }
     },
     provider: null, // Using custom email sending with AWS SES
@@ -253,12 +252,12 @@ export const auth = betterAuth({
     },
     sendInvitationEmail: async ({ user, url, token }: { user: any; url: string; token: string }, request: any) => {
       try {
-        console.log('BetterAuth: sendInvitationEmail called for user:', user.email);
-        console.log('BetterAuth: Invitation URL:', url);
+        console.log('BetterAuth: sendInvitationEmail called for user');
+        console.log('BetterAuth: Invitation URL generated');
         
         // Use production domain for invitation links
         const productionUrl = url.replace('http://localhost:3000', 'https://treasurehub.club');
-        console.log('BetterAuth: Production invitation URL:', productionUrl);
+        console.log('BetterAuth: Production invitation URL generated');
         
         const { sendEmail } = await import('./ses-server');
         
@@ -299,11 +298,11 @@ export const auth = betterAuth({
         `;
         
         await sendEmail(user.email, subject, html);
-        console.log(`Organization invitation email sent to ${user.email}`);
+        console.log('Organization invitation email sent successfully');
       } catch (error) {
         console.error('Failed to send organization invitation email:', error);
         // Fallback to console log for development
-        console.log(`Send organization invitation email to ${user.email} with link: ${url}`);
+        console.log('Send organization invitation email with link');
       }
     },
   },
@@ -338,9 +337,7 @@ export const auth = betterAuth({
     },
 
     async beforeUserCreate(user: any, provider: any) {
-      console.log('beforeUserCreate called with:', { user, provider });
-      console.log('beforeUserCreate - user object keys:', Object.keys(user));
-      console.log('beforeUserCreate - user object values:', user);
+      console.log('beforeUserCreate called with provider:', provider);
       
       // Ensure we only use the name field and remove any firstName/lastName references
       if (user.firstName || user.lastName) {
@@ -358,17 +355,17 @@ export const auth = betterAuth({
         user.name = 'Unknown User';
       }
       
-      console.log('Processed user data:', { name: user.name });
+      console.log('Processed user data - name field set');
       return user;
     },
 
     async afterUserCreate(user: any) {
-      console.log('BetterAuth: afterUserCreate called for user:', user.email);
+      console.log('BetterAuth: afterUserCreate called for user');
       try {
         // Import here to avoid circular dependencies
         const { addUserToDefaultOrganization } = await import('./organization-utils');
         await addUserToDefaultOrganization(user.id, 'MEMBER');
-        console.log('Added new user to default organization:', user.email);
+        console.log('Added new user to default organization');
       } catch (error) {
         console.error('Error adding user to default organization:', error);
       }

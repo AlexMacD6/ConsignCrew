@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     
     await sendEmail(user.email, subject, html);
     
-    console.log(`Manual verification email sent to ${user.email}`);
+    console.log('Manual verification email sent successfully');
     
     return NextResponse.json({ 
       success: true, 

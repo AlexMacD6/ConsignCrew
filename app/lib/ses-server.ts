@@ -49,7 +49,7 @@ export async function sendEmail(
     const plainText = textContent || html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
 
     try {
-        console.log(`Sending email to ${to} with subject: ${subject}`)
+        console.log('Sending email with subject')
         
         // Dynamically import AWS SDK components
         const { SendEmailCommand } = await import('@aws-sdk/client-ses')
@@ -97,7 +97,7 @@ export async function sendEmail(
         })
         
         const result = await ses.send(command)
-        console.log('Email sent successfully:', result)
+        console.log('Email sent successfully')
         return result
     } catch (error) {
         console.error('Failed to send email:', error)

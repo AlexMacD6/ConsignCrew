@@ -9,7 +9,7 @@ mailchimp.setConfig({
 
 export async function addEmailToMailchimp(email: string, source: string = 'website') {
   try {
-    console.log('addEmailToMailchimp called with:', { email, source });
+    console.log('addEmailToMailchimp called with email and source');
     
     // Validate environment variables
     if (!process.env.MAILCHIMP_API_KEY) {

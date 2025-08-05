@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "../../lib/auth";
+import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
 export type RegistrationData = {
@@ -13,7 +13,6 @@ export type RegistrationData = {
 export async function registerUser(data: RegistrationData) {
   try {
     console.log('=== REGISTRATION START ===');
-    console.log('registerUser called with data:', data);
     
     // 1. Validate input
     if (!data.email || !data.password || !data.name) {
@@ -34,26 +33,19 @@ export async function registerUser(data: RegistrationData) {
       mobilePhone: data.mobilePhone,
     };
 
-    console.log('registerUser - Input data:', data);
-    console.log('registerUser - UserData being sent to BetterAuth:', userData);
+    console.log('registerUser - Input data validated');
+    console.log('registerUser - UserData prepared for BetterAuth');
 
     // 3. Call Better Auth's signUpEmail API
     const headersList = await headers();
-    console.log('registerUser - Calling BetterAuth signUpEmail with headers:', Object.fromEntries(headersList.entries()));
-    console.log('registerUser - User data being sent:', userData);
+    console.log('registerUser - Calling BetterAuth signUpEmail');
     
     const result = await auth.api.signUpEmail({
       body: userData,
       headers: headersList,
     });
     
-    console.log('registerUser - BetterAuth signUpEmail result:', {
-      success: !!result,
-      userId: result?.user?.id,
-      email: result?.user?.email,
-      emailVerified: result?.user?.emailVerified,
-      userObject: result?.user,
-    });
+    console.log('registerUser - BetterAuth signUpEmail result received');
     
     // Check if email verification was triggered
     if (result?.user && !result.user.emailVerified) {
@@ -108,7 +100,7 @@ export async function registerUser(data: RegistrationData) {
         `;
         
         const emailResult = await sendEmail(result.user.email, subject, html);
-        console.log('registerUser - SES email sent successfully:', emailResult);
+        console.log('registerUser - SES email sent successfully');
         
       } catch (verificationError) {
         console.error('registerUser - Error sending verification email via SES:', verificationError);
@@ -116,12 +108,7 @@ export async function registerUser(data: RegistrationData) {
     }
 
     console.log('=== REGISTRATION SUCCESS ===');
-    console.log('Final result:', {
-      success: true,
-      userId: result.user.id,
-      email: result.user.email,
-      emailVerified: result.user.emailVerified,
-    });
+    console.log('Final result: Registration completed successfully');
 
     return {
       success: true,

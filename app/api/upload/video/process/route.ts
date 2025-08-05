@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
     // }
     
     // Get a real user ID for testing (since we're bypassing auth)
+    const { prisma } = await import('@/lib/prisma');
     const users = await prisma.user.findMany({ take: 1 });
     if (users.length === 0) {
       return NextResponse.json(
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
       );
     }
     const testUserId = users[0].id;
-    console.log('Using test user ID for processing:', testUserId);
+    console.log('Using test user ID for processing');
 
     const { videoId } = await request.json();
 

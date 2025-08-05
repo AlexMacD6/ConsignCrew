@@ -329,7 +329,7 @@ async function getOrCreateUsers() {
           emailVerified: true
         }
       });
-      console.log(`Created user: ${user.firstName} ${user.lastName} (${user.email})`);
+      console.log(`Created user with ID: ${user.id}`);
     }
     users.push(user);
   }

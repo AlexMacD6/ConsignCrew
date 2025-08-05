@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processAllPriceDrops } from '@/lib/discount-schedule';
-import { authClient } from '@/lib/auth';
+import { auth } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
     // Check authentication and admin privileges
-    const session = await authClient.getSession();
+    const session = await auth.getSession();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     // Check authentication and admin privileges
-    const session = await authClient.getSession();
+    const session = await auth.getSession();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

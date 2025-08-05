@@ -4,11 +4,12 @@ import { MapPin, Search, Filter, Info } from "lucide-react";
 import { Button } from "../components/ui/button";
 import InteractiveMap from "../components/InteractiveMap";
 import TreasureModal from "../components/TreasureModal";
+import { TreasureDrop } from "@/types/treasure";
 
 // Mock data for demonstration
-const mockDrops = [
+const mockDrops: TreasureDrop[] = [
   {
-    id: 1,
+    id: "1",
     name: "Downtown Discovery",
     location: { lat: 29.7604, lng: -95.3698 },
     radius: 500, // Radius in feet
@@ -20,7 +21,7 @@ const mockDrops = [
     foundAt: null,
   },
   {
-    id: 2,
+    id: "2",
     name: "Museum District Mystery",
     location: { lat: 29.7245, lng: -95.3902 },
     radius: 300, // Radius in feet
@@ -32,7 +33,7 @@ const mockDrops = [
     foundAt: "2024-01-15",
   },
   {
-    id: 3,
+    id: "3",
     name: "Riverwalk Riddle",
     location: { lat: 29.7633, lng: -95.3633 },
     radius: 400, // Radius in feet
@@ -46,7 +47,7 @@ const mockDrops = [
 ];
 
 export default function TreasureHuntPage() {
-  const [selectedDrop, setSelectedDrop] = useState<any>(null);
+  const [selectedDrop, setSelectedDrop] = useState<TreasureDrop | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [filter, setFilter] = useState<"all" | "active" | "found">("all");
 
@@ -60,7 +61,7 @@ export default function TreasureHuntPage() {
   ).length;
   const foundDrops = mockDrops.filter((drop) => drop.status === "found").length;
 
-  const handlePinClick = (drop: any) => {
+  const handlePinClick = (drop: TreasureDrop) => {
     setSelectedDrop(drop);
     setShowModal(true);
   };

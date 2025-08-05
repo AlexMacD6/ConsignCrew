@@ -1,0 +1,52 @@
+# Remove Sensitive Debugging Information
+
+## Overview
+Remove all debugging console.log statements that contain personal information such as names, emails, passwords, tokens, and user data from the codebase to improve security and privacy.
+
+## Requirements
+
+### Files Modified
+- `app/lib/auth.ts` - Removed email addresses, user names, and tokens from console logs
+- `app/api/auth/registerUser.ts` - Removed user data, emails, and passwords from console logs
+- `app/api/upload/video/presigned-url/route.ts` - Removed test user ID from console logs
+- `app/api/upload/video/process/route.ts` - Removed test user ID from console logs
+- `app/api/upload/video/status/[videoId]/route.ts` - Removed test user ID from console logs
+- `app/api/profile/route.ts` - Removed user IDs and user data from console logs
+- `app/api/subscribe/route.ts` - Removed email addresses from console logs
+- `app/lib/mailchimp.ts` - Removed email addresses from console logs
+- `app/lib/custom-prisma-adapter.ts` - Removed user names and data from console logs
+- `app/lib/ses-server.ts` - Removed email addresses from console logs
+- `app/api/auth/manual-verify/route.ts` - Removed email addresses from console logs
+- `test-prisma.js` - Removed user data from console logs
+- `scripts/setup-admin.js` - Removed email addresses from console logs
+- `scripts/populate-listings.js` - Removed user names and emails from console logs
+
+### Changes Made
+1. **Email Addresses**: Replaced specific email addresses in console logs with generic messages
+2. **User Names**: Removed first names, last names, and full names from console logs
+3. **User IDs**: Replaced specific user IDs with generic messages where appropriate
+4. **Passwords**: Removed password-related debugging information
+5. **Tokens**: Removed verification tokens and other sensitive tokens from console logs
+6. **User Data Objects**: Replaced detailed user object logging with generic success/failure messages
+
+### Security Improvements
+- Prevents accidental exposure of personal information in logs
+- Reduces risk of data leakage in production environments
+- Maintains debugging functionality without exposing sensitive data
+- Improves compliance with privacy regulations
+
+### Preserved Functionality
+- All essential error logging remains intact
+- Non-sensitive debugging information is preserved
+- Environment variable status checks remain (without exposing actual values)
+- Application functionality is unchanged
+
+### Testing
+- All modified files should be tested to ensure they still function correctly
+- Console logs should be verified to contain no personal information
+- Error handling should still work as expected
+
+## Notes
+- Test files that only show environment variable status (without exposing values) were left unchanged
+- Files in requirements/ and pr-templates/ directories contain example code and were not modified
+- The changes maintain the same level of debugging information while removing sensitive data 

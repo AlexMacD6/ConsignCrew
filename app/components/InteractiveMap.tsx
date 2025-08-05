@@ -1,19 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-
-interface TreasureDrop {
-  id: string;
-  name: string;
-  location: { lat: number; lng: number };
-  radius: number; // Radius in feet
-  status: "active" | "found";
-  clue: string;
-  image: string | null;
-  reward: string;
-  foundBy: string | null;
-  foundAt: string | null;
-}
+import { TreasureDrop } from "@/types/treasure";
 
 interface InteractiveMapProps {
   drops: TreasureDrop[];

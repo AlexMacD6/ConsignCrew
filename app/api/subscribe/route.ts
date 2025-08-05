@@ -5,11 +5,11 @@ export async function POST(request: NextRequest) {
   try {
     const { email, source = 'website' } = await request.json();
 
-    console.log('Subscribe API called with:', { email, source });
+    console.log('Subscribe API called with email and source');
 
     // Validate email
     if (!email || !email.includes('@')) {
-      console.log('Invalid email format:', email);
+      console.log('Invalid email format provided');
       return NextResponse.json(
         { error: 'Invalid email address' },
         { status: 400 }
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     // Add to Mailchimp and database
     console.log('Calling addEmailToMailchimp...');
     const result = await addEmailToMailchimp(email, source);
-    console.log('addEmailToMailchimp result:', result);
+    console.log('addEmailToMailchimp result received');
 
     if (result.success) {
 

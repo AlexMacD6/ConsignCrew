@@ -4,11 +4,11 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
   try {
-    console.log('Profile API: Request headers:', Object.fromEntries(req.headers.entries()));
+    console.log('Profile API: Request received');
     
     // Get session from Better Auth
     const session = await auth.api.getSession({ headers: req.headers });
-    console.log('Profile API: Session result:', session);
+    console.log('Profile API: Session retrieved');
     
     if (!session?.user?.id) {
       console.log('Profile API: No valid session found');
@@ -18,10 +18,10 @@ export async function GET(req: NextRequest) {
       }, { status: 401 });
     }
 
-    console.log('Profile API: Session found for user:', session.user.id);
+    console.log('Profile API: Session found for user');
 
     // Fetch user from DB
-    console.log('Profile API: Fetching user with ID:', session.user.id);
+    console.log('Profile API: Fetching user from database');
     
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
@@ -42,10 +42,10 @@ export async function GET(req: NextRequest) {
       }
     });
     
-    console.log('Profile API: User query result:', user);
+    console.log('Profile API: User query completed');
 
     if (!user) {
-      console.log('Profile API: User not found in database:', session.user.id);
+      console.log('Profile API: User not found in database');
       return NextResponse.json({ 
         error: "User not found",
         message: "User account not found in database"
@@ -78,7 +78,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    console.log('Profile API: Updating user profile:', session.user.id, body);
+    console.log('Profile API: Updating user profile');
 
     // Update user in DB
     const updatedUser = await prisma.user.update({
@@ -111,15 +111,13 @@ export async function PUT(req: NextRequest) {
     });
 
     console.log('Profile API: Successfully updated user profile');
-    return NextResponse.json({ 
-      success: true, 
-      user: updatedUser 
-    });
+    return NextResponse.json({ user: updatedUser });
   } catch (error) {
     console.error('Profile API: Error updating user profile:', error);
     return NextResponse.json({ 
       error: "Internal server error",
-      message: "Failed to update user profile"
+      message: error instanceof Error ? error.message : "Failed to update user profile",
+      details: error instanceof Error ? error.stack : undefined
     }, { status: 500 });
   }
 } 

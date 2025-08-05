@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       );
     }
     const testUserId = users[0].id;
-    console.log('Using test user ID:', testUserId);
+    console.log('Using test user ID for video upload');
 
     const { fileName, contentType, fileSize } = await request.json();
     console.log('Request data:', { fileName, contentType, fileSize });

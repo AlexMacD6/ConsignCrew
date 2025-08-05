@@ -18,6 +18,7 @@ export async function GET(
     // }
     
     // Get a real user ID for testing (since we're bypassing auth)
+    const { prisma } = await import('@/lib/prisma');
     const users = await prisma.user.findMany({ take: 1 });
     if (users.length === 0) {
       return NextResponse.json(
