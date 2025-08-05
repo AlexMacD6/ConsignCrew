@@ -1,0 +1,54 @@
+Vercel Environment Variables Setup
+
+Issue:
+- BetterAuth configuration showing "Not set" for critical environment variables
+- 403 errors on authentication endpoints
+- Email verification not working properly
+
+Required Environment Variables for Vercel:
+
+1. BETTER_AUTH_SECRET
+   - Description: Secret key for BetterAuth encryption and token signing
+   - Value: Generate a secure random string (32+ characters)
+   - Example: "your-super-secure-secret-key-here-32-chars-min"
+
+2. BETTER_AUTH_URL
+   - Description: Base URL for BetterAuth (should match your production domain)
+   - Value: "https://treasurehub.club" (for production)
+   - Note: This should match the domain in your email verification links
+
+3. AWS_ACCESS_KEY_ID
+   - Description: AWS access key for SES email sending
+   - Value: Your AWS access key
+
+4. AWS_SECRET_ACCESS_KEY
+   - Description: AWS secret key for SES email sending
+   - Value: Your AWS secret key
+
+5. DATABASE_URL
+   - Description: Neon database connection string
+   - Value: Your Neon database URL
+
+6. AWS_REGION
+   - Description: AWS region for SES
+   - Value: "us-east-1"
+
+7. AWS_SES_DEFAULT_FROM_EMAIL
+   - Description: Default sender email for SES
+   - Value: "no-reply@treasurehub.club"
+
+8. CONTACT_FORM_EMAIL
+   - Description: Contact form recipient email
+   - Value: "support@treasurehub.club"
+
+Steps to Fix:
+1. Go to Vercel Dashboard > Your Project > Settings > Environment Variables
+2. Add each of the above environment variables
+3. Set the environment to "Production" for all variables
+4. Redeploy the application
+
+Expected Result:
+- BetterAuth will load with proper configuration
+- Email verification will work correctly
+- Authentication endpoints will function properly
+- No more 403 errors on sign-in 

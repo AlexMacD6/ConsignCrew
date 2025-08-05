@@ -1,0 +1,37 @@
+Email Verification Domain Fix
+
+Issue:
+- Users receiving "invalid token" error when clicking email verification links
+- Email verification links were being generated with wrong domain (treasurehub.vercel.app instead of treasurehub.club)
+
+Root Cause:
+- Hardcoded domain replacement in auth.ts was using 'https://treasurehub.vercel.app' instead of 'https://treasurehub.club'
+- This caused token validation to fail because the domain in the token didn't match the actual production domain
+
+Changes Made:
+1. Updated email verification URL generation in app/lib/auth.ts
+   - Changed from 'https://treasurehub.vercel.app' to 'https://treasurehub.club'
+   - Fixed in sendVerificationEmail function
+
+2. Updated password reset URL generation in app/lib/auth.ts
+   - Changed from 'https://treasurehub.vercel.app' to 'https://treasurehub.club'
+   - Fixed in sendResetPassword function
+
+3. Updated organization invitation URL generation in app/lib/auth.ts
+   - Changed from 'https://treasurehub.vercel.app' to 'https://treasurehub.club'
+   - Fixed in sendInvitationEmail function
+
+4. Updated CSRF trusted origins in app/lib/auth.ts
+   - Changed from 'https://treasurehub.vercel.app' to 'https://treasurehub.club'
+   - Ensures CSRF protection works correctly with production domain
+
+Testing:
+- Build completed successfully
+- No compilation errors
+- Ready for deployment to production
+
+Expected Result:
+- Email verification links will now work correctly
+- Users can successfully verify their email addresses
+- Password reset links will work correctly
+- Organization invitation links will work correctly 

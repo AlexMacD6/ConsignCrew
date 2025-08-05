@@ -219,7 +219,7 @@ export const auth = betterAuth({
   csrf: {
     trustedOrigins: [
       'http://localhost:3000',
-      'https://treasurehub.club', // Add your production domain
+      'https://treasurehub.club', // Production domain
     ],
     expiresIn: 60 * 60 * 24, // 24 hours
   },
