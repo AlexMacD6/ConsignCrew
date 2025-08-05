@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -7,6 +8,37 @@ import { prisma } from "@/lib/prisma";
  */
 export async function GET(request: NextRequest) {
   try {
+    // Get session from Better Auth
+    const session = await auth.api.getSession({ headers: request.headers });
+    
+    if (!session?.user?.id) {
+      return NextResponse.json({ 
+        error: "Not authenticated",
+        message: "Please log in to access admin features"
+      }, { status: 401 });
+    }
+
+    // Check if user is admin
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      include: {
+        members: {
+          where: {
+            role: {
+              in: ['ADMIN', 'OWNER']
+            }
+          }
+        }
+      }
+    });
+
+    if (!user?.members.length) {
+      return NextResponse.json({ 
+        error: "Unauthorized",
+        message: "Admin access required"
+      }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status"); // pending, approved, rejected
     const search = searchParams.get("search"); // search by question text or listing
@@ -44,20 +76,20 @@ export async function GET(request: NextRequest) {
     const questions = await prisma.question.findMany({
       where: whereClause,
       include: {
-        createdBy: {
+        createdByUser: {
           select: {
             id: true,
             name: true,
             email: true,
           },
         },
-        answeredBy: {
+        answeredByUser: {
           select: {
             id: true,
             name: true,
           },
         },
-        approvedBy: {
+        approvedByUser: {
           select: {
             id: true,
             name: true,
@@ -76,8 +108,18 @@ export async function GET(request: NextRequest) {
       where: whereClause,
     });
 
+    // Get pending count for admin dashboard
+    const pendingCount = await prisma.question.count({
+      where: {
+        isApproved: false,
+        answer: null
+      }
+    });
+
     return NextResponse.json({
+      success: true,
       questions,
+      pendingCount,
       pagination: {
         page,
         limit,
@@ -127,25 +169,23 @@ export async function PUT(request: NextRequest) {
         }),
       },
       include: {
-        createdBy: {
+        createdByUser: {
           select: {
             id: true,
             name: true,
             email: true,
           },
         },
-        answeredBy: {
+        answeredByUser: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            name: true,
           },
         },
-        approvedBy: {
+        approvedByUser: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            name: true,
           },
         },
       },

@@ -143,17 +143,27 @@ export default function AdminDashboard() {
   });
   const [editingOrganization, setEditingOrganization] =
     useState<Organization | null>(null);
+  const [showCreateOrgModal, setShowCreateOrgModal] = useState(false);
+  const [showEditOrgModal, setShowEditOrgModal] = useState(false);
 
   // Invitation states
   const [newInvitation, setNewInvitation] = useState({
     email: "",
     role: "member",
   });
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [selectedOrgForInvite, setSelectedOrgForInvite] =
+    useState<Organization | null>(null);
 
   // Team states
   const [newTeam, setNewTeam] = useState({
     name: "",
   });
+
+  // Members modal state
+  const [showMembersModal, setShowMembersModal] = useState(false);
+  const [selectedOrgForMembers, setSelectedOrgForMembers] =
+    useState<Organization | null>(null);
 
   const adminModules = [
     {
@@ -313,6 +323,7 @@ export default function AdminDashboard() {
       if (response.ok) {
         setSuccess("Organization created successfully!");
         setNewOrganization({ name: "", slug: "", logo: "", metadata: "" });
+        setShowCreateOrgModal(false);
         loadData();
       } else {
         const error = await response.json();
@@ -339,6 +350,7 @@ export default function AdminDashboard() {
       if (response.ok) {
         setSuccess("Organization updated successfully!");
         setEditingOrganization(null);
+        setShowEditOrgModal(false);
         loadData();
       } else {
         const error = await response.json();
@@ -369,10 +381,12 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleInviteUser = async (orgId: string) => {
+  const handleInviteUser = async () => {
+    if (!selectedOrgForInvite) return;
+
     try {
       const response = await fetch(
-        `/api/admin/organizations/${orgId}/invitations`,
+        `/api/admin/organizations/${selectedOrgForInvite.id}/invitations`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -383,6 +397,8 @@ export default function AdminDashboard() {
       if (response.ok) {
         setSuccess("Invitation sent successfully!");
         setNewInvitation({ email: "", role: "member" });
+        setShowInviteModal(false);
+        setSelectedOrgForInvite(null);
         loadData();
       } else {
         const error = await response.json();
@@ -914,7 +930,7 @@ export default function AdminDashboard() {
                 Organizations
               </h2>
               <Button
-                onClick={handleCreateOrganization}
+                onClick={() => setShowCreateOrgModal(true)}
                 className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -939,7 +955,10 @@ export default function AdminDashboard() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setEditingOrganization(org)}
+                        onClick={() => {
+                          setEditingOrganization(org);
+                          setShowEditOrgModal(true);
+                        }}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -966,11 +985,27 @@ export default function AdminDashboard() {
                   </div>
 
                   <div className="flex space-x-2">
-                    <Button variant="outline" size="sm" className="flex-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => {
+                        setSelectedOrgForMembers(org);
+                        setShowMembersModal(true);
+                      }}
+                    >
                       <Users2 className="h-4 w-4 mr-1" />
                       Members
                     </Button>
-                    <Button variant="outline" size="sm" className="flex-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => {
+                        setSelectedOrgForInvite(org);
+                        setShowInviteModal(true);
+                      }}
+                    >
                       <Mail className="h-4 w-4 mr-1" />
                       Invite
                     </Button>
@@ -1271,6 +1306,286 @@ export default function AdminDashboard() {
                     </Button>
                   </Link>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Create Organization Modal */}
+        {showCreateOrgModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h3 className="text-lg font-semibold mb-4">
+                Create Organization
+              </h3>
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  placeholder="Organization Name"
+                  value={newOrganization.name}
+                  onChange={(e) =>
+                    setNewOrganization({
+                      ...newOrganization,
+                      name: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                />
+                <input
+                  type="text"
+                  placeholder="Organization Slug"
+                  value={newOrganization.slug}
+                  onChange={(e) =>
+                    setNewOrganization({
+                      ...newOrganization,
+                      slug: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                />
+                <input
+                  type="text"
+                  placeholder="Logo URL (optional)"
+                  value={newOrganization.logo}
+                  onChange={(e) =>
+                    setNewOrganization({
+                      ...newOrganization,
+                      logo: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                />
+                <textarea
+                  placeholder="Metadata (optional)"
+                  value={newOrganization.metadata}
+                  onChange={(e) =>
+                    setNewOrganization({
+                      ...newOrganization,
+                      metadata: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  rows={3}
+                />
+              </div>
+              <div className="flex space-x-3 mt-6">
+                <Button
+                  onClick={handleCreateOrganization}
+                  className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                >
+                  Create
+                </Button>
+                <Button
+                  onClick={() => setShowCreateOrgModal(false)}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Organization Modal */}
+        {showEditOrgModal && editingOrganization && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h3 className="text-lg font-semibold mb-4">Edit Organization</h3>
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  placeholder="Organization Name"
+                  value={editingOrganization.name}
+                  onChange={(e) =>
+                    setEditingOrganization({
+                      ...editingOrganization,
+                      name: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                />
+                <input
+                  type="text"
+                  placeholder="Organization Slug"
+                  value={editingOrganization.slug}
+                  onChange={(e) =>
+                    setEditingOrganization({
+                      ...editingOrganization,
+                      slug: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                />
+                <input
+                  type="text"
+                  placeholder="Logo URL (optional)"
+                  value={editingOrganization.logo || ""}
+                  onChange={(e) =>
+                    setEditingOrganization({
+                      ...editingOrganization,
+                      logo: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                />
+                <textarea
+                  placeholder="Metadata (optional)"
+                  value={editingOrganization.metadata || ""}
+                  onChange={(e) =>
+                    setEditingOrganization({
+                      ...editingOrganization,
+                      metadata: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  rows={3}
+                />
+              </div>
+              <div className="flex space-x-3 mt-6">
+                <Button
+                  onClick={handleUpdateOrganization}
+                  className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                >
+                  Update
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowEditOrgModal(false);
+                    setEditingOrganization(null);
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Invite User Modal */}
+        {showInviteModal && selectedOrgForInvite && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h3 className="text-lg font-semibold mb-4">
+                Invite User to {selectedOrgForInvite.name}
+              </h3>
+              <div className="space-y-4">
+                <input
+                  type="email"
+                  placeholder="Email Address"
+                  value={newInvitation.email}
+                  onChange={(e) =>
+                    setNewInvitation({
+                      ...newInvitation,
+                      email: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                />
+                <select
+                  value={newInvitation.role}
+                  onChange={(e) =>
+                    setNewInvitation({ ...newInvitation, role: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                >
+                  <option value="member">Member</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <div className="flex space-x-3 mt-6">
+                <Button
+                  onClick={handleInviteUser}
+                  className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                >
+                  Send Invitation
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowInviteModal(false);
+                    setSelectedOrgForInvite(null);
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Members Modal */}
+        {showMembersModal && selectedOrgForMembers && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+              <h3 className="text-lg font-semibold mb-4">
+                Members of {selectedOrgForMembers.name}
+              </h3>
+              <div className="space-y-3">
+                {selectedOrgForMembers.members?.map((member: any) => (
+                  <div
+                    key={member.id}
+                    className="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
+                  >
+                    <div>
+                      <p className="font-medium">
+                        {member.user?.name || member.user?.email}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {member.user?.email}
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span
+                        className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                          member.role === "OWNER"
+                            ? "bg-purple-100 text-purple-800"
+                            : member.role === "ADMIN"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-green-100 text-green-800"
+                        }`}
+                      >
+                        {member.role}
+                      </span>
+                      {member.role !== "OWNER" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handleRemoveUser(
+                              member.user.id,
+                              selectedOrgForMembers.id
+                            )
+                          }
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {(!selectedOrgForMembers.members ||
+                  selectedOrgForMembers.members.length === 0) && (
+                  <p className="text-gray-500 text-center py-4">
+                    No members found
+                  </p>
+                )}
+              </div>
+              <div className="mt-6">
+                <Button
+                  onClick={() => {
+                    setShowMembersModal(false);
+                    setSelectedOrgForMembers(null);
+                  }}
+                  variant="outline"
+                  className="w-full"
+                >
+                  Close
+                </Button>
               </div>
             </div>
           </div>

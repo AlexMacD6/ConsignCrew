@@ -272,6 +272,20 @@ export default function ListingDetailPage() {
             facebookBrand: data.listing.facebookBrand || null,
             facebookCondition: data.listing.facebookCondition || null,
             facebookGtin: data.listing.facebookGtin || null,
+            // Product Specifications (Facebook Shop Fields)
+            quantity: data.listing.quantity || 1,
+            salePrice: data.listing.salePrice || null,
+            salePriceEffectiveDate: data.listing.salePriceEffectiveDate || null,
+            itemGroupId: data.listing.itemGroupId || null,
+            gender: data.listing.gender || null,
+            color: data.listing.color || null,
+            size: data.listing.size || null,
+            ageGroup: data.listing.ageGroup || null,
+            material: data.listing.material || null,
+            pattern: data.listing.pattern || null,
+            style: data.listing.style || null,
+            // productType field removed - not in database schema
+            tags: data.listing.tags || [],
             // Video URL - generated from video record or fallback
             videoUrl: videoUrl,
             // Video metadata if available
@@ -766,6 +780,171 @@ export default function ListingDetailPage() {
                 </div>
               )}
 
+              {/* Facebook Shop Product Specifications */}
+              {(listing.color ||
+                listing.size ||
+                listing.gender ||
+                listing.ageGroup ||
+                listing.material ||
+                listing.pattern ||
+                listing.style ||
+                listing.tags?.length > 0 ||
+                listing.quantity > 1 ||
+                listing.salePrice) && (
+                <div className="border-t border-gray-200 pt-6 mb-6">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg
+                      className="h-5 w-5 text-[#D4AF3D]"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                    </svg>
+                    Product Specifications
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {listing.color && (
+                      <div className="flex items-center gap-3">
+                        <Tag className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Color:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600">
+                            {listing.color}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {listing.size && (
+                      <div className="flex items-center gap-3">
+                        <Tag className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Size:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600">
+                            {listing.size}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {listing.gender && (
+                      <div className="flex items-center gap-3">
+                        <Tag className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Gender:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600 capitalize">
+                            {listing.gender}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {listing.ageGroup && (
+                      <div className="flex items-center gap-3">
+                        <Tag className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Age Group:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600 capitalize">
+                            {listing.ageGroup}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {listing.material && (
+                      <div className="flex items-center gap-3">
+                        <Tag className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Material:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600">
+                            {listing.material}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {listing.pattern && (
+                      <div className="flex items-center gap-3">
+                        <Tag className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Pattern:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600">
+                            {listing.pattern}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {listing.style && (
+                      <div className="flex items-center gap-3">
+                        <Tag className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Style:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600">
+                            {listing.style}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {listing.quantity > 1 && (
+                      <div className="flex items-center gap-3">
+                        <Package className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Quantity Available:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600">
+                            {listing.quantity}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {listing.salePrice && (
+                      <div className="flex items-center gap-3">
+                        <TrendingDown className="h-5 w-5 text-red-500" />
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Sale Price:
+                          </span>
+                          <span className="ml-2 text-sm text-red-600 font-medium">
+                            ${listing.salePrice.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {listing.tags && listing.tags.length > 0 && (
+                      <div className="md:col-span-2">
+                        <div className="flex items-center gap-3 mb-2">
+                          <Tag className="h-5 w-5 text-gray-400" />
+                          <span className="text-sm font-medium text-gray-700">
+                            Tags:
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2 ml-8">
+                          {listing.tags.map((tag: string, index: number) => (
+                            <span
+                              key={index}
+                              className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Product Information */}
               {(listing.serial_number ||
                 listing.model_number ||
@@ -825,6 +1004,186 @@ export default function ListingDetailPage() {
                           <span className="ml-2 text-sm text-gray-600">
                             {listing.facebookGtin}
                           </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Facebook Shop Product Specifications */}
+              {(listing.color ||
+                listing.size ||
+                listing.gender ||
+                listing.ageGroup ||
+                listing.material ||
+                listing.pattern ||
+                listing.style ||
+                listing.tags?.length > 0 ||
+                listing.quantity > 1 ||
+                listing.salePrice) && (
+                <div className="border-t border-gray-200 pt-6">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                    Product Specifications
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {listing.color && (
+                      <div className="flex items-center gap-3">
+                        <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
+                          <span className="text-xs">🎨</span>
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Color:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600">
+                            {listing.color}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {listing.size && (
+                      <div className="flex items-center gap-3">
+                        <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
+                          <span className="text-xs">📏</span>
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Size:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600">
+                            {listing.size}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {listing.gender && (
+                      <div className="flex items-center gap-3">
+                        <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
+                          <span className="text-xs">👤</span>
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Gender:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600 capitalize">
+                            {listing.gender}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {listing.ageGroup && (
+                      <div className="flex items-center gap-3">
+                        <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
+                          <span className="text-xs">👶</span>
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Age Group:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600 capitalize">
+                            {listing.ageGroup}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {listing.material && (
+                      <div className="flex items-center gap-3">
+                        <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
+                          <span className="text-xs">🧵</span>
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Material:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600">
+                            {listing.material}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {listing.pattern && (
+                      <div className="flex items-center gap-3">
+                        <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
+                          <span className="text-xs">🔲</span>
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Pattern:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600">
+                            {listing.pattern}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {listing.style && (
+                      <div className="flex items-center gap-3">
+                        <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
+                          <span className="text-xs">🎭</span>
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Style:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600">
+                            {listing.style}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {listing.quantity > 1 && (
+                      <div className="flex items-center gap-3">
+                        <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
+                          <span className="text-xs">📦</span>
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Quantity Available:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600">
+                            {listing.quantity}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {listing.salePrice && (
+                      <div className="flex items-center gap-3">
+                        <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
+                          <span className="text-xs">💰</span>
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Sale Price:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600">
+                            ${listing.salePrice.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {listing.tags && listing.tags.length > 0 && (
+                      <div className="md:col-span-2">
+                        <div className="flex items-center gap-3">
+                          <Tag className="h-5 w-5 text-gray-400" />
+                          <div>
+                            <span className="text-sm font-medium text-gray-700">
+                              Tags:
+                            </span>
+                            <div className="ml-2 flex flex-wrap gap-1 mt-1">
+                              {listing.tags.map(
+                                (tag: string, index: number) => (
+                                  <span
+                                    key={index}
+                                    className="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-full"
+                                  >
+                                    {tag}
+                                  </span>
+                                )
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )}

@@ -111,7 +111,7 @@ export async function PUT(req: NextRequest) {
     });
 
     console.log('Profile API: Successfully updated user profile');
-    return NextResponse.json({ user: updatedUser });
+    return NextResponse.json({ success: true, user: updatedUser });
   } catch (error) {
     console.error('Profile API: Error updating user profile:', error);
     return NextResponse.json({ 

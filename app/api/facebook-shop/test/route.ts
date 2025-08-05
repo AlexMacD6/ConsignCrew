@@ -20,12 +20,22 @@ export async function GET(request: NextRequest) {
     // Check if user is admin
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { isAdmin: true }
+      include: {
+        members: {
+          include: {
+            organization: true
+          }
+        }
+      }
     });
 
-    console.log("User admin status:", user?.isAdmin);
+    const isAdmin = user?.members.some(member => 
+      member.role === 'admin' || member.role === 'owner'
+    ) || session.user.email === 'admin@treasurehub.com';
 
-    if (!user?.isAdmin) {
+    console.log("User admin status:", isAdmin);
+
+    if (!isAdmin) {
       return NextResponse.json(
         { error: "Admin access required" },
         { status: 403 }
@@ -48,7 +58,7 @@ export async function GET(request: NextRequest) {
       listingCount,
       user: {
         id: session.user.id,
-        isAdmin: user.isAdmin
+        isAdmin: isAdmin
       }
     });
 

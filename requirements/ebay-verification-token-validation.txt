@@ -1,0 +1,44 @@
+# eBay Verification Token Validation for Marketplace Account Deletion
+
+## Overview
+Add verification token validation to the eBay marketplace account deletion endpoint to ensure proper security and compliance with eBay's requirements.
+
+## Requirements
+
+### Core Functionality
+- Add verification token validation to the marketplace account deletion endpoint
+- Verification tokens must be between 32-80 characters in length
+- Tokens should contain only valid alphanumeric characters and common symbols
+- Validation should occur before processing the account deletion notification
+
+### Technical Implementation
+- Create `validateEbayVerificationToken()` function in `app/lib/ebay-utils.ts`
+- Update marketplace account deletion endpoint to check for `x-ebay-verification-token` header
+- Validate token format and length before processing webhook
+- Return appropriate error responses for invalid tokens
+
+### Validation Rules
+- Token must be a non-empty string
+- Token length must be between 32-80 characters (inclusive)
+- Token must contain only alphanumeric characters, hyphens, underscores, and periods
+- Invalid tokens should return 401 Unauthorized response
+
+### Error Handling
+- Log validation failures for debugging
+- Return clear error messages for invalid tokens
+- Maintain existing error handling for other validation failures
+
+### Security Considerations
+- Verification token validation occurs before signature verification
+- Invalid tokens are rejected immediately to prevent unauthorized access
+- All validation errors are logged for audit purposes
+
+## Files Modified
+- `app/lib/ebay-utils.ts` - Added validation function
+- `app/api/ebay/marketplace-account-deletion/route.ts` - Added token validation
+
+## Testing
+- Test with valid tokens (32-80 characters)
+- Test with invalid tokens (too short, too long, invalid characters)
+- Test with missing tokens (should still work if token is optional)
+- Verify error responses are correct for each scenario 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { s3Client } from '@/aws/s3Client';
+import { s3Client } from '@/lib/s3';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 
 const prisma = new PrismaClient();

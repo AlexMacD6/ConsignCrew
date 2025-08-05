@@ -15,7 +15,8 @@
       "https://treasurehub.club",
       "https://www.treasurehub.club",
       "https://consigncrew.com",
-      "https://www.consigncrew.com"
+      "https://www.consigncrew.com",
+      "https://*.vercel.app"
     ],
     "ExposeHeaders": [
       "ETag",

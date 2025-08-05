@@ -1,0 +1,91 @@
+# Facebook Shop Schema Update Requirements
+
+## Overview
+Add missing fields to the Listing schema to properly support Facebook Shop CSV export requirements and improve data structure.
+
+## Missing Fields Analysis
+
+### Current Workarounds (Not Ideal)
+- **Gender**: Extracted from category/description
+- **Color**: Extracted from description keywords
+- **Size**: Extracted from description keywords  
+- **Material**: Extracted from description keywords
+- **Pattern**: Extracted from description keywords
+- **Style**: Extracted from description keywords
+- **Quantity**: Defaulted to "1"
+- **Sale Price**: Empty (not supported)
+- **Product Type**: Using category field
+
+### Required New Fields
+
+#### Core Product Attributes
+- `quantity` - Number of items available for sale
+- `salePrice` - Discounted/sale price (Float?)
+- `salePriceEffectiveDate` - When sale price is active (DateTime?)
+- `itemGroupId` - For product variants (String?)
+
+#### Product Specifications
+- `gender` - "male", "female", "unisex" (String)
+- `color` - Product color (String)
+- `size` - Product size (String)
+- `ageGroup` - "adult", "kids", "infant" (String)
+- `material` - Product material (String)
+- `pattern` - Product pattern (String)
+- `style` - Product style (String)
+
+#### Enhanced Categorization
+- `productType` - Specific product type (String)
+- `tags` - Array of product tags (String[])
+
+## Schema Update Plan
+
+### Phase 1: Add Core Fields
+```prisma
+model Listing {
+  // ... existing fields ...
+  
+  // Product Availability
+  quantity              Int      @default(1)
+  salePrice             Float?
+  salePriceEffectiveDate DateTime?
+  itemGroupId           String?
+  
+  // Product Specifications
+  gender                String?  // "male", "female", "unisex"
+  color                 String?
+  size                  String?
+  ageGroup              String?  // "adult", "kids", "infant"
+  material              String?
+  pattern               String?
+  style                 String?
+  
+  // Enhanced Categorization
+  productType           String?
+  tags                  String[] @default([])
+}
+```
+
+### Phase 2: Migration Strategy
+1. Add fields as optional initially
+2. Create migration to add new fields
+3. Update export logic to use new fields
+4. Gradually populate existing listings
+5. Make fields required once data is populated
+
+## Benefits
+- ✅ **Structured data** instead of text parsing
+- ✅ **Better Facebook Shop integration**
+- ✅ **Improved search and filtering**
+- ✅ **More accurate product categorization**
+- ✅ **Future-proof for other platforms**
+
+## Implementation Priority
+1. **High Priority**: quantity, gender, color, size, material
+2. **Medium Priority**: salePrice, ageGroup, pattern, style
+3. **Low Priority**: itemGroupId, productType, tags
+
+## Files to Update
+- `prisma/schema.prisma` - Add new fields
+- `app/api/facebook-shop/export/route.ts` - Use new fields
+- Listing creation/editing forms - Add input fields
+- Database migration - Add new columns 

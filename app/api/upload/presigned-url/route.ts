@@ -5,7 +5,7 @@ import { generatePresignedUrl, validatePhotoFile } from '@/lib/s3';
 export async function POST(request: NextRequest) {
   try {
     // Get the current user session
-    const session = await auth();
+    const session = await auth.api.getSession({ headers: request.headers });
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: 'Unauthorized' },

@@ -102,37 +102,37 @@ export async function GET(request: NextRequest) {
 
     console.log(`Found ${listings.length} listings for Facebook Shop export`);
 
-    // Generate CSV content
+    // Generate CSV content with all required Facebook Shop fields
     const csvHeaders = [
       "id",
-      "title",
-      "description", 
-      "price",
-      "condition",
-      "brand",
+      "title", 
+      "description",
       "availability",
-      "category",
-      "subcategory",
-      "gtin",
-      "mpn",
-      "image_url",
-      "additional_image_url_1",
-      "additional_image_url_2",
-      "additional_image_url_3",
-      "additional_image_url_4",
-      "additional_image_url_5",
-      "additional_image_url_6",
-      "additional_image_url_7",
-      "additional_image_url_8",
-      "video_url",
+      "condition",
+      "price",
+      "link",
+      "image_link",
+      "brand",
+      "google_product_category",
+      "fb_product_category", 
+      "quantity_to_sell_on_facebook",
+      "sale_price",
+      "sale_price_effective_date",
+      "item_group_id",
+      "gender",
+      "color",
+      "size",
+      "age_group",
+      "material",
+      "pattern",
+      "shipping",
       "shipping_weight",
-      "shipping_length",
-      "shipping_width", 
-      "shipping_height",
-      "seller_name",
-      "seller_email",
-      "created_at",
-      "updated_at"
+      "gtin",
+      "video[0].url",
+      "video[0].tag",
+      "product_type",
+      "product_tag",
+      "style[0]"
     ];
 
     const csvRows = listings.map(listing => {
@@ -148,7 +148,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Facebook Shop condition mapping
-      const facebookCondition = listing.facebookCondition || listing.condition;
+      const facebookCondition = listing.facebookCondition || listing.condition || "new";
       
       // Facebook Shop brand (use Facebook brand if available, otherwise main brand)
       const facebookBrand = listing.facebookBrand || listing.brand || "";
@@ -167,48 +167,101 @@ export async function GET(request: NextRequest) {
 
       // Get video URL from either direct videoUrl field or related videos
       let videoUrl = listing.videoUrl || "";
+      let videoTag = "";
       if (!videoUrl && listing.videos.length > 0) {
         // Use the first completed video's processed video key
         const firstVideo = listing.videos[0];
         if (firstVideo.processedVideoKey) {
           // Construct S3 URL for the processed video
           videoUrl = `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${firstVideo.processedVideoKey}`;
+          videoTag = "Product Video";
         } else if (firstVideo.rawVideoKey) {
           // Fallback to raw video if processed video is not available
           videoUrl = `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${firstVideo.rawVideoKey}`;
+          videoTag = "Product Video";
         }
       }
+
+      // Generate product link (assuming you have a public listing page)
+      const productLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://treasurehub.club'}/list-item/${listing.id}`;
+
+      // Map category to Google Product Category (simplified mapping)
+      const googleProductCategory = listing.category || "Apparel & Accessories";
+      
+      // Map category to Facebook Product Category
+      const fbProductCategory = listing.category || "Apparel & Clothing";
+
+      // Use structured fields from schema (with fallbacks to description parsing)
+      const gender = listing.gender || (listing.category?.toLowerCase().includes('men') ? 'male' :
+                   listing.category?.toLowerCase().includes('women') ? 'female' : 'unisex');
+
+      const color = listing.color || (listing.description?.toLowerCase().includes('blue') ? 'blue' :
+                   listing.description?.toLowerCase().includes('red') ? 'red' :
+                   listing.description?.toLowerCase().includes('green') ? 'green' :
+                   listing.description?.toLowerCase().includes('black') ? 'black' :
+                   listing.description?.toLowerCase().includes('white') ? 'white' : "");
+
+      const size = listing.size || (listing.description?.toLowerCase().includes('large') ? 'L' :
+                  listing.description?.toLowerCase().includes('medium') ? 'M' :
+                  listing.description?.toLowerCase().includes('small') ? 'S' : "");
+
+      const ageGroup = listing.ageGroup || "adult";
+
+      const material = listing.material || (listing.description?.toLowerCase().includes('cotton') ? 'cotton' :
+                      listing.description?.toLowerCase().includes('polyester') ? 'polyester' :
+                      listing.description?.toLowerCase().includes('wool') ? 'wool' :
+                      listing.description?.toLowerCase().includes('leather') ? 'leather' : "");
+
+      const pattern = listing.pattern || (listing.description?.toLowerCase().includes('striped') ? 'striped' :
+                     listing.description?.toLowerCase().includes('plaid') ? 'plaid' :
+                     listing.description?.toLowerCase().includes('floral') ? 'floral' :
+                     listing.description?.toLowerCase().includes('solid') ? 'solid' : "");
+
+      // Shipping information
+      const shipping = "US:CA:Ground:0 USD";
+
+      // GTIN (Global Trade Item Number)
+      const gtin = listing.facebookGtin || "";
+
+      // Product type and tags
+      const productType = listing.category || "";
+      const productTag = listing.tags?.join(', ') || listing.description || "";
+
+      // Style information
+      const style = listing.style || (listing.description?.toLowerCase().includes('casual') ? 'casual' :
+                   listing.description?.toLowerCase().includes('formal') ? 'formal' :
+                   listing.description?.toLowerCase().includes('vintage') ? 'vintage' : "");
 
       return [
         listing.id,
         listing.title,
         listing.description,
-        listing.price.toFixed(2),
-        facebookCondition,
-        facebookBrand,
         "in stock", // Facebook Shop availability
-        listing.category,
-        listing.subCategory || "",
-        listing.facebookGtin || "", // GTIN for Facebook
-        listing.modelNumber || "", // MPN (Manufacturer Part Number)
+        facebookCondition,
+        listing.price.toFixed(2),
+        productLink,
         imageUrls[0] || "", // Primary image
-        imageUrls[1] || "", // Additional images
-        imageUrls[2] || "",
-        imageUrls[3] || "",
-        imageUrls[4] || "",
-        imageUrls[5] || "",
-        imageUrls[6] || "",
-        imageUrls[7] || "",
-        imageUrls[8] || "",
-        videoUrl, // Video URL from direct field or related videos
+        facebookBrand,
+        googleProductCategory,
+        fbProductCategory,
+        listing.quantity.toString(), // Quantity to sell on Facebook
+        listing.salePrice ? listing.salePrice.toFixed(2) : "", // Sale price if available
+        listing.salePriceEffectiveDate ? listing.salePriceEffectiveDate.toISOString() : "", // Sale price effective date
+        listing.itemGroupId || "", // Item group ID for variants
+        gender,
+        color,
+        size,
+        ageGroup,
+        material,
+        pattern,
+        shipping,
         estimatedWeight.toString(),
-        shippingLength.toString(),
-        shippingWidth.toString(),
-        shippingHeight.toString(),
-        listing.user?.name || "TreasureHub Seller",
-        listing.user?.email || "",
-        listing.createdAt.toISOString(),
-        listing.updatedAt.toISOString()
+        gtin,
+        videoUrl,
+        videoTag,
+        productType,
+        productTag,
+        style
       ];
     });
 

@@ -1,0 +1,76 @@
+# AI Service Facebook Shop Fields Update
+
+## Overview
+Updated the AI service to analyze and populate the new Facebook Shop product specification fields when generating comprehensive listings.
+
+## Requirements
+
+### Core Functionality
+- Enhance AI analysis to extract and populate new Facebook Shop fields
+- Update AI prompts to include product specification analysis
+- Modify comprehensive listing generation to include new fields
+- Update listings API to handle new fields during creation
+
+### New Fields to be Populated by AI
+
+#### Product Availability & Pricing
+- `quantity` - Number of items available (default: 1)
+- `salePrice` - Discounted/sale price (null initially)
+- `salePriceEffectiveDate` - When sale price is active (null initially)
+- `itemGroupId` - For product variants (null initially)
+
+#### Product Specifications
+- `gender` - "male", "female", "unisex" (determined from category/description)
+- `color` - Product color (extracted from visual analysis)
+- `size` - Product size (extracted from visual analysis/description)
+- `ageGroup` - "adult", "kids", "infant" (determined from product type)
+- `material` - Product material (extracted from visual analysis)
+- `pattern` - Product pattern (extracted from visual analysis)
+- `style` - Product style (extracted from visual analysis/description)
+
+#### Enhanced Categorization
+- `productType` - Specific product type (from category or analysis)
+- `tags` - Array of relevant tags for search and categorization
+
+### AI Analysis Instructions
+- **Gender**: Determine from category, description, or visual analysis
+- **Color**: Extract from visual analysis or description (blue, black, white, red, etc.)
+- **Size**: Extract from visual analysis, description, or category (S, M, L, XL, Small, Large)
+- **Age Group**: Determine target age based on product type
+- **Material**: Extract from visual analysis or description (cotton, leather, wood, metal, plastic)
+- **Pattern**: Extract from visual analysis or description (solid, striped, floral, plaid)
+- **Style**: Extract from visual analysis or description (casual, formal, vintage, modern)
+- **Product Type**: Specific product type (Dresser, Chair, Table, Shirt, Shoes)
+- **Tags**: Generate relevant tags for search and categorization
+
+### Technical Implementation
+- Updated AI service prompt to include product specification analysis
+- Enhanced comprehensive listing generation API to handle new fields
+- Updated listings API to accept and store new fields
+- Modified ComprehensiveListingData interface to include new fields
+- Added validation and fallback values for new fields
+
+### Data Flow
+1. **AI Analysis**: AI analyzes photos/video to extract product specifications
+2. **Field Population**: New fields are populated based on visual analysis and user input
+3. **Validation**: Fields are validated and fallback values are applied
+4. **Storage**: New fields are stored in the database with the listing
+5. **Export**: Fields are included in Facebook Shop CSV export
+
+### Fallback Strategy
+- **Default Values**: Sensible defaults for required fields (quantity: 1, ageGroup: 'adult')
+- **Null Values**: Optional fields default to null if not determinable
+- **Description Parsing**: Fallback to parsing description for color, size, material, etc.
+- **Category Mapping**: Use category information to infer gender, ageGroup, productType
+
+## Files Modified
+- `app/lib/ai-service.ts` - Updated AI prompt and interfaces
+- `app/api/ai/generate-comprehensive-listing/route.ts` - Enhanced to handle new fields
+- `app/api/listings/route.ts` - Updated to accept and store new fields
+
+## Benefits
+- **Better Facebook Shop Integration**: All required fields populated automatically
+- **Improved Search**: Enhanced categorization and tagging
+- **Structured Data**: Consistent product specifications across listings
+- **AI-Powered Analysis**: Visual analysis extracts detailed product information
+- **Backward Compatibility**: Existing listings continue to work with fallbacks 

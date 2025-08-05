@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createHistoryEvent, HistoryEvents } from '@/lib/listing-history';
+import { validateGender, validateAgeGroup, validateItemGroupId } from '@/lib/product-specifications';
 
 // Generate a random 6-character ID using letters and numbers
 function generateRandomId(): string {
@@ -47,6 +48,19 @@ export async function POST(request: NextRequest) {
       facebookCategory,
       facebookCondition,
       facebookGtin,
+      // Product Specifications (Facebook Shop Fields)
+      quantity,
+      salePrice,
+      salePriceEffectiveDate,
+      itemGroupId,
+      gender,
+      color,
+      size,
+      ageGroup,
+      material,
+      pattern,
+      style,
+      tags,
       itemId, // Add itemId to destructuring
       videoId, // Add videoId to destructuring
     } = body;
@@ -55,6 +69,25 @@ export async function POST(request: NextRequest) {
     if (!photos?.hero || !photos?.back || !title || !price || !description) {
       return NextResponse.json({
         error: 'Missing required fields: hero photo, back photo, title, price, description'
+      }, { status: 400 });
+    }
+
+    // Validate product specifications
+    if (gender && !validateGender(gender)) {
+      return NextResponse.json({
+        error: 'Invalid gender value. Must be one of: male, female, unisex'
+      }, { status: 400 });
+    }
+
+    if (ageGroup && !validateAgeGroup(ageGroup)) {
+      return NextResponse.json({
+        error: 'Invalid age group value. Must be one of: newborn, infant, toddler, kids, adult'
+      }, { status: 400 });
+    }
+
+    if (itemGroupId && !validateItemGroupId(itemGroupId)) {
+      return NextResponse.json({
+        error: 'Item Group ID must be 50 characters or less'
       }, { status: 400 });
     }
 
@@ -101,6 +134,19 @@ export async function POST(request: NextRequest) {
         facebookCategory: facebookCategory || null,
         facebookCondition: facebookCondition || null,
         facebookGtin: facebookGtin || null,
+        // Product Specifications (Facebook Shop Fields)
+        quantity: quantity || 1,
+        salePrice: salePrice ? parseFloat(salePrice) : null,
+        salePriceEffectiveDate: salePriceEffectiveDate ? new Date(salePriceEffectiveDate) : null,
+        itemGroupId: itemGroupId || null,
+        gender: gender || null,
+        color: color || null,
+        size: size || null,
+        ageGroup: ageGroup || 'adult',
+        material: material || null,
+        pattern: pattern || null,
+        style: style || null,
+        tags: tags || [],
         // Link video to listing if videoId is provided
         videos: videoId ? {
           connect: {

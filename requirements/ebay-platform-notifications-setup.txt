@@ -1,0 +1,86 @@
+# eBay Platform Notifications Setup Requirements
+
+## Overview
+Set up eBay Platform Notifications to receive real-time webhooks from eBay's Browse API for item updates, price changes, and availability status.
+
+## Core Requirements
+
+### 1. Environment Variables
+Add the following eBay-specific environment variables to `.env` and `env.example`:
+- `EBAY_APP_ID` - eBay Developer App ID
+- `EBAY_CERT_ID` - eBay Developer Certificate ID  
+- `EBAY_CLIENT_SECRET` - eBay Developer Client Secret
+- `EBAY_NOTIFICATION_ENDPOINT_URL` - Webhook endpoint URL (e.g., https://treasurehub.club/api/ebay/notifications)
+- `EBAY_SANDBOX_MODE` - Boolean flag for sandbox vs production
+
+### 2. API Endpoints to Create
+- `POST /api/ebay/notifications` - Main webhook endpoint for receiving eBay notifications
+- `GET /api/ebay/notifications` - Health check endpoint for eBay verification
+- `POST /api/ebay/marketplace-account-deletion` - Endpoint for marketplace account deletion notifications (GDPR compliance)
+- `GET /api/ebay/marketplace-account-deletion` - Health check for account deletion endpoint
+
+### 3. Database Schema Updates
+Add eBay notification tracking to Prisma schema:
+- `ebayNotification` table to store received notifications
+- `ebayItem` table to track items we're monitoring
+- `ebayNotificationLog` table for debugging and audit trails
+
+### 4. Notification Types to Handle
+- `ITEM_UPDATED` - Item details, price, or availability changed
+- `ITEM_SOLD` - Item was sold
+- `ITEM_ENDED` - Item listing ended
+- `PRICE_CHANGED` - Item price was modified
+- `QUANTITY_CHANGED` - Available quantity changed
+- `MARKETPLACE_ACCOUNT_DELETION` - Marketplace account was deleted (GDPR compliance)
+
+### 5. Security Requirements
+- Implement webhook signature verification using eBay's public key
+- Validate notification payload integrity
+- Rate limiting for webhook endpoints
+- IP whitelisting for eBay's notification servers
+
+### 6. Integration Points
+- Connect notifications to existing listing system
+- Update item prices based on eBay market data
+- Trigger alerts for significant price changes
+- Log all notifications for audit purposes
+
+### 7. Error Handling
+- Implement retry logic for failed webhook processing
+- Dead letter queue for unprocessable notifications
+- Monitoring and alerting for webhook failures
+- Graceful degradation if eBay services are unavailable
+
+## Technical Implementation Steps
+
+### Phase 1: Basic Setup
+1. Add eBay environment variables
+2. Create webhook endpoint structure
+3. Implement signature verification
+4. Add basic notification logging
+
+### Phase 2: Database Integration
+1. Update Prisma schema with eBay tables
+2. Create notification processing logic
+3. Implement item tracking system
+4. Add audit logging
+
+### Phase 3: Business Logic
+1. Connect notifications to listing updates
+2. Implement price change alerts
+3. Add market data analysis
+4. Create admin dashboard for eBay data
+
+### Phase 4: Monitoring & Optimization
+1. Add comprehensive error handling
+2. Implement retry mechanisms
+3. Create monitoring dashboards
+4. Performance optimization
+
+## Success Criteria
+- Webhook endpoint successfully receives and validates eBay notifications
+- Notifications are properly stored and processed
+- Price changes trigger appropriate alerts
+- System maintains data integrity during high notification volumes
+- Admin can view and manage eBay integration status
+- All notifications are logged for audit compliance 

@@ -35,6 +35,21 @@ import {
   ConfidenceBadge,
   ConfidenceSummary,
 } from "../../components/ConfidenceIndicator";
+import HybridInput from "../../components/HybridInput";
+import {
+  GENDER_OPTIONS,
+  AGE_GROUP_OPTIONS,
+  COLOR_SUGGESTIONS,
+  MATERIAL_SUGGESTIONS,
+  PATTERN_SUGGESTIONS,
+  STYLE_SUGGESTIONS,
+  processProductSpecs,
+  validateGender,
+  validateAgeGroup,
+  validateItemGroupId,
+  type Gender,
+  type AgeGroup,
+} from "../../lib/product-specifications";
 
 const taxonomy = {
   // Facebook Marketplace Categories - Primary Categories
@@ -310,6 +325,21 @@ export default function ListItemPage() {
   const [facebookCondition, setFacebookCondition] = useState("");
   const [facebookGtin, setFacebookGtin] = useState("");
 
+  // Product Specifications (Facebook Shop Fields)
+  const [quantity, setQuantity] = useState("1");
+  const [salePrice, setSalePrice] = useState("");
+  const [salePriceEffectiveDate, setSalePriceEffectiveDate] = useState("");
+  const [itemGroupId, setItemGroupId] = useState("");
+  const [gender, setGender] = useState<Gender | "">("");
+  const [color, setColor] = useState("");
+  const [size, setSize] = useState("");
+  const [ageGroup, setAgeGroup] = useState<AgeGroup | "">("");
+  const [material, setMaterial] = useState("");
+  const [pattern, setPattern] = useState("");
+  const [style, setStyle] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+
   // Zip code validation state
   const [zipCodeValidation, setZipCodeValidation] = useState<{
     isValid: boolean | null;
@@ -384,8 +414,36 @@ export default function ListItemPage() {
   //   error: null,
   // });
 
+  // Phase 2: Staged photo data state
+  const [stagedPhotoData, setStagedPhotoData] = useState<{
+    referenceImageUrl: string;
+    stagingPrompt: string;
+    desiredAspectRatio: string;
+    targetResolution: string;
+    postProcess: string;
+  } | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+
+  // Tag management functions
+  const addTag = () => {
+    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+      setTags([...tags, tagInput.trim()]);
+      setTagInput("");
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter((tag) => tag !== tagToRemove));
+  };
+
+  const handleTagKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addTag();
+    }
+  };
 
   // Safety check function for map operations
   const safeMap = <T, R>(
@@ -738,14 +796,30 @@ export default function ListItemPage() {
       setFacebookCondition(listingData.facebookCondition || "");
       setFacebookGtin(listingData.facebookGtin || "");
 
+      // Apply Product Specifications (Facebook Shop Fields)
+      setQuantity(listingData.quantity?.toString() || "1");
+      setSalePrice(listingData.salePrice?.toString() || "");
+      setSalePriceEffectiveDate(listingData.salePriceEffectiveDate || "");
+      setItemGroupId(listingData.itemGroupId || "");
+      setGender(listingData.gender || "");
+      setColor(listingData.color || "");
+      setSize(listingData.size || "");
+      setAgeGroup(listingData.ageGroup || "");
+      setMaterial(listingData.material || "");
+      setPattern(listingData.pattern || "");
+      setStyle(listingData.style || "");
+      setTags(listingData.tags || []);
+
       // Use stored itemId for QR code and listing ID when form fields are generated
       const listingId = itemId || generateItemId();
       const qrCode = generateQRCode(listingId);
       setGeneratedListingId(listingId);
       setGeneratedQRCode(qrCode);
 
-      // Generate staged photo with comprehensive data (non-blocking)
+      // Phase 2: Generate staged photo prompt (blocking - wait for completion)
       if (photos.hero?.url || photos.hero?.key) {
+        console.log("🎨 Phase 2 - Starting staged photo generation...");
+        // Prepare photo URLs for Phase 2
         const photoUrls = [
           photos.hero?.url || photos.hero?.key,
           photos.back?.url || photos.back?.key,
@@ -754,19 +828,176 @@ export default function ListItemPage() {
             : []),
         ].filter(Boolean);
 
-        // TODO: Re-enable staged photo generation in Phase 2
-        // Run staged photo generation in background without blocking
-        // generateStagedPhotoAsync(
-        //   photoUrls,
-        //   listingData.detailedDescription,
-        //   listingData.department,
-        //   listingData.category
-        // ).catch((error) => {
-        //   console.error(
-        //     "Staged photo generation failed (non-blocking):",
-        //     error
-        //   );
-        // });
+        // Convert S3 URLs to CloudFront URLs for OpenAI access
+        const accessiblePhotoUrls = photoUrls.map((url) => {
+          if (url && typeof url === "string") {
+            if (url.includes("s3.us-east-1.amazonaws.com")) {
+              const s3Path = url.split("s3.us-east-1.amazonaws.com/")[1];
+              const cfDomain =
+                process.env.NEXT_PUBLIC_CDN_URL ||
+                "https://dtlqyjbwka60p.cloudfront.net";
+              return `${cfDomain}/${s3Path}`;
+            }
+            return url;
+          }
+          return url;
+        });
+
+        // Prepare video frame URLs if available
+        const videoFrameUrls =
+          videoData.frameUrls?.map((url) => {
+            if (url && typeof url === "string") {
+              if (url.includes("s3.us-east-1.amazonaws.com")) {
+                const s3Path = url.split("s3.us-east-1.amazonaws.com/")[1];
+                const cfDomain =
+                  process.env.NEXT_PUBLIC_CDN_URL ||
+                  "https://dtlqyjbwka60p.cloudfront.net";
+                return `${cfDomain}/${s3Path}`;
+              }
+              return url;
+            }
+            return url;
+          }) || [];
+
+        try {
+          console.log("🎨 Starting Phase 2: Staged photo generation");
+
+          // Call Phase 2 API
+          console.log("🎨 Phase 2 - Sending request with data:", {
+            listingJSONKeys: Object.keys(listingData),
+            photoURLsCount: accessiblePhotoUrls.length,
+            videoFramesCount: videoFrameUrls.length,
+            firstPhotoURL: accessiblePhotoUrls[0],
+            listingDataSample: {
+              title: listingData.title,
+              department: listingData.department,
+              category: listingData.category,
+            },
+          });
+
+          // Add timeout to prevent hanging
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+          const phase2Response = await fetch("/api/ai/generate-staged-photo", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              listingJSON: listingData,
+              photoURLs: accessiblePhotoUrls,
+              videoFrames: videoFrameUrls,
+            }),
+            signal: controller.signal,
+          });
+
+          clearTimeout(timeoutId);
+
+          console.log("🎨 Phase 2 - Response status:", phase2Response.status);
+          console.log("🎨 Phase 2 - Response ok:", phase2Response.ok);
+
+          if (!phase2Response.ok) {
+            const errorText = await phase2Response.text();
+            console.error("🎨 Phase 2 - Error response:", errorText);
+            throw new Error(
+              `Phase 2 failed: ${phase2Response.status} ${phase2Response.statusText} - ${errorText}`
+            );
+          }
+
+          const phase2Result = await phase2Response.json();
+          console.log("✅ Phase 2 completed:", phase2Result);
+
+          // Store the staged photo data for later use
+          if (phase2Result.data) {
+            setStagedPhotoData(phase2Result.data);
+
+            // Use the generated image URL from the combined Phase 2+3 response
+            if (phase2Result.data.generatedImageUrl) {
+              setPhotos((prev) => ({
+                ...prev,
+                proof: {
+                  file: null,
+                  key: null,
+                  url: phase2Result.data.generatedImageUrl,
+                },
+              }));
+            } else {
+              // Use fallback proof photo
+              setPhotos((prev) => ({
+                ...prev,
+                proof: {
+                  file: null,
+                  key: null,
+                  url: accessiblePhotoUrls[0] || "",
+                },
+              }));
+            }
+          } else {
+            console.warn("⚠️ Phase 2 - No data in response, using fallback");
+            setStagedPhotoData({
+              referenceImageUrl: accessiblePhotoUrls[0] || "",
+              stagingPrompt: "Professional product photo with clean background",
+              desiredAspectRatio: "1:1",
+              targetResolution: "1024x1024",
+              postProcess: "none",
+            });
+
+            // Use fallback proof photo
+            setPhotos((prev) => ({
+              ...prev,
+              proof: {
+                file: null,
+                key: null,
+                url: accessiblePhotoUrls[0] || "",
+              },
+            }));
+          }
+        } catch (phase2Error) {
+          console.error("❌ Phase 2 failed:", phase2Error);
+          console.error("❌ Phase 2 error details:", {
+            message:
+              phase2Error instanceof Error
+                ? phase2Error.message
+                : "Unknown error",
+            stack: phase2Error instanceof Error ? phase2Error.stack : undefined,
+          });
+
+          // Provide user-friendly error message
+          let errorMessage =
+            "Unknown error occurred during photo staging generation";
+          if (phase2Error instanceof Error) {
+            if (phase2Error.name === "AbortError") {
+              errorMessage = "Photo staging generation timed out (30 seconds)";
+            } else {
+              errorMessage = phase2Error.message;
+            }
+          }
+
+          console.warn(
+            "⚠️ Phase 2 failed, using fallback staging data. Error:",
+            errorMessage
+          );
+
+          // Don't fail the entire process if Phase 2 fails - use fallback data
+          setStagedPhotoData({
+            referenceImageUrl: accessiblePhotoUrls[0] || "",
+            stagingPrompt: "Professional product photo with clean background",
+            desiredAspectRatio: "1:1",
+            targetResolution: "1024x1024",
+            postProcess: "none",
+          });
+
+          // Use fallback proof photo
+          setPhotos((prev) => ({
+            ...prev,
+            proof: {
+              file: null,
+              key: null,
+              url: accessiblePhotoUrls[0] || "",
+            },
+          }));
+        }
       }
     } catch (error) {
       console.error("❌ Error generating form fields:", error);
@@ -858,13 +1089,15 @@ export default function ListItemPage() {
   const hasMinimumPhotos = () => {
     return (
       (photos.hero?.file || photos.hero?.url) &&
-      (photos.back?.file || photos.back?.url)
+      (photos.back?.file || photos.back?.url) &&
+      (photos.proof?.file || photos.proof?.url)
     );
   };
 
   const isFormValid =
     (photos.hero?.file || photos.hero?.url) &&
     (photos.back?.file || photos.back?.url) &&
+    (photos.proof?.file || photos.proof?.url) &&
     department &&
     category &&
     subCategory &&
@@ -879,7 +1112,7 @@ export default function ListItemPage() {
       try {
         const formData = {
           photos: {
-            // staged: stagedPhoto.url, // TODO: Re-enable AI-generated staged photo URL in Phase 2
+            staged: stagedPhotoData?.referenceImageUrl || photos.proof?.url, // AI-generated staged photo
             hero: photos.hero,
             back: photos.back,
             proof: photos.proof,
@@ -913,6 +1146,23 @@ export default function ListItemPage() {
           facebookBrand: brand || null, // Use main brand field
           facebookCondition: condition || null, // Use main condition field
           facebookGtin: facebookGtin || null,
+
+          // Product Specifications (Facebook Shop Fields)
+          quantity: parseInt(quantity) || 1,
+          salePrice: salePrice ? parseFloat(salePrice) : null,
+          salePriceEffectiveDate: salePriceEffectiveDate || null,
+          itemGroupId: itemGroupId || null,
+          ...processProductSpecs({
+            gender,
+            ageGroup,
+            color,
+            size,
+            material,
+            pattern,
+            style,
+            itemGroupId,
+          }),
+          tags: tags || [],
           itemId: generatedListingId || itemId,
           qrCodeUrl: generatedQRCode || generateQRCode(itemId),
           videoId: videoData.videoId || null, // Add video ID to link video to listing
@@ -1687,7 +1937,7 @@ export default function ListItemPage() {
                     <div className="flex items-center gap-3">
                       <div className="w-2 h-2 bg-[#D4AF3D] rounded-full animate-pulse"></div>
                       <span className="text-sm text-gray-700">
-                        Performing deep market analysis
+                        Phase 1: Analyzing photos and generating listing data
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
@@ -1696,7 +1946,7 @@ export default function ListItemPage() {
                         style={{ animationDelay: "0.5s" }}
                       ></div>
                       <span className="text-sm text-gray-700">
-                        Analyzing competitive landscape
+                        Performing deep market analysis
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
@@ -1714,7 +1964,7 @@ export default function ListItemPage() {
                         style={{ animationDelay: "1.5s" }}
                       ></div>
                       <span className="text-sm text-gray-700">
-                        Generating consumer insights
+                        Phase 2: Generating staged photo prompt
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
@@ -1730,12 +1980,12 @@ export default function ListItemPage() {
 
                   <div className="mt-6 p-3 bg-blue-50 rounded-lg">
                     <p className="text-xs text-blue-800">
-                      <strong>Expected time:</strong> 20-30 seconds
+                      <strong>Expected time:</strong> 30-45 seconds
                       <br />
                       <strong>Model:</strong> GPT-4o (deep reasoning & analysis)
                       <br />
-                      <strong>Processing:</strong> Market analysis &
-                      comprehensive reasoning
+                      <strong>Processing:</strong> Phase 1: Listing generation +
+                      Phase 2: Staged photo prompt
                     </p>
                   </div>
 
@@ -2852,6 +3102,327 @@ export default function ListItemPage() {
                         </p>
                       </div>
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Product Specifications (Facebook Shop Fields) */}
+              <div className="mt-6 bg-white rounded-xl shadow-lg p-8">
+                <h2 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
+                  <svg
+                    className="h-5 w-5 text-[#D4AF3D]"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                  Product Specifications
+                </h2>
+                <p className="text-sm text-gray-600 mb-6">
+                  Detailed product specifications for better categorization and
+                  search visibility.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Quantity */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      Quantity Available
+                      {confidenceScores?.quantity && (
+                        <ConfidenceBadge
+                          level={confidenceScores.quantity.level}
+                        />
+                      )}
+                    </label>
+                    <input
+                      type="number"
+                      value={quantity}
+                      onChange={(e) => setQuantity(e.target.value)}
+                      min="1"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                      placeholder="1"
+                    />
+                  </div>
+
+                  {/* Sale Price */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      Sale Price ($)
+                      {confidenceScores?.salePrice && (
+                        <ConfidenceBadge
+                          level={confidenceScores.salePrice.level}
+                        />
+                      )}
+                    </label>
+                    <input
+                      type="number"
+                      value={salePrice}
+                      onChange={(e) => setSalePrice(e.target.value)}
+                      min="0"
+                      step="0.01"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                      placeholder="0.00"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Special sale price (optional)
+                    </p>
+                  </div>
+
+                  {/* Sale Price Effective Date */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      Sale Price Effective Date
+                      {confidenceScores?.salePriceEffectiveDate && (
+                        <ConfidenceBadge
+                          level={confidenceScores.salePriceEffectiveDate.level}
+                        />
+                      )}
+                    </label>
+                    <input
+                      type="date"
+                      value={salePriceEffectiveDate}
+                      onChange={(e) =>
+                        setSalePriceEffectiveDate(e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                    />
+                  </div>
+
+                  {/* Item Group ID */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      Item Group ID
+                      {confidenceScores?.itemGroupId && (
+                        <ConfidenceBadge
+                          level={confidenceScores.itemGroupId.level}
+                        />
+                      )}
+                      <div className="relative group">
+                        <svg
+                          className="w-4 h-4 text-gray-400 cursor-help"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
+                          Used to group related product variants (e.g., same
+                          shirt in different colors/sizes)
+                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                        </div>
+                      </div>
+                    </label>
+                    <input
+                      type="text"
+                      value={itemGroupId}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value.length <= 50) {
+                          setItemGroupId(value);
+                        }
+                      }}
+                      maxLength={50}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                      placeholder="For product variants"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {itemGroupId.length}/50 characters
+                    </p>
+                  </div>
+
+                  {/* Gender */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      Gender
+                      {confidenceScores?.gender && (
+                        <ConfidenceBadge
+                          level={confidenceScores.gender.level}
+                        />
+                      )}
+                    </label>
+                    <select
+                      value={gender}
+                      onChange={(e) => setGender(e.target.value as Gender | "")}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                    >
+                      <option value="">Select Gender</option>
+                      {GENDER_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option.charAt(0).toUpperCase() + option.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Age Group */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      Age Group
+                      {confidenceScores?.ageGroup && (
+                        <ConfidenceBadge
+                          level={confidenceScores.ageGroup.level}
+                        />
+                      )}
+                    </label>
+                    <select
+                      value={ageGroup}
+                      onChange={(e) =>
+                        setAgeGroup(e.target.value as AgeGroup | "")
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                    >
+                      <option value="">Select Age Group</option>
+                      {AGE_GROUP_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option.charAt(0).toUpperCase() + option.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Color */}
+                  <HybridInput
+                    value={color}
+                    onChange={setColor}
+                    suggestions={COLOR_SUGGESTIONS}
+                    placeholder="e.g., Red, Blue, Black"
+                    label="Color"
+                    confidenceBadge={
+                      confidenceScores?.color && (
+                        <ConfidenceBadge level={confidenceScores.color.level} />
+                      )
+                    }
+                  />
+
+                  {/* Size */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      Size
+                      {confidenceScores?.size && (
+                        <ConfidenceBadge level={confidenceScores.size.level} />
+                      )}
+                    </label>
+                    <input
+                      type="text"
+                      value={size}
+                      onChange={(e) => setSize(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                      placeholder="e.g., Large, XL, 42"
+                    />
+                  </div>
+
+                  {/* Material */}
+                  <HybridInput
+                    value={material}
+                    onChange={setMaterial}
+                    suggestions={MATERIAL_SUGGESTIONS}
+                    placeholder="e.g., Cotton, Wood, Metal"
+                    label="Material"
+                    confidenceBadge={
+                      confidenceScores?.material && (
+                        <ConfidenceBadge
+                          level={confidenceScores.material.level}
+                        />
+                      )
+                    }
+                  />
+
+                  {/* Pattern */}
+                  <HybridInput
+                    value={pattern}
+                    onChange={setPattern}
+                    suggestions={PATTERN_SUGGESTIONS}
+                    placeholder="e.g., Striped, Floral, Solid"
+                    label="Pattern"
+                    confidenceBadge={
+                      confidenceScores?.pattern && (
+                        <ConfidenceBadge
+                          level={confidenceScores.pattern.level}
+                        />
+                      )
+                    }
+                  />
+
+                  {/* Style */}
+                  <HybridInput
+                    value={style}
+                    onChange={setStyle}
+                    suggestions={STYLE_SUGGESTIONS}
+                    placeholder="e.g., Modern, Vintage, Casual"
+                    label="Style"
+                    confidenceBadge={
+                      confidenceScores?.style && (
+                        <ConfidenceBadge level={confidenceScores.style.level} />
+                      )
+                    }
+                  />
+
+                  {/* Tags - Full Width */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      Tags
+                      {confidenceScores?.tags && (
+                        <ConfidenceBadge level={confidenceScores.tags.level} />
+                      )}
+                      <div className="relative group">
+                        <svg
+                          className="w-4 h-4 text-gray-400 cursor-help"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
+                          Keywords to help buyers find your item (e.g.,
+                          "vintage", "handmade", "eco-friendly")
+                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                        </div>
+                      </div>
+                    </label>
+                    <div className="flex gap-2 mb-2">
+                      <input
+                        type="text"
+                        value={tagInput}
+                        onChange={(e) => setTagInput(e.target.value)}
+                        onKeyPress={handleTagKeyPress}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                        placeholder="Add a tag and press Enter"
+                      />
+                      <button
+                        type="button"
+                        onClick={addTag}
+                        className="px-4 py-2 bg-[#D4AF3D] text-white rounded-lg hover:bg-[#b8932f] transition-colors"
+                      >
+                        Add
+                      </button>
+                    </div>
+                    {tags.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {tags.map((tag, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
+                          >
+                            {tag}
+                            <button
+                              type="button"
+                              onClick={() => removeTag(tag)}
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

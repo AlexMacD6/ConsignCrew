@@ -256,41 +256,7 @@ export default function PriceDropCounter({ listingId }: PriceDropCounterProps) {
           <span className="font-medium text-red-600">
             ${priceDropInfo.nextDropPrice?.toFixed(2)}
           </span>
-          {priceDropInfo.scheduleType && (
-            <span className="text-gray-500">
-              {" "}
-              ({priceDropInfo.scheduleType} schedule)
-            </span>
-          )}
         </p>
-
-        {/* Progress indicator */}
-        {priceDropInfo.currentPrice && priceDropInfo.originalPrice && (
-          <div className="mt-2">
-            <div className="flex justify-between text-xs text-gray-500 mb-1">
-              <span>Original: ${priceDropInfo.originalPrice.toFixed(2)}</span>
-              <span>Current: ${priceDropInfo.currentPrice.toFixed(2)}</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-1">
-              <div
-                className="bg-red-500 h-1 rounded-full transition-all duration-300"
-                style={{
-                  width: `${Math.max(
-                    0,
-                    Math.min(
-                      100,
-                      ((priceDropInfo.originalPrice -
-                        priceDropInfo.currentPrice) /
-                        (priceDropInfo.originalPrice -
-                          (priceDropInfo.reservePrice || 0))) *
-                        100
-                    )
-                  )}%`,
-                }}
-              ></div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

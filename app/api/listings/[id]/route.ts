@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { validateGender, validateAgeGroup, validateItemGroupId } from "@/lib/product-specifications";
 
 export async function GET(
   request: NextRequest,
@@ -194,6 +195,24 @@ export async function PUT(
       discountSchedule,
       photos,
       videoUrl,
+      // Facebook Shop Integration Fields
+      facebookShopEnabled,
+      facebookBrand,
+      facebookCondition,
+      facebookGtin,
+      // Product Specifications (Facebook Shop Fields)
+      quantity,
+      salePrice,
+      salePriceEffectiveDate,
+      itemGroupId,
+      gender,
+      color,
+      size,
+      ageGroup,
+      material,
+      pattern,
+      style,
+      tags,
     } = body;
 
     // Validate required fields
@@ -202,6 +221,25 @@ export async function PUT(
         { error: "Missing required fields" },
         { status: 400 }
       );
+    }
+
+    // Validate product specifications
+    if (gender && !validateGender(gender)) {
+      return NextResponse.json({
+        error: 'Invalid gender value. Must be one of: male, female, unisex'
+      }, { status: 400 });
+    }
+
+    if (ageGroup && !validateAgeGroup(ageGroup)) {
+      return NextResponse.json({
+        error: 'Invalid age group value. Must be one of: newborn, infant, toddler, kids, adult'
+      }, { status: 400 });
+    }
+
+    if (itemGroupId && !validateItemGroupId(itemGroupId)) {
+      return NextResponse.json({
+        error: 'Item Group ID must be 50 characters or less'
+      }, { status: 400 });
     }
 
     // Update the listing
@@ -225,6 +263,24 @@ export async function PUT(
         discountSchedule: discountSchedule || { type: "Classic-60" },
         photos: photos || {},
         videoUrl: videoUrl || null,
+        // Facebook Shop Integration Fields
+        facebookShopEnabled: facebookShopEnabled ?? true,
+        facebookBrand: facebookBrand || null,
+        facebookCondition: facebookCondition || null,
+        facebookGtin: facebookGtin || null,
+        // Product Specifications (Facebook Shop Fields)
+        quantity: quantity || 1,
+        salePrice: salePrice ? parseFloat(salePrice) : null,
+        salePriceEffectiveDate: salePriceEffectiveDate ? new Date(salePriceEffectiveDate) : null,
+        itemGroupId: itemGroupId || null,
+        gender: gender || null,
+        color: color || null,
+        size: size || null,
+        ageGroup: ageGroup || null,
+        material: material || null,
+        pattern: pattern || null,
+        style: style || null,
+        tags: tags || [],
         updatedAt: new Date(),
       },
       include: {

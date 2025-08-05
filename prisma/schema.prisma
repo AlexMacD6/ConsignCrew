@@ -214,6 +214,24 @@ model Listing {
   facebookSyncStatus  String? // success/error/pending
   qualityChecked      Boolean   @default(false) // Quality check status
 
+  // Product Availability & Pricing
+  quantity               Int       @default(1) // Number of items available for sale
+  salePrice              Float? // Discounted/sale price
+  salePriceEffectiveDate DateTime? // When sale price is active
+
+  // Product Specifications
+  gender   String? // "male", "female", "unisex"
+  color    String? // Product color
+  size     String? // Product size
+  ageGroup String? // "adult", "kids", "infant"
+  material String? // Product material
+  pattern  String? // Product pattern
+  style    String? // Product style
+
+  // Enhanced Categorization
+  tags        String[] @default([]) // Product tags for better categorization
+  itemGroupId String? // For product variants
+
   user         user             @relation(fields: [userId], references: [id])
   videos       Video[]
   priceHistory PriceHistory[]
@@ -392,4 +410,90 @@ model Video {
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+}
+
+// eBay Platform Notifications Models
+model EbayNotification {
+  id                  String   @id @default(cuid())
+  notificationId      String   @unique // eBay's notification ID
+  topic               String // e.g., "ITEM_UPDATED", "PRICE_CHANGED"
+  dataSchema          String // eBay's data schema version
+  dataVersion         String // eBay's data version
+  eventId             String // eBay's event ID
+  eventDate           DateTime // When the event occurred
+  publishDate         DateTime // When eBay published the notification
+  publishAttemptCount Int      @default(0)
+
+  // Notification payload
+  payload         Json // Full notification payload from eBay
+  processed       Boolean @default(false)
+  processingError String?
+
+  // Related item tracking
+  ebayItemId String?
+  ebayItem   EbayItem? @relation(fields: [ebayItemId], references: [id])
+
+  // Relations
+  logs EbayNotificationLog[]
+
+  // Audit fields
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  processedAt DateTime?
+
+  @@index([notificationId])
+  @@index([topic])
+  @@index([eventDate])
+  @@index([processed])
+  @@index([ebayItemId])
+}
+
+model EbayItem {
+  id          String  @id @default(cuid())
+  ebayItemId  String  @unique // eBay's item ID
+  title       String
+  price       Decimal
+  currency    String  @default("USD")
+  condition   String?
+  brand       String?
+  modelNumber String?
+  gtin        String?
+
+  // Market data
+  marketPrice     Decimal?
+  priceHistory    Json? // Array of price changes
+  lastPriceUpdate DateTime?
+
+  // Status tracking
+  status           String    @default("active") // active, sold, ended, error
+  lastNotification DateTime?
+
+  // Relations
+  notifications EbayNotification[]
+
+  // Audit fields
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ebayItemId])
+  @@index([status])
+  @@index([lastPriceUpdate])
+}
+
+model EbayNotificationLog {
+  id      String @id @default(cuid())
+  level   String // info, warning, error
+  message String
+  context Json? // Additional context data
+
+  // Related notification (optional)
+  ebayNotificationId String?
+  ebayNotification   EbayNotification? @relation(fields: [ebayNotificationId], references: [id])
+
+  // Audit fields
+  createdAt DateTime @default(now())
+
+  @@index([level])
+  @@index([createdAt])
+  @@index([ebayNotificationId])
 }

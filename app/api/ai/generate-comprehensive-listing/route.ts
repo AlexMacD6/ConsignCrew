@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { calculateAllFieldConfidence, ConfidenceFactors } from '@/lib/ai-confidence-scorer';
-import { AI_SERVICE_PHASE_1_PROMPT, mapConditionToFacebook, ensureFacebookTaxonomy, detectPhotoFlaws } from '@/lib/ai-service';
+import { AI_SERVICE_PHASE_1_PROMPT, mapConditionToFacebook, ensureFacebookTaxonomy, detectPhotoFlaws, generateStagedPhotoPhase2 } from '@/lib/ai-service';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -338,11 +338,27 @@ Focus on accuracy, detail, and maximizing the item's perceived value while maint
       facebookCategory: listingData.facebookCategory || facebookCategories.category, // Use Facebook category
       facebookCondition: listingData.facebookCondition || mapConditionToFacebook(condition),
       facebookGtin: listingData.facebookGtin || null,
+      ebayQuery: listingData.ebayQuery || listingData.gtin || `${listingData.brand || brand} ${listingData.modelNumber || ''} ${listingData.features?.[0] || ''}`.trim(),
       detailedDescription: listingData.detailedDescription || listingData.description || description,
       marketingCopy: listingData.marketingCopy || listingData.description || description,
       technicalSpecs: listingData.technicalSpecs || 'Technical specifications not available',
       conditionDetails: listingData.conditionDetails || `Item is in ${condition.toLowerCase()} condition`,
       valueProposition: listingData.valueProposition || 'Great value for this quality item',
+      
+      // Product Specifications (Facebook Shop Fields)
+      quantity: listingData.quantity || 1,
+      salePrice: listingData.salePrice || null,
+      salePriceEffectiveDate: listingData.salePriceEffectiveDate || null,
+      itemGroupId: listingData.itemGroupId || null,
+      gender: listingData.gender || null,
+      color: listingData.color || null,
+      size: listingData.size || null,
+      ageGroup: listingData.ageGroup || 'adult',
+      material: listingData.material || null,
+      pattern: listingData.pattern || null,
+      style: listingData.style || null,
+              // productType field removed - not in database schema
+      tags: Array.isArray(listingData.tags) ? listingData.tags : [],
     };
 
     // Calculate confidence scores for all AI-generated fields
@@ -386,12 +402,38 @@ Focus on accuracy, detail, and maximizing the item's perceived value while maint
       }
     }
 
+    // Phase 2: Generate staged photo prompt
+    let stagedPhotoData = null;
+    if (accessiblePhotoUrls.length > 0) {
+      try {
+        console.log('🎨 Starting Phase 2: Staged photo generation');
+        const stagedPhotoResult = await generateStagedPhotoPhase2({
+          listingJSON: validatedData,
+          photoURLs: accessiblePhotoUrls,
+          videoFrames: accessibleVideoFrameUrls
+        });
+        stagedPhotoData = stagedPhotoResult;
+        console.log('✅ Phase 2 completed: Staged photo prompt generated');
+      } catch (stagedPhotoError) {
+        console.error('❌ Phase 2 failed:', stagedPhotoError);
+        // Don't fail the entire request if staged photo generation fails
+        stagedPhotoData = { 
+          referenceImageUrl: accessiblePhotoUrls[0],
+          stagingPrompt: "Professional product photo with clean background",
+          desiredAspectRatio: "1:1",
+          targetResolution: "1024x1024",
+          postProcess: "none"
+        };
+      }
+    }
+
     return NextResponse.json({
       success: true,
       listingData: validatedData,
       confidenceScores,
       analysis: responseText,
       flawData,
+      stagedPhotoData,
     });
 
   } catch (error) {

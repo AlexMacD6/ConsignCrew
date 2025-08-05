@@ -1,0 +1,70 @@
+# Facebook Shop CSV Format Update
+
+## Overview
+Updated the Facebook shop export to include all required fields in the correct format as specified by Facebook Shop requirements.
+
+## Requirements
+
+### Core Functionality
+- Update Facebook shop CSV export to match Facebook's required field format
+- Include all required fields: id, title, description, availability, condition, price, link, image_link, brand, google_product_category, fb_product_category, quantity_to_sell_on_facebook, sale_price, sale_price_effective_date, item_group_id, gender, color, size, age_group, material, pattern, shipping, shipping_weight, gtin, video[0].url, video[0].tag, product_type, product_tag, style[0]
+- Ensure proper field mapping and data extraction from existing listing data
+
+### Technical Implementation
+- Updated CSV headers in `app/api/facebook-shop/export/route.ts` to match Facebook requirements
+- Added intelligent data extraction from existing listing fields
+- Implemented fallback values for missing fields
+- Fixed linter errors by using correct Prisma schema field names
+
+### Field Mapping
+- **id**: Listing ID (existing)
+- **title**: Listing title (existing)
+- **description**: Listing description (existing)
+- **availability**: Set to "in stock" (default)
+- **condition**: Facebook condition or fallback to "new"
+- **price**: Listing price (existing)
+- **link**: Generated product URL using listing ID
+- **image_link**: Primary image from photos object
+- **brand**: Facebook brand or main brand (existing)
+- **google_product_category**: Mapped from category
+- **fb_product_category**: Mapped from category
+- **quantity_to_sell_on_facebook**: Default to "1"
+- **sale_price**: Empty (not in current schema)
+- **sale_price_effective_date**: Empty (not in current schema)
+- **item_group_id**: Empty (not in current schema)
+- **gender**: Extracted from category or description
+- **color**: Extracted from description
+- **size**: Extracted from description
+- **age_group**: Default to "adult"
+- **material**: Extracted from description
+- **pattern**: Extracted from description
+- **shipping**: Set to "US:CA:Ground:0 USD"
+- **shipping_weight**: Calculated from dimensions
+- **gtin**: Facebook GTIN (existing)
+- **video[0].url**: Video URL from direct field or related videos
+- **video[0].tag**: Set to "Product Video"
+- **product_type**: Category (existing)
+- **product_tag**: Description (existing)
+- **style[0]**: Extracted from description
+
+### Data Extraction Logic
+- **Gender**: Determined from category containing "men" or "women"
+- **Color**: Extracted from description containing color keywords
+- **Size**: Extracted from description containing size keywords
+- **Material**: Extracted from description containing material keywords
+- **Pattern**: Extracted from description containing pattern keywords
+- **Style**: Extracted from description containing style keywords
+
+### Error Handling
+- Fixed all linter errors by using correct Prisma schema field names
+- Provided fallback values for missing fields
+- Maintained backward compatibility with existing data
+
+## Files Modified
+- `app/api/facebook-shop/export/route.ts` - Updated CSV format and field mapping
+
+## Testing
+- Verify CSV export includes all required Facebook Shop fields
+- Test with listings containing various data types
+- Ensure proper field mapping and data extraction
+- Verify no linter errors remain 

@@ -89,7 +89,10 @@ export async function GET(request: NextRequest) {
       const shippingHeight = listing.height ? Math.round(parseFloat(listing.height) * 2.54) : "";
 
       // Estimate shipping weight based on dimensions (rough calculation)
-      const volume = (listing.width || 0) * (listing.depth || 0) * (listing.height || 0);
+      const width = parseFloat(listing.width || '0');
+      const depth = parseFloat(listing.depth || '0');
+      const height = parseFloat(listing.height || '0');
+      const volume = width * depth * height;
       const estimatedWeight = volume > 0 ? Math.max(1, Math.round(volume * 0.1)) : 5; // lbs
 
       return [

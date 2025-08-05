@@ -21,6 +21,22 @@ import {
   Play,
 } from "lucide-react";
 import VideoUpload from "../../../../components/VideoUpload";
+import { ConfidenceBadge } from "../../../../components/ConfidenceIndicator";
+import HybridInput from "../../../../components/HybridInput";
+import {
+  GENDER_OPTIONS,
+  AGE_GROUP_OPTIONS,
+  COLOR_SUGGESTIONS,
+  MATERIAL_SUGGESTIONS,
+  PATTERN_SUGGESTIONS,
+  STYLE_SUGGESTIONS,
+  processProductSpecs,
+  validateGender,
+  validateAgeGroup,
+  validateItemGroupId,
+  type Gender,
+  type AgeGroup,
+} from "../../../../lib/product-specifications";
 // ZIP code validation now handled via API endpoint
 
 const discountSchedules = ["Turbo-30", "Classic-60"] as const;
@@ -242,6 +258,43 @@ export default function EditListingPage() {
   const [facebookCondition, setFacebookCondition] = useState("");
   const [facebookGtin, setFacebookGtin] = useState("");
 
+  // Product Specifications (Facebook Shop Fields)
+  const [quantity, setQuantity] = useState("1");
+  const [salePrice, setSalePrice] = useState("");
+  const [salePriceEffectiveDate, setSalePriceEffectiveDate] = useState("");
+  const [itemGroupId, setItemGroupId] = useState("");
+  const [gender, setGender] = useState<Gender | "">("");
+  const [color, setColor] = useState("");
+  const [size, setSize] = useState("");
+  const [ageGroup, setAgeGroup] = useState<AgeGroup | "">("");
+  const [material, setMaterial] = useState("");
+  const [pattern, setPattern] = useState("");
+  const [style, setStyle] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+
+  // Confidence scores for AI-generated fields
+  const [confidenceScores, setConfidenceScores] = useState<any>(null);
+
+  // Tag management functions
+  const addTag = () => {
+    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+      setTags([...tags, tagInput.trim()]);
+      setTagInput("");
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter((tag) => tag !== tagToRemove));
+  };
+
+  const handleTagKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addTag();
+    }
+  };
+
   // Photo state with drag-and-drop support
   const [photos, setPhotos] = useState({
     hero: null as any,
@@ -337,6 +390,20 @@ export default function EditListingPage() {
           setFacebookBrand(listingData.facebookBrand || "");
           setFacebookCondition(listingData.facebookCondition || "");
           setFacebookGtin(listingData.facebookGtin || "");
+
+          // Product Specifications (Facebook Shop Fields)
+          setQuantity(listingData.quantity?.toString() || "1");
+          setSalePrice(listingData.salePrice?.toString() || "");
+          setSalePriceEffectiveDate(listingData.salePriceEffectiveDate || "");
+          setItemGroupId(listingData.itemGroupId || "");
+          setGender(listingData.gender || "");
+          setColor(listingData.color || "");
+          setSize(listingData.size || "");
+          setAgeGroup(listingData.ageGroup || "");
+          setMaterial(listingData.material || "");
+          setPattern(listingData.pattern || "");
+          setStyle(listingData.style || "");
+          setTags(listingData.tags || []);
 
           // Set photos - ensure all values are properly handled
           setPhotos({
@@ -628,6 +695,22 @@ export default function EditListingPage() {
           facebookBrand: facebookBrand || null,
           facebookCondition: facebookCondition || null,
           facebookGtin: facebookGtin || null,
+          // Product Specifications (Facebook Shop Fields)
+          quantity: parseInt(quantity) || 1,
+          salePrice: salePrice ? parseFloat(salePrice) : null,
+          salePriceEffectiveDate: salePriceEffectiveDate || null,
+          itemGroupId: itemGroupId || null,
+          ...processProductSpecs({
+            gender,
+            ageGroup,
+            color,
+            size,
+            material,
+            pattern,
+            style,
+            itemGroupId,
+          }),
+          tags: tags || [],
           photos,
           videoUrl: videoData.uploaded ? videoData.thumbnailUrl : null,
         }),
@@ -1310,6 +1393,313 @@ export default function EditListingPage() {
                   onChange={handleImageChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* Product Specifications (Facebook Shop Fields) */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <svg
+                className="h-5 w-5 text-[#D4AF3D]"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+              </svg>
+              Product Specifications
+            </h2>
+            <p className="text-sm text-gray-600 mb-6">
+              Detailed product specifications for better categorization and
+              search visibility.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Quantity */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  Quantity Available
+                  {confidenceScores?.quantity && (
+                    <ConfidenceBadge level={confidenceScores.quantity.level} />
+                  )}
+                </label>
+                <input
+                  type="number"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  min="1"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  placeholder="1"
+                />
+              </div>
+
+              {/* Sale Price */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  Sale Price ($)
+                  {confidenceScores?.salePrice && (
+                    <ConfidenceBadge level={confidenceScores.salePrice.level} />
+                  )}
+                </label>
+                <input
+                  type="number"
+                  value={salePrice}
+                  onChange={(e) => setSalePrice(e.target.value)}
+                  min="0"
+                  step="0.01"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  placeholder="0.00"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Special sale price (optional)
+                </p>
+              </div>
+
+              {/* Sale Price Effective Date */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  Sale Price Effective Date
+                  {confidenceScores?.salePriceEffectiveDate && (
+                    <ConfidenceBadge
+                      level={confidenceScores.salePriceEffectiveDate.level}
+                    />
+                  )}
+                </label>
+                <input
+                  type="date"
+                  value={salePriceEffectiveDate}
+                  onChange={(e) => setSalePriceEffectiveDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                />
+              </div>
+
+              {/* Item Group ID */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  Item Group ID
+                  {confidenceScores?.itemGroupId && (
+                    <ConfidenceBadge
+                      level={confidenceScores.itemGroupId.level}
+                    />
+                  )}
+                  <div className="relative group">
+                    <svg
+                      className="w-4 h-4 text-gray-400 cursor-help"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
+                      Used to group related product variants (e.g., same shirt
+                      in different colors/sizes)
+                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                    </div>
+                  </div>
+                </label>
+                <input
+                  type="text"
+                  value={itemGroupId}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value.length <= 50) {
+                      setItemGroupId(value);
+                    }
+                  }}
+                  maxLength={50}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  placeholder="For product variants"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {itemGroupId.length}/50 characters
+                </p>
+              </div>
+
+              {/* Gender */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  Gender
+                  {confidenceScores?.gender && (
+                    <ConfidenceBadge level={confidenceScores.gender.level} />
+                  )}
+                </label>
+                <select
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value as Gender | "")}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                >
+                  <option value="">Select Gender</option>
+                  {GENDER_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option.charAt(0).toUpperCase() + option.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Age Group */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  Age Group
+                  {confidenceScores?.ageGroup && (
+                    <ConfidenceBadge level={confidenceScores.ageGroup.level} />
+                  )}
+                </label>
+                <select
+                  value={ageGroup}
+                  onChange={(e) => setAgeGroup(e.target.value as AgeGroup | "")}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                >
+                  <option value="">Select Age Group</option>
+                  {AGE_GROUP_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option.charAt(0).toUpperCase() + option.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Color */}
+              <HybridInput
+                value={color}
+                onChange={setColor}
+                suggestions={COLOR_SUGGESTIONS}
+                placeholder="e.g., Red, Blue, Black"
+                label="Color"
+                confidenceBadge={
+                  confidenceScores?.color && (
+                    <ConfidenceBadge level={confidenceScores.color.level} />
+                  )
+                }
+              />
+
+              {/* Size */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  Size
+                  {confidenceScores?.size && (
+                    <ConfidenceBadge level={confidenceScores.size.level} />
+                  )}
+                </label>
+                <input
+                  type="text"
+                  value={size}
+                  onChange={(e) => setSize(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  placeholder="e.g., Large, XL, 42"
+                />
+              </div>
+
+              {/* Material */}
+              <HybridInput
+                value={material}
+                onChange={setMaterial}
+                suggestions={MATERIAL_SUGGESTIONS}
+                placeholder="e.g., Cotton, Wood, Metal"
+                label="Material"
+                confidenceBadge={
+                  confidenceScores?.material && (
+                    <ConfidenceBadge level={confidenceScores.material.level} />
+                  )
+                }
+              />
+
+              {/* Pattern */}
+              <HybridInput
+                value={pattern}
+                onChange={setPattern}
+                suggestions={PATTERN_SUGGESTIONS}
+                placeholder="e.g., Striped, Floral, Solid"
+                label="Pattern"
+                confidenceBadge={
+                  confidenceScores?.pattern && (
+                    <ConfidenceBadge level={confidenceScores.pattern.level} />
+                  )
+                }
+              />
+
+              {/* Style */}
+              <HybridInput
+                value={style}
+                onChange={setStyle}
+                suggestions={STYLE_SUGGESTIONS}
+                placeholder="e.g., Modern, Vintage, Casual"
+                label="Style"
+                confidenceBadge={
+                  confidenceScores?.style && (
+                    <ConfidenceBadge level={confidenceScores.style.level} />
+                  )
+                }
+              />
+
+              {/* Product Type */}
+
+              {/* Tags - Full Width */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  Tags
+                  {confidenceScores?.tags && (
+                    <ConfidenceBadge level={confidenceScores.tags.level} />
+                  )}
+                  <div className="relative group">
+                    <svg
+                      className="w-4 h-4 text-gray-400 cursor-help"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
+                      Keywords to help buyers find your item (e.g., "vintage",
+                      "handmade", "eco-friendly")
+                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                    </div>
+                  </div>
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyPress={handleTagKeyPress}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                    placeholder="Add a tag and press Enter"
+                  />
+                  <button
+                    type="button"
+                    onClick={addTag}
+                    className="px-4 py-2 bg-[#D4AF3D] text-white rounded-lg hover:bg-[#b8932f] transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+                {tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {tags.map((tag, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
+                      >
+                        {tag}
+                        <button
+                          type="button"
+                          onClick={() => removeTag(tag)}
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>

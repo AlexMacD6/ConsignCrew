@@ -132,7 +132,7 @@ export async function PUT(request: NextRequest) {
 
     // If treasure code is being updated, check if it already exists
     if (validatedData.treasureCode) {
-      const existingCode = await prisma.treasureCode.findUnique({
+      const existingCode = await prisma.treasureCode.findFirst({
         where: { 
           code: validatedData.treasureCode,
           id: { not: id }, // Exclude current drop's code

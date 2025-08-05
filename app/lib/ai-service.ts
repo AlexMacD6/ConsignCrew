@@ -1,3 +1,5 @@
+import OpenAI from 'openai';
+
 /**
  * AI Service for analyzing product photos and generating listing information
  * Uses OpenAI API to analyze images and generate comprehensive product listings
@@ -5,6 +7,35 @@
 
 // ============================================================================
 // AI SERVICE PHASE 1 PROMPT - STRUCTURED RESALE LISTING GENERATION
+// ============================================================================
+// 
+// This prompt is designed for TreasureHub's concierge resale platform to generate
+// high-quality listings for both internal marketplace display and Facebook Shop distribution.
+//
+// Key Features:
+// - Analyzes photos and video frames for visual identification
+// - Uses consolidated Facebook-compatible field formats
+// - Generates SEO-optimized content with precise pricing
+// - Maintains data integrity with conservative brand identification
+// - Supports video analysis for enhanced accuracy
+//
+// Last Updated: Field consolidation implementation
+// ============================================================================
+
+// ============================================================================
+// AI SERVICE PHASE 2 PROMPT - STAGED AI PHOTO GENERATION
+// ============================================================================
+// 
+// This prompt generates photorealistic staged images for listings using DALL-E
+// or GPT-4 Vision to create appealing, in-home settings for products.
+//
+// Key Features:
+// - Creates high-resolution (1536x1536) photorealistic hero images
+// - Places items in appropriate lifestyle contexts
+// - Maintains product accuracy while enhancing visual appeal
+// - Supports both photo and video frame analysis
+//
+// Last Updated: Phase 2 implementation
 // ============================================================================
 // 
 // This prompt is designed for TreasureHub's concierge resale platform to generate
@@ -51,6 +82,28 @@ Generate Facebook Marketplace values:
 - Copy gtin to facebookGtin
 - Use the same category for facebookCategory (unified taxonomy)
 
+Analyze and populate product specifications:
+- gender: Determine from category, description, or visual analysis ("male", "female", "unisex")
+- color: Extract from visual analysis or description (e.g., "blue", "black", "white", "red")
+- size: Extract from visual analysis, description, or category (e.g., "S", "M", "L", "XL", "Small", "Large")
+- ageGroup: Determine target age ("adult", "kids", "infant") based on product type
+- material: Extract from visual analysis or description (e.g., "cotton", "leather", "wood", "metal", "plastic")
+- pattern: Extract from visual analysis or description (e.g., "solid", "striped", "floral", "plaid")
+- style: Extract from visual analysis or description (e.g., "casual", "formal", "vintage", "modern")
+- tags: Generate relevant tags for search and categorization (e.g., ["furniture", "bedroom", "storage", "wooden"])
+- quantity: Default to 1 unless multiple items are visible
+- salePrice: Set to null (no sale price initially)
+- salePriceEffectiveDate: Set to null (no sale date initially)
+- itemGroupId: Set to null (no variants initially)
+
+🎯 eBay Browse API prep  
+• Generate **ebayQuery** – the search term we'll send to eBay's *Browse API*.  
+  – **Primary choice:** the GTIN/UPC if present (\`gtin\` field).  
+  – **Fallback:** a short keyword string ≤ 80 chars built as  
+    \`"<brand> <modelNumber or main descriptor> <core feature(s)>"\`  
+    Example: \`"IKEA Malm 6-Drawer Dresser Black"\`  
+• If gtin is null, ensure keywords include brand + distinguishing spec (size, color, capacity).
+
 Optional: Analyze video:
 - Extract 5 keyframes based on video duration % (0%, 10%, 25%, 50%, 90%)
 - Use frames to enhance accuracy of brand, category, and condition
@@ -88,6 +141,21 @@ Return a single JSON object with the following fields populated (NO COMMENTS IN 
   "facebookCondition": "new" | "used" | "refurbished",
   "facebookGtin": "string" | null,
   "facebookCategory": "string",
+  "ebayQuery": "string",
+
+  // Product Specifications (Facebook Shop Fields)
+  "quantity": number,
+  "salePrice": number | null,
+  "salePriceEffectiveDate": "string" | null,
+  "itemGroupId": "string" | null,
+  "gender": "male" | "female" | "unisex" | null,
+  "color": "string" | null,
+  "size": "string" | null,
+  "ageGroup": "adult" | "kids" | "infant" | null,
+  "material": "string" | null,
+  "pattern": "string" | null,
+  "style": "string" | null,
+  "tags": ["string"],
 
   // Video analysis (optional)
   videoAnalysis: string | null
@@ -165,7 +233,7 @@ Toys & Games: Board Games, Video Games, Educational, Action Figures
 - Category uses unified Facebook Marketplace taxonomy
 
 ⚡ Discount Schedules:
-- Turbo-30: Aggressive 30-day schedule for high-value items
+- Turbo-30: Aggressive 30-day schedule for users that want to sell items quickly
 - Classic-60: Standard 60-day schedule for most items
 
 💰 Pricing Strategy:
@@ -176,6 +244,75 @@ Toys & Games: Board Games, Video Games, Educational, Action Figures
 
 // ============================================================================
 // END AI SERVICE PHASE 1 PROMPT
+// ============================================================================
+
+export const AI_SERVICE_PHASE_2_PROMPT = `You are a **staging-image generation agent** for TreasureHub.
+
+You receive:
+• The *_listing object_* produced in Phase 1 (see JSON below).  
+• Up to 8 original product photos.  
+• Five key-frame stills extracted from any user-supplied video.
+
+🎯 **Goal:** Produce ONE high-resolution (1024 × 1024) photorealistic hero image that shows the item in an appealing, in-home setting.  
+The image will serve as the primary listing photo on TreasureHub and Facebook Shop.
+
+─────────────────────────────────────────────────────────────────────
+📦 INPUTS
+─────────────────────────────────────────────────────────────────────
+1. **listingJSON** – Phase 1 output (full field set).  
+2. **photoURLs[]** – array of original image URLs (top-down, ¾-angle, detail).  
+3. **videoFrames[]** – array of five JPEG key frames (0 %, 10 %, 25 %, 50 %, 90 %).  
+
+─────────────────────────────────────────────────────────────────────
+🛠️  TASKS
+─────────────────────────────────────────────────────────────────────
+1. **Identify the clearest "reference frame"**  
+   • Choose the sharpest, most front-on source photo or key-frame that best shows the item's silhouette.  
+   • Use it as visual conditioning so the staged render matches real color, proportions, and any visible imperfections.
+
+2. **Generate a *single* DALL·E / GPT-Vision prompt** that will yield a photorealistic staged image.  
+   The prompt must include:
+   • Item name + brand from \`listingJSON.title\` / \`brand\`  if available
+   • Accurate color / material cues (e.g., "matte black solid-pine dresser")  
+   • Appropriate lifestyle context:  
+     – Furniture → modern living room or bedroom  
+     – Electronics → tidy home-office desk  
+     – Small goods → neutral tabletop with soft daylight  
+   • Camera & lighting hints: 3-quarter front angle, soft natural light, shallow depth of field.  
+   • No other branded items, no humans, no pets.  
+   • Remove busy backgrounds; use clean, on-brand aesthetic.  
+   • Keep original item flaws subtle but honest (e.g., "small repaired chip on lower drawer remains visible").
+
+3. **Return the result in JSON (no comments):**
+
+\`\`\`json
+{
+  "referenceImageUrl": "<selected source URL>",
+  "stagingPrompt": "<full text prompt you would feed to DALL·E or GPT-4o-Vision>",
+  "desiredAspectRatio": "1:1",
+  "targetResolution": "1024x1024",
+  "postProcess": "none"
+}
+\`\`\`
+
+─────────────────────────────────────────────────────────────────────
+📏 STYLE & QUALITY GUIDELINES
+─────────────────────────────────────────────────────────────────────
+• Photo-real, magazine-quality; no cartoon or CGI vibe.  
+• Neutral, naturally lit room; TreasureHub brand palette (warm whites, soft shadows).  
+• The item is centered and occupies ~70 % of frame.  
+• Background props must be generic (succulent, stack of books) and NOT distract.  
+• Absolutely **no additional products for sale** shown.  
+• Output should be ready for direct upload—no text overlays or watermarks.  
+
+If brand or color is uncertain, default to what is clearly visible in the reference image and note "best-match" in the prompt.
+
+MANDATORY: Output only the JSON object—no markdown, no commentary.
+
+CRITICAL: Return ONLY valid JSON. Do not include any markdown formatting, code block wrappers, or explanatory text. The response must be parseable by JSON.parse().`;
+
+// ============================================================================
+// END AI SERVICE PHASE 2 PROMPT
 // ============================================================================
 
 /**
@@ -301,12 +438,27 @@ export interface ComprehensiveListingData {
   facebookCategory?: string;
   facebookCondition?: string;
   facebookGtin?: string;
+  ebayQuery?: string;
   detailedDescription: string;
   marketingCopy: string;
   technicalSpecs: string;
   conditionDetails: string;
   valueProposition: string;
   videoAnalysis?: string; // Analysis from video frames
+  
+  // Product Specifications (Facebook Shop Fields)
+  quantity?: number;
+  salePrice?: number;
+  salePriceEffectiveDate?: string;
+  itemGroupId?: string;
+  gender?: 'male' | 'female' | 'unisex';
+  color?: string;
+  size?: string;
+  ageGroup?: 'newborn' | 'infant' | 'toddler' | 'kids' | 'adult';
+  material?: string;
+  pattern?: string;
+  style?: string;
+  tags?: string[];
 }
 
 // Legacy function - removed in favor of comprehensive AI workflow
@@ -476,6 +628,182 @@ export async function detectPhotoFlaws(photoUrls: string[]): Promise<{
 /**
  * Generate a professional staged photo using AI with comprehensive listing data
  */
+export async function generateStagedPhotoPhase2(request: {
+  listingJSON: ComprehensiveListingData;
+  photoURLs: string[];
+  videoFrames?: string[];
+}): Promise<{
+  referenceImageUrl: string;
+  stagingPrompt: string;
+  desiredAspectRatio: string;
+  targetResolution: string;
+  postProcess: string;
+}> {
+  // Validate OpenAI API key
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OpenAI API key not configured");
+  }
+
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+
+  try {
+    // Validate input data
+    if (!request.listingJSON || !request.photoURLs || request.photoURLs.length === 0) {
+      throw new Error("Invalid input: missing listing data or photo URLs");
+    }
+
+    // Prepare the input for Phase 2 - only send essential fields to avoid token limits
+    const essentialListingData = {
+      title: request.listingJSON.title,
+      description: request.listingJSON.description,
+      department: request.listingJSON.department,
+      category: request.listingJSON.category,
+      subCategory: request.listingJSON.subCategory,
+      condition: request.listingJSON.condition,
+      brand: request.listingJSON.brand,
+      color: request.listingJSON.color,
+      material: request.listingJSON.material,
+      style: request.listingJSON.style,
+      detailedDescription: request.listingJSON.detailedDescription
+    };
+
+    const inputData = {
+      listingJSON: essentialListingData,
+      photoURLs: request.photoURLs,
+      videoFrames: request.videoFrames || []
+    };
+
+    console.log("🎨 Phase 2 - Input data:", {
+      listingJSONKeys: Object.keys(request.listingJSON),
+      photoURLsCount: request.photoURLs.length,
+      videoFramesCount: request.videoFrames?.length || 0
+    });
+
+    console.log("🎨 Phase 2 - Making OpenAI API call...");
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: AI_SERVICE_PHASE_2_PROMPT
+        },
+        {
+          role: "user",
+          content: JSON.stringify(inputData)
+        }
+      ],
+      temperature: 0.3,
+      max_tokens: 1000
+    });
+
+    console.log("🎨 Phase 2 - OpenAI API call completed, status:", response.choices?.[0]?.finish_reason);
+
+    const result = response.choices[0]?.message?.content;
+    if (!result) {
+      throw new Error("No response from AI service");
+    }
+
+    console.log("🎨 Phase 2 - Raw AI response:", result);
+
+    // Parse the JSON response with enhanced error handling
+    let parsedResult;
+    try {
+      // First, try to parse as-is
+      parsedResult = JSON.parse(result);
+    } catch (parseError) {
+      console.error("🎨 Phase 2 - Initial JSON parse error:", parseError);
+      console.error("🎨 Phase 2 - Raw response that failed to parse:", result);
+      
+      // Try to extract JSON from markdown code blocks
+      let cleanedResult = result;
+      
+      // Remove markdown code block wrappers
+      if (result.includes('```json')) {
+        cleanedResult = result.replace(/```json\s*/, '').replace(/\s*```/, '');
+        console.log("🎨 Phase 2 - Extracted from markdown code block:", cleanedResult);
+      } else if (result.includes('```')) {
+        cleanedResult = result.replace(/```\s*/, '').replace(/\s*```/, '');
+        console.log("🎨 Phase 2 - Extracted from code block:", cleanedResult);
+      }
+      
+      // Try to find JSON object in the text
+      const jsonMatch = cleanedResult.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        cleanedResult = jsonMatch[0];
+        console.log("🎨 Phase 2 - Extracted JSON object:", cleanedResult);
+      }
+      
+      // Try parsing the cleaned result
+      try {
+        parsedResult = JSON.parse(cleanedResult);
+        console.log("🎨 Phase 2 - Successfully parsed cleaned JSON");
+      } catch (secondParseError) {
+        console.error("🎨 Phase 2 - Second JSON parse error:", secondParseError);
+        console.error("🎨 Phase 2 - Cleaned result that failed to parse:", cleanedResult);
+        throw new Error("AI returned invalid JSON format");
+      }
+    }
+    
+    console.log("🎨 Phase 2 - Parsed result:", parsedResult);
+
+    // Validate required fields
+    if (!parsedResult.referenceImageUrl || !parsedResult.stagingPrompt) {
+      console.error("🎨 Phase 2 - Missing required fields in parsed result:", parsedResult);
+      
+      // Provide fallback response instead of throwing error
+      console.warn("🎨 Phase 2 - Using fallback response due to missing fields");
+      return {
+        referenceImageUrl: request.photoURLs[0] || "",
+        stagingPrompt: `Professional product photo of ${request.listingJSON.title || 'item'} in a clean, modern setting with natural lighting, 3/4 angle view, high resolution, photorealistic`,
+        desiredAspectRatio: "1:1",
+        targetResolution: "1024x1024",
+        postProcess: "none"
+      };
+    }
+    
+    return {
+      referenceImageUrl: parsedResult.referenceImageUrl,
+      stagingPrompt: parsedResult.stagingPrompt,
+      desiredAspectRatio: parsedResult.desiredAspectRatio || "1:1",
+      targetResolution: parsedResult.targetResolution || "1024x1024",
+      postProcess: parsedResult.postProcess || "none"
+    };
+
+  } catch (error) {
+    console.error("Error generating staged photo prompt:", error);
+    
+    // Provide more specific error information and fallback
+    if (error instanceof Error) {
+      if (error.message.includes("AI returned invalid JSON format")) {
+        console.warn("🎨 Phase 2 - Using fallback due to invalid JSON format");
+        // Return fallback response instead of throwing
+        return {
+          referenceImageUrl: request.photoURLs[0] || "",
+          stagingPrompt: `Professional product photo of ${request.listingJSON.title || 'item'} in a clean, modern setting with natural lighting, 3/4 angle view, high resolution, photorealistic`,
+          desiredAspectRatio: "1:1",
+          targetResolution: "1024x1024",
+          postProcess: "none"
+        };
+      } else if (error.message.includes("No response from AI service")) {
+        throw new Error("AI service returned no response");
+      }
+    }
+    
+    // For other errors, provide fallback response
+    console.warn("🎨 Phase 2 - Using fallback due to unexpected error");
+    return {
+      referenceImageUrl: request.photoURLs[0] || "",
+      stagingPrompt: `Professional product photo of ${request.listingJSON.title || 'item'} in a clean, modern setting with natural lighting, 3/4 angle view, high resolution, photorealistic`,
+      desiredAspectRatio: "1:1",
+      targetResolution: "1024x1024",
+      postProcess: "none"
+    };
+  }
+}
+
 export async function generateStagedPhoto(request: StagedPhotoRequest): Promise<StagedPhotoResponse> {
   try {
     // If we have comprehensive data, use it to enhance the photo generation
