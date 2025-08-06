@@ -6,7 +6,6 @@ import Script from "next/script";
 import NavBar from "./components/NavBar";
 import Footer from "./components/Footer";
 import { ModalProvider } from "./contexts/ModalContext";
-import AuthStatus from "./components/AuthStatus";
 import MetaPixelScript from "./components/MetaPixelScript";
 
 export const metadata: Metadata = {
@@ -198,7 +197,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <NavBar />
           {children}
           <Footer />
-          <AuthStatus />
         </ModalProvider>
       </body>
     </html>

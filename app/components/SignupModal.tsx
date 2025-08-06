@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { trackCompleteRegistration } from "../lib/meta-pixel-client";
 
 interface SignupModalProps {
   isOpen: boolean;
@@ -57,6 +58,30 @@ export default function SignupModal({ isOpen, onClose }: SignupModalProps) {
 
           // Dispatch custom event to refresh tracker
           window.dispatchEvent(new CustomEvent("earlyAccessSignup"));
+
+          // Track CompleteRegistration event for successful new signups (client-side)
+          try {
+            trackCompleteRegistration({
+              content_name: "Early Access Signup",
+              content_category: "Lead Generation",
+              value: 1,
+              currency: "USD",
+              source: "modal",
+              signup_number: data.signupNumber,
+            }).catch((trackingError) => {
+              console.error(
+                "Error tracking CompleteRegistration (modal):",
+                trackingError
+              );
+              // Don't fail the signup if tracking fails
+            });
+          } catch (trackingError) {
+            console.error(
+              "Error tracking CompleteRegistration (modal):",
+              trackingError
+            );
+            // Don't fail the signup if tracking fails
+          }
 
           // Close modal after 3 seconds
           setTimeout(() => {

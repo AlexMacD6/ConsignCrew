@@ -84,12 +84,12 @@ Generate Facebook Marketplace values:
 
 Analyze and populate product specifications:
 - gender: Determine from category, description, or visual analysis ("male", "female", "unisex")
-- color: Extract from visual analysis or description (e.g., "blue", "black", "white", "red")
+- color: Extract from visual analysis or description and CAPITALIZE (e.g., "Blue", "Black", "White", "Red")
 - size: Extract from visual analysis, description, or category (e.g., "S", "M", "L", "XL", "Small", "Large")
 - ageGroup: Determine target age ("adult", "kids", "infant") based on product type
-- material: Extract from visual analysis or description (e.g., "cotton", "leather", "wood", "metal", "plastic")
-- pattern: Extract from visual analysis or description (e.g., "solid", "striped", "floral", "plaid")
-- style: Extract from visual analysis or description (e.g., "casual", "formal", "vintage", "modern")
+- material: Extract from visual analysis or description and CAPITALIZE (e.g., "Cotton", "Leather", "Wood", "Metal", "Plastic")
+- pattern: Extract from visual analysis or description and CAPITALIZE (e.g., "Solid", "Striped", "Floral", "Plaid")
+- style: Extract from visual analysis or description and CAPITALIZE (e.g., "Casual", "Formal", "Vintage", "Modern")
 - tags: Generate relevant tags for search and categorization (e.g., ["furniture", "bedroom", "storage", "wooden"])
 - quantity: Default to 1 unless multiple items are visible
 - salePrice: Set to null (no sale price initially)
@@ -108,6 +108,14 @@ Optional: Analyze video:
 - Extract 5 keyframes based on video duration % (0%, 10%, 25%, 50%, 90%)
 - Use frames to enhance accuracy of brand, category, and condition
 - Populate videoAnalysis summary if applicable
+
+🎯 Confidence Scoring:
+For each field, assess confidence level based on:
+- **High**: Clear visual evidence, brand markings, or definitive information
+- **Medium**: Reasonable inference from visual cues or category patterns
+- **Low**: Limited visual information, requires assumption, or unclear details
+
+Provide brief reasoning for each confidence level (e.g., "Clear brand logo visible", "Inferred from category", "Limited visual information")
 
 📦 Output format:
 Return a single JSON object with the following fields populated (NO COMMENTS IN JSON):
@@ -162,7 +170,32 @@ Return a single JSON object with the following fields populated (NO COMMENTS IN 
   "treasureReason": string | null,
 
   // Video analysis (optional)
-  videoAnalysis: string | null
+  "videoAnalysis": string | null,
+
+  // Confidence scores for all fields (high/medium/low)
+  "confidenceScores": {
+    "title": { "level": "high" | "medium" | "low", "reason": "string" },
+    "description": { "level": "high" | "medium" | "low", "reason": "string" },
+    "department": { "level": "high" | "medium" | "low", "reason": "string" },
+    "category": { "level": "high" | "medium" | "low", "reason": "string" },
+    "subCategory": { "level": "high" | "medium" | "low", "reason": "string" },
+    "condition": { "level": "high" | "medium" | "low", "reason": "string" },
+    "brand": { "level": "high" | "medium" | "low", "reason": "string" },
+    "estimatedRetailPrice": { "level": "high" | "medium" | "low", "reason": "string" },
+    "listPrice": { "level": "high" | "medium" | "low", "reason": "string" },
+    "priceReasoning": { "level": "high" | "medium" | "low", "reason": "string" },
+    "height": { "level": "high" | "medium" | "low", "reason": "string" },
+    "width": { "level": "high" | "medium" | "low", "reason": "string" },
+    "depth": { "level": "high" | "medium" | "low", "reason": "string" },
+    "gender": { "level": "high" | "medium" | "low", "reason": "string" },
+    "color": { "level": "high" | "medium" | "low", "reason": "string" },
+    "size": { "level": "high" | "medium" | "low", "reason": "string" },
+    "ageGroup": { "level": "high" | "medium" | "low", "reason": "string" },
+    "material": { "level": "high" | "medium" | "low", "reason": "string" },
+    "pattern": { "level": "high" | "medium" | "low", "reason": "string" },
+    "style": { "level": "high" | "medium" | "low", "reason": "string" },
+    "tags": { "level": "high" | "medium" | "low", "reason": "string" }
+  }
 }
 
 🧾 User inputs (always provided):

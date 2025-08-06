@@ -1,0 +1,56 @@
+# Facebook Pixel CompleteRegistration Tracking for Early Access Signup
+
+## Overview
+Add Facebook Pixel CompleteRegistration event tracking when users successfully sign up for early access email notifications.
+
+## Requirements
+
+### 1. CompleteRegistration Event Implementation
+- **Location**: Early access signup flows (main page and signup modal)
+- **Trigger**: When a user successfully signs up for early access (not when already subscribed)
+- **Event Data**: Include email and source information for better tracking
+- **Event Type**: Standard Facebook Pixel "CompleteRegistration" event
+
+### 2. Required CompleteRegistration Event Data
+- **content_name**: "Early Access Signup"
+- **content_category**: "Lead Generation"
+- **value**: 1 (representing one registration)
+- **currency**: "USD" (default)
+- **Additional Fields**:
+  - source: Source of signup (hero, modal, etc.)
+  - signup_number: Sequential signup number from database
+  - email_hash: Hashed email for privacy-compliant tracking
+
+### 3. Implementation Locations
+- **Main Page**: Hero section email signup form (`app/page.tsx`)
+- **Signup Modal**: Modal popup email signup form (`app/components/SignupModal.tsx`)
+- **API Route**: Server-side tracking in subscribe API (`app/api/subscribe/route.ts`)
+
+### 4. Implementation Details
+- **Client-Side Tracking**: Add to successful signup responses in frontend
+- **Server-Side Tracking**: Add to subscribe API route for comprehensive coverage
+- **Error Handling**: Don't fail signup process if tracking fails
+- **Fallback**: Use server-side tracking if client-side fails
+- **Duplicate Prevention**: Only track on successful new signups, not existing emails
+
+### 5. Technical Requirements
+- Add `trackCompleteRegistration` function to `meta-pixel-client.ts`
+- Add tracking to frontend signup success handlers
+- Add server-side tracking to subscribe API route
+- Include comprehensive event data for Facebook optimization
+- Ensure tracking works for both authenticated and anonymous users
+
+### 6. Testing Requirements
+- Verify CompleteRegistration events appear in Facebook Events Manager
+- Test signup flows from main page and modal
+- Ensure events fire only on successful new signups
+- Test with various email formats and sources
+- Verify events include all required registration data
+- Test error scenarios and fallback behavior
+
+## Benefits
+- Tracks lead generation effectiveness
+- Provides insights into signup conversion rates
+- Enables Facebook optimization for lead generation campaigns
+- Tracks the complete user journey from visitor to lead
+- Better attribution for marketing campaigns

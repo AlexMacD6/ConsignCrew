@@ -18,12 +18,17 @@ import {
   Edit,
   TrendingDown,
   Shield,
+  Clock,
 } from "lucide-react";
 import QuestionsDisplay from "../../../components/QuestionsDisplay";
 import ImageCarousel from "../../../components/ImageCarousel";
 import ListingHistory from "../../../components/ListingHistory";
 import CustomQRCode from "../../../components/CustomQRCode";
 import TreasureBadge from "../../../components/TreasureBadge";
+import {
+  trackMetaPixelEvent,
+  trackAddToWishlist,
+} from "../../../lib/meta-pixel-client";
 
 // Mock data for transportation history
 const transportationHistory = [
@@ -246,8 +251,9 @@ export default function ListingDetailPage() {
             height: data.listing.height,
             width: data.listing.width,
             depth: data.listing.depth,
-            discount_schedule:
-              data.listing.discountSchedule?.type || "Classic-60",
+            discount_schedule: data.listing.discountSchedule || {
+              type: "Classic-60",
+            },
             zip_code: data.listing.zipCode,
             list_price: data.listing.price,
             reserve_price:
@@ -259,7 +265,7 @@ export default function ListingDetailPage() {
             rating: data.listing.rating || null,
             reviews: data.listing.reviews || 0,
             views: data.listing.views || 0, // Add views from database
-            timeLeft: "2d 14h", // Default time for now
+            timeLeft: null, // Will be calculated dynamically
             // Additional fields for detail page
             fee_pct: 8.5, // Mock fee percentage
             price_range_low: data.listing.price * 0.7, // Mock price range
@@ -303,6 +309,33 @@ export default function ListingDetailPage() {
           };
 
           setListing(transformedListing);
+
+          // Track Facebook Pixel ViewContent event for catalog ingestion
+          try {
+            await trackMetaPixelEvent("ViewContent", {
+              content_name: transformedListing.title,
+              content_category: `${transformedListing.department}/${transformedListing.category}/${transformedListing.subCategory}`,
+              content_ids: [transformedListing.item_id],
+              value: transformedListing.list_price,
+              currency: "USD",
+              // Additional Facebook Shop catalog fields
+              brand: transformedListing.brand || undefined,
+              condition: transformedListing.condition || undefined,
+              availability:
+                transformedListing.status === "LISTED"
+                  ? "in stock"
+                  : "out of stock",
+              price: transformedListing.list_price,
+              sale_price: transformedListing.salePrice || undefined,
+              gtin: transformedListing.gtin || undefined,
+            });
+          } catch (pixelError) {
+            console.error(
+              "Error tracking Facebook Pixel ViewContent:",
+              pixelError
+            );
+            // Don't fail the page load if pixel tracking fails
+          }
 
           // Track the view for this listing
           try {
@@ -394,14 +427,95 @@ export default function ListingDetailPage() {
     return false;
   };
 
+  const getTimeUntilNextDrop = (discountSchedule: any, createdAt: string) => {
+    const now = new Date();
+    const created = new Date(createdAt);
+    const daysSinceCreation = Math.floor(
+      (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    // Handle both string type and full discount schedule object
+    let scheduleType = "Classic-60";
+    if (typeof discountSchedule === "string") {
+      scheduleType = discountSchedule;
+    } else if (discountSchedule && discountSchedule.type) {
+      scheduleType = discountSchedule.type;
+    }
+
+    // Define the discount schedules based on the new methodology
+    const schedules = {
+      "Turbo-30": {
+        dropIntervals: [0, 3, 6, 9, 12, 15, 18, 21, 24, 30],
+        totalDuration: 30,
+      },
+      "Classic-60": {
+        dropIntervals: [0, 7, 14, 21, 28, 35, 42, 49, 56, 60],
+        totalDuration: 60,
+      },
+    };
+
+    const schedule = schedules[scheduleType as keyof typeof schedules];
+    if (!schedule) {
+      return null;
+    }
+
+    // If listing has expired, no more drops
+    if (daysSinceCreation >= schedule.totalDuration) {
+      return null;
+    }
+
+    // Find the next drop
+    for (let i = 0; i < schedule.dropIntervals.length; i++) {
+      if (schedule.dropIntervals[i] > daysSinceCreation) {
+        const daysUntilNextDrop = schedule.dropIntervals[i] - daysSinceCreation;
+
+        if (daysUntilNextDrop === 0) {
+          return "Any moment now...";
+        }
+
+        if (daysUntilNextDrop === 1) {
+          return "1 day";
+        }
+
+        return `${daysUntilNextDrop} days`;
+      }
+    }
+
+    return null;
+  };
+
   const toggleSaved = (id: string) => {
     setSavedListings((prev) => {
       const newSet = new Set(prev);
-      if (newSet.has(id)) {
+      const isCurrentlySaved = newSet.has(id);
+
+      if (isCurrentlySaved) {
         newSet.delete(id);
       } else {
         newSet.add(id);
+
+        // Track AddToWishlist event when item is saved
+        if (listing) {
+          trackAddToWishlist({
+            content_name: listing.title,
+            content_category: `${listing.department}/${listing.category}/${listing.subCategory}`,
+            content_ids: [listing.item_id],
+            value: listing.list_price,
+            currency: "USD",
+            brand: listing.brand || undefined,
+            condition: listing.condition || undefined,
+            availability:
+              listing.status === "LISTED" ? "in stock" : "out of stock",
+            price: listing.list_price,
+            sale_price: listing.salePrice || undefined,
+            gtin: listing.gtin || undefined,
+          }).catch((error) => {
+            console.error("Error tracking AddToWishlist:", error);
+            // Don't fail the save functionality if tracking fails
+          });
+        }
       }
+
       return newSet;
     });
   };
@@ -659,6 +773,28 @@ export default function ListingDetailPage() {
                   </div>
                 </div>
 
+                {(() => {
+                  const timeLeft = getTimeUntilNextDrop(
+                    listing.discount_schedule,
+                    listing.created_at
+                  );
+                  return (
+                    timeLeft && (
+                      <div className="flex items-center gap-3">
+                        <Clock className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Next Price Drop:
+                          </span>
+                          <span className="ml-2 text-sm text-gray-600">
+                            {timeLeft}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  );
+                })()}
+
                 {listing.brand && (
                   <div className="flex items-center gap-3">
                     <Tag className="h-5 w-5 text-gray-400" />
@@ -799,171 +935,6 @@ export default function ListingDetailPage() {
                           </div>
                         </div>
                       )}
-                  </div>
-                </div>
-              )}
-
-              {/* Facebook Shop Product Specifications */}
-              {(listing.color ||
-                listing.size ||
-                listing.gender ||
-                listing.ageGroup ||
-                listing.material ||
-                listing.pattern ||
-                listing.style ||
-                listing.tags?.length > 0 ||
-                listing.quantity > 1 ||
-                listing.salePrice) && (
-                <div className="border-t border-gray-200 pt-6 mb-6">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <svg
-                      className="h-5 w-5 text-[#D4AF3D]"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                    </svg>
-                    Product Specifications
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {listing.color && (
-                      <div className="flex items-center gap-3">
-                        <Tag className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">
-                            Color:
-                          </span>
-                          <span className="ml-2 text-sm text-gray-600">
-                            {listing.color}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                    {listing.size && (
-                      <div className="flex items-center gap-3">
-                        <Tag className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">
-                            Size:
-                          </span>
-                          <span className="ml-2 text-sm text-gray-600">
-                            {listing.size}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                    {listing.gender && (
-                      <div className="flex items-center gap-3">
-                        <Tag className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">
-                            Gender:
-                          </span>
-                          <span className="ml-2 text-sm text-gray-600 capitalize">
-                            {listing.gender}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                    {listing.ageGroup && (
-                      <div className="flex items-center gap-3">
-                        <Tag className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">
-                            Age Group:
-                          </span>
-                          <span className="ml-2 text-sm text-gray-600 capitalize">
-                            {listing.ageGroup}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                    {listing.material && (
-                      <div className="flex items-center gap-3">
-                        <Tag className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">
-                            Material:
-                          </span>
-                          <span className="ml-2 text-sm text-gray-600">
-                            {listing.material}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                    {listing.pattern && (
-                      <div className="flex items-center gap-3">
-                        <Tag className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">
-                            Pattern:
-                          </span>
-                          <span className="ml-2 text-sm text-gray-600">
-                            {listing.pattern}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                    {listing.style && (
-                      <div className="flex items-center gap-3">
-                        <Tag className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">
-                            Style:
-                          </span>
-                          <span className="ml-2 text-sm text-gray-600">
-                            {listing.style}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    {listing.quantity > 1 && (
-                      <div className="flex items-center gap-3">
-                        <Package className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">
-                            Quantity Available:
-                          </span>
-                          <span className="ml-2 text-sm text-gray-600">
-                            {listing.quantity}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                    {listing.salePrice && (
-                      <div className="flex items-center gap-3">
-                        <TrendingDown className="h-5 w-5 text-red-500" />
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">
-                            Sale Price:
-                          </span>
-                          <span className="ml-2 text-sm text-red-600 font-medium">
-                            ${listing.salePrice.toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                    {listing.tags && listing.tags.length > 0 && (
-                      <div className="md:col-span-2">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Tag className="h-5 w-5 text-gray-400" />
-                          <span className="text-sm font-medium text-gray-700">
-                            Tags:
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-2 ml-8">
-                          {listing.tags.map((tag: string, index: number) => (
-                            <span
-                              key={index}
-                              className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
@@ -1206,6 +1177,21 @@ export default function ListingDetailPage() {
                                 )
                               )}
                             </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {listing.qualityChecked && (
+                      <div className="md:col-span-2">
+                        <div className="flex items-center gap-3">
+                          <Shield className="h-5 w-5 text-green-500" />
+                          <div>
+                            <span className="text-sm font-medium text-gray-700">
+                              Quality Status:
+                            </span>
+                            <span className="ml-2 px-2 py-1 rounded text-xs bg-green-100 text-green-800 font-medium">
+                              Quality Checked
+                            </span>
                           </div>
                         </div>
                       </div>

@@ -1,0 +1,59 @@
+# Price Drop Counter Fix
+
+## Problem
+The price drop counter was showing hardcoded values ("2d 14h") instead of calculating the actual time until the next price drop based on when the listing was posted.
+
+## Root Cause
+- Listings page was using hardcoded `timeLeft: "2d 14h"` in data transformation
+- Individual listing page was also using hardcoded `timeLeft: "2d 14h"`
+- The `getTimeUntilNextDrop` function was not being used properly
+- Discount schedule data was being passed as just the type string instead of the full object
+
+## Solution
+
+### 1. Updated Data Transformation
+- **Listings Page**: Changed `discount_schedule: listing.discountSchedule?.type || "Classic-60"` to `discount_schedule: listing.discountSchedule || { type: "Classic-60" }`
+- **Individual Listing Page**: Same change for discount schedule handling
+- Removed hardcoded `timeLeft: "2d 14h"` and set to `null` for dynamic calculation
+
+### 2. Enhanced getTimeUntilNextDrop Function
+- Updated function to handle both string type and full discount schedule object
+- Added proper type checking and fallback logic
+- Maintained compatibility with existing string-based calls
+
+### 3. Dynamic Time Display
+- **Listings Page**: Updated time badge to use calculated time instead of hardcoded value
+- **Individual Listing Page**: Added "Next Price Drop" display with calculated time
+- Both pages now show accurate countdown based on listing creation date
+
+### 4. Added Missing Import
+- Added `Clock` icon import to individual listing page for time display
+
+## Technical Details
+
+### Discount Schedule Logic
+- **Classic-60**: Drops at days [0, 7, 14, 21, 28, 35, 42, 49, 56, 60]
+- **Turbo-30**: Drops at days [0, 3, 6, 9, 12, 15, 18, 21, 24, 30]
+- Time calculation: `Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24))`
+
+### Display Format
+- "Any moment now..." for 0 days
+- "1 day" for 1 day
+- "X days" for multiple days
+- No display if listing has expired
+
+## Testing
+- Verify price drop counters show accurate time based on listing creation date
+- Test both Classic-60 and Turbo-30 schedules
+- Confirm time updates correctly as days pass
+- Check that expired listings don't show time counters
+
+## Files Modified
+- `app/(dashboard)/listings/page.tsx`
+- `app/(dashboard)/list-item/[id]/page.tsx`
+
+## Benefits
+- Users now see accurate countdown to next price drop
+- Builds urgency and encourages purchases
+- Provides transparency about pricing schedule
+- Consistent experience across all listing views 

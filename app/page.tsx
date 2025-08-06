@@ -10,6 +10,7 @@ import Roadmap from "./components/Roadmap";
 
 import EarlyAccessTracker from "./components/EarlyAccessTracker";
 import IntegratedVideoPlayer from "./components/IntegratedVideoPlayer";
+import { trackCompleteRegistration } from "./lib/meta-pixel-client";
 
 // Dynamically import the 3D background to prevent SSR issues
 const ThreeScene = dynamic(() => import("./components/ThreeScene"), {
@@ -115,6 +116,24 @@ export default function HomePage() {
           setSubmitSuccess(true);
           setEmail("");
           setRefreshTrigger((prev) => prev + 1); // Trigger refresh of tracker
+
+          // Track CompleteRegistration event for successful new signups (client-side)
+          try {
+            await trackCompleteRegistration({
+              content_name: "Early Access Signup",
+              content_category: "Lead Generation",
+              value: 1,
+              currency: "USD",
+              source: source,
+              signup_number: data.signupNumber,
+            });
+          } catch (trackingError) {
+            console.error(
+              "Error tracking CompleteRegistration (client-side):",
+              trackingError
+            );
+            // Don't fail the signup if tracking fails
+          }
         }
       } else {
         setError(data.error || "Failed to subscribe. Please try again.");
