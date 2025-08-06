@@ -1,13 +1,13 @@
 import React from "react";
-import { Button } from "../../components/ui/button";
+import { Button } from "../components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "../../components/ui/card";
-import { Badge } from "../../components/ui/badge";
+} from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
 import {
   Trash2,
   Mail,
@@ -141,11 +141,11 @@ export default function DataDeletionPage() {
                     Send us an email with your deletion request. Include your
                     email address and any specific data you'd like deleted.
                   </p>
-                                     <Button asChild>
-                     <a href="mailto:support@treasurehub.club?subject=Data Deletion Request">
-                       Send Deletion Request Email
-                     </a>
-                   </Button>
+                  <Button asChild>
+                    <a href="mailto:support@treasurehub.club?subject=Data Deletion Request">
+                      Send Deletion Request Email
+                    </a>
+                  </Button>
                 </div>
               </div>
 
@@ -319,13 +319,13 @@ export default function DataDeletionPage() {
           </CardHeader>
           <CardContent>
             <div className="grid md:grid-cols-2 gap-6">
-                             <div>
-                 <h4 className="font-semibold text-gray-900 mb-2">Email</h4>
-                 <p className="text-gray-600 mb-1">support@treasurehub.club</p>
-                 <p className="text-sm text-gray-500">
-                   For data deletion requests and privacy questions
-                 </p>
-               </div>
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-2">Email</h4>
+                <p className="text-gray-600 mb-1">support@treasurehub.club</p>
+                <p className="text-sm text-gray-500">
+                  For data deletion requests and privacy questions
+                </p>
+              </div>
               <div>
                 <h4 className="font-semibold text-gray-900 mb-2">
                   Response Time
