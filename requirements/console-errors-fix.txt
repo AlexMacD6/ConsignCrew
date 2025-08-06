@@ -1,101 +1,58 @@
 # Console Errors Fix Requirements
 
-## Issues Identified
+## Problem
+The application is experiencing several console errors that need to be addressed:
 
-### 1. 401 Unauthorized Errors
-- GET http://localhost:3000/api/profile 401 (Unauthorized)
-- This occurs when trying to access the profile page without proper authentication
-- The BetterAuth session is not being properly established or maintained
+1. **DALL-E Image Authentication Error (403)**
+   - Images from DALL-E API are failing to load with 403 authentication errors
+   - URLs are expiring or authentication is failing
 
-### 2. BetterAuth Social Provider Warnings
-- Social provider google is missing clientId or clientSecret
-- Social provider facebook is missing clientId or clientSecret  
-- Social provider tiktok is missing clientId or clientSecret
-- These warnings appear because OAuth credentials are not configured
+2. **Meta Conversion API Error (500)**
+   - POST requests to `/api/meta/conversion` are returning 500 Internal Server Error
+   - Meta Conversion API integration is failing
 
-### 3. Content Script Errors
-- Browser extension errors related to content.js
-- These are external to the application and can be ignored
+3. **Content Script Errors**
+   - `Cannot read properties of null (reading 'includes')` errors in content.js
+   - Browser extension or content script interference
 
-## Required Fixes
+## Root Causes
 
-### 1. Authentication Flow Fix
-- Ensure BetterAuth is properly configured with required environment variables
-- Fix session management to prevent 401 errors
-- Verify the profile API route is working correctly
-- Check if users are properly logged in before accessing protected routes
+### 1. DALL-E Image Issues
+- DALL-E image URLs have short expiration times (2 hours)
+- Images are being cached or referenced after expiration
+- Missing error handling for expired image URLs
 
-### 2. Environment Variables Setup
-- Verify BETTER_AUTH_SECRET is set in .env file
-- Verify BETTER_AUTH_URL is set correctly
-- Add missing OAuth provider credentials or disable unused providers
-- Ensure DATABASE_URL is properly configured
+### 2. Meta Conversion API Issues
+- Missing or invalid environment variables (META_ACCESS_TOKEN, NEXT_PUBLIC_META_PIXEL_ID)
+- API endpoint may be missing proper error handling
+- Authentication or configuration issues
 
-### 3. Profile Page Authentication
-- Add proper authentication checks in profile page
-- Handle unauthenticated users gracefully
-- Redirect to login page when authentication fails
+### 3. Content Script Issues
+- Browser extension interference with the application
+- Content script trying to access null properties
+- Not related to the main application code
 
-### 4. BetterAuth Configuration
-- Review and update BetterAuth configuration
-- Ensure session strategy is working correctly
-- Verify database adapter is properly configured
+## Solution Requirements
 
-## Testing Requirements
-- Test login flow end-to-end
-- Verify profile page loads for authenticated users
-- Test redirect behavior for unauthenticated users
-- Check that social provider warnings are resolved
+### 1. DALL-E Image Error Handling
+- Add fallback images for expired DALL-E URLs
+- Implement proper error handling for image loading failures
+- Add retry logic for failed image loads
+- Consider using local image storage instead of DALL-E URLs
 
-## Fixes Implemented
+### 2. Meta Conversion API Fixes
+- Add proper environment variable validation
+- Implement comprehensive error handling in the API route
+- Add logging for debugging API issues
+- Ensure proper authentication setup
 
-### 1. BetterAuth Configuration Updates
-- ✅ Fixed email & password authentication configuration
-- ✅ Updated organization plugin configuration with proper email templates
-- ✅ Fixed social provider configuration to only enable when credentials are provided
-- ✅ Added proper TypeScript types for BetterAuth callbacks
+### 3. Content Script Mitigation
+- Add error boundaries to prevent content script interference
+- Implement proper null checks in affected components
+- Add console error filtering for non-critical errors
 
-### 2. Profile API Improvements
-- ✅ Enhanced error handling and logging in profile API
-- ✅ Added PUT method for profile updates
-- ✅ Improved session validation and user data selection
-- ✅ Added proper error messages for different failure scenarios
-
-### 3. Profile Page Updates
-- ✅ Updated User interface to match BetterAuth schema (name instead of firstName/lastName)
-- ✅ Fixed profile display to use unified name field
-- ✅ Improved error handling and loading states
-- ✅ Added proper authentication checks with credentials
-
-### 4. Authentication Flow Improvements
-- ✅ Created middleware for route protection
-- ✅ Added AuthStatus component for debugging
-- ✅ Updated login page to handle redirects properly
-- ✅ Enhanced session management with proper cookie handling
-
-### 5. Testing and Validation
-- ✅ Created test script to verify BetterAuth configuration
-- ✅ Verified database connection and table structure
-- ✅ Confirmed environment variables are properly set
-- ✅ Tested OAuth provider configuration
-
-## Current Status
-- ✅ BetterAuth core functionality is working
-- ✅ Database tables are properly created
-- ✅ Email & password authentication is configured
-- ✅ Organization plugin is properly set up
-- ✅ Social providers are conditionally enabled
-- ⚠️ Some OAuth providers (Facebook, TikTok) are not configured (warnings will be suppressed)
-
-## Email Verification Fix
-- ✅ Fixed AWS SES configuration set issue
-- ✅ Commented out non-existent `treasurehub-deliverability` configuration set
-- ✅ Updated SES server to handle missing configuration sets gracefully
-- ✅ Email verification should now work properly
-
-## Email Deliverability Improvements
-- ✅ Enhanced email templates with proper HTML structure
-- ✅ Added email tags for better tracking
-- ✅ Created comprehensive DNS setup guide
-- ✅ Improved email headers and metadata
-- ⚠️ DNS records need to be configured for maximum deliverability 
+## Testing
+- Verify DALL-E images load properly or show fallbacks
+- Test Meta Conversion API endpoints
+- Check browser console for reduced error messages
+- Ensure application functionality is not affected by fixes 

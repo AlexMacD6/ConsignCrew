@@ -7,6 +7,8 @@ import NavBar from "./components/NavBar";
 import Footer from "./components/Footer";
 import { ModalProvider } from "./contexts/ModalContext";
 import MetaPixelScript from "./components/MetaPixelScript";
+import ErrorBoundary from "./components/ErrorBoundary";
+import "../app/lib/console-filter"; // Import console filter
 
 export const metadata: Metadata = {
   title: {
@@ -193,11 +195,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         </noscript>
         {/* End Google Tag Manager (noscript) */}
 
-        <ModalProvider>
-          <NavBar />
-          {children}
-          <Footer />
-        </ModalProvider>
+        <ErrorBoundary>
+          <ModalProvider>
+            <NavBar />
+            {children}
+            <Footer />
+          </ModalProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

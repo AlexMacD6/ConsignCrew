@@ -167,6 +167,27 @@ export class MetaConversionAPI {
     content_ids?: string[];
     value?: number;
     currency?: string;
+    // Enhanced Facebook Shop catalog fields
+    brand?: string;
+    condition?: string;
+    availability?: string;
+    price?: number;
+    sale_price?: number;
+    gtin?: string;
+    gender?: string;
+    color?: string;
+    size?: string;
+    age_group?: string;
+    material?: string;
+    pattern?: string;
+    style?: string;
+    quantity?: number;
+    item_group_id?: string;
+    sale_price_effective_date?: string;
+    video_url?: string;
+    description?: string;
+    image_url?: string;
+    // User data fields
     user_email?: string;
     user_phone?: string;
     external_id?: string;
@@ -175,6 +196,8 @@ export class MetaConversionAPI {
     fbc?: string;
     fbp?: string;
     event_source_url?: string;
+    event_id?: string;
+    action_source?: string;
   }): Promise<ConversionAPIResponse | null> {
     const userData: ConversionEvent['user_data'] = {};
     const customData: ConversionEvent['custom_data'] = {};
@@ -202,7 +225,7 @@ export class MetaConversionAPI {
       userData.fbp = data.fbp;
     }
 
-    // Add custom data
+    // Add basic custom data
     if (data.content_name) {
       customData.content_name = data.content_name;
     }
@@ -219,13 +242,73 @@ export class MetaConversionAPI {
       customData.currency = data.currency;
     }
 
+    // Add enhanced Facebook Shop catalog fields
+    if (data.brand) {
+      customData.brand = data.brand;
+    }
+    if (data.condition) {
+      customData.condition = data.condition;
+    }
+    if (data.availability) {
+      customData.availability = data.availability;
+    }
+    if (data.price) {
+      customData.price = data.price;
+    }
+    if (data.sale_price) {
+      customData.sale_price = data.sale_price;
+    }
+    if (data.gtin) {
+      customData.gtin = data.gtin;
+    }
+    if (data.gender) {
+      customData.gender = data.gender;
+    }
+    if (data.color) {
+      customData.color = data.color;
+    }
+    if (data.size) {
+      customData.size = data.size;
+    }
+    if (data.age_group) {
+      customData.age_group = data.age_group;
+    }
+    if (data.material) {
+      customData.material = data.material;
+    }
+    if (data.pattern) {
+      customData.pattern = data.pattern;
+    }
+    if (data.style) {
+      customData.style = data.style;
+    }
+    if (data.quantity) {
+      customData.quantity = data.quantity;
+    }
+    if (data.item_group_id) {
+      customData.item_group_id = data.item_group_id;
+    }
+    if (data.sale_price_effective_date) {
+      customData.sale_price_effective_date = data.sale_price_effective_date;
+    }
+    if (data.video_url) {
+      customData.video_url = data.video_url;
+    }
+    if (data.description) {
+      customData.description = data.description;
+    }
+    if (data.image_url) {
+      customData.image_url = data.image_url;
+    }
+
     const event: ConversionEvent = {
       event_name: 'ViewContent',
       event_time: Math.floor(Date.now() / 1000),
-      action_source: 'website',
+      action_source: (data.action_source as any) || 'website',
       event_source_url: data.event_source_url,
       user_data: userData,
       custom_data: Object.keys(customData).length > 0 ? customData : undefined,
+      event_id: data.event_id,
     };
 
     return this.sendEvent(event);

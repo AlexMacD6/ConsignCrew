@@ -30,6 +30,7 @@ const nextConfig: NextConfig = {
 			new URL('https://d3hcmh2afavni1.cloudfront.net/**'),
 			new URL('https://d137kvqp5ded0n.cloudfront.net/**'),
 			new URL('https://d1lbhlimt20t50.cloudfront.net/**'),
+			new URL('https://dtlqyjbwka60p.cloudfront.net/**'),
 			new URL('https://rigconcierge-dev.s3.amazonaws.com/**'),
 			new URL('https://rigreview.s3.us-east-1.amazonaws.com/**'),
 			new URL('https://*.googleusercontent.com/**'),
@@ -72,9 +73,9 @@ const nextConfig: NextConfig = {
 			}
 		}
 		
-		// Disable CSS source maps in development to prevent 404 errors
+		// Use Next.js default devtool for better performance
 		if (dev && !isServer) {
-			config.devtool = 'eval-source-map'
+			config.devtool = false
 		}
 		
 		return config

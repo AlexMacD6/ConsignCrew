@@ -760,7 +760,8 @@ export default function ListingsPage() {
                       />
                     </div>
                   ) : (
-                    listing.estimated_retail_price && (
+                    listing.estimated_retail_price &&
+                    listing.condition === "New" && (
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-sm text-gray-500 line-through">
                           ${listing.estimated_retail_price.toFixed(2)}
@@ -1043,26 +1044,27 @@ export default function ListingsPage() {
                         Reserve Met
                       </div>
                     )}
-                    {/* Estimated Retail Price - Only show if available */}
-                    {selectedListing.estimated_retail_price && (
-                      <div className="mt-3 flex items-center gap-3">
-                        <span className="text-lg text-gray-500 line-through">
-                          ${selectedListing.estimated_retail_price.toFixed(2)}
-                        </span>
-                        <div className="flex items-center gap-2 text-sm text-red-600">
-                          <ArrowDown className="h-4 w-4" />
-                          <span className="font-medium">
-                            {Math.round(
-                              ((selectedListing.estimated_retail_price -
-                                selectedListing.list_price) /
-                                selectedListing.estimated_retail_price) *
-                                100
-                            )}
-                            % Off Retail
+                    {/* Estimated Retail Price - Only show if available and condition is New */}
+                    {selectedListing.estimated_retail_price &&
+                      selectedListing.condition === "New" && (
+                        <div className="mt-3 flex items-center gap-3">
+                          <span className="text-lg text-gray-500 line-through">
+                            ${selectedListing.estimated_retail_price.toFixed(2)}
                           </span>
+                          <div className="flex items-center gap-2 text-sm text-red-600">
+                            <ArrowDown className="h-4 w-4" />
+                            <span className="font-medium">
+                              {Math.round(
+                                ((selectedListing.estimated_retail_price -
+                                  selectedListing.list_price) /
+                                  selectedListing.estimated_retail_price) *
+                                  100
+                              )}
+                              % Off Retail
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
                   </div>
 
                   {/* Action Buttons */}

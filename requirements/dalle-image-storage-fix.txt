@@ -1,0 +1,117 @@
+# DALL-E Image Storage Fix Requirements
+
+## Problem
+DALL-E images are generated and stored in Azure Blob Storage with temporary URLs that expire, causing 403 Forbidden errors when users try to view the images after the URLs have expired. This results in broken images throughout the application.
+
+## Root Cause
+1. DALL-E generates images and stores them in Azure Blob Storage
+2. The URLs returned are temporary and require authentication
+3. These URLs expire after a certain time period (typically 1-24 hours)
+4. When the browser tries to load the image, the authentication has expired, causing a 403 error
+5. The current system doesn't download and re-upload these images to permanent storage
+
+## Solution
+Implement a server-side download and re-upload process to store DALL-E images permanently in S3. If S3 upload fails, the image will not be available (no fallback to Azure URLs).
+
+### 1. Modified DALL-E Image Generation API
+- **File**: `app/api/ai/generate-staged-photo/route.ts`
+- **Changes**:
+  - Added `downloadImage()` function to fetch images from Azure Blob Storage
+  - Added `uploadImageToS3()` function to upload images to S3 using the existing image store SDK
+  - Modified the main flow to download DALL-E images and upload them to S3
+  - Return only S3 URLs - no fallback to Azure URLs
+  - If S3 upload fails, `generatedImageUrl` will be null
+
+### 2. Enhanced Image Component
+- **File**: `app/components/RobustImage.tsx`
+- **Changes**:
+  - Removed Azure fallback logic completely
+  - Simplified to only handle S3-stored images
+  - If image fails to load after retries, component returns null (shows nothing)
+  - Added visual indicator for S3-stored images
+  - Improved logging for debugging
+
+### 3. Technical Implementation Details
+
+#### Download Process
+```typescript
+async function downloadImage(url: string): Promise<Buffer> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to download image: ${response.status} ${response.statusText}`);
+  }
+  const arrayBuffer = await response.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
+```
+
+#### S3 Upload Process
+```typescript
+async function uploadImageToS3(imageBuffer: Buffer, itemId: string, contentType: string = 'image/png'): Promise<string> {
+  const { url, key } = await getUploadUrl({
+    prefix: ImagePrefix.Staged,
+    itemId,
+    ext: contentType.includes('png') ? 'png' : 'jpg',
+    contentType,
+  });
+  
+  const uploadResponse = await fetch(url, {
+    method: 'PUT',
+    body: imageBuffer,
+    headers: { 'Content-Type': contentType },
+  });
+  
+  return getPublicUrl(key);
+}
+```
+
+### 4. Benefits
+- **Permanent Storage**: DALL-E images are now permanently stored in S3
+- **No Expiration**: S3 URLs don't expire like Azure Blob Storage URLs
+- **Better Performance**: S3 images can be served through CloudFront CDN
+- **Consistent Architecture**: All images now use the same storage system
+- **Clean UI**: No broken images or fallback placeholders
+
+### 5. Error Handling
+- **Download Failures**: If Azure download fails, image won't be available
+- **Upload Failures**: If S3 upload fails, image won't be available
+- **Network Issues**: Retry logic for both download and upload operations
+- **Validation**: Proper content type detection and file size validation
+- **No Fallbacks**: Clean failure - if image can't be stored in S3, it's not shown
+
+### 6. Monitoring and Debugging
+- **Console Logging**: Detailed logs for each step of the process
+- **Error Tracking**: Specific error messages for different failure points
+- **Visual Indicators**: UI indicators showing S3-stored images
+- **Clean Failures**: No broken images cluttering the UI
+
+### 7. Performance Considerations
+- **Async Operations**: Download and upload happen asynchronously
+- **Memory Management**: Proper buffer handling for large images
+- **Timeout Handling**: Reasonable timeouts for network operations
+- **CDN Integration**: S3 images benefit from CloudFront caching
+
+### 8. Testing Requirements
+- **New DALL-E Generation**: Test that new images are stored in S3
+- **S3 Upload Failures**: Test that failed uploads result in no image being shown
+- **Error Scenarios**: Test download failures, upload failures, network issues
+- **Performance**: Verify acceptable response times for the new flow
+- **UI Cleanliness**: Verify no broken images or placeholders are shown
+
+## Files Modified
+1. `app/api/ai/generate-staged-photo/route.ts` - Main fix implementation (no Azure fallback)
+2. `app/components/RobustImage.tsx` - Simplified image handling (no fallbacks)
+3. `requirements/dalle-image-storage-fix.txt` - This requirements document
+
+## Dependencies
+- Existing S3 image store SDK (`src/aws/imageStore.ts`)
+- OpenAI API for DALL-E generation
+- Next.js fetch API for download operations
+- AWS SDK for S3 operations
+
+## Environment Variables Required
+- `OPENAI_API_KEY` - For DALL-E image generation
+- `AWS_ACCESS_KEY_ID` - For S3 uploads
+- `AWS_SECRET_ACCESS_KEY` - For S3 uploads
+- `AWS_REGION` - For S3 configuration
+- `S3_BUCKET` - For S3 bucket name 

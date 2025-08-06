@@ -10,11 +10,15 @@ export default function MetaPixelScript() {
     return null;
   }
 
+  console.log("Meta Pixel: Initializing with ID:", pixelId);
+
   return (
     <>
       {/* Meta Pixel Base Code */}
       <Script id="meta-pixel" strategy="afterInteractive">
         {`
+          console.log('Meta Pixel: Script loading...');
+          
           !function(f,b,e,v,n,t,s)
           {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
           n.callMethod.apply(n,arguments):n.queue.push(arguments)};
@@ -23,8 +27,23 @@ export default function MetaPixelScript() {
           t.src=v;s=b.getElementsByTagName(e)[0];
           s.parentNode.insertBefore(t,s)}(window, document,'script',
           'https://connect.facebook.net/en_US/fbevents.js');
-          fbq('init', '${pixelId}');
-          fbq('track', 'PageView');
+          
+          console.log('Meta Pixel: Script loaded, initializing...');
+          
+          // Guard against missing pixel ID
+          if ('${pixelId}' && window.fbq) {
+            fbq('init', '${pixelId}');
+            console.log('Meta Pixel: Initialized with ID: ${pixelId}');
+            
+            fbq('track', 'PageView');
+            console.log('Meta Pixel: PageView tracked');
+          } else {
+            console.warn('Meta Pixel: Missing pixel ID or fbq not available');
+          }
+          
+          // Debug: Check if fbq is available
+          console.log('Meta Pixel: fbq available:', typeof window.fbq !== 'undefined');
+          console.log('Meta Pixel: fbq loaded:', window.fbq && window.fbq.loaded);
         `}
       </Script>
 

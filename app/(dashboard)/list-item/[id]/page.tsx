@@ -28,6 +28,7 @@ import CustomQRCode from "../../../components/CustomQRCode";
 import TreasureBadge from "../../../components/TreasureBadge";
 import {
   trackMetaPixelEvent,
+  trackViewContent,
   trackAddToWishlist,
   trackCompleteRegistration,
 } from "../../../lib/meta-pixel-client";
@@ -360,10 +361,16 @@ export default function ListingDetailPage() {
 
           // Track Facebook Pixel ViewContent event for catalog ingestion
           try {
-            await trackMetaPixelEvent("ViewContent", {
+            console.log(
+              "ViewContent: Starting tracking for listing:",
+              transformedListing.title
+            );
+
+            const viewContentData = {
+              content_ids: [transformedListing.item_id], // Required field
+              content_type: "product" as const,
               content_name: transformedListing.title,
               content_category: `${transformedListing.department}/${transformedListing.category}/${transformedListing.subCategory}`,
-              content_ids: [transformedListing.item_id],
               value: transformedListing.list_price,
               currency: "USD",
               // Additional Facebook Shop catalog fields
@@ -376,7 +383,32 @@ export default function ListingDetailPage() {
               price: transformedListing.list_price,
               sale_price: transformedListing.salePrice || undefined,
               gtin: transformedListing.gtin || undefined,
-            });
+              // Enhanced Facebook Shop catalog fields
+              gender: transformedListing.gender || undefined,
+              color: transformedListing.color || undefined,
+              size: transformedListing.size || undefined,
+              age_group: transformedListing.ageGroup || undefined,
+              material: transformedListing.material || undefined,
+              pattern: transformedListing.pattern || undefined,
+              style: transformedListing.style || undefined,
+              // Product specifications
+              quantity: transformedListing.quantity || undefined,
+              item_group_id: transformedListing.itemGroupId || undefined,
+              // Sale information
+              sale_price_effective_date:
+                transformedListing.salePriceEffectiveDate || undefined,
+              // Video information (if available)
+              video_url: transformedListing.videoUrl || undefined,
+              // Additional product details
+              description: transformedListing.description || undefined,
+              image_url: transformedListing.image_urls_staged?.[0] || undefined,
+            };
+
+            console.log("ViewContent: Data prepared:", viewContentData);
+
+            await trackViewContent(viewContentData);
+
+            console.log("ViewContent: Tracking completed successfully");
           } catch (pixelError) {
             console.error(
               "Error tracking Facebook Pixel ViewContent:",
@@ -958,7 +990,8 @@ export default function ListingDetailPage() {
                   )}
                 </div>
               ) : (
-                listing.estimated_retail_price && (
+                listing.estimated_retail_price &&
+                listing.condition === "New" && (
                   <div className="flex items-center gap-3 mb-4">
                     <span className="text-lg text-gray-500 line-through">
                       ${listing.estimated_retail_price.toFixed(2)}

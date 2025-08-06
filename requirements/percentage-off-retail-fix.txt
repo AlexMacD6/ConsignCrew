@@ -1,0 +1,54 @@
+# Percentage Off Retail Display Fix
+
+## Problem
+The application was showing percentage off retail for all items that have an estimated retail price, regardless of their condition. This is misleading for used or damaged goods, as it suggests a discount from retail when the item is not actually new.
+
+## Root Cause
+The percentage off retail calculation was being displayed based only on the presence of `estimated_retail_price`, without considering the item's condition.
+
+## Solution
+Updated the conditional logic to only show percentage off retail for items with condition "New".
+
+## Changes Made
+
+### 1. Listings Page (Gallery View)
+- **File**: `app/(dashboard)/listings/page.tsx`
+- **Change**: Added condition check `listing.condition === "New"` to the percentage off retail display
+- **Location**: Line ~760 in the listing card display
+
+### 2. Listing Detail Page
+- **File**: `app/(dashboard)/list-item/[id]/page.tsx`
+- **Change**: Added condition check `listing.condition === "New"` to the percentage off retail display
+- **Location**: Line ~960 in the listing detail view
+
+### 3. Listing Modal (Quick View)
+- **File**: `app/(dashboard)/listings/page.tsx`
+- **Change**: Added condition check `selectedListing.condition === "New"` to the percentage off retail display
+- **Location**: Line ~1045 in the modal display
+
+## Logic Updated
+**Before:**
+```javascript
+listing.estimated_retail_price && (
+  // Show percentage off retail
+)
+```
+
+**After:**
+```javascript
+listing.estimated_retail_price && listing.condition === "New" && (
+  // Show percentage off retail
+)
+```
+
+## Benefits
+- **Accurate Information**: Only shows percentage off retail for genuinely new items
+- **No Misleading Claims**: Prevents confusion about discounts on used/damaged goods
+- **Better User Experience**: Users can trust that percentage off retail means actual retail value
+- **Consistent Logic**: All three display locations now use the same condition check
+
+## Testing
+- Verify percentage off retail only shows for items with condition "New"
+- Verify used, good, fair, and poor condition items do not show percentage off retail
+- Verify estimated retail price still displays for non-new items (without percentage)
+- Test all three display locations: gallery, detail page, and modal 
