@@ -1,0 +1,57 @@
+# Flaw Detection Integration for Image Carousel
+
+## Overview
+Integrate the existing flaw detection AI service into the listing creation process and display flaw tags on images in the carousel.
+
+## Current State
+- ✅ Flaw detection AI service exists (`detectPhotoFlaws` function)
+- ✅ API endpoint `/api/ai/detect-flaws` is implemented
+- ✅ ImageCarousel component supports flaw display
+- ❌ Database schema doesn't include flaw data field
+- ❌ Flaw detection not called during listing creation
+- ❌ Flaw data not stored or retrieved with listings
+
+## Required Changes
+
+### 1. Database Schema Update
+- Add `flawData` JSON field to Listing model
+- Create database migration for the new field
+- Store flaw detection results with listing data
+
+### 2. Listing Creation Integration
+- Call flaw detection during listing creation process
+- Store flaw results in database with listing
+- Handle errors gracefully if flaw detection fails
+
+### 3. API Response Enhancement
+- Include flaw data in listing API responses
+- Transform flaw data for frontend consumption
+- Ensure backward compatibility
+
+### 4. Frontend Integration
+- Pass flaw data to ImageCarousel component
+- Ensure flaw tags appear on images with detected flaws
+- Test flaw display functionality
+
+## Implementation Plan
+
+1. **Schema Update**: Add flawData field to Listing model
+2. **Migration**: Create database migration
+3. **API Integration**: Add flaw detection to listing creation
+4. **Frontend Update**: Ensure flaw data flows to carousel
+5. **Testing**: Verify flaw tags appear on images
+
+## Flaw Display Features
+- **Visual Tags**: Color-coded severity indicators
+  - Minor: Yellow background
+  - Moderate: Orange background  
+  - Major: Red background
+- **Hover Details**: Show flaw type and description on hover
+- **Image Overlay**: Non-intrusive placement in top-left corner
+- **Multiple Flaws**: Support multiple flaw tags per image
+
+## Benefits
+- Quality transparency for buyers
+- Automated condition assessment
+- Consistent flaw documentation
+- Enhanced trust through transparency

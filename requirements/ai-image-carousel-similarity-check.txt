@@ -1,0 +1,51 @@
+# AI Image Carousel Positioning and Similarity Check
+
+## Overview
+Move AI-generated staged photos to second position in image carousel, add "Staged scene - for inspiration" labels, and implement cosine similarity scoring between AI and hero images with admin-only visibility.
+
+## Requirements
+
+### 1. Image Carousel Reordering
+- **Current Order**: AI image (proof) → Hero → Back → Additional
+- **New Order**: Hero → AI image (proof) → Back → Additional
+- **Rationale**: Hero image should be first as it's the main product photo
+- **AI Image Position**: Second position with clear labeling
+
+### 2. AI Image Labeling
+- **Label Text**: "Staged scene - for inspiration"
+- **Visibility**: Always visible on AI-generated images
+- **Styling**: Subtle overlay badge that doesn't obstruct the image
+- **Purpose**: Clear identification that image is AI-generated for inspiration
+
+### 3. Cosine Similarity Implementation
+- **Comparison**: Between AI-generated image and hero image
+- **Method**: Cosine similarity algorithm for image comparison
+- **Storage**: Store similarity score in database or calculate on-demand
+- **Performance**: Efficient implementation that doesn't slow page load
+
+### 4. Admin-Only Similarity Score Display
+- **Visibility**: Only admins can see similarity scores
+- **Location**: On listing detail pages
+- **Format**: Percentage or decimal score with clear context
+- **Purpose**: Quality control and AI performance monitoring
+
+### 5. Technical Requirements
+- Update image array ordering in listing transformation
+- Add image labeling capability to ImageCarousel component
+- Implement cosine similarity calculation function
+- Add admin check for score visibility
+- Ensure performance doesn't impact user experience
+
+### 6. Implementation Details
+- **Image Ordering**: Modify `all_images` array construction
+- **Label Integration**: Enhance ImageCarousel to support image labels
+- **Similarity API**: Create endpoint or function for similarity calculation
+- **Admin Check**: Use existing admin status detection
+- **Database**: Consider storing similarity scores for performance
+
+## Benefits
+- Better user experience with hero image first
+- Clear identification of AI-generated content
+- Quality control tool for AI performance
+- Admin insights into AI accuracy
+- Maintains trust through transparency about AI content

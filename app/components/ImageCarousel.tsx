@@ -18,8 +18,14 @@ interface MediaItem {
   flaws?: Flaw[];
 }
 
+interface ImageWithMetadata {
+  src: string;
+  type?: string;
+  label?: string | null;
+}
+
 interface ImageCarouselProps {
-  images: string[];
+  images: (string | ImageWithMetadata)[];
   video?: {
     src: string;
     poster?: string;
@@ -53,15 +59,23 @@ export default function ImageCarousel({
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Create media items array: images first, then video if available
-  const mediaItems: MediaItem[] = [
+  const mediaItems: (MediaItem & { label?: string | null })[] = [
     ...images
-      .filter((src) => src && src.trim() !== "") // Filter out empty/undefined image sources
-      .map((src, index) => ({
-        type: "image" as const,
-        src,
-        alt: `${alt} - Image ${index + 1}`,
-        flaws: photoFlaws[src] || [],
-      })),
+      .filter((item) => {
+        const src = typeof item === "string" ? item : item.src;
+        return src && src.trim() !== "";
+      }) // Filter out empty/undefined image sources
+      .map((item, index) => {
+        const src = typeof item === "string" ? item : item.src;
+        const label = typeof item === "string" ? null : item.label;
+        return {
+          type: "image" as const,
+          src,
+          alt: `${alt} - Image ${index + 1}`,
+          flaws: photoFlaws[src] || [],
+          label,
+        };
+      }),
     ...(video && video.src && video.src.trim() !== ""
       ? [
           {
@@ -70,6 +84,7 @@ export default function ImageCarousel({
             poster: video.poster,
             duration: video.duration,
             alt: `${alt} - Video`,
+            label: null,
           },
         ]
       : []),
@@ -203,6 +218,15 @@ export default function ImageCarousel({
                       {flaw.type.charAt(0).toUpperCase() + flaw.type.slice(1)}
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* Image Label (e.g., for AI-generated images) */}
+              {currentItem.label && (
+                <div className="absolute bottom-2 right-2">
+                  <div className="bg-black/70 text-white px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm">
+                    {currentItem.label}
+                  </div>
                 </div>
               )}
             </div>

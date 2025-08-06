@@ -131,6 +131,8 @@ export default function ListingDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false); // Signup form submission state
   const [submitSuccess, setSubmitSuccess] = useState(false); // Signup success state
   const [signupError, setSignupError] = useState(""); // Signup error message
+  const [similarityScore, setSimilarityScore] = useState<number | null>(null); // AI-Hero image similarity score
+  const [loadingSimilarity, setLoadingSimilarity] = useState(false); // Loading state for similarity calculation
   const { data: session } = authClient.useSession();
   const isAuthenticated = !!session?.user;
   const currentUserId = session?.user?.id || null;
@@ -252,11 +254,29 @@ export default function ListingDetailPage() {
               data.listing.photos.gallery || [data.listing.photos.hero] || [],
             // Create a comprehensive image array for carousel
             all_images: [
-              data.listing.photos.proof, // AI-generated staged photo as first image
-              data.listing.photos.hero,
-              data.listing.photos.back,
-              ...(data.listing.photos.additional || []),
-            ].filter(Boolean), // Remove any null/undefined values
+              {
+                src: data.listing.photos.hero,
+                type: "hero",
+                label: null,
+              },
+              {
+                src: data.listing.photos.proof,
+                type: "ai_generated",
+                label: "Staged scene - for inspiration",
+              },
+              {
+                src: data.listing.photos.back,
+                type: "back",
+                label: null,
+              },
+              ...(data.listing.photos.additional || []).map(
+                (photo: string) => ({
+                  src: photo,
+                  type: "additional",
+                  label: null,
+                })
+              ),
+            ].filter((img) => img.src), // Remove any null/undefined sources
             serial_number: data.listing.serialNumber,
             model_number: data.listing.modelNumber,
             brand: data.listing.brand,
@@ -319,9 +339,23 @@ export default function ListingDetailPage() {
                   thumbnailUrl: data.listing.video.thumbnailKey || null,
                 }
               : null,
+            // Flaw detection data
+            flawData: data.listing.flawData || null,
           };
 
           setListing(transformedListing);
+
+          // Calculate similarity between AI and hero images for admin users
+          if (
+            isAdmin &&
+            data.listing.photos.hero &&
+            data.listing.photos.proof
+          ) {
+            calculateSimilarity(
+              data.listing.photos.hero,
+              data.listing.photos.proof
+            );
+          }
 
           // Track Facebook Pixel ViewContent event for catalog ingestion
           try {
@@ -587,6 +621,39 @@ export default function ListingDetailPage() {
       setSignupError("Network error. Please try again.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const calculateSimilarity = async (
+    heroImageUrl: string,
+    aiImageUrl: string
+  ) => {
+    if (!isAdmin) return; // Only calculate for admin users
+
+    setLoadingSimilarity(true);
+    try {
+      const response = await fetch("/api/admin/image-similarity", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          imageUrl1: heroImageUrl,
+          imageUrl2: aiImageUrl,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setSimilarityScore(data.similarity);
+      } else {
+        console.error("Error calculating similarity:", data.error);
+      }
+    } catch (error) {
+      console.error("Network error calculating similarity:", error);
+    } finally {
+      setLoadingSimilarity(false);
     }
   };
 
@@ -916,6 +983,58 @@ export default function ListingDetailPage() {
                 )}
               </div>
             </div>
+
+            {/* Admin-only AI Similarity Score */}
+            {isAdmin && (
+              <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                      AI Image Quality Score
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Cosine similarity between AI-generated and hero images
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    {loadingSimilarity ? (
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#D4AF3D]"></div>
+                        <span className="text-sm text-gray-500">
+                          Calculating...
+                        </span>
+                      </div>
+                    ) : similarityScore !== null ? (
+                      <div>
+                        <div className="text-2xl font-bold text-gray-900">
+                          {Math.round(similarityScore * 100)}%
+                        </div>
+                        <div
+                          className={`text-sm font-medium ${
+                            similarityScore >= 0.8
+                              ? "text-green-600"
+                              : similarityScore >= 0.6
+                              ? "text-yellow-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {similarityScore >= 0.8
+                            ? "High"
+                            : similarityScore >= 0.6
+                            ? "Medium"
+                            : "Low"}{" "}
+                          similarity
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-400">
+                        No AI image available
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Item Details */}
             <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
