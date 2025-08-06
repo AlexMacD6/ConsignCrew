@@ -83,7 +83,7 @@
 - **Responsive**: Mobile-first design approach
 
 ### Contact Integration
-- **Email**: Direct mailto link to privacy@treasurehub.club
+- **Email**: Direct mailto link to support@treasurehub.club
 - **Profile Integration**: Links to user profile settings
 - **Contact Form**: Integration with existing contact page
 - **Response Time**: 24-hour response commitment
