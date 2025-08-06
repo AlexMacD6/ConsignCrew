@@ -35,8 +35,17 @@ export async function trackPageViewForRequest(request: NextRequest) {
                     'unknown';
     const userAgent = headersList.get('user-agent') || 'unknown';
 
-    // Get user session if available
-    const session = await auth.api.getSession({ headers: headersList });
+    // Get user session if available (handle Prisma errors gracefully)
+    let session = null;
+    try {
+      // Only try to get session in server environment and when Prisma is available
+      if (typeof window === 'undefined' && process.env.DATABASE_URL) {
+        session = await auth.api.getSession({ headers: headersList });
+      }
+    } catch (sessionError) {
+      // Log but don't fail - session is optional for tracking
+      console.warn('Failed to get session for tracking:', sessionError);
+    }
 
     // Track the page view
     await metaConversionAPI.trackPageView({
@@ -75,8 +84,17 @@ export async function trackContentViewForRequest(
                     'unknown';
     const userAgent = headersList.get('user-agent') || 'unknown';
 
-    // Get user session if available
-    const session = await auth.api.getSession({ headers: headersList });
+    // Get user session if available (handle Prisma errors gracefully)
+    let session = null;
+    try {
+      // Only try to get session in server environment and when Prisma is available
+      if (typeof window === 'undefined' && process.env.DATABASE_URL) {
+        session = await auth.api.getSession({ headers: headersList });
+      }
+    } catch (sessionError) {
+      // Log but don't fail - session is optional for tracking
+      console.warn('Failed to get session for tracking:', sessionError);
+    }
 
     // Track the content view
     await metaConversionAPI.trackViewContent({

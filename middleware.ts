@@ -7,12 +7,13 @@ import { trackPageViewForRequest, isTrackingEnabled } from './app/lib/meta-pagev
  */
 export async function middleware(request: NextRequest) {
   // Track page view for Meta Pixel (server-side fallback)
-  if (isTrackingEnabled()) {
-    // Fire and forget - don't await to avoid blocking the request
-    trackPageViewForRequest(request).catch(error => {
-      console.warn('Meta page view tracking failed in middleware:', error);
-    });
-  }
+  // Temporarily disabled due to expired access token
+  // if (isTrackingEnabled()) {
+  //   // Fire and forget - don't await to avoid blocking the request
+  //   trackPageViewForRequest(request).catch(error => {
+  //     console.warn('Meta page view tracking failed in middleware:', error);
+  //   });
+  // }
 
   // Temporarily disable middleware to test authentication
   return NextResponse.next();
