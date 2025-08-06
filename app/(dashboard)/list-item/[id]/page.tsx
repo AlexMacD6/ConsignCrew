@@ -31,6 +31,77 @@ import {
   trackAddToWishlist,
   trackCompleteRegistration,
 } from "../../../lib/meta-pixel-client";
+import ProductStructuredData from "../../../components/ProductStructuredData";
+import {
+  generateProductMetadata,
+  ProductForMeta,
+} from "../../../components/ProductMetaTags";
+import { Metadata } from "next";
+
+// Generate dynamic metadata for product pages
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  try {
+    const { id } = await params;
+
+    // Fetch listing data for metadata
+    const response = await fetch(
+      `${
+        process.env.NEXTAUTH_URL || "http://localhost:3000"
+      }/api/listings/${id}`,
+      {
+        cache: "no-store",
+      }
+    );
+
+    if (!response.ok) {
+      return {
+        title: "Product Not Found | TreasureHub",
+        description: "The requested product could not be found.",
+      };
+    }
+
+    const data = await response.json();
+
+    // Transform listing data for metadata
+    const productForMeta: ProductForMeta = {
+      item_id: data.listing.itemId,
+      title: data.listing.title,
+      description: data.listing.description,
+      list_price: data.listing.price,
+      status: data.listing.status,
+      brand: data.listing.brand,
+      condition: data.listing.condition,
+      all_images: [
+        { src: data.listing.photos.hero, type: "hero", label: null },
+        {
+          src: data.listing.photos.proof,
+          type: "ai_generated",
+          label: "Staged scene - for inspiration",
+        },
+        { src: data.listing.photos.back, type: "back", label: null },
+        ...(data.listing.photos.additional || []).map((photo: string) => ({
+          src: photo,
+          type: "additional",
+          label: null,
+        })),
+      ].filter((img) => img.src),
+      url: `https://treasurehub.club/list-item/${data.listing.itemId}`,
+    };
+
+    return generateProductMetadata(productForMeta);
+  } catch (error) {
+    console.error("Error generating metadata:", error);
+    return {
+      title: "TreasureHub | Professional Consignment Service",
+      description:
+        "Professional consignment service that handles everything from pickup to sale.",
+    };
+  }
+}
 
 // Mock data for transportation history
 const transportationHistory = [
@@ -815,6 +886,24 @@ export default function ListingDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Structured Data for Facebook Shop Catalog */}
+      <ProductStructuredData
+        product={{
+          item_id: listing.item_id,
+          title: listing.title,
+          description: listing.description,
+          list_price: listing.list_price,
+          status: listing.status,
+          brand: listing.brand,
+          condition: listing.condition,
+          department: listing.department,
+          category: listing.category,
+          subCategory: listing.subCategory,
+          all_images: listing.all_images,
+          url: `https://treasurehub.club/list-item/${listing.item_id}`,
+        }}
+      />
+
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
