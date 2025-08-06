@@ -31,6 +31,7 @@ import {
   trackAddToWishlist,
   trackCompleteRegistration,
 } from "../../../lib/meta-pixel-client";
+import ProductStructuredData from "../../../components/ProductStructuredData";
 
 // Mock data for transportation history
 const transportationHistory = [
@@ -815,6 +816,24 @@ export default function ListingDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Structured Data for Facebook Shop Catalog */}
+      <ProductStructuredData
+        product={{
+          item_id: listing.item_id,
+          title: listing.title,
+          description: listing.description,
+          list_price: listing.list_price,
+          status: listing.status,
+          brand: listing.brand,
+          condition: listing.condition,
+          department: listing.department,
+          category: listing.category,
+          subCategory: listing.subCategory,
+          all_images: listing.all_images,
+          url: `https://treasurehub.club/list-item/${listing.item_id}`,
+        }}
+      />
+
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

@@ -1,0 +1,87 @@
+# Facebook Shop Microdata Setup
+
+## Overview
+Add proper microdata/structured data to product listing pages to enable automatic catalog ingestion into Facebook Shop.
+
+## Current Issue
+Facebook Shop can't automatically detect products because required microdata fields are missing:
+
+### Required Fields Missing:
+- **id**: Product identifier for catalog sync
+- **availability**: Product availability status 
+- **price**: Product price with currency
+
+### Current State:
+- ❌ No Schema.org Product structured data
+- ❌ Generic Open Graph tags (site-level, not product-specific)
+- ❌ Missing JSON-LD product markup
+- ✅ Facebook Pixel ViewContent events already implemented
+
+## Required Implementation
+
+### 1. Schema.org Product Structured Data (JSON-LD)
+Add JSON-LD script to product detail pages with:
+```json
+{
+  "@context": "https://schema.org/",
+  "@type": "Product",
+  "productID": "ITEM_ID",
+  "name": "Product Name",
+  "description": "Product Description",
+  "brand": "Brand Name",
+  "category": "Department/Category",
+  "offers": {
+    "@type": "Offer",
+    "price": "299.99",
+    "priceCurrency": "USD",
+    "availability": "https://schema.org/InStock",
+    "url": "https://treasurehub.club/list-item/ITEM_ID"
+  },
+  "image": ["hero_image_url", "additional_images"],
+  "condition": "https://schema.org/UsedCondition"
+}
+```
+
+### 2. Open Graph Product Meta Tags
+Add product-specific Open Graph tags:
+```html
+<meta property="og:type" content="product" />
+<meta property="og:title" content="Product Name" />
+<meta property="og:description" content="Product Description" />
+<meta property="og:image" content="hero_image_url" />
+<meta property="og:url" content="https://treasurehub.club/list-item/ITEM_ID" />
+<meta property="product:price:amount" content="299.99" />
+<meta property="product:price:currency" content="USD" />
+<meta property="product:availability" content="in stock" />
+<meta property="product:condition" content="used" />
+```
+
+### 3. Required Field Mappings
+
+**ID Field**: Use listing.item_id (unique identifier)
+**Availability Field**: Map from listing.status
+- "LISTED" → "in stock"
+- "SOLD" → "out of stock" 
+- "PENDING" → "pending"
+
+**Price Field**: Use listing.list_price with "USD" currency
+
+**Additional Fields**:
+- Brand: listing.brand
+- Category: listing.department/category/subCategory
+- Condition: Map to Schema.org conditions
+- Images: All available product images
+
+## Implementation Plan
+
+1. **Create Microdata Component**: Reusable component for product structured data
+2. **Update Listing Page**: Add microdata to individual product pages
+3. **Dynamic Meta Tags**: Generate product-specific Open Graph tags
+4. **Field Validation**: Ensure all required fields are present
+5. **Testing**: Validate with Facebook's sharing debugger
+
+## Expected Outcome
+- ✅ Products automatically detected by Facebook Shop
+- ✅ Proper catalog ingestion from website
+- ✅ Enhanced ad campaign performance
+- ✅ Better social media sharing appearance
