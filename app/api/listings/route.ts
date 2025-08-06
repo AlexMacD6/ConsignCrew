@@ -109,6 +109,35 @@ export async function POST(request: NextRequest) {
         photo.url ? photo.url : (typeof photo === 'string' ? getPublicUrl(photo) : photo)
       ) || []
     };
+
+    // Detect flaws in product photos
+    let flawData = null;
+    try {
+      const photoUrls = [
+        transformedPhotos.hero,
+        transformedPhotos.back,
+        ...(transformedPhotos.additional || [])
+      ].filter(Boolean);
+
+      if (photoUrls.length > 0) {
+        const flawResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/ai/detect-flaws`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ photoUrls }),
+        });
+
+        if (flawResponse.ok) {
+          const flawResult = await flawResponse.json();
+          flawData = flawResult.flawData;
+        }
+      }
+    } catch (error) {
+      console.error('Error detecting flaws:', error);
+      // Continue with listing creation even if flaw detection fails
+    }
+
     const listing = await prisma.listing.create({
       data: {
         userId: session.user.id,
@@ -155,6 +184,8 @@ export async function POST(request: NextRequest) {
         treasureReason: treasureReason || null,
         treasureFlaggedAt: isTreasure ? new Date() : null,
         treasureFlaggedBy: isTreasure ? session.user.id : null,
+        // Flaw detection data
+        flawData: flawData,
         // Link video to listing if videoId is provided
         videos: videoId ? {
           connect: {
