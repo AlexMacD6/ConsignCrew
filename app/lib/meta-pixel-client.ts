@@ -1,7 +1,10 @@
 /**
  * Client-side Meta Pixel utility for tracking events
  * This file provides a safe way to track Meta Pixel events from the frontend
+ * with event_id deduplication and optimized fallback logic
  */
+
+import { v4 as uuid } from 'uuid';
 
 declare global {
   interface Window {
@@ -23,79 +26,12 @@ export interface MetaPixelEvent {
   };
 }
 
-/**
- * Track a Meta Pixel event with server-side fallback
- * @param event_name - The name of the event to track
- * @param custom_data - Optional custom data for the event
- */
-export async function trackMetaPixelEvent(event_name: string, custom_data?: any) {
-  // Try client-side tracking first
-  if (typeof window !== 'undefined' && window.fbq) {
-    window.fbq('track', event_name, custom_data);
-  }
-
-  // Server-side fallback for when JavaScript is blocked or fails
-  try {
-    await fetch('/api/meta/conversion', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        event_name,
-        custom_data,
-      }),
-    });
-  } catch (error) {
-    console.warn('Meta Conversion API fallback failed:', error);
-  }
-}
-
-/**
- * Track page view event
- * @param url - Optional URL to track (defaults to current page)
- */
-export async function trackPageView(url?: string) {
-  await trackMetaPixelEvent('PageView', url ? { page_url: url } : undefined);
-}
-
-/**
- * Track view content event for products
- * @param product - Product data
- */
-export async function trackViewContent(product: {
+// Stricter types for product events
+export interface ProductEvent {
+  content_ids: string[];     // Required for product events
+  content_type?: 'product';
   content_name?: string;
   content_category?: string;
-  content_ids?: string[];
-  value?: number;
-  currency?: string;
-}) {
-  await trackMetaPixelEvent('ViewContent', product);
-}
-
-/**
- * Track add to cart event
- * @param product - Product data
- */
-export async function trackAddToCart(product: {
-  content_name?: string;
-  content_category?: string;
-  content_ids?: string[];
-  value?: number;
-  currency?: string;
-  quantity?: number;
-}) {
-  await trackMetaPixelEvent('AddToCart', product);
-}
-
-/**
- * Track add to wishlist event
- * @param product - Product data
- */
-export async function trackAddToWishlist(product: {
-  content_name?: string;
-  content_category?: string;
-  content_ids?: string[];
   value?: number;
   currency?: string;
   brand?: string;
@@ -104,7 +40,134 @@ export async function trackAddToWishlist(product: {
   price?: number;
   sale_price?: number;
   gtin?: string;
-}) {
+  // Enhanced Facebook Shop catalog fields
+  gender?: string;
+  color?: string;
+  size?: string;
+  age_group?: string;
+  material?: string;
+  pattern?: string;
+  style?: string;
+  // Product specifications
+  quantity?: number;
+  item_group_id?: string;
+  // Sale information
+  sale_price_effective_date?: string;
+  // Video information
+  video_url?: string;
+  // Additional product details
+  description?: string;
+  image_url?: string;
+}
+
+export interface CartItem {
+  id: string;
+  quantity: number;
+  item_price: number;
+  content_name?: string;
+  content_category?: string;
+  brand?: string;
+  condition?: string;
+  availability?: string;
+}
+
+/**
+ * Track Meta Pixel events with browser and server-side fallback
+ * Includes event_id for deduplication and optimized fallback logic
+ * @param event_name - The event name to track
+ * @param custom_data - Optional custom data for the event
+ */
+export async function trackMetaPixelEvent(
+  event_name: string,
+  custom_data: Record<string, any> = {}
+) {
+  const event_id = uuid();
+  const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
+  let browserSent = false;
+
+  console.log(`Meta Pixel: Attempting to track ${event_name}`, { custom_data, event_id });
+
+  // --- Browser Pixel ---
+  if (typeof window !== 'undefined' && window.fbq && pixelId) {
+    try {
+      console.log(`Meta Pixel: Client-side tracking ${event_name}`);
+      window.fbq('track', event_name, { ...custom_data, event_id });
+      browserSent = true;
+      console.log(`Meta Pixel: Client-side ${event_name} tracked successfully`);
+    } catch (err) {
+      console.error(`Meta Pixel: Client-side ${event_name} failed → falling back to CAPI`, err);
+    }
+  } else {
+    console.warn(`Meta Pixel: Client-side tracking not available for ${event_name}`, {
+      window: typeof window,
+      fbq: typeof window !== 'undefined' ? !!window.fbq : false,
+      pixelId: !!pixelId
+    });
+  }
+
+  // --- Conversions API fallback ---
+  if (!browserSent) {
+    try {
+      console.log(`Meta Pixel: Attempting server-side fallback for ${event_name}`);
+      const response = await fetch('/api/meta/conversion', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          event_name,
+          event_id,
+          action_source: 'website',
+          custom_data,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log(`Meta Pixel: Server-side ${event_name} tracked successfully`, result);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error(`Meta Pixel: Server-side ${event_name} failed:`, {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+      }
+    } catch (error) {
+      console.error(`Meta Pixel: Server-side fallback failed for ${event_name}:`, error);
+    }
+  }
+}
+
+/**
+ * Track page view event
+ * @param url - Optional URL to track (defaults to current page)
+ */
+export async function trackPageView(url?: string) {
+  await trackMetaPixelEvent('PageView', url ? { page_url: url } : {});
+}
+
+/**
+ * Track view content event for products
+ * @param product - Product data with required content_ids
+ */
+export async function trackViewContent(product: ProductEvent) {
+  await trackMetaPixelEvent('ViewContent', product);
+}
+
+/**
+ * Track add to cart event
+ * @param product - Product data with required content_ids
+ */
+export async function trackAddToCart(product: ProductEvent & { quantity?: number }) {
+  await trackMetaPixelEvent('AddToCart', product);
+}
+
+/**
+ * Track add to wishlist event
+ * @param product - Product data with required content_ids
+ */
+export async function trackAddToWishlist(product: ProductEvent) {
   await trackMetaPixelEvent('AddToWishlist', product);
 }
 
@@ -124,14 +187,15 @@ export async function trackCompleteRegistration(registration: {
 }
 
 /**
- * Track purchase event
- * @param purchase - Purchase data
+ * Track purchase event with support for contents array
+ * @param purchase - Purchase data with cart items
  */
 export async function trackPurchase(purchase: {
+  contents?: CartItem[];
+  content_ids?: string[];
   content_name?: string;
   content_category?: string;
-  content_ids?: string[];
-  value?: number;
+  value: number;
   currency?: string;
   num_items?: number;
   order_id?: string;
@@ -144,7 +208,7 @@ export async function trackPurchase(purchase: {
  * @param search - Search data
  */
 export async function trackSearch(search: {
-  search_string?: string;
+  search_string: string;
   content_category?: string;
 }) {
   await trackMetaPixelEvent('Search', search);
@@ -175,14 +239,19 @@ export async function trackContact(contact: {
 }
 
 /**
- * Initialize Meta Pixel (called automatically by the script)
- * This is mainly for debugging purposes
+ * Helper function to create contents array for cart/purchase events
+ * @param cartItems - Array of cart items
+ * @returns Formatted contents array for Facebook
  */
-export function initMetaPixel() {
-  const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
-    
-  if (typeof window !== 'undefined' && window.fbq && pixelId) {
-    window.fbq('init', pixelId);
-    window.fbq('track', 'PageView');
-  }
+export function createContentsArray(cartItems: CartItem[]) {
+  return cartItems.map(item => ({
+    id: item.id,
+    quantity: item.quantity,
+    item_price: item.item_price,
+    content_name: item.content_name,
+    content_category: item.content_category,
+    brand: item.brand,
+    condition: item.condition,
+    availability: item.availability,
+  }));
 } 

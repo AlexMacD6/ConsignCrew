@@ -1,0 +1,142 @@
+# Meta Pixel Production Optimization Requirements
+
+## Overview
+Optimize the Meta Pixel integration for production use with Facebook's best practices for event deduplication, performance, and data quality.
+
+## Key Improvements Implemented
+
+### 1. Event Deduplication with event_id
+- **Problem**: When sending the same event via Browser and CAPI, Facebook counts each event twice without deduplication
+- **Solution**: Generate unique event_id using UUID v4 for each event
+- **Implementation**: 
+  - Added `uuid` package dependency
+  - Modified `trackMetaPixelEvent` to generate and pass event_id
+  - Updated server-side API to handle event_id parameter
+
+### 2. Optimized Fallback Logic
+- **Problem**: Double-sending every event even when browser tracking succeeds
+- **Solution**: Only call server-side API if browser tracking fails or is unavailable
+- **Implementation**:
+  - Added `browserSent` flag to track browser success
+  - Skip server call when browser tracking succeeds
+  - Improved error handling and logging
+
+### 3. Enhanced Data Quality
+- **Problem**: Missing required fields and incomplete event data
+- **Solution**: Add action_source and improve data completeness
+- **Implementation**:
+  - Added `action_source: 'website'` to all server-side events
+  - Enhanced ViewContent tracking with additional Facebook Shop fields
+  - Improved type safety with stricter interfaces
+
+### 4. Stricter TypeScript Types
+- **Problem**: Optional fields causing type issues and runtime errors
+- **Solution**: Create proper interfaces with required vs optional fields
+- **Implementation**:
+  - Created `ProductEvent` interface with required `content_ids`
+  - Created `CartItem` interface for purchase events
+  - Made `search_string` required for Search events
+  - Made `value` required for Purchase events
+
+### 5. Removed Duplicate Initialization
+- **Problem**: `initMetaPixel()` function could create duplicate pixel instances
+- **Solution**: Remove redundant initialization function
+- **Implementation**:
+  - Removed `initMetaPixel()` function
+  - Kept only the automatic initialization in `MetaPixelScript.tsx`
+
+### 6. Enhanced Cart/Purchase Events
+- **Problem**: Missing Facebook's preferred `contents` array format
+- **Solution**: Add support for contents array with item details
+- **Implementation**:
+  - Added `createContentsArray()` helper function
+  - Updated `trackPurchase()` to support contents array
+  - Enhanced purchase event data structure
+
+### 7. Environment Variable Guards
+- **Problem**: Missing pixel ID causing console errors
+- **Solution**: Add proper guards against missing environment variables
+- **Implementation**:
+  - Added pixel ID validation in `MetaPixelScript.tsx`
+  - Skip browser tracking if pixel ID is missing
+  - Improved error logging and warnings
+
+## Files Modified
+
+### Core Files
+- `app/lib/meta-pixel-client.ts` - Main tracking functions with deduplication
+- `app/components/MetaPixelScript.tsx` - Script initialization with guards
+- `app/api/meta/conversion/route.ts` - Server-side API with event_id support
+- `app/(dashboard)/list-item/[id]/page.tsx` - ViewContent tracking with new types
+
+### Dependencies Added
+- `uuid` - For generating unique event IDs
+- `@types/uuid` - TypeScript definitions
+
+## Testing Requirements
+
+### 1. Event Deduplication Testing
+- Verify ViewContent events have unique event_id
+- Check Facebook Events Manager for duplicate events
+- Test both browser and server-side tracking paths
+
+### 2. Fallback Logic Testing
+- Test with ad blockers enabled
+- Test with JavaScript disabled
+- Verify server-side fallback only triggers when needed
+
+### 3. Data Quality Testing
+- Verify all required fields are present in events
+- Check Facebook Events Manager for event completeness scores
+- Test with various product data scenarios
+
+### 4. Type Safety Testing
+- Verify TypeScript compilation without errors
+- Test with missing required fields (should show errors)
+- Validate interface compliance
+
+## Production Checklist
+
+- [ ] All events include unique event_id
+- [ ] Server-side calls only happen when browser fails
+- [ ] action_source is set to 'website' for all events
+- [ ] Required fields are properly validated
+- [ ] Environment variables are properly guarded
+- [ ] No duplicate pixel initialization
+- [ ] Enhanced logging for debugging
+- [ ] TypeScript types are strict and accurate
+
+## Performance Impact
+
+### Positive Impacts
+- Reduced server load (fewer redundant API calls)
+- Better event deduplication (improved Facebook match quality)
+- Enhanced data completeness (better conversion tracking)
+
+### Monitoring Points
+- Event delivery success rates
+- Facebook Events Manager event counts
+- Server-side API call frequency
+- Browser vs server-side tracking ratios
+
+## Future Enhancements
+
+### 1. User Data Hashing
+- Implement SHA-256 hashing for email and phone
+- Add hashed user_data to server-side events
+- Improve Facebook match quality
+
+### 2. Advanced Deduplication
+- Implement event deduplication window
+- Add event timestamp validation
+- Handle edge cases with multiple tabs/windows
+
+### 3. Enhanced Error Handling
+- Add retry logic for failed events
+- Implement event queuing for offline scenarios
+- Add comprehensive error reporting
+
+### 4. Performance Monitoring
+- Add event tracking performance metrics
+- Monitor event delivery latency
+- Track browser vs server-side success rates 

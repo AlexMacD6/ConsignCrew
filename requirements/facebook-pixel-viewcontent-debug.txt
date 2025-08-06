@@ -1,0 +1,113 @@
+# Facebook Pixel ViewContent Debugging
+
+## Problem
+Facebook Pixel ViewContent events are not responding or tracking properly on product detail pages.
+
+## Current Implementation Analysis
+
+### 1. ViewContent Tracking Flow
+- **Location**: `app/(dashboard)/list-item/[id]/page.tsx` (lines 360-381)
+- **Client-side**: Uses `trackMetaPixelEvent("ViewContent", {...})` from `meta-pixel-client.ts`
+- **Server-side**: Falls back to `/api/meta/conversion` endpoint
+- **Data Structure**: Includes product details, pricing, and catalog fields
+
+### 2. Meta Pixel Setup
+- **Script**: `MetaPixelScript.tsx` loads Facebook Pixel base code
+- **Environment**: Requires `NEXT_PUBLIC_META_PIXEL_ID`
+- **Initialization**: `fbq('init', pixelId)` and `fbq('track', 'PageView')`
+
+### 3. Conversion API Integration
+- **Endpoint**: `/api/meta/conversion` handles server-side tracking
+- **Authentication**: Uses `META_ACCESS_TOKEN`
+- **Event Processing**: Routes ViewContent to `metaConversionAPI.trackViewContent()`
+
+## Potential Issues
+
+### 1. Environment Variables
+- **Missing Pixel ID**: `NEXT_PUBLIC_META_PIXEL_ID` not configured
+- **Missing Access Token**: `META_ACCESS_TOKEN` not configured
+- **Invalid Values**: Incorrect or expired tokens
+
+### 2. Client-side Issues
+- **Script Loading**: Facebook Pixel script not loading properly
+- **JavaScript Errors**: Console errors preventing execution
+- **Ad Blockers**: Browser extensions blocking tracking
+- **Network Issues**: CDN or connectivity problems
+
+### 3. Server-side Issues
+- **API Errors**: Meta Conversion API returning errors
+- **Authentication**: Invalid or expired access token
+- **Rate Limiting**: Too many requests to Meta API
+- **Data Validation**: Invalid event data structure
+
+### 4. Data Issues
+- **Missing Required Fields**: Incomplete product data
+- **Invalid Formats**: Incorrect data types or formats
+- **Empty Values**: Null or undefined values being sent
+
+## Debugging Steps
+
+### 1. Environment Check
+- Verify `NEXT_PUBLIC_META_PIXEL_ID` is set and valid
+- Verify `META_ACCESS_TOKEN` is set and valid
+- Check if tokens are expired or revoked
+
+### 2. Client-side Debugging
+- Check browser console for JavaScript errors
+- Verify Facebook Pixel script loads (check Network tab)
+- Test `window.fbq` availability in console
+- Check for ad blocker interference
+
+### 3. Server-side Debugging
+- Check server logs for API errors
+- Test `/api/meta/conversion` endpoint directly
+- Verify Meta Conversion API responses
+- Check rate limiting and authentication
+
+### 4. Data Validation
+- Verify product data is complete and valid
+- Check data types and formats
+- Ensure required fields are present
+- Validate event structure
+
+## Testing Plan
+
+### 1. Manual Testing
+- Visit product detail page
+- Check browser console for errors
+- Verify Facebook Pixel events in Events Manager
+- Test with different browsers and devices
+
+### 2. API Testing
+- Test conversion API endpoint directly
+- Verify authentication and responses
+- Check Meta Events Manager for server-side events
+
+### 3. Debug Logging
+- Add comprehensive logging to track flow
+- Log client-side and server-side events
+- Monitor for specific error conditions
+
+## Expected Behavior
+
+### 1. Client-side Tracking
+- Facebook Pixel script loads without errors
+- `fbq('track', 'ViewContent', {...})` executes successfully
+- Events appear in Facebook Events Manager
+
+### 2. Server-side Tracking
+- `/api/meta/conversion` returns success response
+- Meta Conversion API accepts events
+- Events appear in Meta Events Manager
+
+### 3. Data Quality
+- All required product fields are present
+- Data formats match Meta requirements
+- No null or undefined values in critical fields
+
+## Success Criteria
+- ViewContent events fire on every product page load
+- Events appear in Facebook Events Manager
+- No console errors related to tracking
+- Server-side fallback works when client-side fails
+- Product data is complete and accurate 

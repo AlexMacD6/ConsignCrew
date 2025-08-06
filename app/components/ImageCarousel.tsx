@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { ChevronLeft, ChevronRight, X, Maximize2, Play } from "lucide-react";
+import RobustImage from "./RobustImage";
 
 interface Flaw {
   type: string;
@@ -186,6 +187,52 @@ export default function ImageCarousel({
     );
   }
 
+  const renderMediaItem = (item: MediaItem & { label?: string | null }) => {
+    if (item.type === "video") {
+      return (
+        <div className="relative w-full h-full">
+          <video
+            src={item.src}
+            poster={item.poster}
+            controls
+            className="w-full h-full object-cover rounded-lg"
+            preload="metadata"
+          >
+            Your browser does not support the video tag.
+          </video>
+          {item.duration && (
+            <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+              {Math.floor(item.duration / 60)}:
+              {(item.duration % 60).toString().padStart(2, "0")}
+            </div>
+          )}
+          <div className="absolute top-2 right-2 bg-black/70 text-white p-1 rounded">
+            <Play className="h-4 w-4" />
+          </div>
+        </div>
+      );
+    }
+
+    // Use RobustImage for better error handling
+    return (
+      <div className="relative w-full h-full">
+        <RobustImage
+          src={item.src}
+          alt={item.alt || "Product image"}
+          width={400}
+          height={400}
+          className="w-full h-full object-cover rounded-lg"
+          fallbackSrc="/cardboard.jpg"
+        />
+        {item.label && (
+          <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+            {item.label}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       <div className={`relative overflow-hidden group ${className}`}>
@@ -193,11 +240,15 @@ export default function ImageCarousel({
         <div className="relative w-full h-full">
           {currentItem.type === "image" ? (
             <div className="relative w-full h-full">
-              <img
+              <RobustImage
                 src={currentItem.src}
-                alt={currentItem.alt}
+                alt={currentItem.alt || "Product image"}
+                width={400}
+                height={400}
                 className="w-full h-full object-cover transition-opacity duration-300 cursor-pointer hover:opacity-95"
-                onClick={openModal}
+                fallbackSrc="/cardboard.jpg"
+                onLoad={() => {}}
+                onError={() => {}}
               />
 
               {/* Flaw Tags */}
@@ -229,30 +280,15 @@ export default function ImageCarousel({
                   </div>
                 </div>
               )}
+
+              {/* Click overlay for modal */}
+              <div
+                className="absolute inset-0 cursor-pointer"
+                onClick={openModal}
+              />
             </div>
           ) : (
-            <div className="relative w-full h-full">
-              <video
-                src={currentItem.src}
-                poster={currentItem.poster}
-                className="w-full h-full object-cover transition-opacity duration-300"
-                controls
-                preload="metadata"
-                crossOrigin="anonymous"
-              >
-                <source src={currentItem.src} type="video/mp4" />
-                <source src={currentItem.src} type="video/quicktime" />
-                Your browser does not support the video tag.
-              </video>
-              {/* Video indicator overlay */}
-              <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
-                <Play className="h-3 w-3" />
-                Video
-                {currentItem.duration && (
-                  <span>• {Math.round(currentItem.duration)}s</span>
-                )}
-              </div>
-            </div>
+            renderMediaItem(currentItem)
           )}
 
           {/* Expand Icon (only for images) */}
@@ -354,10 +390,13 @@ export default function ImageCarousel({
 
             {/* Main Image */}
             <div className="relative max-w-full max-h-full">
-              <img
+              <RobustImage
                 src={currentItem.src}
-                alt={currentItem.alt}
+                alt={currentItem.alt || "Product image"}
+                width={800}
+                height={800}
                 className="max-w-full max-h-full object-contain"
+                fallbackSrc="/cardboard.jpg"
               />
 
               {/* Image Counter */}
