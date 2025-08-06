@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addEmailToMailchimp } from '@/lib/mailchimp';
+import { trackCompleteRegistration } from '@/lib/meta-pixel-client';
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,6 +31,22 @@ export async function POST(request: NextRequest) {
     console.log('addEmailToMailchimp result received');
 
     if (result.success) {
+      // Track CompleteRegistration event for successful new signups
+      if (result.message !== 'Email already subscribed') {
+        try {
+          await trackCompleteRegistration({
+            content_name: 'Early Access Signup',
+            content_category: 'Lead Generation',
+            value: 1,
+            currency: 'USD',
+            source: source,
+            signup_number: result.signupNumber,
+          });
+        } catch (trackingError) {
+          console.error('Error tracking CompleteRegistration:', trackingError);
+          // Don't fail the signup if tracking fails
+        }
+      }
 
       return NextResponse.json(
         { 

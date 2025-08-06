@@ -109,6 +109,21 @@ export async function trackAddToWishlist(product: {
 }
 
 /**
+ * Track complete registration event
+ * @param registration - Registration data
+ */
+export async function trackCompleteRegistration(registration: {
+  content_name?: string;
+  content_category?: string;
+  value?: number;
+  currency?: string;
+  source?: string;
+  signup_number?: number;
+}) {
+  await trackMetaPixelEvent('CompleteRegistration', registration);
+}
+
+/**
  * Track purchase event
  * @param purchase - Purchase data
  */
