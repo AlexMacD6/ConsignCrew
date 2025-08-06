@@ -39,7 +39,10 @@ import {
   getFacebookCategories,
   mapToFacebookCategory,
 } from "../../lib/category-mapping";
-import { trackAddToWishlist } from "../../lib/meta-pixel-client";
+import {
+  trackAddToWishlist,
+  trackCompleteRegistration,
+} from "../../lib/meta-pixel-client";
 
 // Helper function to convert S3 keys to CloudFront URLs
 function getPhotoUrl(photoData: any): string | null {
@@ -85,6 +88,11 @@ export default function ListingsPage() {
   const [isAdmin, setIsAdmin] = useState(true); // Mock admin status - in real app this would come from auth
   const [isClient, setIsClient] = useState(false); // Track client-side rendering
   const [timeKey, setTimeKey] = useState(0); // Force re-renders for time calculations
+  const [authError, setAuthError] = useState(false); // Track authentication errors
+  const [email, setEmail] = useState(""); // Early access signup email
+  const [isSubmitting, setIsSubmitting] = useState(false); // Signup form submission state
+  const [submitSuccess, setSubmitSuccess] = useState(false); // Signup success state
+  const [signupError, setSignupError] = useState(""); // Signup error message
 
   // Set client-side rendering flag after hydration
   useEffect(() => {
@@ -97,6 +105,11 @@ export default function ListingsPage() {
       try {
         const response = await fetch("/api/listings");
         if (!response.ok) {
+          if (response.status === 401) {
+            setAuthError(true);
+            setListings([]);
+            return;
+          }
           throw new Error("Failed to fetch listings");
         }
         const data = await response.json();
@@ -295,6 +308,63 @@ export default function ListingsPage() {
         q.id === questionId ? { ...q, is_approved: true, is_public: true } : q
       )
     );
+  };
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+
+    setIsSubmitting(true);
+    setSignupError("");
+    setSubmitSuccess(false);
+
+    try {
+      const response = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, source: "listings_auth_error" }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        if (data.message === "Email already subscribed") {
+          setSignupError(
+            "You're already signed up! We'll notify you when we launch."
+          );
+        } else {
+          setSubmitSuccess(true);
+          setEmail("");
+
+          // Track CompleteRegistration event for successful new signups
+          try {
+            await trackCompleteRegistration({
+              content_name: "Early Access Signup",
+              content_category: "Lead Generation",
+              value: 1,
+              currency: "USD",
+              source: "listings_auth_error",
+              signup_number: data.signupNumber,
+            });
+          } catch (trackingError) {
+            console.error(
+              "Error tracking CompleteRegistration (listings auth):",
+              trackingError
+            );
+            // Don't fail the signup if tracking fails
+          }
+        }
+      } else {
+        setSignupError(data.error || "Failed to subscribe. Please try again.");
+      }
+    } catch (error) {
+      console.error("Network error:", error);
+      setSignupError("Network error. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Use Facebook Marketplace categories for consistent filtering
@@ -805,8 +875,101 @@ export default function ListingsPage() {
           })}
         </div>
 
-        {/* No Results */}
-        {filteredListings.length === 0 && (
+        {/* No Results or Coming Soon */}
+        {filteredListings.length === 0 && authError && (
+          <div className="text-center py-16 px-4">
+            <div className="max-w-md mx-auto">
+              {/* Logo */}
+              <div className="mb-8">
+                <img
+                  src="/TreasureHub - Logo.png"
+                  alt="TreasureHub"
+                  className="h-20 w-auto mx-auto"
+                />
+              </div>
+
+              {/* Coming Soon Message */}
+              <div className="mb-8">
+                <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                  🎉 Listings Coming Soon!
+                </h2>
+                <p className="text-lg text-gray-600 mb-6">
+                  We're putting the finishing touches on our marketplace. Be the
+                  first to discover amazing treasures when we launch!
+                </p>
+              </div>
+
+              {/* Early Access Signup Form */}
+              {!submitSuccess ? (
+                <form onSubmit={handleEmailSubmit} className="space-y-4">
+                  <div>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email for early access"
+                      className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-[#D4AF3D] focus:ring-2 focus:ring-[#D4AF3D]/20 transition-all"
+                      required
+                    />
+                  </div>
+                  {signupError && (
+                    <p className="text-red-500 text-sm">{signupError}</p>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full bg-[#D4AF3D] hover:bg-[#b8932f] text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmitting ? "Joining..." : "Get Early Access Now"}
+                  </button>
+                </form>
+              ) : (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+                  <div className="flex items-center justify-center mb-4">
+                    <CheckCircle className="h-8 w-8 text-green-500" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-green-800 mb-2">
+                    You're on the list! 🎯
+                  </h3>
+                  <p className="text-green-700">
+                    We'll notify you as soon as listings are available. Thanks
+                    for joining our treasure hunt!
+                  </p>
+                </div>
+              )}
+
+              {/* Benefits */}
+              <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm">
+                <div className="text-center">
+                  <Sparkles className="h-8 w-8 text-[#D4AF3D] mx-auto mb-2" />
+                  <h4 className="font-semibold text-gray-900 mb-1">
+                    First Access
+                  </h4>
+                  <p className="text-gray-600">
+                    Be the first to see new treasures
+                  </p>
+                </div>
+                <div className="text-center">
+                  <Shield className="h-8 w-8 text-[#D4AF3D] mx-auto mb-2" />
+                  <h4 className="font-semibold text-gray-900 mb-1">
+                    Quality Guaranteed
+                  </h4>
+                  <p className="text-gray-600">Every item is quality checked</p>
+                </div>
+                <div className="text-center">
+                  <Package className="h-8 w-8 text-[#D4AF3D] mx-auto mb-2" />
+                  <h4 className="font-semibold text-gray-900 mb-1">
+                    Easy Process
+                  </h4>
+                  <p className="text-gray-600">Simple buying and selling</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Regular No Results (when not auth error) */}
+        {filteredListings.length === 0 && !authError && (
           <div className="text-center py-12">
             <div className="text-gray-400 mb-4">
               <Search className="h-12 w-12 mx-auto" />
