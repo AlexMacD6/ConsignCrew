@@ -273,6 +273,10 @@ export default function EditListingPage() {
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
 
+  // Treasure detection state
+  const [isTreasure, setIsTreasure] = useState(false);
+  const [treasureReason, setTreasureReason] = useState("");
+
   // Confidence scores for AI-generated fields
   const [confidenceScores, setConfidenceScores] = useState<any>(null);
 
@@ -404,6 +408,10 @@ export default function EditListingPage() {
           setPattern(listingData.pattern || "");
           setStyle(listingData.style || "");
           setTags(listingData.tags || []);
+
+          // Treasure fields
+          setIsTreasure(listingData.isTreasure || false);
+          setTreasureReason(listingData.treasureReason || "");
 
           // Set photos - ensure all values are properly handled
           setPhotos({
@@ -711,6 +719,9 @@ export default function EditListingPage() {
             itemGroupId,
           }),
           tags: tags || [],
+          // Treasure fields
+          isTreasure: isTreasure || false,
+          treasureReason: treasureReason || null,
           photos,
           videoUrl: videoData.uploaded ? videoData.thumbnailUrl : null,
         }),
@@ -1701,6 +1712,88 @@ export default function EditListingPage() {
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* Treasure Detection Section */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <svg
+                className="h-5 w-5 text-[#D4AF3D]"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+              </svg>
+              Treasure Detection
+            </h2>
+            <p className="text-sm text-gray-600 mb-6">
+              Mark items as "Treasures" for one-of-a-kind, vintage, or collector
+              pieces that don't have standard retail pricing.
+            </p>
+
+            <div className="space-y-6">
+              {/* Is Treasure Toggle */}
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isTreasure}
+                    onChange={(e) => setIsTreasure(e.target.checked)}
+                    className="w-4 h-4 text-[#D4AF3D] border-gray-300 rounded focus:ring-[#D4AF3D]"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    This is a Treasure (one-of-a-kind, vintage, or collector
+                    piece)
+                  </span>
+                </label>
+              </div>
+
+              {/* Treasure Reason */}
+              {isTreasure && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Treasure Reason
+                  </label>
+                  <textarea
+                    value={treasureReason}
+                    onChange={(e) => setTreasureReason(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                    rows={3}
+                    placeholder="Explain why this is a treasure (e.g., 'Vintage 1980s design', 'Discontinued model', 'One-of-a-kind piece')"
+                  />
+                </div>
+              )}
+
+              {/* Treasure Info */}
+              {isTreasure && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <svg
+                      className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <div>
+                      <h4 className="text-sm font-medium text-amber-800">
+                        Treasure Items
+                      </h4>
+                      <p className="text-sm text-amber-700 mt-1">
+                        Treasure items are one-of-a-kind, vintage, or collector
+                        pieces that don't follow standard pricing schedules.
+                        They're marked with a special badge and use
+                        collector-based pricing instead of retail pricing.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

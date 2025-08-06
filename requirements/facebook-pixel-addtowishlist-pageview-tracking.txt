@@ -1,0 +1,61 @@
+# Facebook Pixel AddToWishlist and PageView Tracking Enhancement
+
+## Overview
+Enhance Facebook Pixel tracking to include AddToWishlist events when users save items, and ensure comprehensive PageView tracking across all pages with both Conversions API and Pixel support.
+
+## Requirements
+
+### 1. AddToWishlist Event Implementation
+- **Location**: Save button functionality on product pages and listing pages
+- **Trigger**: When a user clicks the Save/Bookmark button on any product
+- **Event Data**: Include comprehensive product information for Facebook Shop catalog
+- **Event Type**: Custom event "AddToWishlist" (since Facebook doesn't have a standard AddToWishlist event)
+
+### 2. Required AddToWishlist Event Data
+- **content_name**: Product title
+- **content_category**: Product category (department/category/subcategory)
+- **content_ids**: Product ID (item_id)
+- **value**: Product price (list_price)
+- **currency**: USD (default)
+- **Additional Facebook Shop Fields**:
+  - brand: Product brand
+  - condition: Product condition
+  - availability: "in stock" or "out of stock"
+  - price: Current list price
+  - sale_price: Sale price if available
+  - gtin: Global Trade Item Number if available
+
+### 3. PageView Tracking Enhancement
+- **Current Status**: PageView tracking exists in middleware and MetaPixelScript
+- **Enhancement**: Ensure comprehensive tracking on all pages
+- **Dual Tracking**: Both client-side (Pixel) and server-side (Conversions API)
+- **Coverage**: Verify all pages are tracked, including dynamic routes
+
+### 4. Implementation Details
+- **AddToWishlist Function**: Create new tracking function in meta-pixel-client.ts
+- **Save Button Integration**: Add tracking to toggleSaved functions in both listing pages and product detail pages
+- **Error Handling**: Don't fail save functionality if tracking fails
+- **Fallback**: Use server-side tracking if client-side fails
+- **PageView Verification**: Ensure middleware covers all routes
+
+### 5. Technical Requirements
+- Create `trackAddToWishlist` function in `meta-pixel-client.ts`
+- Add tracking calls to `toggleSaved` functions
+- Verify PageView tracking works on all pages
+- Ensure both client-side and server-side tracking
+- Test with authenticated and anonymous users
+
+### 6. Testing Requirements
+- Verify AddToWishlist events appear in Facebook Events Manager
+- Test save functionality on both listing pages and product detail pages
+- Ensure PageView events fire on all page loads
+- Test with various product types and data combinations
+- Verify events include all required catalog fields
+- Test error scenarios and fallback behavior
+
+## Benefits
+- Tracks user engagement with save/wishlist functionality
+- Provides better insights into user behavior
+- Enables Facebook Shop catalog ingestion for saved items
+- Improves ad targeting based on wishlist behavior
+- Comprehensive page view tracking for analytics 

@@ -39,6 +39,7 @@ import {
   getFacebookCategories,
   mapToFacebookCategory,
 } from "../../lib/category-mapping";
+import { trackAddToWishlist } from "../../lib/meta-pixel-client";
 
 // Helper function to convert S3 keys to CloudFront URLs
 function getPhotoUrl(photoData: any): string | null {
@@ -131,7 +132,9 @@ export default function ListingsPage() {
               model_number: listing.modelNumber,
               brand: listing.brand,
               dimensions: listing.dimensions,
-              discount_schedule: listing.discountSchedule?.type || "Classic-60",
+              discount_schedule: listing.discountSchedule || {
+                type: "Classic-60",
+              },
               zip_code: listing.zipCode,
               list_price: listing.price,
               estimated_retail_price: listing.estimatedRetailPrice,
@@ -141,7 +144,7 @@ export default function ListingsPage() {
               location: listing.neighborhood,
               rating: listing.rating || null, // Use actual rating if available
               reviews: listing.reviews || 0, // Use actual review count if available
-              timeLeft: "2d 14h", // Default time for now
+              timeLeft: null, // Will be calculated dynamically
               // Treasure fields
               isTreasure: listing.isTreasure || false,
               treasureReason: listing.treasureReason || null,
@@ -226,11 +229,36 @@ export default function ListingsPage() {
   const toggleSaved = (id: string) => {
     setSavedListings((prev) => {
       const newSet = new Set(prev);
-      if (newSet.has(id)) {
+      const isCurrentlySaved = newSet.has(id);
+
+      if (isCurrentlySaved) {
         newSet.delete(id);
       } else {
         newSet.add(id);
+
+        // Track AddToWishlist event when item is saved
+        const listing = listings.find((l) => l.item_id === id);
+        if (listing) {
+          trackAddToWishlist({
+            content_name: listing.title,
+            content_category: `${listing.department}/${listing.category}/${listing.subCategory}`,
+            content_ids: [listing.item_id],
+            value: listing.list_price,
+            currency: "USD",
+            brand: listing.brand || undefined,
+            condition: listing.condition || undefined,
+            availability:
+              listing.status === "LISTED" ? "in stock" : "out of stock",
+            price: listing.list_price,
+            sale_price: listing.salePrice || undefined,
+            gtin: listing.gtin || undefined,
+          }).catch((error) => {
+            console.error("Error tracking AddToWishlist:", error);
+            // Don't fail the save functionality if tracking fails
+          });
+        }
       }
+
       return newSet;
     });
   };
@@ -349,10 +377,7 @@ export default function ListingsPage() {
     return false;
   };
 
-  const getTimeUntilNextDrop = (
-    discountSchedule: string,
-    createdAt: string
-  ) => {
+  const getTimeUntilNextDrop = (discountSchedule: any, createdAt: string) => {
     // Return null during server-side rendering to prevent hydration mismatch
     if (!isClient) {
       return null;
@@ -363,6 +388,14 @@ export default function ListingsPage() {
     const daysSinceCreation = Math.floor(
       (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)
     );
+
+    // Handle both string type and full discount schedule object
+    let scheduleType = "Classic-60";
+    if (typeof discountSchedule === "string") {
+      scheduleType = discountSchedule;
+    } else if (discountSchedule && discountSchedule.type) {
+      scheduleType = discountSchedule.type;
+    }
 
     // Define the discount schedules based on the new methodology
     const schedules = {
@@ -376,7 +409,7 @@ export default function ListingsPage() {
       },
     };
 
-    const schedule = schedules[discountSchedule as keyof typeof schedules];
+    const schedule = schedules[scheduleType as keyof typeof schedules];
     if (!schedule) {
       return null;
     }
@@ -544,20 +577,30 @@ export default function ListingsPage() {
                   )}
 
                   {/* Time Left Badge */}
-                  <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {listing.timeLeft}
-                  </div>
+                  {(() => {
+                    const timeLeft = getTimeUntilNextDrop(
+                      listing.discount_schedule,
+                      listing.created_at
+                    );
+                    return (
+                      timeLeft && (
+                        <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {timeLeft}
+                        </div>
+                      )
+                    );
+                  })()}
 
-                  {/* Newly Listed Badge - Show for items added in last 7 days */}
+                  {/* Newly Listed Badge - Show for items added in last 72 hours */}
                   {isClient &&
                     (() => {
                       const createdDate = new Date(listing.created_at);
                       const now = new Date();
-                      const daysDiff =
+                      const hoursDiff =
                         (now.getTime() - createdDate.getTime()) /
-                        (1000 * 60 * 60 * 24);
-                      return daysDiff <= 7 ? (
+                        (1000 * 60 * 60);
+                      return hoursDiff <= 72 ? (
                         <div className="absolute top-2 right-2 bg-green-600 text-white px-2 py-1 rounded text-xs font-medium">
                           Newly Listed
                         </div>
@@ -965,17 +1008,27 @@ export default function ListingsPage() {
                           </span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <Clock className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">
-                            Time Left:
-                          </span>
-                          <span className="ml-2 text-sm text-gray-600">
-                            {selectedListing.timeLeft}
-                          </span>
-                        </div>
-                      </div>
+                      {(() => {
+                        const timeLeft = getTimeUntilNextDrop(
+                          selectedListing.discount_schedule,
+                          selectedListing.created_at
+                        );
+                        return (
+                          timeLeft && (
+                            <div className="flex items-center gap-3">
+                              <Clock className="h-5 w-5 text-gray-400" />
+                              <div>
+                                <span className="text-sm font-medium text-gray-700">
+                                  Time Left:
+                                </span>
+                                <span className="ml-2 text-sm text-gray-600">
+                                  {timeLeft}
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        );
+                      })()}
                       {(() => {
                         const nextDrop = getTimeUntilNextDrop(
                           selectedListing.discount_schedule,

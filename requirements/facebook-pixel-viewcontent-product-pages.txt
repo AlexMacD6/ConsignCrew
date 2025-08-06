@@ -1,0 +1,49 @@
+# Facebook Pixel ViewContent Tracking for Product Pages
+
+## Overview
+Add Facebook Pixel ViewContent event tracking to every product page to drive catalog ingestion into Facebook Shop.
+
+## Requirements
+
+### 1. ViewContent Event Implementation
+- **Location**: Product detail pages (`/list-item/[id]`)
+- **Trigger**: When a product page loads and listing data is successfully fetched
+- **Event Data**: Include comprehensive product information for Facebook Shop catalog
+
+### 2. Required Event Data
+- **content_name**: Product title
+- **content_category**: Product category (department/category/subcategory)
+- **content_ids**: Product ID (item_id)
+- **value**: Product price (list_price)
+- **currency**: USD (default)
+- **Additional Facebook Shop Fields**:
+  - brand: Product brand
+  - condition: Product condition
+  - availability: "in stock" or "out of stock"
+  - price: Current list price
+  - sale_price: Sale price if available
+  - gtin: Global Trade Item Number if available
+
+### 3. Implementation Details
+- **Timing**: Track ViewContent after listing data is successfully loaded
+- **Error Handling**: Don't fail page load if tracking fails
+- **Fallback**: Use server-side tracking if client-side fails
+- **Integration**: Use existing `trackViewContent` function from `meta-pixel-client.ts`
+
+### 4. Technical Requirements
+- Import `trackViewContent` from `app/lib/meta-pixel-client.ts`
+- Add tracking call after `setListing(transformedListing)` in product page
+- Include comprehensive product data for Facebook Shop catalog ingestion
+- Ensure tracking works for both authenticated and anonymous users
+
+### 5. Testing Requirements
+- Verify ViewContent events appear in Facebook Events Manager
+- Test with various product types and data combinations
+- Ensure tracking works on mobile and desktop
+- Verify events include all required catalog fields
+
+## Benefits
+- Enables Facebook Shop catalog ingestion
+- Improves product discovery in Facebook Marketplace
+- Provides better targeting for Facebook ads
+- Tracks product view behavior for analytics 

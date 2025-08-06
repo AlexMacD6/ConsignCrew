@@ -341,6 +341,10 @@ export default function ListItemPage() {
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
 
+  // Treasure detection state
+  const [isTreasure, setIsTreasure] = useState(false);
+  const [treasureReason, setTreasureReason] = useState("");
+
   // Zip code validation state
   const [zipCodeValidation, setZipCodeValidation] = useState<{
     isValid: boolean | null;
@@ -388,6 +392,7 @@ export default function ListItemPage() {
   // UI state for collapsible sections
   const [showPhotos, setShowPhotos] = useState(false);
   const [showVideoFrames, setShowVideoFrames] = useState(false);
+  const [showVideoPreview, setShowVideoPreview] = useState(false);
 
   // Helper function to get confidence color
   const getConfidenceColor = (level: string) => {
@@ -811,6 +816,10 @@ export default function ListItemPage() {
       setStyle(listingData.style || "");
       setTags(listingData.tags || []);
 
+      // Apply Treasure fields
+      setIsTreasure(listingData.isTreasure || false);
+      setTreasureReason(listingData.treasureReason || "");
+
       // Use stored itemId for QR code and listing ID when form fields are generated
       const listingId = itemId || generateItemId();
       const qrCode = generateQRCode(listingId);
@@ -1165,8 +1174,9 @@ export default function ListItemPage() {
           }),
           tags: tags || [],
           // Treasure fields (from AI or manual)
-          isTreasure: comprehensiveListing?.isTreasure || false,
-          treasureReason: comprehensiveListing?.treasureReason || null,
+          isTreasure: isTreasure || comprehensiveListing?.isTreasure || false,
+          treasureReason:
+            treasureReason || comprehensiveListing?.treasureReason || null,
           itemId: generatedListingId || itemId,
           qrCodeUrl: generatedQRCode || generateQRCode(itemId),
           videoId: videoData.videoId || null, // Add video ID to link video to listing
@@ -1939,46 +1949,48 @@ export default function ListItemPage() {
                     </p>
                   </div>
 
+                  {/* Progress Bar */}
+                  <div className="mb-6">
+                    <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                      <div
+                        className="bg-[#D4AF3D] h-2 rounded-full transition-all duration-1000 ease-out"
+                        style={{ width: "60%" }}
+                      ></div>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>Phase 1: Complete</span>
+                      <span>Phase 2: In Progress</span>
+                    </div>
+                  </div>
+
                   <div className="space-y-3 text-left">
                     <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 bg-[#D4AF3D] rounded-full animate-pulse"></div>
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                       <span className="text-sm text-gray-700">
                         Phase 1: Analyzing photos and generating listing data
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <div
-                        className="w-2 h-2 bg-[#D4AF3D] rounded-full animate-pulse"
-                        style={{ animationDelay: "0.5s" }}
-                      ></div>
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                       <span className="text-sm text-gray-700">
                         Performing deep market analysis
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <div
-                        className="w-2 h-2 bg-[#D4AF3D] rounded-full animate-pulse"
-                        style={{ animationDelay: "1s" }}
-                      ></div>
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                       <span className="text-sm text-gray-700">
                         Calculating market-based pricing
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <div
-                        className="w-2 h-2 bg-[#D4AF3D] rounded-full animate-pulse"
-                        style={{ animationDelay: "1.5s" }}
-                      ></div>
+                      <div className="w-2 h-2 bg-[#D4AF3D] rounded-full animate-pulse"></div>
                       <span className="text-sm text-gray-700">
                         Phase 2: Generating staged photo prompt
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <div
-                        className="w-2 h-2 bg-[#D4AF3D] rounded-full animate-pulse"
-                        style={{ animationDelay: "2s" }}
-                      ></div>
-                      <span className="text-sm text-gray-700">
+                      <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+                      <span className="text-sm text-gray-500">
                         Finalizing comprehensive analysis
                       </span>
                     </div>
@@ -2323,50 +2335,53 @@ export default function ListItemPage() {
                       </div>
                     )}
 
-                    {/* Video Preview Section */}
+                    {/* Video Preview Section - Collapsible */}
                     {videoData.videoUrl && (
                       <div className="mb-6">
                         <div className="flex items-center justify-between mb-3">
                           <h3 className="text-sm font-medium text-gray-700">
                             Video Preview
                           </h3>
-                          <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <span>
-                              Duration: {Math.round(videoData.duration || 0)}s
-                            </span>
-                            <span>•</span>
-                            <span>
-                              {videoData.frameUrls?.length || 0} frames
-                            </span>
-                          </div>
-                        </div>
-                        <div className="relative w-full max-w-md">
-                          <video
-                            src={videoData.videoUrl || undefined}
-                            poster={videoData.thumbnailUrl || undefined}
-                            className="w-full h-48 object-cover rounded-lg border border-gray-200"
-                            controls
-                            preload="metadata"
-                            crossOrigin="anonymous"
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setShowVideoPreview(!showVideoPreview)
+                            }
+                            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
                           >
-                            <source
-                              src={videoData.videoUrl || ""}
-                              type="video/mp4"
-                            />
-                            <source
-                              src={videoData.videoUrl || ""}
-                              type="video/quicktime"
-                            />
-                            Your browser does not support the video tag.
-                          </video>
-                          <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
-                            <Play className="h-3 w-3" />
-                            Video
-                          </div>
-                          <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
-                            {Math.round(videoData.duration || 0)}s
-                          </div>
+                            {showVideoPreview ? "−" : "+"}{" "}
+                            {showVideoPreview ? "Hide" : "Show"}
+                          </button>
                         </div>
+                        {showVideoPreview && (
+                          <div className="relative w-full max-w-md">
+                            <video
+                              src={videoData.videoUrl || undefined}
+                              poster={videoData.thumbnailUrl || undefined}
+                              className="w-full h-48 object-cover rounded-lg border border-gray-200"
+                              controls
+                              preload="metadata"
+                              crossOrigin="anonymous"
+                            >
+                              <source
+                                src={videoData.videoUrl || ""}
+                                type="video/mp4"
+                              />
+                              <source
+                                src={videoData.videoUrl || ""}
+                                type="video/quicktime"
+                              />
+                              Your browser does not support the video tag.
+                            </video>
+                            <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
+                              <Play className="h-3 w-3" />
+                              Video
+                            </div>
+                            <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+                              {Math.round(videoData.duration || 0)}s
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -3477,6 +3492,100 @@ export default function ListItemPage() {
                       </div>
                     )}
                   </div>
+                </div>
+              </div>
+
+              {/* Treasure Detection Section */}
+              <div className="mt-6 bg-white rounded-xl shadow-lg p-8">
+                <h2 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
+                  <svg
+                    className="h-5 w-5 text-[#D4AF3D]"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                  Treasure Detection
+                </h2>
+                <p className="text-sm text-gray-600 mb-6">
+                  Mark items as "Treasures" for one-of-a-kind, vintage, or
+                  collector pieces that don't have standard retail pricing.
+                </p>
+
+                <div className="space-y-6">
+                  {/* Is Treasure Toggle */}
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isTreasure}
+                        onChange={(e) => setIsTreasure(e.target.checked)}
+                        className="w-4 h-4 text-[#D4AF3D] border-gray-300 rounded focus:ring-[#D4AF3D]"
+                      />
+                      <span className="text-sm font-medium text-gray-700">
+                        This is a Treasure (one-of-a-kind, vintage, or collector
+                        piece)
+                      </span>
+                    </label>
+                    {comprehensiveListing?.isTreasure && (
+                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                        AI Detected
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Treasure Reason */}
+                  {isTreasure && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Treasure Reason
+                      </label>
+                      <textarea
+                        value={treasureReason}
+                        onChange={(e) => setTreasureReason(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                        rows={3}
+                        placeholder="Explain why this is a treasure (e.g., 'Vintage 1980s design', 'Discontinued model', 'One-of-a-kind piece')"
+                      />
+                      {comprehensiveListing?.treasureReason &&
+                        !treasureReason && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            AI suggestion: {comprehensiveListing.treasureReason}
+                          </p>
+                        )}
+                    </div>
+                  )}
+
+                  {/* Treasure Info */}
+                  {isTreasure && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <svg
+                          className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        <div>
+                          <h4 className="text-sm font-medium text-amber-800">
+                            Treasure Items
+                          </h4>
+                          <p className="text-sm text-amber-700 mt-1">
+                            Treasure items are one-of-a-kind, vintage, or
+                            collector pieces that don't follow standard pricing
+                            schedules. They're marked with a special badge and
+                            use collector-based pricing instead of retail
+                            pricing.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

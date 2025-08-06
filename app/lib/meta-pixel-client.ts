@@ -89,6 +89,26 @@ export async function trackAddToCart(product: {
 }
 
 /**
+ * Track add to wishlist event
+ * @param product - Product data
+ */
+export async function trackAddToWishlist(product: {
+  content_name?: string;
+  content_category?: string;
+  content_ids?: string[];
+  value?: number;
+  currency?: string;
+  brand?: string;
+  condition?: string;
+  availability?: string;
+  price?: number;
+  sale_price?: number;
+  gtin?: string;
+}) {
+  await trackMetaPixelEvent('AddToWishlist', product);
+}
+
+/**
  * Track purchase event
  * @param purchase - Purchase data
  */
