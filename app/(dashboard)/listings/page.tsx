@@ -28,10 +28,17 @@ import {
   Check,
   Shield,
   ExternalLink,
+  Sparkles,
 } from "lucide-react";
 import { getNeighborhoodName } from "../../lib/zipcodes";
 import QuestionsDisplay from "../../components/QuestionsDisplay";
 import ImageCarousel from "../../components/ImageCarousel";
+import CustomQRCode from "../../components/CustomQRCode";
+import TreasureBadge from "../../components/TreasureBadge";
+import {
+  getFacebookCategories,
+  mapToFacebookCategory,
+} from "../../lib/category-mapping";
 
 // Helper function to convert S3 keys to CloudFront URLs
 function getPhotoUrl(photoData: any): string | null {
@@ -68,6 +75,7 @@ export default function ListingsPage() {
   const [sortBy, setSortBy] = useState("relevance");
   const [showHidden, setShowHidden] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
+  const [showTreasures, setShowTreasures] = useState(false);
   const [savedListings, setSavedListings] = useState<Set<string>>(new Set());
   const [hiddenListings, setHiddenListings] = useState<Set<string>>(new Set());
   const [selectedListing, setSelectedListing] = useState<any>(null);
@@ -112,9 +120,9 @@ export default function ListingsPage() {
                 [],
               // Create a comprehensive image array for carousel
               all_images: [
+                getPhotoUrl(listing.photos.proof), // AI-generated staged photo as first image
                 getPhotoUrl(listing.photos.hero),
                 getPhotoUrl(listing.photos.back),
-                getPhotoUrl(listing.photos.proof),
                 ...(listing.photos.additional?.map((photo: any) =>
                   getPhotoUrl(photo)
                 ) || []),
@@ -127,11 +135,16 @@ export default function ListingsPage() {
               zip_code: listing.zipCode,
               list_price: listing.price,
               estimated_retail_price: listing.estimatedRetailPrice,
-              seller_name: `${listing.user.firstName} ${listing.user.lastName}`,
+              seller_name: listing.user.name || "Unknown Seller",
+              seller_organization:
+                listing.user.members?.[0]?.organization || null,
               location: listing.neighborhood,
-              rating: 4.5, // Default rating for now
-              reviews: 0, // Default reviews for now
+              rating: listing.rating || null, // Use actual rating if available
+              reviews: listing.reviews || 0, // Use actual review count if available
               timeLeft: "2d 14h", // Default time for now
+              // Treasure fields
+              isTreasure: listing.isTreasure || false,
+              treasureReason: listing.treasureReason || null,
             };
           });
           setListings(transformedListings);
@@ -160,22 +173,37 @@ export default function ListingsPage() {
   // Filter and sort listings
   const filteredListings = listings
     .filter((listing) => {
+      // Map the listing's categories to Facebook category for filtering
+      const listingFacebookCategory = mapToFacebookCategory(
+        listing.department || listing.category_id?.split("_")[0] || "general",
+        listing.category || listing.category_id?.split("_")[1] || "general",
+        listing.subCategory || listing.category_id?.split("_")[2]
+      );
+
       const matchesSearch =
         listing.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        listing.category_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        listing.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        listing.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         listing.seller_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         listing.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
         listing.location.toLowerCase().includes(searchTerm.toLowerCase());
+
       const matchesCategory =
         selectedCategory === "All" ||
-        listing.category_id.includes(selectedCategory.toLowerCase());
+        listingFacebookCategory === selectedCategory;
+
       const isHidden = hiddenListings.has(listing.item_id);
       const isSaved = savedListings.has(listing.item_id);
       const shouldShowHidden = showHidden || !isHidden;
       const shouldShowSaved = !showSaved || isSaved;
+      const shouldShowTreasures = !showTreasures || listing.isTreasure;
 
       return (
-        matchesSearch && matchesCategory && shouldShowHidden && shouldShowSaved
+        matchesSearch &&
+        matchesCategory &&
+        shouldShowHidden &&
+        shouldShowSaved &&
+        shouldShowTreasures
       );
     })
     .sort((a, b) => {
@@ -241,14 +269,8 @@ export default function ListingsPage() {
     );
   };
 
-  const categories = [
-    "All",
-    "Furniture",
-    "Electronics",
-    "Sports & Outdoors",
-    "Home & Living",
-    "Fashion",
-  ];
+  // Use Facebook Marketplace categories for consistent filtering
+  const categories = ["All", ...getFacebookCategories()];
 
   const getConditionColor = (condition: string) => {
     switch (condition) {
@@ -265,6 +287,32 @@ export default function ListingsPage() {
     }
   };
 
+  const getStatusBadge = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case "in_transit":
+      case "in-transit":
+      case "transit":
+        return {
+          text: "In Transit",
+          className: "bg-blue-600 text-white",
+        };
+      case "sold":
+      case "completed":
+        return {
+          text: "Sold",
+          className: "bg-gray-600 text-white",
+        };
+      case "pending":
+        return {
+          text: "Pending",
+          className: "bg-yellow-600 text-white",
+        };
+      default:
+        // Don't show any badge for active/available listings
+        return null;
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -276,6 +324,31 @@ export default function ListingsPage() {
   };
 
   // Calculate time until next price drop based on discount schedule
+  const hasRecentPriceDrop = (listing: any) => {
+    // Check if listing has price history and if there's been a price drop in last 48 hours
+    if (!listing.priceHistory || listing.priceHistory.length < 2) {
+      return false; // No price history or only initial price
+    }
+
+    const now = new Date();
+    const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+
+    // Get the most recent price change
+    const latestPriceChange = listing.priceHistory[0];
+    const previousPrice = listing.priceHistory[1]?.price;
+
+    // Check if the latest price change was within 48 hours and was a price drop
+    if (latestPriceChange && previousPrice) {
+      const priceChangeTime = new Date(latestPriceChange.createdAt);
+      const isRecent = priceChangeTime > fortyEightHoursAgo;
+      const isPriceDrop = latestPriceChange.price < previousPrice;
+
+      return isRecent && isPriceDrop;
+    }
+
+    return false;
+  };
+
   const getTimeUntilNextDrop = (
     discountSchedule: string,
     createdAt: string
@@ -287,44 +360,50 @@ export default function ListingsPage() {
 
     const now = new Date();
     const created = new Date(createdAt);
-    const elapsed = now.getTime() - created.getTime();
+    const daysSinceCreation = Math.floor(
+      (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)
+    );
 
-    let dropInterval: number;
-    let totalDuration: number;
+    // Define the discount schedules based on the new methodology
+    const schedules = {
+      "Turbo-30": {
+        dropIntervals: [0, 3, 6, 9, 12, 15, 18, 21, 24, 30],
+        totalDuration: 30,
+      },
+      "Classic-60": {
+        dropIntervals: [0, 7, 14, 21, 28, 35, 42, 49, 56, 60],
+        totalDuration: 60,
+      },
+    };
 
-    switch (discountSchedule) {
-      case "Turbo-30":
-        dropInterval = 30 * 60 * 1000; // 30 minutes in milliseconds
-        totalDuration = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
-        break;
-      case "Classic-60":
-        dropInterval = 60 * 60 * 1000; // 60 minutes in milliseconds
-        totalDuration = 14 * 24 * 60 * 60 * 1000; // 14 days in milliseconds
-        break;
-      default:
-        return null;
-    }
-
-    // If listing has expired, return null
-    if (elapsed >= totalDuration) {
+    const schedule = schedules[discountSchedule as keyof typeof schedules];
+    if (!schedule) {
       return null;
     }
 
-    // Calculate time until next drop
-    const timeSinceLastDrop = elapsed % dropInterval;
-    const timeUntilNextDrop = dropInterval - timeSinceLastDrop;
-
-    // Convert to hours and minutes
-    const hours = Math.floor(timeUntilNextDrop / (60 * 60 * 1000));
-    const minutes = Math.floor(
-      (timeUntilNextDrop % (60 * 60 * 1000)) / (60 * 1000)
-    );
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    } else {
-      return `${minutes}m`;
+    // If listing has expired, no more drops
+    if (daysSinceCreation >= schedule.totalDuration) {
+      return null;
     }
+
+    // Find the next drop
+    for (let i = 0; i < schedule.dropIntervals.length; i++) {
+      if (schedule.dropIntervals[i] > daysSinceCreation) {
+        const daysUntilNextDrop = schedule.dropIntervals[i] - daysSinceCreation;
+
+        if (daysUntilNextDrop === 0) {
+          return "Any moment now...";
+        }
+
+        if (daysUntilNextDrop === 1) {
+          return "1 day";
+        }
+
+        return `${daysUntilNextDrop} days`;
+      }
+    }
+
+    return null;
   };
 
   return (
@@ -395,6 +474,17 @@ export default function ListingsPage() {
               >
                 <EyeOff className="h-4 w-4" />
                 {showHidden ? "Hide Hidden" : "Show Hidden"}
+              </Button>
+
+              {/* Show Treasures Toggle */}
+              <Button
+                variant={showTreasures ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowTreasures(!showTreasures)}
+                className="flex items-center gap-2"
+              >
+                <Sparkles className="h-4 w-4" />
+                {showTreasures ? "Show All" : "Treasures Only"}
               </Button>
             </div>
           </div>
@@ -468,27 +558,18 @@ export default function ListingsPage() {
                         (now.getTime() - createdDate.getTime()) /
                         (1000 * 60 * 60 * 24);
                       return daysDiff <= 7 ? (
-                        <div className="absolute top-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-xs font-medium">
+                        <div className="absolute top-2 right-2 bg-green-600 text-white px-2 py-1 rounded text-xs font-medium">
                           Newly Listed
                         </div>
                       ) : null;
                     })()}
 
-                  {/* Price Drop Badge - Show for price drops in last 3 days */}
-                  {isClient &&
-                    (() => {
-                      // Mock price drop data - in real app this would come from price history
-                      // Use a deterministic approach based on listing ID to prevent hydration issues
-                      const hasRecentPriceDrop =
-                        listing.item_id.charCodeAt(listing.item_id.length - 1) %
-                          3 ===
-                        0; // 33% chance based on ID
-                      return hasRecentPriceDrop ? (
-                        <div className="absolute top-2 right-2 bg-red-600 text-white px-2 py-1 rounded text-xs font-medium">
-                          Price Drop
-                        </div>
-                      ) : null;
-                    })()}
+                  {/* Price Drop Badge - Show for price drops in last 48 hours */}
+                  {isClient && hasRecentPriceDrop(listing) && (
+                    <div className="absolute top-12 right-2 bg-red-600 text-white px-2 py-1 rounded text-xs font-medium">
+                      Price Drop
+                    </div>
+                  )}
 
                   {/* Next Price Drop Badge */}
                   {(() => {
@@ -514,6 +595,18 @@ export default function ListingsPage() {
                     <QrCode className="h-4 w-4 text-gray-600" />
                   </div>
 
+                  {/* Status Badge */}
+                  {(() => {
+                    const statusBadge = getStatusBadge(listing.status);
+                    return statusBadge ? (
+                      <div
+                        className={`absolute top-2 left-2 px-2 py-1 rounded text-xs font-medium ${statusBadge.className}`}
+                      >
+                        {statusBadge.text}
+                      </div>
+                    ) : null;
+                  })()}
+
                   {/* Hidden Badge */}
                   {isHidden && (
                     <div className="absolute top-2 left-12 bg-gray-600 text-white px-2 py-1 rounded text-xs font-bold">
@@ -525,7 +618,10 @@ export default function ListingsPage() {
                 {/* Content */}
                 <div className="p-4">
                   {/* Title */}
-                  <h3 className="font-semibold text-gray-900 text-sm line-clamp-2 mb-2 hover:text-[#D4AF3D] cursor-pointer">
+                  <h3
+                    className="font-semibold text-gray-900 text-sm line-clamp-2 mb-2 hover:text-[#D4AF3D] cursor-pointer"
+                    onClick={() => navigateToListingDetail(listing.item_id)}
+                  >
                     {listing.title}
                   </h3>
 
@@ -541,42 +637,56 @@ export default function ListingsPage() {
                     )}
                   </div>
 
-                  {/* Estimated Retail Price - Only show if available */}
-                  {listing.estimated_retail_price && (
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm text-gray-500 line-through">
-                        ${listing.estimated_retail_price.toFixed(2)}
-                      </span>
-                      <div className="flex items-center gap-1 text-xs text-red-600">
-                        <ArrowDown className="h-3 w-3" />
-                        <span>
-                          {Math.round(
-                            ((listing.estimated_retail_price -
-                              listing.list_price) /
-                              listing.estimated_retail_price) *
-                              100
-                          )}
-                          % Off Retail
-                        </span>
-                      </div>
+                  {/* Treasure Badge or Estimated Retail Price */}
+                  {listing.isTreasure ? (
+                    <div className="mb-2">
+                      <TreasureBadge
+                        isTreasure={listing.isTreasure}
+                        treasureReason={listing.treasureReason}
+                        showReason={false}
+                      />
                     </div>
+                  ) : (
+                    listing.estimated_retail_price && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm text-gray-500 line-through">
+                          ${listing.estimated_retail_price.toFixed(2)}
+                        </span>
+                        <div className="flex items-center gap-1 text-xs text-red-600">
+                          <ArrowDown className="h-3 w-3" />
+                          <span>
+                            {Math.round(
+                              ((listing.estimated_retail_price -
+                                listing.list_price) /
+                                listing.estimated_retail_price) *
+                                100
+                            )}
+                            % Off Retail
+                          </span>
+                        </div>
+                      </div>
+                    )
                   )}
 
-                  {/* Rating */}
-                  <div className="flex items-center gap-1 mb-2">
-                    <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                    <span className="text-xs text-gray-600">
-                      {listing.rating}
-                    </span>
-                    <span className="text-xs text-gray-400">
-                      ({listing.reviews})
-                    </span>
-                  </div>
+                  {/* Rating - Only show if there are actual reviews */}
+                  {listing.rating && listing.reviews > 0 && (
+                    <div className="flex items-center gap-1 mb-2">
+                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                      <span className="text-xs text-gray-600">
+                        {listing.rating}
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        ({listing.reviews})
+                      </span>
+                    </div>
+                  )}
 
                   {/* Condition & Location */}
                   <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
                     <span
-                      className={`px-2 py-1 rounded ${getConditionColor(listing.condition)}`}
+                      className={`px-2 py-1 rounded ${getConditionColor(
+                        listing.condition
+                      )}`}
                     >
                       {listing.condition}
                     </span>
@@ -674,9 +784,21 @@ export default function ListingsPage() {
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900">
-                {selectedListing.title}
-              </h2>
+              <div className="flex items-center gap-4">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {selectedListing.title}
+                </h2>
+                {(() => {
+                  const statusBadge = getStatusBadge(selectedListing.status);
+                  return statusBadge ? (
+                    <div
+                      className={`px-3 py-1 rounded text-sm font-medium ${statusBadge.className}`}
+                    >
+                      {statusBadge.text}
+                    </div>
+                  ) : null;
+                })()}
+              </div>
               <button
                 onClick={closeModal}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
@@ -802,10 +924,34 @@ export default function ListingsPage() {
                             Condition:
                           </span>
                           <span
-                            className={`ml-2 px-2 py-1 rounded text-xs ${getConditionColor(selectedListing.condition)}`}
+                            className={`ml-2 px-2 py-1 rounded text-xs ${getConditionColor(
+                              selectedListing.condition
+                            )}`}
                           >
                             {selectedListing.condition}
                           </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
+                          <span className="text-xs font-bold">📋</span>
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Status:
+                          </span>
+                          {(() => {
+                            const statusBadge = getStatusBadge(
+                              selectedListing.status
+                            );
+                            return statusBadge ? (
+                              <span
+                                className={`ml-2 px-2 py-1 rounded text-xs font-medium ${statusBadge.className}`}
+                              >
+                                {statusBadge.text}
+                              </span>
+                            ) : null;
+                          })()}
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
@@ -949,6 +1095,21 @@ export default function ListingsPage() {
                           </span>
                         </div>
                       </div>
+                      {selectedListing.seller_organization && (
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
+                            <span className="text-xs font-bold">🏢</span>
+                          </div>
+                          <div>
+                            <span className="text-sm font-medium text-gray-700">
+                              Organization:
+                            </span>
+                            <span className="ml-2 text-sm text-[#D4AF3D] font-medium">
+                              {selectedListing.seller_organization.name}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                       <div className="flex items-center gap-3 mb-3">
                         <MapPin className="h-5 w-5 text-gray-400" />
                         <div>
@@ -960,18 +1121,35 @@ export default function ListingsPage() {
                           </span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <Star className="h-5 w-5 text-yellow-400" />
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">
-                            Rating:
-                          </span>
-                          <span className="ml-2 text-sm text-gray-600">
-                            {selectedListing.rating} ({selectedListing.reviews}{" "}
-                            reviews)
-                          </span>
-                        </div>
-                      </div>
+                      {selectedListing.rating &&
+                        selectedListing.reviews > 0 && (
+                          <div className="flex items-center gap-3">
+                            <Star className="h-5 w-5 text-yellow-400" />
+                            <div>
+                              <span className="text-sm font-medium text-gray-700">
+                                Rating:
+                              </span>
+                              <span className="ml-2 text-sm text-gray-600">
+                                {selectedListing.rating} (
+                                {selectedListing.reviews} reviews)
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                    </div>
+                  </div>
+
+                  {/* QR Code */}
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                      QR Code
+                    </h3>
+                    <div className="text-center">
+                      <CustomQRCode
+                        itemId={selectedListing.item_id}
+                        size={120}
+                        className="mx-auto"
+                      />
                     </div>
                   </div>
 

@@ -41,8 +41,7 @@ export async function GET(
         user: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            name: true,
             email: true,
             mobilePhone: true,
             createdAt: true,
@@ -55,7 +54,9 @@ export async function GET(
     return NextResponse.json({ members });
   } catch (error) {
     console.error('Error fetching organization members:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : 'Internal server error' 
+    }, { status: 500 });
   }
 }
 
@@ -120,8 +121,7 @@ export async function POST(
         user: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            name: true,
             email: true,
             mobilePhone: true,
             createdAt: true,
@@ -133,7 +133,9 @@ export async function POST(
     return NextResponse.json({ member: newMember });
   } catch (error) {
     console.error('Error adding member to organization:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : 'Internal server error' 
+    }, { status: 500 });
   }
 }
 
@@ -172,7 +174,9 @@ export async function PUT(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error updating member role:', error);
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : 'Internal server error' 
+    }, { status: 500 });
   }
 }
 
@@ -216,6 +220,8 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error removing member from organization:', error);
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : 'Internal server error' 
+    }, { status: 500 });
   }
 } 

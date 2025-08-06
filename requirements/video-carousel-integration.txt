@@ -1,0 +1,68 @@
+# Video Carousel Integration
+
+## Overview
+Integrate video content into the existing image carousel instead of having a separate video component on listing pages.
+
+## Changes Made
+
+### 1. Enhanced ImageCarousel Component (`app/components/ImageCarousel.tsx`)
+- **Added video support**: Component now accepts an optional `video` prop
+- **Media items array**: Created unified array of images and videos
+- **Video display**: Videos appear as the last item in the carousel
+- **Video indicators**: Added play icon and duration overlay for video items
+- **Modal restrictions**: Modal only opens for images, not videos
+- **Auto-play logic**: Auto-play skips video items to avoid conflicts
+
+### 2. Updated Listing Page (`app/(dashboard)/list-item/[id]/page.tsx`)
+- **Removed separate video component**: Eliminated the standalone "Product Video" section
+- **Integrated video into carousel**: Video now appears as last item in image carousel
+- **Video data passing**: Pass video URL, poster, and duration to carousel component
+
+## Technical Implementation
+
+### ImageCarousel Props Interface
+```typescript
+interface ImageCarouselProps {
+  images: string[];
+  video?: {
+    src: string;
+    poster?: string;
+    duration?: number;
+  };
+  alt: string;
+  // ... other existing props
+}
+```
+
+### Media Items Structure
+```typescript
+interface MediaItem {
+  type: 'image' | 'video';
+  src: string;
+  alt?: string;
+  poster?: string;
+  duration?: number;
+}
+```
+
+### Video Features
+- **Controls**: Native HTML5 video controls
+- **Poster image**: Uses video thumbnail as poster
+- **Duration display**: Shows video duration in overlay
+- **Video indicator**: Play icon and "Video" label
+- **Responsive**: Maintains aspect ratio and responsive design
+
+## User Experience Benefits
+- **Unified media experience**: All media in one carousel
+- **Consistent navigation**: Same arrows and dots for all media
+- **Space efficient**: No separate video section taking up space
+- **Intuitive**: Video appears naturally after images
+- **Accessible**: Proper ARIA labels and keyboard navigation
+
+## Testing
+- Video appears as last item in carousel
+- Video controls work properly
+- Navigation between images and video works
+- Video poster image displays correctly
+- Duration and video indicator show properly
+- Modal only opens for images, not videos 

@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 async function main() {
   try {
     const users = await prisma.user.findMany();
-    console.log('Users:', users);
+    console.log('Database connection successful. Found users in database.');
   } catch (e) {
     console.error('Prisma error:', e);
   } finally {

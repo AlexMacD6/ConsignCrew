@@ -1,0 +1,72 @@
+# Listings Button Navigation Requirements
+
+## Overview
+Add a "Listings" button beside the "Get Early Access" button in the navigation bar for non-authenticated users, allowing them to browse existing listings on the site.
+
+## Requirements
+
+### 1. Desktop Navigation
+- Add "Listings" button beside "Get Early Access" button for non-authenticated users
+- Use secondary button styling (`btn btn-secondary btn-md`) to differentiate from primary action
+- Maintain existing "Get Early Access" button as primary action
+- Ensure proper spacing and alignment between buttons
+
+### 2. Mobile Navigation
+- Add "Listings" link to mobile menu under "Pages" section
+- Maintain consistent styling with other mobile menu items
+- Ensure mobile menu closes when Listings link is clicked
+
+### 3. Button Styling
+- Use existing `btn-secondary` class for consistent styling
+- Secondary button should have gray background with white text
+- Hover effects should match existing button patterns
+- Maintain responsive design across all screen sizes
+
+### 4. User Experience
+- Non-authenticated users can browse listings without signing up
+- Authenticated users already have access to listings through existing navigation
+- Maintain clear visual hierarchy with primary vs secondary actions
+- Ensure smooth navigation experience
+
+## Implementation Details
+
+### Files Modified
+- `app/components/NavBar.tsx` - Added Listings button to desktop and mobile navigation
+
+### Changes Made
+1. **Desktop Navigation**: Added Listings button with secondary styling beside Get Early Access button
+2. **Mobile Navigation**: Added Listings link to mobile menu under Pages section
+3. **Button Styling**: Used existing `btn-secondary` class for consistent design
+4. **Responsive Design**: Ensured proper layout on all screen sizes
+
+### Button Hierarchy
+- **Primary Action**: "Get Early Access" (gold button) - main call-to-action
+- **Secondary Action**: "Listings" (gray button) - browse existing content
+
+## Testing Instructions
+
+1. Test desktop navigation:
+   - Verify Listings button appears beside Get Early Access button
+   - Check button styling and hover effects
+   - Ensure proper spacing and alignment
+
+2. Test mobile navigation:
+   - Open mobile menu and verify Listings link appears
+   - Test navigation to listings page
+   - Ensure mobile menu closes after clicking
+
+3. Test user states:
+   - Non-authenticated users: Should see both buttons
+   - Authenticated users: Should see existing navigation (List an Item, Listings, Profile)
+
+4. Test responsive design:
+   - Verify layout works on different screen sizes
+   - Check button spacing and alignment on various devices
+
+## Expected Outcome
+
+- Non-authenticated users can easily access listings without signing up
+- Clear visual distinction between primary (Get Early Access) and secondary (Listings) actions
+- Consistent user experience across desktop and mobile
+- Maintained existing functionality for authenticated users
+- Improved discoverability of existing listings content 

@@ -1,0 +1,34 @@
+# Listing Creation Fix
+
+## Problem
+- Users unable to post listings due to Prisma validation error
+- Error: "Argument `user` is missing" when creating listing
+- Required fields `zipCode` and `neighborhood` were being passed as null
+
+## Root Cause
+- Prisma schema requires `zipCode` and `neighborhood` as non-null strings
+- Frontend was sending `null` values for these fields when user hasn't set them
+- Prisma was interpreting this as a missing relation instead of a validation error
+
+## Solution
+- Added default values for required fields in the listings API
+- `zipCode: zipCode || 'Unknown'`
+- `neighborhood: neighborhood || 'Unknown Area'`
+
+## Changes Made
+1. Updated app/api/listings/route.ts:
+   - Changed `zipCode,` to `zipCode: zipCode || 'Unknown',`
+   - Changed `neighborhood,` to `neighborhood: neighborhood || 'Unknown Area',`
+
+## Files Modified
+- app/api/listings/route.ts
+
+## Testing
+- Users can now create listings even without setting zipCode/neighborhood
+- Default values are used when fields are null or undefined
+- No breaking changes to existing functionality
+
+## Notes
+- This maintains data integrity while providing a better user experience
+- Users can still update their profile to set proper zipCode/neighborhood values
+- Default values are clearly marked as "Unknown" for easy identification 

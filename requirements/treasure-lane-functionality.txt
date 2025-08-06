@@ -1,0 +1,108 @@
+# Treasure Lane Functionality
+
+## Overview
+Add a "Treasure" lane for one-of-a-kind / vintage pieces that provides a clean separation from regular retail-priced items.
+
+## Requirements
+
+### Database Schema Changes
+- Add `isTreasure` boolean field (default = false) to Listing model
+- Add `treasureReason` string field (nullable) to explain why item is a treasure
+- Add `treasureFlaggedAt` DateTime field (nullable) to track when item was flagged
+- Add `treasureFlaggedBy` string field (nullable) to track who flagged the item
+- Allow `estimatedRetailPrice` to be NULL when `isTreasure = true`
+
+### AI Phase-1 Detection
+- When AI model can't find a modern MSRP and condition = "used" and age > 20 years (parsed from description), set:
+  - `isTreasure`: true
+  - `estimatedRetailPrice`: null
+  - `discountSchedule`: "None"
+  - `treasureReason`: Brief explanation (e.g., "Vintage 1980s design", "Discontinued model")
+  - `priceReasoning`: Include 2–3 recent sold-price comps (Etsy, eBay) if available
+
+### Treasure Indicators for AI
+- Item appears to be 20+ years old
+- No modern equivalent or MSRP available
+- Condition = "used"
+- Vintage, antique, or collector appeal
+- Discontinued or rare model
+- One-of-a-kind or handmade piece
+
+### Frontend Badge System
+- If `isTreasure` is true, swap the red "X % Off Retail" banner for a gold tag "Treasure • One-of-a-Kind"
+- Use gradient background (amber-500 to yellow-500) with Sparkles icon
+- Show treasure reason when expanded
+- Display "Based on recent collector sales: $X – $Y" instead of retail price
+
+### Price Reasoning UI
+- Replace "Retail: —" line with "Comparable sales: $250 - $300 (Etsy/eBay)" 
+- Pull from Marketplace Insights API or AI-generated comps
+- Give buyers context without a fake MSRP
+
+### Search & Filters
+- Add "Treasure" filter chip to listings page
+- Boost treasures in sort order "Newest" & "Most Unique"
+- Allow filtering to show only treasure items
+- Collectors can drill straight into rare stock
+
+### Discount Logic
+- Skip automatic Turbo-30 / Classic-60 drops for treasures
+- Make discount schedules manual only for treasures
+- Keeps perceived value; avoids bargain-bin drift
+
+### Seller Dashboard
+- Show tooltip: "Treasure items aren't benchmarked to retail. We suggest pricing via recent comps."
+- Educate sellers on why MSRP is blank
+- Provide guidance on treasure pricing strategy
+
+### API Integration
+- Update listing creation API to handle treasure fields
+- Update listing update API to handle treasure fields
+- Include treasure fields in listing detail responses
+- Support treasure filtering in listing search
+
+### UI Components
+- Create TreasureBadge component with consistent styling
+- Integrate treasure badge in listing cards
+- Integrate treasure badge in listing detail pages
+- Add treasure filter toggle in listings page
+
+### User Experience
+- Clear visual distinction between regular and treasure items
+- Consistent treasure branding across the platform
+- Intuitive filtering and discovery of treasure items
+- Educational content for sellers about treasure pricing
+
+## Implementation Details
+
+### Files Modified
+- `prisma/schema.prisma` - Added treasure fields
+- `app/lib/ai-service.ts` - Updated AI prompt for treasure detection
+- `app/api/listings/route.ts` - Added treasure field handling
+- `app/(dashboard)/list-item/page.tsx` - Added treasure field submission
+- `app/(dashboard)/list-item/[id]/page.tsx` - Added treasure badge display
+- `app/(dashboard)/listings/page.tsx` - Added treasure filtering and badges
+- `app/components/TreasureBadge.tsx` - New treasure badge component
+
+### Database Migration
+- Migration name: `add_treasure_fields_to_listing`
+- Adds four new fields to Listing model
+- Maintains backward compatibility
+
+### AI Prompt Updates
+- Added treasure detection section to Phase-1 prompt
+- Includes specific indicators for treasure identification
+- Provides guidance on treasure field population
+
+### Frontend Integration
+- Treasure badges appear in listing cards and detail pages
+- Filter toggle allows users to view only treasure items
+- Consistent styling with gold gradient and sparkles icon
+
+## Testing Requirements
+- Verify AI correctly identifies treasure items
+- Test treasure badge display in all contexts
+- Validate treasure filtering functionality
+- Confirm treasure items don't show retail price discounts
+- Test treasure field persistence in database
+- Verify treasure items are excluded from automatic discount schedules 

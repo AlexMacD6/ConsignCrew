@@ -1,0 +1,81 @@
+# Address Autocomplete Feature
+
+## Problem
+- Users need to manually enter their address information
+- No validation or autocomplete for addresses
+- Missing country field in user profile
+- Manual entry prone to errors and inconsistencies
+
+## Solution
+- Added Google Places Autocomplete API integration
+- Users can start typing their address and get accurate suggestions
+- Auto-fills city, state, zip code, and country fields
+- Added missing country field to user profile
+
+## Features Implemented
+
+### 1. Address Autocomplete Component
+- Created `AddressAutocomplete.tsx` component
+- Integrates with Google Places API
+- Provides real-time address suggestions
+- Auto-fills all address fields when selection is made
+- Restricted to US addresses for now
+
+### 2. Database Schema Updates
+- Added `country` field to user model in Prisma schema
+- Created migration: `20250803215609_add_country_field_to_user`
+- Updated profile API to handle country field
+
+### 3. Profile Page Updates
+- Replaced manual address input with autocomplete component
+- Added country dropdown field
+- Updated User interface to include country
+- Added address selection handler
+
+### 4. Google Maps Integration
+- Updated Google Maps types to include Places API
+- Added environment variable for Google Maps API key
+- Configured autocomplete with US address restrictions
+
+## Files Modified
+- `app/components/AddressAutocomplete.tsx` (new)
+- `app/profile/page.tsx`
+- `app/api/profile/route.ts`
+- `prisma/schema.prisma`
+- `types/google-maps.d.ts`
+- `env.example`
+
+## Environment Variables Required
+- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`: Google Maps API key with Places API enabled
+
+## Google Maps API Setup Required
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the **Places API** and **Maps JavaScript API**
+4. Go to "Credentials" and create an API key
+5. Restrict the API key to your domain for security
+6. Add the API key to your `.env` file:
+   ```
+   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_actual_api_key_here
+   ```
+
+## User Experience
+1. User clicks on address field in profile
+2. Starts typing their address
+3. Google Places API provides real-time suggestions
+4. User selects their address from dropdown
+5. All fields (street, city, state, zip, country) auto-fill
+6. User can still manually edit fields if needed
+
+## Technical Details
+- Uses Google Places Autocomplete API
+- Restricted to US addresses (`componentRestrictions: { country: 'us' }`)
+- Parses address components to extract individual fields
+- Handles both autocomplete selection and manual input
+- Graceful fallback if API key is not configured
+
+## Notes
+- Requires Google Maps API key with Places API enabled
+- Currently restricted to US addresses
+- Can be expanded to support international addresses
+- Address validation ensures data consistency 

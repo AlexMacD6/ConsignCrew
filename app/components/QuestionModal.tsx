@@ -20,7 +20,7 @@ export default function QuestionModal({
   listingTitle,
   userId,
 }: QuestionModalProps) {
-  const [question, setQuestion] = useState("");
+  const [question, setQuestion] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");

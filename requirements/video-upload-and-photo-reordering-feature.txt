@@ -1,0 +1,60 @@
+# Video Upload and Photo Reordering Feature
+
+## Overview
+Added comprehensive video upload capability and drag-and-drop photo reordering to the edit listing page.
+
+## Features Implemented
+
+### 1. Video Upload in Edit Listing Page
+- Added video upload section to edit listing form
+- Video preview with controls
+- File validation (video types only, max 100MB)
+- Upload progress indicator
+- Error handling and display
+- Video removal functionality
+
+### 2. Drag-and-Drop Photo Reordering
+- Display all existing photos in a grid layout
+- Drag and drop functionality to reorder photos
+- Visual feedback during drag operations
+- Photo type labels (Hero, Back, Proof, Additional)
+- Photo removal with confirmation
+- Order numbering system
+
+### 3. Enhanced Photo Management
+- Grid view of all photos with thumbnails
+- Hover effects showing drag handle and remove button
+- Photo type identification
+- Sequential numbering for display order
+- Responsive grid layout (2-4 columns based on screen size)
+
+### 4. Technical Implementation
+- Added video state management
+- Implemented drag-and-drop event handlers
+- Created photo order tracking system
+- Updated API endpoints to handle video URL
+- Enhanced form submission to include video data
+
+## Files Modified
+- `app/(dashboard)/list-item/[id]/edit/page.tsx` - Main edit page with video and photo management
+- `app/api/listings/[id]/route.ts` - Updated PUT method to handle video URL
+- `app/api/upload/video/route.ts` - Video upload API endpoint (created earlier)
+
+## User Experience
+- Users can now upload videos to their listings during editing
+- Photos can be reordered by dragging and dropping
+- Clear visual feedback for all interactions
+- Intuitive interface with hover states and tooltips
+- Responsive design that works on all screen sizes
+
+## Validation
+- Video file type validation (video/*)
+- Video file size limit (100MB)
+- Photo upload validation
+- Form submission validation
+
+## Future Enhancements
+- Video thumbnail generation
+- Photo cropping and editing
+- Bulk photo upload
+- Video compression optimization 

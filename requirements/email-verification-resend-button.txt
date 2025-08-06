@@ -1,0 +1,81 @@
+# Email Verification Resend Button Requirements
+
+## Overview
+Add a "Resend verification email" button that appears in the login page error message when a user's email is not verified.
+
+## Problem
+When users try to log in with an unverified email, they see an error message but have no easy way to resend the verification email. They have to go through the registration process again or contact support.
+
+## Solution
+Add a "Resend verification email" button that appears within the error message box when the login fails due to email verification issues.
+
+## Implementation Details
+
+### 1. API Endpoint
+- **File**: `app/api/auth/resend-verification/route.ts` (new)
+- **Method**: POST
+- **Functionality**:
+  - Accepts email address in request body
+  - Validates user exists and email is not already verified
+  - Generates new verification token using BetterAuth
+  - Sends verification email using SES with the same template as registration
+  - Returns success/error response
+
+### 2. Login Page Updates
+- **File**: `app/login/page.tsx`
+- **Changes**:
+  - Added state variables for resend functionality:
+    - `showResendButton`: Controls when to show the resend button
+    - `isResending`: Loading state for resend operation
+    - `resendMessage`: Success/error message for resend operation
+  - Enhanced error handling to detect email verification errors
+  - Added `handleResendVerification` function to call the API
+  - Updated error display to include resend button when appropriate
+  - Added success message display for resend confirmation
+
+### 3. Error Detection Logic
+- Detects email verification errors by checking:
+  - HTTP 403 status code
+  - Error message containing "email" or "verify" keywords
+- Shows resend button only for email verification related errors
+
+### 4. User Experience
+- Button appears within the error message box with a subtle border separator
+- Button has loading state ("Sending...") during API call
+- Success message appears in green box when email is sent
+- Button disappears after successful resend
+- Clear messaging about checking inbox and spam folder
+
+### 5. Email Template
+- Uses the same professional email template as registration
+- Includes TreasureHub branding and styling
+- Contains verification link with 24-hour expiration
+- Fallback text link in case button doesn't work
+
+## Testing Instructions
+
+1. **Registration Flow**:
+   - Register a new account with email verification required
+   - Don't verify the email
+
+2. **Login Attempt**:
+   - Try to log in with the unverified account
+   - Verify error message appears with "Resend verification email" button
+
+3. **Resend Functionality**:
+   - Click "Resend verification email" button
+   - Verify loading state appears ("Sending...")
+   - Check for success message
+   - Verify new verification email is received
+
+4. **Edge Cases**:
+   - Test with already verified email (should not show button)
+   - Test with non-existent email (should show appropriate error)
+   - Test network errors (should show error message)
+
+## Benefits
+- Reduces user frustration when verification emails are lost
+- Decreases support requests for email verification issues
+- Improves user onboarding experience
+- Maintains security by requiring email verification
+- Provides clear, actionable feedback to users 

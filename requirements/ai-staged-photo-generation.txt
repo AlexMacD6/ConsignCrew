@@ -1,0 +1,32 @@
+AI Staged Photo Generation Enhancement
+
+- Make proof photo (AI-generated staged photo) required instead of optional
+- Implement actual image generation from AI staging prompts using DALL-E
+- Ensure AI-generated staged photos appear in the image carousel
+- Add Phase 3 to the AI workflow for actual image generation
+
+Technical Changes:
+- Updated photo requirements to require proof photo (AI-generated staged photo)
+- Created new API endpoint `/api/ai/generate-image` for DALL-E image generation
+- Added Phase 3 to AI workflow to generate actual images from staging prompts
+- Updated form validation to require proof photo
+- Enhanced form submission to include staged photo data
+- Added fallback mechanisms when image generation fails
+
+Files Modified:
+- app/(dashboard)/list-item/page.tsx - Updated photo requirements and added Phase 3
+- app/api/ai/generate-image/route.ts - New endpoint for DALL-E image generation
+- requirements/ai-staged-photo-generation.txt - This requirements document
+
+AI Workflow:
+1. Phase 1: Generate comprehensive listing data
+2. Phase 2: Generate staging prompt for photorealistic image
+3. Phase 3: Use DALL-E to generate actual image from staging prompt
+4. Save generated image as proof photo in the photos object
+
+Expected Outcome:
+- Users will see AI-generated staged photos in the image carousel
+- Proof photo will be required for form submission
+- AI-generated images will be professional, staged product photos
+- Fallback to original photos if AI generation fails
+- Improved visual appeal of listings with professional staging 

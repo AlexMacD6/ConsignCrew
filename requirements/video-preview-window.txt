@@ -1,0 +1,55 @@
+# Video Preview Window Feature
+
+## Overview
+Add a minimized video preview window to the list-item screen, similar to the photo and video keyframe setup.
+
+## Requirements
+
+### Functional Requirements
+- Display a video preview window when a video has been uploaded
+- Show video duration and frame count information
+- Include video controls (play, pause, seek, volume)
+- Display video thumbnail as poster image
+- Show video indicator overlay with play icon
+- Display duration badge in top-right corner
+- Position video preview after video keyframes section
+- Only show when videoData.videoUrl exists
+
+### Technical Requirements
+- Use HTML5 video element with controls
+- Support MP4 and QuickTime video formats
+- Include proper crossOrigin attribute for CORS
+- Use preload="metadata" for performance
+- Handle null/undefined video URLs gracefully
+- Import Play icon from lucide-react
+- Match existing UI styling patterns
+
+### UI/UX Requirements
+- Maximum width of 400px (max-w-md)
+- Height of 192px (h-48)
+- Rounded corners with border
+- Video indicator overlay with black/70 background
+- Duration display in top-right corner
+- Consistent spacing with other sections (mb-6)
+- Responsive design
+
+### Integration Points
+- Add after video keyframes section
+- Use existing videoData state structure
+- Maintain consistency with photo preview patterns
+- Follow existing component styling conventions
+
+## Implementation Details
+- Added video preview section in list-item/page.tsx
+- Imported Play icon from lucide-react
+- Fixed TypeScript null/undefined handling
+- Positioned between video keyframes and form fields
+- Used existing videoData.videoUrl and videoData.thumbnailUrl
+
+## Testing
+- Verify video plays correctly when uploaded
+- Check controls functionality
+- Confirm proper display of duration and frame count
+- Test with different video formats
+- Verify responsive behavior
+- Check accessibility features 

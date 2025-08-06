@@ -9,8 +9,7 @@ import { registerUser } from "../api/auth/registerUser";
 import { authClient } from "../lib/auth-client";
 
 export default function RegisterPage() {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mobilePhone, setMobilePhone] = useState("");
@@ -31,8 +30,7 @@ export default function RegisterPage() {
     const result = await registerUser({
       email,
       password,
-      firstName,
-      lastName,
+      name,
       mobilePhone,
     });
 
@@ -164,33 +162,16 @@ export default function RegisterPage() {
 
         {/* Email/Password Registration Form */}
         <form onSubmit={handleEmailRegister} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                First Name
-              </label>
-              <input
-                type="text"
-                required
-                disabled={isLoading}
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#D4AF3D] disabled:opacity-50"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Last Name
-              </label>
-              <input
-                type="text"
-                required
-                disabled={isLoading}
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#D4AF3D] disabled:opacity-50"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Full Name</label>
+            <input
+              type="text"
+              required
+              disabled={isLoading}
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#D4AF3D] disabled:opacity-50"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Email</label>

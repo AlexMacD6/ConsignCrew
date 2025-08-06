@@ -1,0 +1,39 @@
+Google Places API Address Auto-Population Fix
+
+Problem:
+- When selecting an address from the Google Places API dropdown in the profile page, the city, state, zip code, and country fields were not auto-populating
+- The form state was being updated correctly but then immediately reset by a useEffect that was fetching user data from the database
+
+Root Cause:
+- The useEffect in profile/page.tsx had dependencies [router, session, sessionLoading] and was calling setForm(data.user) which reset the form state back to the original user data from the database
+- This was overwriting the address changes made by the Google Places API selection
+
+Solution:
+1. Modified the useEffect to only set form data when not in edit mode or when form is empty
+2. Added editMode and form to the useEffect dependencies to prevent overwriting user changes
+3. Cleaned up debugging console logs and UI elements
+4. Simplified the handleAddressSelect function to use functional form of setState
+
+Changes Made:
+- app/profile/page.tsx:
+  - Modified useEffect to conditionally set form data: if (!editMode || Object.keys(form).length === 0)
+  - Added editMode and form to useEffect dependencies
+  - Simplified handleAddressSelect function
+  - Removed debugging console logs and UI elements
+
+- app/components/AddressAutocomplete.tsx:
+  - Removed debugging console logs
+  - Kept the core functionality intact
+
+Expected Behavior:
+- When user clicks "Edit" on profile page
+- When user types in street address field and selects an address from Google Places dropdown
+- The city, state, zip code, and country fields should auto-populate with the selected address data
+- The form state should persist the changes and not be reset by the useEffect
+
+Testing:
+1. Go to profile page and click "Edit"
+2. Type in street address field (e.g., "1807 Greengrass")
+3. Select an address from the dropdown
+4. Verify that city, state, zip code, and country fields auto-populate
+5. Verify that the values persist and don't get reset 

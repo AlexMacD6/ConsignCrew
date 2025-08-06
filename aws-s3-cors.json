@@ -12,12 +12,19 @@
     "AllowedOrigins": [
       "http://localhost:3000",
       "https://localhost:3000",
-      "https://yourdomain.com",
-      "https://www.yourdomain.com"
+      "https://treasurehub.club",
+      "https://www.treasurehub.club",
+      "https://consigncrew.com",
+      "https://www.consigncrew.com",
+      "https://*.vercel.app"
     ],
     "ExposeHeaders": [
       "ETag",
-      "x-amz-meta-*"
+      "x-amz-meta-userid",
+      "x-amz-meta-videoid",
+      "x-amz-meta-uploadedat",
+      "x-amz-meta-originalname",
+      "x-amz-meta-filesize"
     ],
     "MaxAgeSeconds": 3000
   }

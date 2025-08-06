@@ -29,11 +29,41 @@ export async function POST(request: NextRequest) {
     // Check if code exists and is active
     const treasureCode = await prisma.treasureCode.findUnique({
       where: { code: validatedData.code },
+      include: {
+        treasureDrop: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            reward: true,
+          },
+        },
+        redemptions: {
+          select: {
+            id: true,
+          },
+        },
+      },
     });
 
     if (!treasureCode || !treasureCode.isActive) {
       return NextResponse.json(
         { error: "Invalid or inactive redemption code" },
+        { status: 400 }
+      );
+    }
+
+    // Check if treasure drop exists and is active
+    if (!treasureCode.treasureDrop) {
+      return NextResponse.json(
+        { error: "Treasure drop not found for this code" },
+        { status: 400 }
+      );
+    }
+
+    if (treasureCode.treasureDrop.status !== "active") {
+      return NextResponse.json(
+        { error: "This treasure has already been found" },
         { status: 400 }
       );
     }
@@ -46,19 +76,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user has already redeemed this code
-    const existingRedemption = await prisma.treasureRedemption.findFirst({
+    // Check if this specific code has already been redeemed
+    if (treasureCode.redemptions.length > 0) {
+      return NextResponse.json(
+        { error: "This redemption code has already been used" },
+        { status: 400 }
+      );
+    }
+
+    // Check if user has already redeemed any treasure
+    const existingUserRedemption = await prisma.treasureRedemption.findFirst({
       where: {
-        OR: [
-          { email: validatedData.email },
-          { code: validatedData.code },
-        ],
+        email: validatedData.email,
       },
     });
 
-    if (existingRedemption) {
+    if (existingUserRedemption) {
       return NextResponse.json(
-        { error: "You have already redeemed a treasure or this code has been used" },
+        { error: "You have already redeemed a treasure" },
         { status: 400 }
       );
     }
@@ -102,7 +137,7 @@ export async function POST(request: NextRequest) {
     // Create redemption record
     const redemption = await prisma.treasureRedemption.create({
       data: {
-        code: validatedData.code,
+        treasureCodeId: treasureCode.id,
         firstName: validatedData.firstName,
         lastName: validatedData.lastName,
         email: validatedData.email,
@@ -123,6 +158,16 @@ export async function POST(request: NextRequest) {
     await prisma.treasureCode.update({
       where: { id: treasureCode.id },
       data: { currentUses: treasureCode.currentUses + 1 },
+    });
+
+    // Mark treasure drop as found
+    await prisma.treasureDrop.update({
+      where: { id: treasureCode.treasureDrop.id },
+      data: {
+        status: "found",
+        foundBy: `${validatedData.firstName} ${validatedData.lastName}`,
+        foundAt: new Date(),
+      },
     });
 
     // Send confirmation email (you can implement this later)

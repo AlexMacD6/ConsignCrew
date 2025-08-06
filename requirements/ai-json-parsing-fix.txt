@@ -1,0 +1,23 @@
+AI JSON Parsing Error Fix Requirements
+
+- Fix the "AI returned invalid JSON format" error in the staged photo generation
+- Enhance JSON parsing to handle markdown-formatted responses from AI
+- Add fallback mechanisms when AI returns invalid JSON
+- Improve error handling to prevent the entire form generation from failing
+- Update the AI prompt to be more explicit about JSON formatting requirements
+
+Technical Changes:
+- Enhanced JSON parsing in generateStagedPhotoPhase2 function to handle:
+  - Markdown code block wrappers (```json)
+  - Regular code blocks (```)
+  - JSON extraction from mixed text responses
+- Added fallback response generation when parsing fails
+- Updated AI_SERVICE_PHASE_2_PROMPT to emphasize valid JSON output
+- Improved error handling to return fallback data instead of throwing errors
+- Maintained existing frontend error handling for graceful degradation
+
+Expected Outcome:
+- Phase 2 staged photo generation should no longer fail with JSON parsing errors
+- System should gracefully fall back to default staging prompts when AI fails
+- Form generation process should complete successfully even if AI returns invalid JSON
+- Better logging for debugging AI response issues 

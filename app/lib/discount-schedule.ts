@@ -1,0 +1,275 @@
+import { prisma } from '@/lib/prisma';
+import { createHistoryEvent, HistoryEvents } from './listing-history';
+
+export interface DiscountSchedule {
+  type: 'Turbo-30' | 'Classic-60';
+  dropIntervals: number[]; // Days when drops occur
+  dropPercentages: number[]; // Percentage of original price at each drop
+  totalDuration: number; // Total days
+}
+
+export const DISCOUNT_SCHEDULES: Record<string, DiscountSchedule> = {
+  'Turbo-30': {
+    type: 'Turbo-30',
+    dropIntervals: [0, 3, 6, 9, 12, 15, 18, 21, 24, 30], // Days
+    dropPercentages: [100, 95, 90, 85, 80, 75, 70, 65, 60, 0], // Percentages (0 = expire)
+    totalDuration: 30, // 30 days
+  },
+  'Classic-60': {
+    type: 'Classic-60',
+    dropIntervals: [0, 7, 14, 21, 28, 35, 42, 49, 56, 60], // Days
+    dropPercentages: [100, 90, 80, 75, 70, 65, 60, 55, 50, 0], // Percentages (0 = expire)
+    totalDuration: 60, // 60 days
+  },
+};
+
+/**
+ * Calculate the number of days since listing creation
+ */
+export function calculateDaysSinceCreation(createdAt: Date): number {
+  const now = new Date();
+  const elapsed = now.getTime() - createdAt.getTime();
+  return Math.floor(elapsed / (1000 * 60 * 60 * 24)); // Convert to days
+}
+
+/**
+ * Calculate the current drop index based on days since creation
+ */
+export function calculateCurrentDropIndex(
+  createdAt: Date,
+  discountSchedule: DiscountSchedule
+): number {
+  const daysSinceCreation = calculateDaysSinceCreation(createdAt);
+  
+  // If listing has expired, return the last index
+  if (daysSinceCreation >= discountSchedule.totalDuration) {
+    return discountSchedule.dropIntervals.length - 1;
+  }
+  
+  // Find the current drop index
+  for (let i = discountSchedule.dropIntervals.length - 1; i >= 0; i--) {
+    if (daysSinceCreation >= discountSchedule.dropIntervals[i]) {
+      return i;
+    }
+  }
+  
+  return 0; // Before first drop
+}
+
+/**
+ * Calculate what the current price should be based on discount schedule
+ */
+export function calculateCurrentPrice(
+  originalPrice: number,
+  createdAt: Date,
+  discountSchedule: DiscountSchedule
+): number {
+  const currentDropIndex = calculateCurrentDropIndex(createdAt, discountSchedule);
+  const currentPercentage = discountSchedule.dropPercentages[currentDropIndex];
+  
+  // If expired (0%), return 0
+  if (currentPercentage === 0) {
+    return 0;
+  }
+  
+  return Math.round(originalPrice * (currentPercentage / 100) * 100) / 100; // Round to 2 decimal places
+}
+
+/**
+ * Calculate the next drop information
+ */
+export function calculateNextDropInfo(
+  createdAt: Date,
+  discountSchedule: DiscountSchedule
+): {
+  daysUntilNextDrop: number;
+  nextDropPercentage: number;
+  nextDropPrice: number;
+  originalPrice: number;
+} | null {
+  const daysSinceCreation = calculateDaysSinceCreation(createdAt);
+  
+  // If listing has expired, no more drops
+  if (daysSinceCreation >= discountSchedule.totalDuration) {
+    return null;
+  }
+  
+  // Find the next drop
+  for (let i = 0; i < discountSchedule.dropIntervals.length; i++) {
+    if (discountSchedule.dropIntervals[i] > daysSinceCreation) {
+      const daysUntilNextDrop = discountSchedule.dropIntervals[i] - daysSinceCreation;
+      const nextDropPercentage = discountSchedule.dropPercentages[i];
+      
+      return {
+        daysUntilNextDrop,
+        nextDropPercentage,
+        nextDropPrice: 0, // Will be calculated with original price
+        originalPrice: 0, // Will be set by caller
+      };
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Check if a listing needs a price drop and execute it
+ */
+export async function processPriceDrop(listingId: string): Promise<boolean> {
+  try {
+    // Get the listing with price history
+    const listing = await prisma.listing.findUnique({
+      where: { id: listingId },
+      include: {
+        priceHistory: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    if (!listing || listing.status !== 'active') {
+      return false;
+    }
+
+    const discountScheduleData = listing.discountSchedule as any;
+    const scheduleType = discountScheduleData?.type || 'Classic-60';
+    const discountSchedule = DISCOUNT_SCHEDULES[scheduleType];
+
+    if (!discountSchedule) {
+      console.error(`Invalid discount schedule: ${scheduleType}`);
+      return false;
+    }
+
+    // Get the original price (first price in history or current price)
+    const originalPrice = listing.priceHistory[0]?.price || listing.price;
+    const currentPrice = listing.price;
+    const expectedPrice = calculateCurrentPrice(originalPrice, listing.createdAt, discountSchedule);
+
+    // Check if price drop is needed
+    if (expectedPrice < currentPrice && expectedPrice > 0) {
+      const newPrice = Math.max(expectedPrice, listing.reservePrice || 0);
+      
+      // Update the listing price
+      await prisma.listing.update({
+        where: { id: listingId },
+        data: { price: newPrice },
+      });
+
+      // Add to price history
+      await prisma.priceHistory.create({
+        data: {
+          listingId: listingId,
+          price: newPrice,
+        },
+      });
+
+      // Create history event
+      await createHistoryEvent(listing.itemId, HistoryEvents.PRICE_DROP(currentPrice, newPrice));
+
+      console.log(`Price drop executed for listing ${listing.itemId}: $${currentPrice} → $${newPrice}`);
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    console.error(`Error processing price drop for listing ${listingId}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Process price drops for all active listings
+ */
+export async function processAllPriceDrops(): Promise<{
+  processed: number;
+  dropped: number;
+  errors: number;
+}> {
+  let processed = 0;
+  let dropped = 0;
+  let errors = 0;
+
+  try {
+    // Get all active listings
+    const activeListings = await prisma.listing.findMany({
+      where: {
+        status: 'active',
+      },
+      select: {
+        id: true,
+        itemId: true,
+        createdAt: true,
+        discountSchedule: true,
+      },
+    });
+
+    // Filter to only those with discount schedules
+    const listingsWithDiscountSchedules = activeListings.filter(
+      listing => listing.discountSchedule !== null
+    );
+
+    console.log(`Processing price drops for ${listingsWithDiscountSchedules.length} active listings...`);
+
+    for (const listing of listingsWithDiscountSchedules) {
+      try {
+        processed++;
+        const wasDropped = await processPriceDrop(listing.id);
+        if (wasDropped) {
+          dropped++;
+        }
+      } catch (error) {
+        errors++;
+        console.error(`Error processing listing ${listing.itemId}:`, error);
+      }
+    }
+
+    console.log(`Price drop processing complete: ${processed} processed, ${dropped} dropped, ${errors} errors`);
+    return { processed, dropped, errors };
+  } catch (error) {
+    console.error('Error in processAllPriceDrops:', error);
+    return { processed, dropped, errors };
+  }
+}
+
+/**
+ * Get time until next price drop for a listing
+ */
+export function getTimeUntilNextDrop(
+  createdAt: Date,
+  discountSchedule: DiscountSchedule
+): string | null {
+  const nextDropInfo = calculateNextDropInfo(createdAt, discountSchedule);
+  
+  if (!nextDropInfo) {
+    return null; // No more drops
+  }
+  
+  const { daysUntilNextDrop } = nextDropInfo;
+  
+  if (daysUntilNextDrop === 0) {
+    return "Any moment now...";
+  }
+  
+  if (daysUntilNextDrop === 1) {
+    return "1 day";
+  }
+  
+  return `${daysUntilNextDrop} days`;
+}
+
+/**
+ * Get the next drop percentage for a listing
+ */
+export function getNextDropPercentage(
+  createdAt: Date,
+  discountSchedule: DiscountSchedule
+): number {
+  const nextDropInfo = calculateNextDropInfo(createdAt, discountSchedule);
+  
+  if (!nextDropInfo) {
+    return 0; // No more drops
+  }
+  
+  return nextDropInfo.nextDropPercentage;
+} 

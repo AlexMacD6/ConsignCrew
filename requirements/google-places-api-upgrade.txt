@@ -1,0 +1,50 @@
+Google Places API Upgrade and Form Data Transfer Fix
+
+Requirements:
+- Upgrade Google Places API from deprecated Autocomplete class to recommended PlaceAutocompleteElement Web Component
+- Fix form data transfer issue where updated address data was not displaying on profile page after selection
+- Ensure address dropdown populates correctly when typing in street address field
+- Handle Google's deprecation policy for new customers (Autocomplete not available after March 1st, 2025)
+
+Technical Changes:
+1. AddressAutocomplete Component (app/components/AddressAutocomplete.tsx):
+   - Replace google.maps.places.Autocomplete with google.maps.places.PlaceAutocompleteElement Web Component
+   - Use Google Maps API v=beta for Web Component support
+   - Implement proper Web Component event handling (gmp-placeselect, gmp-placechange)
+   - Create and configure <gmp-place-autocomplete> element dynamically
+   - Handle address component parsing from Web Component response
+   - Add proper error handling and loading states
+
+2. Profile Page (app/profile/page.tsx):
+   - Update AddressAutocomplete component usage to match new interface
+   - Remove onChange prop (no longer needed with Web Component approach)
+   - Ensure handleAddressSelect properly updates form state and triggers re-render
+   - Fix HTML structure to prevent hydration errors (replace <p> with <div> tags)
+
+3. TypeScript Types (types/google-maps.d.ts):
+   - Remove old Google Maps API class declarations that caused type conflicts
+   - Add JSX intrinsic elements declaration for gmp-place-autocomplete Web Component
+   - Provide proper TypeScript support for Web Component attributes and events
+
+4. API Version:
+   - Use Google Maps API v=beta for PlaceAutocompleteElement support
+   - Configure Web Component with proper attributes (types, component-restrictions)
+   - Handle both gmp-placeselect and gmp-placechange events for compatibility
+
+Dependencies:
+- Google Maps JavaScript API (v=beta)
+- Next.js environment variables for API key configuration
+- Lucide React for loading spinner icon
+
+Testing:
+- Verify address dropdown populates when typing in street address field
+- Confirm selected address data transfers to all form fields (street, city, state, zip, country)
+- Test error handling for API loading failures
+- Validate form data persistence and display on profile page
+- Check for hydration errors and TypeScript compilation issues
+
+Notes:
+- PlaceAutocompleteElement is a Web Component (<gmp-place-autocomplete>) not a class
+- Previous InvalidValueError was due to incorrect instantiation approach
+- Web Component approach provides better performance and future compatibility
+- Beta API version required for Web Component support 

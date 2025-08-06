@@ -18,7 +18,9 @@ export default function NavBar() {
   const router = useRouter();
   const activeClass = "font-bold text-blue-600";
   const inactiveClass = "text-gray-600 hover:text-blue-600";
+
   const { data: session } = authClient.useSession();
+
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { openSignupModal } = useModal();
@@ -63,30 +65,40 @@ export default function NavBar() {
 
       {/* Desktop Navigation Links (hidden on mobile) */}
       <div className="hidden md:flex gap-8 text-[#222] font-medium text-base">
-        <button
-          onClick={() => handleNavigation("how-it-works")}
-          className="hover:text-[#D4AF3D] transition"
-        >
-          How It Works
-        </button>
-        <button
-          onClick={() => handleNavigation("pricing")}
-          className="hover:text-[#D4AF3D] transition"
-        >
-          Pricing
-        </button>
-        <button
-          onClick={() => handleNavigation("why-treasurehub")}
-          className="hover:text-[#D4AF3D] transition"
-        >
-          Why TreasureHub
-        </button>
-        <button
-          onClick={() => handleNavigation("roadmap")}
-          className="hover:text-[#D4AF3D] transition"
-        >
-          Roadmap
-        </button>
+        {session?.user ? (
+          // Logged in: Show consolidated Home link
+          <Link href="/" className="hover:text-[#D4AF3D] transition">
+            Home
+          </Link>
+        ) : (
+          // Logged out: Show individual landing page links
+          <>
+            <button
+              onClick={() => handleNavigation("how-it-works")}
+              className="hover:text-[#D4AF3D] transition"
+            >
+              How It Works
+            </button>
+            <button
+              onClick={() => handleNavigation("pricing")}
+              className="hover:text-[#D4AF3D] transition"
+            >
+              Pricing
+            </button>
+            <button
+              onClick={() => handleNavigation("why-treasurehub")}
+              className="hover:text-[#D4AF3D] transition"
+            >
+              Why TreasureHub
+            </button>
+            <button
+              onClick={() => handleNavigation("roadmap")}
+              className="hover:text-[#D4AF3D] transition"
+            >
+              Roadmap
+            </button>
+          </>
+        )}
         <Link href="/faq" className="hover:text-[#D4AF3D] transition">
           FAQ
         </Link>
@@ -96,6 +108,14 @@ export default function NavBar() {
         <Link href="/our-origin" className="hover:text-[#D4AF3D] transition">
           Our Origin
         </Link>
+        {session?.user && (
+          <Link
+            href="/treasure-hunt"
+            className="text-[#D4AF3D] font-semibold hover:text-[#b8932f] transition"
+          >
+            Treasure Hunt
+          </Link>
+        )}
       </div>
 
       {/* Mobile Menu Button and Session-aware buttons (right) */}
@@ -146,9 +166,17 @@ export default function NavBar() {
             </Popover>
           </>
         ) : (
-          <button onClick={openSignupModal} className="btn btn-primary btn-md">
-            Get Early Access
-          </button>
+          <div className="flex items-center gap-3">
+            <Link href="/listings" className="btn btn-secondary btn-md">
+              Listings
+            </Link>
+            <button
+              onClick={openSignupModal}
+              className="btn btn-primary btn-md"
+            >
+              Get Early Access
+            </button>
+          </div>
         )}
       </div>
 
@@ -156,35 +184,61 @@ export default function NavBar() {
       {mobileMenuOpen && (
         <div className="md:hidden absolute top-full left-0 right-0 bg-white/95 backdrop-blur border-b border-[#eee] shadow-lg">
           <div className="px-6 py-4 space-y-4">
-            {/* Landing Page Sections */}
+            {/* Home Link */}
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-                Sections
-              </h3>
-              <button
-                onClick={() => handleNavigation("how-it-works")}
-                className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
-              >
-                How It Works
-              </button>
-              <button
-                onClick={() => handleNavigation("pricing")}
-                className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
-              >
-                Pricing
-              </button>
-              <button
-                onClick={() => handleNavigation("why-treasurehub")}
-                className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
-              >
-                Why TreasureHub
-              </button>
-              <button
-                onClick={() => handleNavigation("roadmap")}
-                className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
-              >
-                Roadmap
-              </button>
+              {session?.user ? (
+                // Logged in: Show consolidated Home link
+                <Link
+                  href="/"
+                  className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Home
+                </Link>
+              ) : (
+                // Logged out: Show individual landing page links
+                <>
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                    Landing Page
+                  </h3>
+                  <button
+                    onClick={() => {
+                      handleNavigation("how-it-works");
+                      setMobileMenuOpen(false);
+                    }}
+                    className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+                  >
+                    How It Works
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleNavigation("pricing");
+                      setMobileMenuOpen(false);
+                    }}
+                    className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+                  >
+                    Pricing
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleNavigation("why-treasurehub");
+                      setMobileMenuOpen(false);
+                    }}
+                    className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+                  >
+                    Why TreasureHub
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleNavigation("roadmap");
+                      setMobileMenuOpen(false);
+                    }}
+                    className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+                  >
+                    Roadmap
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Other Pages */}
@@ -207,12 +261,28 @@ export default function NavBar() {
                 Contact
               </Link>
               <Link
+                href="/listings"
+                className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Listings
+              </Link>
+              <Link
                 href="/our-origin"
                 className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Our Origin
               </Link>
+              {session?.user && (
+                <Link
+                  href="/treasure-hunt"
+                  className="block w-full text-left py-2 text-[#D4AF3D] font-semibold hover:text-[#b8932f] transition"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Treasure Hunt
+                </Link>
+              )}
             </div>
           </div>
         </div>

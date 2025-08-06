@@ -1,0 +1,114 @@
+# Quality Checked Badge Feature Requirements
+
+## Problem
+Add a Quality Checked badge to listing pages that can be toggled by admins. When checked, a Quality Checked badge with a small shield icon should be displayed in the Item Details component.
+
+## Changes Made
+
+### 1. Database Schema Update
+- **File**: `prisma/schema.prisma`
+- **Added**: `qualityChecked Boolean @default(false)` field to the `Listing` model
+- **Purpose**: Store the quality check status for each listing
+
+### 2. Listing Detail Page Enhancement
+- **File**: `app/(dashboard)/list-item/[id]/page.tsx`
+- **Added**: Quality Checked badge display in two locations:
+  - **Price Information Section**: Blue badge with shield icon next to other badges (Price Drop, Reserve Met)
+  - **Item Details Section**: Green badge with shield icon in the details grid
+- **Features**:
+  - Conditional rendering (only shows when `listing.qualityChecked` is true)
+  - Shield icon from lucide-react
+  - Color-coded styling (blue for price section, green for details section)
+  - Responsive design
+
+### 3. Admin API Endpoints
+- **File**: `app/api/admin/quality-check/[id]/route.ts`
+  - **Purpose**: Toggle quality check status for individual listings
+  - **Method**: PATCH
+  - **Features**: Authentication, admin authorization, validation
+
+- **File**: `app/api/admin/quality-check/listings/route.ts`
+  - **Purpose**: Fetch listings for quality check management
+  - **Method**: GET
+  - **Features**: Filtering (all/checked/unchecked), search functionality, admin authorization
+
+- **File**: `app/api/admin/quality-check/bulk-toggle/route.ts`
+  - **Purpose**: Bulk update quality check status for multiple listings
+  - **Method**: POST
+  - **Features**: Filter-based bulk operations, admin authorization
+
+### 4. Admin Management Interface
+- **File**: `app/admin/quality-check/page.tsx`
+- **Features**:
+  - **Dashboard Overview**: Statistics showing total, checked, and pending listings
+  - **Search & Filter**: Search by title/description/seller, filter by status
+  - **Individual Toggle**: Click to toggle quality check status for each listing
+  - **Bulk Operations**: Mark all as checked/unchecked based on current filters
+  - **Real-time Updates**: Immediate UI updates after status changes
+  - **Responsive Design**: Works on desktop and mobile devices
+
+### 5. Admin Dashboard Integration
+- **File**: `app/admin/page.tsx`
+- **Added**: Quality Check Management module to the admin dashboard
+- **Features**: Direct link to quality check management page, consistent styling
+
+## Technical Implementation
+
+### Badge Display System
+- **Price Section Badge**: Blue background with shield icon and "Quality Checked" text
+- **Details Section Badge**: Green background with shield icon and "Quality Checked" text
+- **Conditional Rendering**: Only displays when `qualityChecked` is true
+- **Icon Integration**: Uses Shield icon from lucide-react library
+
+### Admin Management Features
+- **Authentication**: Requires valid user session
+- **Authorization**: Only admin users can access quality check management
+- **Real-time Updates**: Immediate UI feedback for all operations
+- **Error Handling**: Graceful error handling with user feedback
+- **Loading States**: Loading indicators during operations
+
+### Database Integration
+- **Field Type**: Boolean with default value of false
+- **Migration**: Database migration to add the new field
+- **Prisma Integration**: Full integration with existing Prisma schema
+
+## User Experience
+
+### For Buyers
+- **Visual Trust**: Quality Checked badge provides confidence in item quality
+- **Clear Indication**: Shield icon clearly communicates quality assurance
+- **Consistent Placement**: Badge appears in logical locations (price and details)
+
+### For Admins
+- **Easy Management**: Simple toggle interface for individual listings
+- **Bulk Operations**: Efficient management of multiple listings
+- **Search & Filter**: Quick access to specific listings
+- **Statistics**: Clear overview of quality check status across all listings
+
+### Badge Design
+- **Shield Icon**: Universal symbol for protection and quality
+- **Color Coding**: 
+  - Blue for price section (trustworthy, professional)
+  - Green for details section (positive, approved)
+- **Consistent Styling**: Matches existing badge design patterns
+
+## Integration Points
+- **Listing Detail Page**: Displays quality check badges
+- **Admin Dashboard**: Provides access to quality check management
+- **Database**: Stores quality check status
+- **API Layer**: Handles all quality check operations
+- **Authentication**: Ensures only admins can modify quality check status
+
+## Future Enhancements
+- **Quality Check History**: Track when and who performed quality checks
+- **Quality Check Criteria**: Define specific criteria for quality checking
+- **Automated Quality Checks**: AI-powered quality assessment
+- **Quality Check Reports**: Detailed reports on quality check performance
+- **Quality Check Workflow**: Multi-step quality check process
+- **Quality Check Notifications**: Notify admins of items requiring quality checks
+
+## Security Considerations
+- **Admin Authorization**: Only admin users can modify quality check status
+- **Session Validation**: All operations require valid user sessions
+- **Input Validation**: Proper validation of all input parameters
+- **Error Handling**: Secure error handling without exposing sensitive information 

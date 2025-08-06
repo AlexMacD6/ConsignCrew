@@ -1,0 +1,341 @@
+# Meta Pixel API Integration for Facebook Shop
+
+## Overview
+Replace the current CSV data feed approach with Meta Pixel API integration for real-time Facebook Shop synchronization and enhanced tracking capabilities.
+
+## Current State
+- CSV export endpoints for manual Facebook Shop uploads
+- XML feed endpoints for automated feeds
+- Basic Facebook Shop management through admin panel
+- Manual sync process with limited real-time capabilities
+
+## Target State
+- Real-time product catalog synchronization via Meta Pixel API
+- Automated event tracking for better conversion optimization
+- Enhanced admin dashboard with sync status monitoring
+- Seamless integration with Facebook's commerce ecosystem
+
+## Requirements
+
+### 1. Environment Configuration
+- **NEXT_PUBLIC_META_PIXEL_ID**: Facebook Pixel ID for event tracking
+- **META_ACCESS_TOKEN**: Long-lived access token for API authentication
+- **META_CATALOG_ID**: Facebook Catalog ID for product management
+- **META_BUSINESS_ID**: Facebook Business Manager ID
+- **META_APP_ID**: Facebook App ID (optional, for enhanced features)
+- **META_APP_SECRET**: Facebook App Secret (optional, for enhanced features)
+
+### 2. Database Schema Updates
+- **metaProductId**: Store Meta's assigned product ID
+- **metaCatalogId**: Store catalog ID for reference
+- **metaLastSync**: Track last synchronization timestamp
+- **metaSyncStatus**: Track sync status (success/error/pending/deleted)
+- **metaErrorDetails**: Store error details for failed syncs
+
+### 3. API Endpoints
+
+#### Core Meta Pixel API Client (`app/lib/meta-pixel-api.ts`)
+- Product catalog management (create, update, delete)
+- Event tracking with privacy-compliant data handling
+- Catalog status monitoring
+- Error handling and retry logic
+
+#### Product Sync Endpoint (`/api/meta/sync-product`)
+- **POST**: Sync individual product to Meta catalog
+- **DELETE**: Remove product from Meta catalog
+- Authentication and validation
+- Status tracking and error handling
+
+#### Catalog Status Endpoint (`/api/meta/catalog-status`)
+- **GET**: Retrieve catalog statistics and sync status
+- Real-time sync metrics
+- Configuration validation
+- Recent sync activity
+
+#### Event Tracking Endpoint (`/api/meta/track-event`)
+- **POST**: Track custom events to Meta Pixel
+- Privacy-compliant data hashing
+- Predefined e-commerce event functions
+- Error handling and validation
+
+### 4. Frontend Integration
+
+#### Meta Pixel Script Integration
+- Automatic pixel script injection
+- Page view tracking
+- Custom event tracking
+- Privacy compliance
+
+#### Admin Dashboard (`/admin/meta-pixel`)
+- Real-time catalog status dashboard
+- Sync statistics and metrics
+- Individual product sync controls
+- Error monitoring and resolution
+- Configuration status display
+
+#### Event Tracking Implementation
+- View content events for product pages
+- Add to cart events for purchase intent
+- Purchase events for completed transactions
+- Search events for user behavior analysis
+
+### 5. Key Features
+
+#### Real-time Product Sync
+- Automatic sync when products are created/updated
+- Manual sync controls for individual products
+- Bulk sync operations for multiple products
+- Sync status tracking and error reporting
+
+#### Enhanced Event Tracking
+- Standard e-commerce events (ViewContent, AddToCart, Purchase)
+- Custom events for treasure items and special features
+- Privacy-compliant data handling with SHA-256 hashing
+- Conversion optimization insights
+
+#### Admin Management
+- Visual sync status indicators
+- Real-time catalog statistics
+- Error monitoring and resolution tools
+- Configuration validation and status display
+
+#### Error Handling
+- Comprehensive error tracking and reporting
+- Automatic retry logic for failed syncs
+- Detailed error messages for troubleshooting
+- Graceful degradation when Meta API is unavailable
+
+### 6. Migration Strategy
+
+#### Phase 1: Infrastructure Setup
+- Set up Meta Pixel API client
+- Create new database fields
+- Implement core API endpoints
+- Set up environment variables
+
+#### Phase 2: Admin Dashboard
+- Create new Meta Pixel admin page
+- Implement sync status monitoring
+- Add individual product sync controls
+- Display configuration status
+
+#### Phase 3: Event Tracking
+- Integrate Meta Pixel script
+- Implement standard e-commerce events
+- Add custom event tracking
+- Test privacy compliance
+
+#### Phase 4: Migration & Testing
+- Migrate existing products to new system
+- Test sync functionality
+- Validate event tracking
+- Performance optimization
+
+### 7. Benefits Over CSV Approach
+
+#### Real-time Synchronization
+- Instant product updates in Facebook Shop
+- No manual CSV uploads required
+- Automatic inventory management
+- Real-time availability updates
+
+#### Enhanced Tracking
+- Detailed conversion tracking
+- User behavior analysis
+- Custom event tracking
+- Better ROI measurement
+
+#### Improved Management
+- Visual sync status monitoring
+- Real-time error reporting
+- Automated sync processes
+- Better troubleshooting capabilities
+
+#### Scalability
+- Handles large product catalogs
+- Automated sync processes
+- Better performance
+- Reduced manual intervention
+
+### 8. Technical Implementation
+
+#### API Rate Limiting
+- Respect Meta API rate limits
+- Implement exponential backoff
+- Queue management for bulk operations
+- Error handling for rate limit exceeded
+
+#### Data Privacy
+- SHA-256 hashing for sensitive data
+- GDPR compliance measures
+- Data retention policies
+- Privacy-by-design implementation
+
+#### Performance Optimization
+- Efficient database queries
+- Caching strategies
+- Background job processing
+- Optimized API calls
+
+#### Monitoring & Analytics
+- Sync success/failure metrics
+- API performance monitoring
+- Error tracking and alerting
+- Usage analytics
+
+### 9. Testing Requirements
+
+#### Unit Testing
+- API client functionality
+- Event tracking accuracy
+- Error handling scenarios
+- Data transformation logic
+
+#### Integration Testing
+- Meta API integration
+- Database operations
+- Frontend-backend communication
+- End-to-end sync workflows
+
+#### Performance Testing
+- Large catalog sync performance
+- API rate limit handling
+- Concurrent sync operations
+- Memory and CPU usage
+
+#### Privacy Testing
+- Data hashing accuracy
+- GDPR compliance validation
+- Privacy policy adherence
+- Data retention verification
+
+### 10. Documentation
+
+#### Setup Guide
+- Environment variable configuration
+- Meta App setup instructions
+- API credential generation
+- Initial configuration steps
+
+#### API Documentation
+- Endpoint specifications
+- Request/response formats
+- Error codes and handling
+- Rate limiting information
+
+#### Admin Guide
+- Dashboard usage instructions
+- Sync process management
+- Error resolution procedures
+- Best practices
+
+#### Developer Guide
+- Integration patterns
+- Custom event implementation
+- Error handling strategies
+- Performance optimization tips
+
+## Files Created/Modified
+
+### New Files
+- `app/lib/meta-pixel-api.ts` - Meta Pixel API client
+- `app/api/meta/sync-product/route.ts` - Product sync endpoint
+- `app/api/meta/catalog-status/route.ts` - Catalog status endpoint
+- `app/api/meta/track-event/route.ts` - Event tracking endpoint
+- `app/api/meta/conversion/route.ts` - Conversion API endpoint
+- `app/lib/meta-conversion-api.ts` - Conversion API client
+- `app/lib/meta-pageview-middleware.ts` - Page view tracking middleware
+- `app/admin/meta-pixel/page.tsx` - New admin dashboard
+- `app/components/MetaPixelScript.tsx` - Meta Pixel script component
+- `app/lib/meta-pixel-client.ts` - Client-side Meta Pixel utility
+- `requirements/meta-pixel-api-integration.txt` - This requirements document
+
+### Modified Files
+- `prisma/schema.prisma` - Added Meta Pixel fields
+- `app/layout.tsx` - Added Meta Pixel script integration
+- `middleware.ts` - Added server-side page view tracking
+- `env.example` - Added Meta Pixel environment variables
+- Database migration file (auto-generated)
+
+### Environment Variables
+- `NEXT_PUBLIC_META_PIXEL_ID` - Facebook Pixel ID (client-side accessible)
+- `META_ACCESS_TOKEN` - Long-lived access token
+- `META_CATALOG_ID` - Facebook Catalog ID
+- `META_BUSINESS_ID` - Facebook Business Manager ID
+- `META_APP_ID` - Facebook App ID (optional)
+- `META_APP_SECRET` - Facebook App Secret (optional)
+
+## Meta Pixel Script Integration
+
+### Frontend Script Loading
+- Meta Pixel script automatically loads on every page via `app/layout.tsx`
+- Uses `MetaPixelScript` component with proper Next.js Script optimization
+- Includes noscript fallback for users with JavaScript disabled
+- Graceful handling when Meta Pixel ID is not configured
+
+### Client-Side Event Tracking
+- `meta-pixel-client.ts` utility provides safe event tracking functions
+- Supports common e-commerce events: ViewContent, AddToCart, Purchase, Search, Lead, Contact
+- Type-safe interfaces for event data
+- Automatic fallback when Meta Pixel is not available
+
+## Meta Conversion API Integration
+
+### Server-Side Event Mirroring
+- `meta-conversion-api.ts` provides server-side mirror of client-side events
+- Ensures tracking works even when JavaScript is blocked or fails
+- SHA-256 hashing for privacy compliance (emails, phone numbers)
+- Automatic user data extraction from session and request headers
+
+### Conversion API Endpoint
+- `/api/meta/conversion` endpoint for server-side event tracking
+- Supports all standard Meta Pixel events (PageView, ViewContent, Search, Lead, Contact)
+- Automatic client IP and user agent detection
+- Session-based user identification
+
+### Middleware Integration
+- Automatic page view tracking in `middleware.ts`
+- Server-side fallback for every page load
+- Non-blocking implementation (fire-and-forget)
+- Path filtering to exclude API routes and static files
+
+### Dual Tracking Strategy
+- **Primary**: Client-side Meta Pixel (faster, more detailed)
+- **Fallback**: Server-side Conversion API (reliable, privacy-compliant)
+- Automatic fallback when client-side tracking fails
+- Comprehensive coverage for all user scenarios
+
+### Event Tracking Examples
+```typescript
+// Track product view
+trackViewContent({
+  content_name: "Vintage Watch",
+  content_category: "Jewelry & Watches",
+  content_ids: ["watch-123"],
+  value: 250.00,
+  currency: "USD"
+});
+
+// Track search
+trackSearch({
+  search_string: "vintage watch",
+  content_category: "Jewelry & Watches"
+});
+
+// Track lead generation
+trackLead({
+  content_name: "Contact Form",
+  content_category: "Lead Generation",
+  value: 0,
+  currency: "USD"
+});
+```
+
+## Success Metrics
+- 100% real-time product sync success rate
+- < 5 second sync response time
+- Zero manual CSV uploads required
+- 95%+ event tracking accuracy
+- Improved conversion tracking insights
+- Reduced admin overhead for Facebook Shop management
+- Meta Pixel script loads on 100% of pages 

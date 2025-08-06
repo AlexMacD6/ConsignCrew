@@ -1,0 +1,74 @@
+# AI Service Phase 2 - Staged Photo Generation
+
+## Overview
+Implement AI Service Phase 2 to generate staged photo prompts that will be used to create professional, in-home setting images for listings. This phase runs after Phase 1 (comprehensive listing generation) and is integrated into the AI Form Generation modal.
+
+## Requirements
+
+### 1. Phase 2 Prompt Implementation
+- Add AI_SERVICE_PHASE_2_PROMPT to app/lib/ai-service.ts
+- Prompt generates JSON output with staging parameters
+- Includes reference image selection and DALL-E prompt generation
+- Supports both photo and video frame analysis
+
+### 2. API Endpoint
+- Create /api/ai/generate-staged-photo/route.ts
+- Accepts listingJSON, photoURLs, and videoFrames
+- Returns staged photo prompt data
+- Handles S3 to CloudFront URL conversion
+
+### 3. Integration with Comprehensive Listing API
+- Update /api/ai/generate-comprehensive-listing/route.ts
+- Add Phase 2 processing after Phase 1 completion
+- Include stagedPhotoData in response
+- Maintain backward compatibility
+
+### 4. Frontend Integration
+- Update generateFormFieldsData function in list-item page
+- Add stagedPhotoData state management
+- Block form generation until both phases complete
+- Update loading UI to show both phases
+
+### 5. Error Handling
+- Phase 2 failures should not break Phase 1
+- Provide fallback staged photo data
+- Log errors for debugging
+- Graceful degradation
+
+### 6. Performance Considerations
+- Phase 2 runs sequentially after Phase 1
+- Total processing time: 30-45 seconds
+- Optimize for user experience with clear progress indicators
+
+## Technical Specifications
+
+### Phase 2 Output Format
+```json
+{
+  "referenceImageUrl": "string",
+  "stagingPrompt": "string", 
+  "desiredAspectRatio": "1:1",
+  "targetResolution": "1536x1536",
+  "postProcess": "none"
+}
+```
+
+### Integration Points
+- AI Form Generation modal
+- Comprehensive listing API
+- Photo upload system
+- Video processing system
+
+### Dependencies
+- OpenAI GPT-4o for prompt generation
+- CloudFront CDN for image access
+- S3 for image storage
+- Video frame extraction system
+
+## Success Criteria
+- Phase 2 completes successfully after Phase 1
+- Staged photo prompts are generated for all listings with photos
+- Loading UI clearly shows both phases
+- Error handling prevents complete failure
+- Performance meets 30-45 second target
+- eBay Browse API queries are generated for market research 

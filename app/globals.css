@@ -521,9 +521,162 @@ canvas {
   }
 
   .btn-loading::after {
-    content: '';
-    @apply inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin ml-2;
-  }
+	content: '';
+	@apply inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin ml-2;
+}
+
+/* Leaflet Map Styles */
+.leaflet-container {
+	height: 100%;
+	width: 100%;
+	z-index: 1;
+}
+
+.leaflet-popup-content-wrapper {
+	border-radius: 8px;
+	box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.leaflet-popup-content {
+	margin: 0;
+	padding: 0;
+}
+
+.leaflet-popup-tip {
+	background: white;
+}
+
+.custom-marker {
+	background: transparent !important;
+	border: none !important;
+}
+
+.custom-marker div {
+	transition: transform 0.2s ease;
+}
+
+.custom-marker:hover div {
+	transform: scale(1.1);
+}
+
+/* Modal and map interaction styles */
+.modal-open .leaflet-popup {
+	z-index: 9998 !important;
+}
+
+/* When modal is open, reduce map interactivity and dim it */
+.modal-open .leaflet-container {
+	pointer-events: none;
+	filter: brightness(0.7) contrast(0.8);
+	opacity: 0.6;
+	transition: all 0.3s ease;
+}
+
+.modal-open .leaflet-container .leaflet-popup {
+	pointer-events: auto;
+}
+
+/* Ensure modal appears above all map elements */
+.modal-overlay {
+	z-index: 9999 !important;
+}
+
+/* Force map to stay in background when modal is open */
+.modal-open .leaflet-container,
+.modal-open .leaflet-control-container,
+.modal-open .leaflet-pane {
+	z-index: 1 !important;
+}
+
+/* Ensure modal content is above everything */
+.modal-overlay > div {
+	z-index: 10000 !important;
+}
+
+/* Custom Map Styling for Treasure Hunt */
+.custom-map-style {
+	filter: hue-rotate(0deg) saturate(1.1) contrast(1.1);
+}
+
+/* Custom map controls styling */
+.leaflet-control-zoom a {
+	background-color: #D4AF3D !important;
+	border-color: #b8932f !important;
+	color: white !important;
+	font-weight: 600 !important;
+}
+
+.leaflet-control-zoom a:hover {
+	background-color: #b8932f !important;
+}
+
+.leaflet-control-zoom a.leaflet-control-zoom-in,
+.leaflet-control-zoom a.leaflet-control-zoom-out {
+	font-family: 'Poppins', Arial, Helvetica, sans-serif !important;
+}
+
+/* Custom popup styling */
+.leaflet-popup-content-wrapper {
+	background: white !important;
+	border-radius: 12px !important;
+	box-shadow: 0 4px 20px rgba(212, 175, 61, 0.15) !important;
+	border: 2px solid #D4AF3D !important;
+}
+
+.leaflet-popup-content {
+	font-family: 'Poppins', Arial, Helvetica, sans-serif !important;
+	color: #333 !important;
+}
+
+.leaflet-popup-tip {
+	background: white !important;
+	border: 2px solid #D4AF3D !important;
+}
+
+/* Custom marker hover effects */
+.custom-marker:hover {
+	transform: scale(1.1);
+	transition: transform 0.2s ease;
+}
+
+/* Map attribution styling */
+.leaflet-control-attribution {
+	background: rgba(212, 175, 61, 0.9) !important;
+	color: white !important;
+	font-family: 'Poppins', Arial, Helvetica, sans-serif !important;
+	font-size: 11px !important;
+}
+
+.leaflet-control-attribution a {
+	color: white !important;
+	text-decoration: underline !important;
+}
+
+.leaflet-control-attribution a:hover {
+	color: #b8932f !important;
+}
+
+/* Treasure Hunt Map Container */
+.treasure-hunt-map {
+	border: 2px solid #D4AF3D !important;
+	border-radius: 12px !important;
+	overflow: hidden !important;
+	box-shadow: 0 8px 32px rgba(212, 175, 61, 0.2) !important;
+}
+
+.treasure-hunt-map .leaflet-container {
+	border-radius: 10px !important;
+}
+
+/* Enhanced circle styling */
+.treasure-hunt-map .leaflet-interactive {
+	transition: all 0.3s ease !important;
+}
+
+.treasure-hunt-map .leaflet-interactive:hover {
+	filter: brightness(1.1) !important;
+	stroke-width: 3px !important;
+}
 }
 
 

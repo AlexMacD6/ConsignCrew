@@ -1,0 +1,168 @@
+# Treasure Code Integration
+
+## Overview
+Integrated the TreasureCode table with the Treasure Hunt system to use treasure codes as identifiers when someone finds a treasure. When users navigate to the redeem page and enter their information, it gets registered as found in the TreasureRedemption table and marks the treasure drop as found.
+
+## Database Schema Changes
+
+### New TreasureDrop Model
+- **id**: String (CUID) - Primary key
+- **name**: String - Name of the treasure drop
+- **location**: JSON - Latitude and longitude coordinates
+- **status**: String - "active" or "found"
+- **clue**: String - Clue for finding the treasure
+- **image**: String? - Optional image URL
+- **reward**: String - Reward description
+- **foundBy**: String? - Name of person who found it
+- **foundAt**: DateTime? - When it was found
+- **createdAt**: DateTime - Creation timestamp
+- **updatedAt**: DateTime - Last update timestamp
+- **treasureCodeId**: String? @unique - Foreign key to TreasureCode
+
+### Updated TreasureRedemption Model
+- **id**: String (CUID) - Primary key
+- **treasureCodeId**: String - Foreign key to TreasureCode (replaces code field)
+- **firstName**: String - User's first name
+- **lastName**: String - User's last name
+- **email**: String - User's email
+- **phone**: String? - User's phone number
+- **venmoUsername**: String? - Venmo username
+- **cashAppUsername**: String? - CashApp username
+- **zelleEmail**: String? - Zelle email
+- **paymentMethod**: String - Payment method chosen
+- **selfieImageUrl**: String? - Selfie image URL
+- **socialMediaPost**: String? - Social media post URL
+- **socialMediaBonus**: Boolean - Whether social media bonus applies
+- **paymentStatus**: String - Payment status
+- **treasureHubCredit**: Boolean - Whether TreasureHub credit applies
+- **earlyAccessSent**: Boolean - Whether early access was sent
+- **ipAddress**: String? - User's IP address
+- **userAgent**: String? - User's browser info
+- **createdAt**: DateTime - Creation timestamp
+- **updatedAt**: DateTime - Last update timestamp
+- **expiresAt**: DateTime - Expiration timestamp
+
+### Updated TreasureCode Model
+- **id**: String (CUID) - Primary key
+- **code**: String @unique - 6-character treasure code
+- **isActive**: Boolean - Whether code is active
+- **maxUses**: Int - Maximum number of uses (default: 1)
+- **currentUses**: Int - Current number of uses (default: 0)
+- **createdAt**: DateTime - Creation timestamp
+- **updatedAt**: DateTime - Last update timestamp
+- **treasureDrop**: TreasureDrop? - One-to-one relationship
+- **redemptions**: TreasureRedemption[] - One-to-many relationship
+
+## API Changes
+
+### New API Endpoint: `/api/admin/treasure-drops`
+- **GET**: Fetch all treasure drops with treasure code information
+- **POST**: Create new treasure drop with associated treasure code
+- **PUT**: Update existing treasure drop
+- **DELETE**: Delete treasure drop and associated treasure code
+
+### Updated API Endpoint: `/api/treasure/validate-code`
+- Now checks if treasure drop exists and is active
+- Validates treasure code status and usage
+- Returns treasure drop information
+
+### Updated API Endpoint: `/api/treasure/redeem`
+- Creates redemption record linked to treasure code
+- Updates treasure drop status to "found"
+- Records finder information and timestamp
+- Updates treasure code usage count
+
+## Frontend Changes
+
+### Admin Treasure Hunt Page (`/admin/treasure-hunt`)
+- **Form Updates**: Added treasure code field (6 characters, uppercase)
+- **API Integration**: Now uses real API calls instead of mock data
+- **Data Display**: Shows treasure codes in drop list
+- **Validation**: Ensures unique treasure codes
+- **Real-time Updates**: Reflects changes immediately
+
+### Treasure Drop Management
+- **Create**: Generates unique treasure code for each drop
+- **Edit**: Can modify treasure code (with uniqueness validation)
+- **Delete**: Removes both drop and associated treasure code
+- **Status Tracking**: Shows active/found status with finder information
+
+## User Flow
+
+### Admin Flow
+1. **Create Treasure Drop**: Admin creates drop with unique 6-character code
+2. **Monitor Activity**: View all drops with their codes and status
+3. **Edit/Delete**: Manage existing drops and their codes
+4. **Track Redemptions**: See when and by whom treasures are found
+
+### User Flow
+1. **Find Treasure**: User discovers treasure in the real world
+2. **Get Code**: User obtains the 6-character treasure code
+3. **Redeem**: User visits `/redeem` and enters the code
+4. **Validation**: System validates code and treasure status
+5. **Submit Info**: User provides personal and payment information
+6. **Confirmation**: System marks treasure as found and creates redemption record
+
+## Validation Rules
+
+### Treasure Code Requirements
+- **Length**: Exactly 6 characters
+- **Format**: Alphanumeric (uppercase)
+- **Uniqueness**: Must be unique across all codes
+- **Status**: Must be active and not used up
+
+### Treasure Drop Requirements
+- **Status**: Must be "active" for redemption
+- **Location**: Valid latitude/longitude coordinates
+- **Required Fields**: Name, clue, reward, treasure code
+
+### Redemption Requirements
+- **One Per User**: Users can only redeem one treasure
+- **Valid Code**: Code must exist and be active
+- **Payment Info**: Valid payment method information
+- **Contact Info**: Valid email and name
+
+## Benefits
+
+### For Admins
+- **Better Tracking**: Clear association between codes and drops
+- **Unique Identification**: Each treasure has a unique code
+- **Status Management**: Easy to see which treasures are found
+- **User Information**: Know who found each treasure
+
+### For Users
+- **Clear Process**: Simple 6-character code system
+- **Immediate Feedback**: Know if code is valid
+- **Secure Redemption**: One-time use per code
+- **Payment Options**: Multiple payment methods supported
+
+### For System
+- **Data Integrity**: Proper relationships between entities
+- **Audit Trail**: Complete history of redemptions
+- **Scalability**: Can handle multiple treasure hunts
+- **Security**: Prevents duplicate redemptions
+
+## Technical Implementation
+
+### Database Relationships
+- **TreasureCode ↔ TreasureDrop**: One-to-one (optional)
+- **TreasureCode ↔ TreasureRedemption**: One-to-many
+- **Cascade Deletes**: Deleting drop removes associated code
+
+### API Security
+- **Input Validation**: Zod schemas for all inputs
+- **Duplicate Prevention**: Checks for existing codes/users
+- **Status Validation**: Ensures proper state transitions
+- **Error Handling**: Comprehensive error responses
+
+### Frontend Features
+- **Real-time Updates**: Immediate UI updates after API calls
+- **Form Validation**: Client-side validation with helpful messages
+- **Loading States**: Proper loading indicators
+- **Error Handling**: User-friendly error messages
+
+## Migration Notes
+- Existing TreasureRedemption records were migrated to use treasureCodeId
+- New TreasureDrop table created with proper relationships
+- All existing functionality preserved during migration
+- Backward compatibility maintained where possible 

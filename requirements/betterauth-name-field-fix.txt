@@ -1,0 +1,124 @@
+# BetterAuth Name Field Fix Requirements
+
+## Issue Description
+User registration was failing with the error: "Unknown argument `name`. Available options are marked with ?." This occurred because BetterAuth automatically includes a `name` field from OAuth providers, but this field wasn't declared in the BetterAuth configuration.
+
+## Root Cause
+- BetterAuth automatically maps OAuth provider data and includes a `name` field
+- The `additionalFields` configuration in BetterAuth didn't include the `name` field
+- BetterAuth tried to pass the `name` field to Prisma, but our schema doesn't have it
+- This caused a schema mismatch during user creation
+
+## Solution Requirements
+
+### 1. Add Name Field to BetterAuth Configuration
+- Add `name: { type: "string", required: false }` to the `additionalFields` configuration
+- This allows BetterAuth to accept the `name` field from OAuth providers
+- Prevents the "Unknown argument `name`" error
+
+### 2. Use BetterAuth Callbacks for Name Mapping
+- Use `beforeUserCreate` callback to handle name field mapping
+- Parse the OAuth provider's `name` field into `firstName` and `lastName`
+- Remove the `name` field before database insertion
+- Add debugging logs to track the mapping process
+
+### 3. Maintain Clean Database Schema
+- Keep Prisma schema with only `firstName` and `lastName` fields
+- No need to add a `name` field to the database
+- Preserve existing data structure and relationships
+
+## Implementation Details
+
+### Files Modified
+- `app/lib/auth.ts` - Added name field to BetterAuth additionalFields and beforeUserCreate callback
+
+### Changes Made
+1. **Added name field** to BetterAuth configuration as optional
+2. **Added beforeUserCreate callback** to handle name field mapping
+3. **Implemented name parsing logic** to split full name into first and last name
+4. **Added field cleanup** to remove the name field before database insertion
+5. **Enhanced debugging** with console logs
+
+### Code Changes
+```typescript
+// BetterAuth Configuration
+additionalFields: {
+  name: { type: "string", required: false }, // Allow BetterAuth to pass name field
+  firstName: { type: "string", required: true },
+  lastName: { type: "string", required: true },
+  // ... other fields
+}
+
+// BeforeUserCreate Callback
+async beforeUserCreate(user: any, provider: any) {
+  console.log('beforeUserCreate called with:', { user, provider });
+  
+  // Handle OAuth providers that send 'name' instead of firstName/lastName
+  if (user.name && (!user.firstName || !user.lastName)) {
+    const nameParts = user.name.trim().split(' ');
+    user.firstName = user.firstName || nameParts[0] || '';
+    user.lastName = user.lastName || nameParts.slice(1).join(' ') || '';
+    console.log('Processed name mapping:', { firstName: user.firstName, lastName: user.lastName });
+  }
+  
+  // Remove the name field since we don't have it in our Prisma schema
+  delete user.name;
+  
+  return user;
+}
+```
+
+## Name Mapping Logic
+
+### OAuth Provider with Name Only
+- Input: `{ name: "John Doe", email: "..." }`
+- Result: `{ firstName: "John", lastName: "Doe", email: "..." }`
+
+### OAuth Provider with Mixed Data
+- Input: `{ name: "John Doe", firstName: "John", lastName: "Smith", email: "..." }`
+- Result: `{ firstName: "John", lastName: "Smith", email: "..." }` (keeps existing)
+
+### Email/Password Registration
+- Input: `{ firstName: "John", lastName: "Doe", email: "..." }`
+- Result: `{ firstName: "John", lastName: "Doe", email: "..." }` (unchanged)
+
+## Testing Instructions
+
+1. **Test OAuth Registration**:
+   - Try registering with Google OAuth
+   - Check console logs for "beforeUserCreate called with:" message
+   - Verify that the user's name is properly mapped to firstName and lastName
+   - Check that the user is created successfully without errors
+
+2. **Test Email/Password Registration**:
+   - Try registering with email and password
+   - Verify that firstName and lastName are used directly
+   - Ensure no name mapping is applied
+
+3. **Test Edge Cases**:
+   - Test with single names (e.g., "John")
+   - Test with multiple word names (e.g., "John Michael Doe")
+   - Test with names containing extra spaces
+
+4. **Verify Database**:
+   - Check that users are created with correct firstName and lastName
+   - Confirm that no `name` field is present in the database
+
+## Expected Outcome
+
+- **✅ OAuth registration works** without schema errors
+- **✅ Names are properly mapped** to firstName and lastName
+- **✅ Email/password registration** continues to work normally
+- **✅ Database schema remains clean** with only firstName and lastName
+- **✅ BetterAuth accepts name field** without errors
+- **✅ Callback handles mapping** correctly
+- **✅ No breaking changes** to existing functionality
+
+## Benefits
+
+- **Fixed Registration**: OAuth users can now register successfully
+- **Clean Schema**: Maintains consistent firstName/lastName structure
+- **BetterAuth Compatibility**: Properly handles BetterAuth's automatic field mapping
+- **Robust Logic**: Handles various data scenarios gracefully
+- **No Schema Changes**: Database structure remains unchanged
+- **Better Debugging**: Clear console logs show the mapping process 

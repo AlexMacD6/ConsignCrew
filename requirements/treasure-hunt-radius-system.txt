@@ -1,0 +1,111 @@
+# Treasure Hunt Radius System
+
+## Overview
+Implemented a radius-based treasure hunt system where admins can set a search radius in feet, and the actual treasure location is randomly placed somewhere within that circle. This makes the treasure hunt more challenging and realistic.
+
+## Database Schema Changes
+
+### Updated TreasureDrop Model
+- **radius**: Float @default(328) - Search radius in feet (default: 328 feet = ~100 meters)
+- **location**: Json - Center point of the search area (lat/lng)
+- **Actual treasure location**: Generated randomly within the radius
+
+## API Changes
+
+### Updated `/api/admin/treasure-drops` Endpoint
+- **Validation**: Added radius field validation (50-5000 feet)
+- **Create**: Includes radius in treasure drop creation
+- **Update**: Allows radius modification
+- **Response**: Returns radius information with treasure drops
+
+## Frontend Changes
+
+### Admin Treasure Hunt Page (`/admin/treasure-hunt`)
+- **Form Updates**: Added "Search Radius (feet)" field (50-5000 feet range)
+- **Default Value**: 328 feet (equivalent to 100 meters)
+- **Validation**: Client-side validation for radius range
+- **Display**: Shows radius in treasure drop list items
+
+### Interactive Map Component
+- **Circle Display**: Shows search area as a circle with configurable radius
+- **Actual Location**: Small marker shows where treasure actually is (admin view only)
+- **Random Placement**: Actual treasure location is randomly generated within the circle
+- **Visual Feedback**: Different colors for active vs found treasures
+
+### MapComponent Updates
+- **Circle Rendering**: Uses Leaflet Circle component to show search areas
+- **Radius Conversion**: Converts feet to meters for Leaflet
+- **Random Point Generation**: Algorithm to place actual treasure within circle
+- **Dual Display**: Shows both search area (circle) and actual location (small marker)
+
+## User Experience
+
+### For Admins
+- **Radius Control**: Set search difficulty by adjusting radius
+- **Visual Feedback**: See both search area and actual treasure location
+- **Flexibility**: Range from 50 feet (very precise) to 5000 feet (very broad)
+
+### For Users (Future Implementation)
+- **Search Area**: Only see the circle, not the exact treasure location
+- **Challenge Level**: Larger radius = more challenging to find
+- **Realistic Gameplay**: Mimics real-world treasure hunting
+
+## Technical Implementation
+
+### Random Point Generation
+```javascript
+const getRandomPointInCircle = (center, radiusFeet) => {
+  const radiusMeters = feetToMeters(radiusFeet);
+  const randomDistance = Math.sqrt(Math.random()) * radiusMeters;
+  const randomAngle = Math.random() * 2 * Math.PI;
+  
+  // Convert to lat/lng offset
+  const latOffset = (randomDistance / 111320) * Math.cos(randomAngle);
+  const lngOffset = (randomDistance / (111320 * Math.cos(center.lat * Math.PI / 180))) * Math.sin(randomAngle);
+  
+  return {
+    lat: center.lat + latOffset,
+    lng: center.lng + lngOffset
+  };
+};
+```
+
+### Feet to Meters Conversion
+- **Formula**: `feet * 0.3048 = meters`
+- **Purpose**: Leaflet uses meters for circle radius
+
+### Visual Design
+- **Search Circle**: Semi-transparent circle with colored border
+- **Actual Marker**: Small dot showing exact treasure location
+- **Color Coding**: Gold for active, gray for found treasures
+
+## Benefits
+
+### For Gameplay
+- **Increased Challenge**: Players must search within an area, not find exact coordinates
+- **Realistic Experience**: Mimics real-world geocaching and treasure hunting
+- **Scalable Difficulty**: Admins can adjust radius based on treasure value or location
+
+### For Admins
+- **Better Control**: Fine-tune search difficulty
+- **Visual Management**: Clear view of search areas and actual locations
+- **Flexible Setup**: Support for various terrain types and difficulty levels
+
+### For System
+- **Enhanced Engagement**: More challenging gameplay increases user retention
+- **Scalable Design**: Can handle various radius sizes efficiently
+- **Future-Proof**: Foundation for more advanced treasure hunt features
+
+## Future Enhancements
+
+### Potential Features
+- **Terrain-Based Radius**: Automatic radius adjustment based on location type
+- **Time-Based Radius**: Radius changes over time (gets smaller as time passes)
+- **User Difficulty Levels**: Different radius sizes for different user skill levels
+- **Hints System**: Progressive hints that reduce search area
+- **Team Challenges**: Multiple treasures within overlapping search areas
+
+### Technical Improvements
+- **Persistent Random Seeds**: Same treasure location for consistent gameplay
+- **Advanced Algorithms**: More sophisticated random placement (avoiding water, buildings, etc.)
+- **Performance Optimization**: Efficient rendering for large numbers of treasure drops 

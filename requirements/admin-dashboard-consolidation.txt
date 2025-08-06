@@ -1,0 +1,71 @@
+# Admin Dashboard Consolidation
+
+## Overview
+Consolidated the separate admin functionality from the profile page into the main admin dashboard at `/admin` to provide a unified admin experience.
+
+## Changes Made
+
+### Main Admin Dashboard (`/admin`)
+- **Enhanced Overview Tab**: Added comprehensive stats showing users, organizations, treasure drops, and redemptions
+- **User Management Tab**: Complete user management with table view, role management, and user actions
+- **Organizations Tab**: Organization management with CRUD operations, member management, and team creation
+- **Settings Tab**: System settings including zip code management and question management
+- **Security Tab**: Security monitoring with pending invitations and system status
+
+### Profile Page Updates
+- **Removed Admin Tab**: Eliminated the separate admin tab from the profile page
+- **Added Admin Dashboard Link**: Replaced the admin tab with a direct link to `/admin` for admin users
+- **Cleaned Up Imports**: Removed unused AdminDashboard component import
+
+## Features Consolidated
+
+### User Management
+- View all users in a comprehensive table
+- User role management and permissions
+- User profile editing and deletion capabilities
+
+### Organization Management
+- Create, edit, and delete organizations
+- Manage organization members and teams
+- Handle organization invitations
+- Organization statistics and member counts
+
+### System Settings
+- Zip code management (add, edit, delete)
+- Question management integration
+- System configuration options
+
+### Security & Monitoring
+- Pending invitation management
+- System status monitoring
+- Security event tracking
+
+### Treasure Hunt Management
+- Interactive map for treasure drops
+- Add, edit, and delete treasure drops
+- Search and filter functionality
+- Drop status tracking
+
+### Treasure Redemptions
+- View and manage redemption requests
+- Payment status tracking
+- Redemption approval workflow
+
+## Benefits
+- **Unified Interface**: Single admin dashboard for all administrative tasks
+- **Better Navigation**: Clear tab-based navigation within the admin dashboard
+- **Improved UX**: Consistent design and functionality across all admin features
+- **Easier Maintenance**: Centralized admin functionality reduces code duplication
+- **Enhanced Security**: Centralized admin access control and monitoring
+
+## Technical Implementation
+- Used React state management for tab navigation
+- Integrated existing API endpoints for data management
+- Maintained consistent styling with the existing design system
+- Added proper error handling and success messaging
+- Implemented loading states for better user experience
+
+## Access Control
+- Admin dashboard only accessible to users with admin privileges
+- Profile page shows admin dashboard link only for admin users
+- Maintained existing authentication and authorization checks 

@@ -6,7 +6,8 @@ import Script from "next/script";
 import NavBar from "./components/NavBar";
 import Footer from "./components/Footer";
 import { ModalProvider } from "./contexts/ModalContext";
-import MetaPixelProvider from "./components/MetaPixelProvider";
+import AuthStatus from "./components/AuthStatus";
+import MetaPixelScript from "./components/MetaPixelScript";
 
 export const metadata: Metadata = {
   title: {
@@ -115,6 +116,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           `}
         </Script>
 
+        {/* Meta Pixel Script */}
+        <MetaPixelScript />
+
         {/* JSON-LD Structured Data */}
         <Script
           id="structured-data"
@@ -190,15 +194,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         </noscript>
         {/* End Google Tag Manager (noscript) */}
 
-        <MetaPixelProvider
-          pixelId={process.env.NEXT_PUBLIC_META_PIXEL_ID || ""}
-        >
-          <ModalProvider>
-            <NavBar />
-            {children}
-            <Footer />
-          </ModalProvider>
-        </MetaPixelProvider>
+        <ModalProvider>
+          <NavBar />
+          {children}
+          <Footer />
+          <AuthStatus />
+        </ModalProvider>
       </body>
     </html>
   );

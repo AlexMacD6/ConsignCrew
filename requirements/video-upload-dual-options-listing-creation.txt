@@ -1,0 +1,178 @@
+# Video Upload Dual Options - Listing Creation Page
+
+## Problem
+The listing creation page only had a file upload option for videos, but users wanted the ability to provide a video URL as well. The dual video upload options (URL and file upload) were only available on the edit listing page, creating an inconsistent user experience.
+
+## Solution Implemented
+
+### 1. Added Dual Video Upload Options
+- **Video URL option**: Users can provide a direct video URL (YouTube, Vimeo, or direct file URL)
+- **File upload option**: Users can upload video files directly
+- **Toggle between options**: Radio buttons to switch between URL and file upload modes
+- **Consistent experience**: Same functionality as the edit listing page
+
+### 2. Enhanced State Management
+- **Video URL state**: Added `videoUrl` state to track URL input
+- **Upload mode state**: Added `useVideoUpload` state to track which option is selected
+- **URL change handler**: Added `handleVideoUrlChange` function to manage URL input
+
+### 3. Updated Form Submission
+- **Conditional video URL**: Form submission uses either uploaded file URL or provided URL based on selected option
+- **Proper data handling**: Ensures correct video URL is sent to the API
+
+## Files Modified
+- `app/(dashboard)/list-item/page.tsx` - Added dual video upload options
+
+## Technical Changes
+
+### Added State Variables
+```typescript
+const [videoUrl, setVideoUrl] = useState<string>("");
+const [useVideoUpload, setUseVideoUpload] = useState<boolean>(false);
+```
+
+### Added URL Change Handler
+```typescript
+const handleVideoUrlChange = (url: string) => {
+  setVideoUrl(url);
+  setVideo({
+    file: null,
+    key: null,
+    url: url || null,
+  });
+  setVideoUploadError(null);
+};
+```
+
+### Updated Video Upload UI
+```typescript
+{/* Video Upload Toggle */}
+<div className="mb-6">
+  <div className="flex items-center justify-center gap-4">
+    <label className="flex items-center gap-2">
+      <input
+        type="radio"
+        name="videoOption"
+        checked={!useVideoUpload}
+        onChange={() => setUseVideoUpload(false)}
+        className="text-[#D4AF3D] focus:ring-[#D4AF3D]"
+      />
+      <span className="text-sm font-medium text-gray-700">Video URL</span>
+    </label>
+    <label className="flex items-center gap-2">
+      <input
+        type="radio"
+        name="videoOption"
+        checked={useVideoUpload}
+        onChange={() => setUseVideoUpload(true)}
+        className="text-[#D4AF3D] focus:ring-[#D4AF3D]"
+      />
+      <span className="text-sm font-medium text-gray-700">Upload Video File</span>
+    </label>
+  </div>
+</div>
+```
+
+### Updated Video Preview
+```typescript
+{/* Video Preview */}
+{(video.url || videoUrl) && (
+  <div className="mb-4 relative">
+    <video
+      src={useVideoUpload ? video.url : videoUrl}
+      className="w-full max-w-md mx-auto aspect-video bg-gray-100 rounded-lg"
+      controls
+      preload="metadata"
+    />
+    <button
+      type="button"
+      onClick={() => {
+        if (useVideoUpload) {
+          clearVideo();
+        } else {
+          handleVideoUrlChange("");
+        }
+      }}
+      className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+    >
+      ×
+    </button>
+  </div>
+)}
+```
+
+### Updated Form Submission
+```typescript
+videoUrl: useVideoUpload ? video.url : videoUrl,
+```
+
+## User Experience Improvements
+
+### Before the Fix
+1. Users could only upload video files
+2. No option to provide video URLs
+3. Inconsistent experience between creation and edit pages
+4. Limited video options for users
+
+### After the Fix
+1. **Video URL option**: Users can provide direct video URLs
+2. **File upload option**: Users can still upload video files
+3. **Toggle between options**: Easy switching between URL and file upload
+4. **Consistent experience**: Same functionality across creation and edit pages
+5. **Flexible video sources**: Support for YouTube, Vimeo, and direct file URLs
+
+## Benefits
+
+### For Users
+- **More flexibility**: Can use existing video URLs or upload new files
+- **Faster workflow**: No need to download and re-upload videos
+- **Consistent experience**: Same options on creation and edit pages
+- **Multiple sources**: Support for various video platforms
+
+### For Platform
+- **Better UX**: Consistent video upload experience
+- **Reduced storage**: Users can link to external videos
+- **Faster uploads**: URL option is instant
+- **More options**: Accommodates different user preferences
+
+## Video Upload Options
+
+### Video URL Option
+- **Default selection**: Video URL is the default option
+- **URL input field**: Clean input field for video URLs
+- **Placeholder text**: Helpful guidance for URL format
+- **Support for**: YouTube, Vimeo, direct file URLs
+
+### File Upload Option
+- **File selection**: Traditional file upload interface
+- **Format support**: MP4, WebM, OGG formats
+- **Size limit**: Up to 100MB file size
+- **Progress indicator**: Upload progress and error handling
+
+## Technical Implementation
+
+### State Management
+- **videoUrl**: Stores the URL input value
+- **useVideoUpload**: Boolean flag for selected upload method
+- **video**: Existing state for file uploads
+- **Integration**: Both states work together seamlessly
+
+### Conditional Rendering
+- **URL input**: Shows when URL option is selected and no URL is provided
+- **File upload**: Shows when file upload option is selected and no file is uploaded
+- **Video preview**: Shows for both URL and file upload options
+- **Clear button**: Handles both URL and file clearing
+
+### Form Integration
+- **Conditional submission**: Uses appropriate video URL based on selected option
+- **Data consistency**: Ensures correct video URL is sent to API
+- **Error handling**: Maintains existing error handling for both options
+
+## Testing Recommendations
+1. **URL option**: Test with various video URL formats
+2. **File upload**: Test with different video file types and sizes
+3. **Toggle functionality**: Test switching between URL and file upload
+4. **Form submission**: Verify correct video URL is sent to API
+5. **Error handling**: Test invalid URLs and upload failures
+6. **Preview functionality**: Test video preview for both options
+7. **Clear functionality**: Test clearing both URL and file uploads 

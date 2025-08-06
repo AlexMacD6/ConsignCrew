@@ -1,0 +1,132 @@
+# Email Verification SES Setup Requirements
+
+## Issue Description
+User registration was working but email verification emails were not being sent. BetterAuth was configured to require email verification but was only logging to console instead of actually sending emails via AWS SES.
+
+## Root Cause
+- BetterAuth email configuration was using placeholder functions that only logged to console
+- AWS SES was already configured in the project but not integrated with BetterAuth
+- Users couldn't log in because their email wasn't verified
+- No actual email delivery was happening
+
+## Solution Requirements
+
+### 1. Integrate AWS SES with BetterAuth
+- Use existing `ses-server.ts` utility for email sending
+- Configure BetterAuth to use AWS SES for verification emails
+- Add proper error handling and fallbacks
+- Create professional email templates
+
+### 2. Email Templates
+- Design professional verification email template
+- Design password reset email template
+- Use TreasureHub branding and colors
+- Include proper security messaging
+- Add fallback text links for accessibility
+
+### 3. Error Handling
+- Add try-catch blocks around email sending
+- Provide fallback to console logging for development
+- Log email sending success/failure
+- Handle AWS SES errors gracefully
+
+## Implementation Details
+
+### Files Modified
+- `app/lib/auth.ts` - Updated BetterAuth email configuration
+
+### Changes Made
+1. **Integrated AWS SES** with BetterAuth email functions
+2. **Created professional email templates** with TreasureHub branding
+3. **Added error handling** with fallbacks
+4. **Configured verification and reset emails** to use SES
+
+### Code Changes
+```typescript
+// BetterAuth Email Configuration
+emailAndPassword: {
+  enabled: true,
+  requireEmailVerification: true,
+  sendVerificationEmail: async ({ user, url, token }) => {
+    try {
+      const { sendEmail } = await import('./ses-server');
+      // Professional email template with TreasureHub branding
+      await sendEmail(user.email, subject, html);
+    } catch (error) {
+      console.error('Failed to send verification email:', error);
+      // Fallback to console log for development
+    }
+  },
+  sendResetPassword: async ({ user, url, token }) => {
+    // Similar implementation for password reset
+  },
+  provider: null, // Using custom email sending with AWS SES
+}
+```
+
+## Email Template Features
+
+### Verification Email
+- **Subject**: "Verify your TreasureHub account"
+- **Branding**: TreasureHub logo and colors (#D4AF3D)
+- **Content**: Welcome message, verification button, fallback link
+- **Security**: 24-hour expiration notice
+- **Accessibility**: Plain text fallback
+
+### Password Reset Email
+- **Subject**: "Reset your TreasureHub password"
+- **Content**: Reset request, password reset button, fallback link
+- **Security**: 1-hour expiration notice
+- **Safety**: Instructions for unintended requests
+
+## Environment Variables Required
+
+### AWS SES Configuration
+```env
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_SES_DEFAULT_FROM_EMAIL=noreply@treasurehub.club
+AWS_SES_CONFIGURATION_SET=treasurehub-deliverability
+```
+
+## Testing Instructions
+
+1. **Test Email Verification**:
+   - Register a new user with email/password
+   - Check that verification email is sent via AWS SES
+   - Verify the email template looks professional
+   - Test the verification link works correctly
+
+2. **Test Password Reset**:
+   - Request a password reset from login page
+   - Check that reset email is sent via AWS SES
+   - Verify the reset link works correctly
+
+3. **Test Error Handling**:
+   - Temporarily break AWS credentials
+   - Verify fallback to console logging works
+   - Check error messages are logged properly
+
+4. **Test Email Deliverability**:
+   - Check spam folder for test emails
+   - Verify emails are delivered to inbox
+   - Test with different email providers
+
+## Expected Outcome
+
+- **✅ Verification emails sent** via AWS SES
+- **✅ Professional email templates** with TreasureHub branding
+- **✅ Users can verify emails** and log in successfully
+- **✅ Password reset emails** work correctly
+- **✅ Error handling** with proper fallbacks
+- **✅ Email deliverability** to inbox (not spam)
+
+## Benefits
+
+- **Professional Branding**: Consistent TreasureHub branding in emails
+- **Reliable Delivery**: AWS SES provides high deliverability rates
+- **Security**: Proper email verification flow
+- **User Experience**: Clear, professional email communication
+- **Error Resilience**: Graceful handling of email sending failures
+- **Scalability**: AWS SES can handle high email volumes 

@@ -1,0 +1,163 @@
+# Video Upload with FFmpeg Processing - COMPLETED ✅
+
+## Overview
+Implement a comprehensive video upload feature that allows users to upload video files, processes them using FFmpeg, and integrates the results with AI analysis.
+
+## System Requirements
+
+### FFmpeg Installation (REQUIRED)
+**FFmpeg must be installed on the server/system for video processing to work.**
+
+#### Windows Installation:
+```bash
+# Using winget (recommended)
+winget install ffmpeg
+
+# Using Chocolatey
+choco install ffmpeg
+
+# Manual download from https://ffmpeg.org/download.html
+```
+
+#### macOS Installation:
+```bash
+# Using Homebrew
+brew install ffmpeg
+```
+
+#### Linux Installation:
+```bash
+# Ubuntu/Debian
+sudo apt update
+sudo apt install ffmpeg
+
+# CentOS/RHEL
+sudo yum install ffmpeg
+
+# Or download from https://ffmpeg.org/download.html
+```
+
+#### Verification:
+After installation, verify FFmpeg is working:
+```bash
+ffmpeg -version
+ffprobe -version
+```
+
+**Note:** The system will wait for FFmpeg to become available and retry processing if it's not initially found.
+
+## Implementation Details
+
+### COMPLETED ✅ - Core Features
+- Video upload with drag-and-drop interface
+- S3 presigned URL upload for raw video files
+- FFmpeg video processing (compression, thumbnail, keyframe extraction)
+- Background processing with real-time progress modal
+- Integration with AI analysis system
+- CloudFront CDN delivery for processed content
+
+### COMPLETED ✅ - Technical Implementation
+- Database schema with Video model
+- API endpoints for upload, processing, and status
+- React components for upload and processing UI
+- FFmpeg processor service with error handling
+- S3 integration for raw and processed storage
+- AI service integration for video frame analysis
+
+### COMPLETED ✅ - User Experience
+- 3-step listing creation process (Video → Photos → AI Form)
+- Background video processing while user continues with photos
+- Real-time processing progress modal
+- Error handling and retry mechanisms
+- Seamless integration with existing photo upload flow
+
+## Key Features Implemented
+
+### Video Upload Component
+- Drag-and-drop interface
+- File validation (.mp4, .mov, max 250MB)
+- Progress tracking
+- Error handling
+
+### Video Processing Modal
+- Real-time progress display
+- Processing status updates
+- Error messages and retry options
+- Automatic completion handling
+
+### FFmpeg Processing Service
+- Video compression (720p H.264, CRF 28)
+- Thumbnail generation at 3 seconds
+- Keyframe extraction at strategic timestamps (0%, 10%, 25%, 50%, 90%)
+- Dynamic timestamp calculation using ffprobe
+- Consistent frame sizing (1280x720)
+
+### AI Integration
+- Video frames passed to OpenAI GPT-4o for analysis
+- Frame naming convention: frame_01.jpg, frame_02.jpg, etc.
+- Enhanced product analysis with video content
+- Fallback to photo-only analysis when video unavailable
+
+## Testing Requirements
+
+### Manual Testing
+1. Upload video file (.mp4 or .mov)
+2. Verify processing modal appears
+3. Check background processing while continuing with photos
+4. Verify AI analysis includes video frames
+5. Test error handling (invalid files, processing failures)
+
+### System Testing
+1. Verify FFmpeg installation and availability
+2. Test S3 upload and processing
+3. Check CloudFront URL generation
+4. Validate database record creation
+5. Test AI service integration
+
+## Next Steps for Deployment
+
+### Production Setup
+1. **Install FFmpeg on production server**
+2. Configure S3 bucket permissions
+3. Set up CloudFront distribution
+4. Update environment variables
+5. Test video processing pipeline
+
+### Monitoring
+1. Monitor FFmpeg process availability
+2. Track video processing success rates
+3. Monitor S3 storage usage
+4. Check AI analysis performance
+
+## Usage Example
+
+```typescript
+// Video upload flow
+1. User selects video file
+2. File uploaded to S3 via presigned URL
+3. Video processing modal appears
+4. FFmpeg processes video in background
+5. User continues with photo upload
+6. AI analysis includes video frames
+7. Comprehensive listing generated
+```
+
+## Dependencies Added
+- FFmpeg (system dependency)
+- FFprobe (system dependency)
+- AWS SDK (already present)
+- Prisma (already present)
+
+## Security Considerations
+- File type validation
+- File size limits
+- S3 presigned URLs with expiration
+- User authentication for video ownership
+- Secure FFmpeg command execution
+
+## Performance Considerations
+- Background processing to avoid UI blocking
+- Video compression for storage efficiency
+- CloudFront CDN for fast delivery
+- Efficient keyframe extraction
+- AI model selection based on content availability 

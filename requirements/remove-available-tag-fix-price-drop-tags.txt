@@ -1,0 +1,46 @@
+# Remove Available Tag and Fix Price Drop Tags
+
+## Overview
+Remove the "Available" status tag from listings page and update price drop calculations to match the established discount schedule methodology.
+
+## Issues to Address
+
+### 1. Unnecessary "Available" Tag
+- **Problem**: Listings page shows "Available" tag for active listings
+- **Root Cause**: Status badge system shows "Available" for active/available listings
+- **Solution**: Remove "Available" tag - if a listing is on the site, it's available
+
+### 2. Incorrect Price Drop Calculations
+- **Problem**: Price drop tags use old hourly methodology instead of day-based schedules
+- **Root Cause**: `getTimeUntilNextDrop` function still uses old calculation method
+- **Solution**: Update to use new day-based discount schedule methodology
+
+## Technical Changes Required
+
+### Status Badge Updates
+- Modify `getStatusBadge` function to return `null` for active/available listings
+- Update all status badge rendering to handle `null` return value
+- Keep status badges for "In Transit", "Sold", and "Pending" states only
+
+### Price Drop Calculation Updates
+- Update `getTimeUntilNextDrop` function to use new day-based methodology
+- Turbo-30: Drops every 3 days (0, 3, 6, 9, 12, 15, 18, 21, 24, 30)
+- Classic-60: Drops every 7 days (0, 7, 14, 21, 28, 35, 42, 49, 56, 60)
+- Return "days" instead of "hours" format
+- Handle edge cases (0 days = "Any moment now...", 1 day = "1 day")
+
+## Files Modified
+- `app/(dashboard)/listings/page.tsx` - Updated status badge logic and price drop calculations
+
+## Testing Instructions
+1. Navigate to listings page and verify no "Available" tags are shown for active listings
+2. Check that "In Transit", "Sold", and "Pending" badges still display correctly
+3. Test price drop calculations with Turbo-30 and Classic-60 schedules
+4. Verify price drop tags show correct day-based intervals
+5. Test edge cases (0 days, 1 day, expired listings)
+
+## Expected Outcomes
+- No "Available" tags displayed on listings page
+- Price drop tags show correct day-based intervals matching FAQ methodology
+- Status badges only appear for non-active listing states
+- Consistent user experience across all listing displays 

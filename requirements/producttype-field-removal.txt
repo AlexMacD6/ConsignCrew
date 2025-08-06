@@ -1,0 +1,29 @@
+ProductType Field Removal Requirements
+
+- Remove references to the non-existent `productType` field from the database schema
+- Fix the "column 'productType' does not exist" error in listing creation
+- Clean up all references to productType in API routes and frontend components
+- Ensure the application works without the productType field
+
+Technical Changes:
+- Removed productType field from API route destructuring in:
+  - app/api/listings/route.ts
+  - app/api/listings/[id]/route.ts
+- Removed productType from database creation calls
+- Updated Facebook Shop export to use category instead of productType
+- Removed productType from comprehensive listing generation
+- Cleaned up frontend display components that referenced productType
+- Removed productType from form data handling
+
+Files Modified:
+- app/api/listings/route.ts
+- app/api/listings/[id]/route.ts
+- app/api/ai/generate-comprehensive-listing/route.ts
+
+- app/(dashboard)/list-item/[id]/page.tsx
+
+Expected Outcome:
+- Listing creation should work without database errors
+- All productType references should be removed from the codebase
+- Application should function normally using existing fields like category
+- No more "column 'productType' does not exist" errors 

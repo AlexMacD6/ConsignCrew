@@ -8,7 +8,11 @@ import { adminClient } from 'better-auth/client/plugins'
 export const authClient = createAuthClient({
   baseURL: process.env.BETTER_AUTH_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'),
   plugins: [
-    organizationClient({ teams: { enabled: true } }),
+    organizationClient({ 
+      teams: { 
+        enabled: true 
+      } 
+    }),
     adminClient(),
     // stripeClient() // Uncomment and configure if using Stripe
   ],

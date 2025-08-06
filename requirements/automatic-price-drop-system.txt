@@ -1,0 +1,176 @@
+# Automatic Price Drop System Requirements
+
+## Overview
+Implement automatic price drops for listings based on their discount schedules, with history tracking and admin controls.
+
+## Current System Analysis
+
+### Existing Discount Schedule Types:
+- **Turbo-30**: Price drops every 30 minutes for 7 days (5% per drop)
+- **Classic-60**: Price drops every 60 minutes for 14 days (3% per drop)
+
+### Current Implementation Issues:
+- System calculates time until next drop but doesn't execute drops
+- Only shows countdown timers on listings page
+- No automatic price reduction happening
+- No integration with History component
+
+## New Implementation
+
+### Core Components Created:
+
+1. **Discount Schedule Utility** (`app/lib/discount-schedule.ts`):
+   - `DISCOUNT_SCHEDULES`: Configuration for Turbo-30 and Classic-60
+   - `calculateExpectedDrops()`: Calculate drops based on elapsed time
+   - `calculateCurrentPrice()`: Calculate what price should be
+   - `processPriceDrop()`: Execute price drop for single listing
+   - `processAllPriceDrops()`: Process all active listings
+   - `getTimeUntilNextDrop()`: Get countdown to next drop
+   - `getNextDropPercentage()`: Calculate next drop percentage
+
+2. **Admin API Endpoint** (`app/api/admin/process-price-drops/route.ts`):
+   - POST: Trigger price drop processing
+   - GET: Get endpoint information
+   - Admin authentication required
+   - Returns processing results
+
+3. **Admin Dashboard Integration**:
+   - Added "Price Drops" module to admin dashboard
+   - Manual trigger button for processing
+   - Real-time feedback on processing results
+
+4. **Cron Script** (`scripts/setup-price-drop-cron.js`):
+   - Standalone script for automated execution
+   - Detailed logging and error handling
+   - Can be run manually or via cron job
+
+### Price Drop Logic:
+
+1. **Calculation**:
+   - Uses compound discount formula: `newPrice = originalPrice * (1 - dropPercentage)^numberOfDrops`
+   - Respects reserve price as minimum
+   - Rounds to 2 decimal places
+
+2. **Execution**:
+   - Updates listing price in database
+   - Adds entry to PriceHistory table
+   - Creates history event in ListingHistory table
+   - Logs all actions
+
+3. **Safety Features**:
+   - Only processes active listings
+   - Validates discount schedule types
+   - Error handling and logging
+   - Respects reserve prices
+
+### History Integration:
+
+1. **Automatic History Events**:
+   - `PRICE_DROP` events created automatically
+   - Includes old and new price values
+   - Timestamped and linked to listing
+
+2. **History Component Display**:
+   - Price drops appear in listing history
+   - Shows price change amounts
+   - Chronological order with other events
+
+## Usage Instructions
+
+### Manual Processing:
+1. Go to Admin Dashboard (`/admin`)
+2. Click "Price Drops" module
+3. Click "Access Module" button
+4. View results in success/error messages
+
+### Automated Processing:
+1. Set up cron job:
+   ```bash
+   # Every 5 minutes
+   */5 * * * * cd /path/to/treasurehub && node scripts/setup-price-drop-cron.js
+   
+   # Every hour
+   0 * * * * cd /path/to/treasurehub && node scripts/setup-price-drop-cron.js
+   ```
+
+2. Or use external cron service (Vercel Cron, GitHub Actions, etc.)
+
+### API Usage:
+```bash
+# Process all price drops
+curl -X POST /api/admin/process-price-drops \
+  -H "Authorization: Bearer <token>"
+
+# Get endpoint info
+curl -X GET /api/admin/process-price-drops
+```
+
+## Technical Details
+
+### Database Changes:
+- Uses existing `PriceHistory` table
+- Uses existing `ListingHistory` table
+- Uses existing `discountSchedule` JSON field
+
+### Environment Variables:
+- No new environment variables required
+- Uses existing database connection
+
+### Dependencies:
+- Prisma ORM for database operations
+- Better Auth for admin authentication
+- Existing history event system
+
+## Testing
+
+### Manual Testing:
+1. Create listing with discount schedule
+2. Wait for drop interval or manually trigger
+3. Verify price change in database
+4. Check history events created
+5. Verify display in History component
+
+### Automated Testing:
+1. Run cron script manually
+2. Check console output for results
+3. Verify database changes
+4. Test error handling
+
+## Future Enhancements
+
+1. **Real-time Notifications**:
+   - Email notifications for price drops
+   - Push notifications for saved items
+   - SMS alerts for urgent drops
+
+2. **Advanced Scheduling**:
+   - Custom discount schedules
+   - Market-based timing
+   - Demand-responsive drops
+
+3. **Analytics Dashboard**:
+   - Price drop effectiveness metrics
+   - Conversion rate tracking
+   - Revenue impact analysis
+
+4. **Smart Pricing**:
+   - AI-powered price optimization
+   - Competitor price monitoring
+   - Dynamic reserve price adjustment
+
+## Security Considerations
+
+1. **Admin Access**:
+   - Only admin users can trigger price drops
+   - API endpoint protected by authentication
+   - Audit logging for all actions
+
+2. **Data Integrity**:
+   - Transaction-based updates
+   - Rollback capability for errors
+   - Backup before bulk operations
+
+3. **Rate Limiting**:
+   - Prevent abuse of manual triggers
+   - Respect system resources
+   - Graceful degradation under load 

@@ -1,0 +1,58 @@
+# Edit Listing Page Taxonomy and Discount Schedule Fix
+
+## Problem Description
+The edit listing page (http://localhost:3000/list-item/[id]/edit) had two major issues:
+
+1. **Taxonomy Mismatch**: The department, category, and sub-category taxonomies were completely different from the listing creation page, causing mismatches when editing listings.
+
+2. **Missing Discount Schedule Field**: The discount schedule selection field was not visible in the edit listing page, even though it exists in the listing creation page.
+
+## Requirements
+
+### 1. Fix Taxonomy Mismatch
+- Update the taxonomy object in `app/(dashboard)/list-item/[id]/edit/page.tsx` to match exactly with the taxonomy in `app/(dashboard)/list-item/page.tsx`
+- Ensure all departments, categories, and sub-categories are consistent between creation and editing pages
+- Maintain the same structure and naming conventions
+
+### 2. Add Missing Discount Schedule Field
+- Add discount schedule state management to the edit page
+- Add discount schedule dropdown field to the pricing section
+- Include proper form submission handling for discount schedule
+- Add data loading logic to populate discount schedule from existing listing data
+- Include helpful description text explaining the discount schedules
+
+### 3. Fix Next.js API Route Error
+- Fix the "params should be awaited" error in the price drop API route
+- Update the route to use proper Next.js 15 async params handling
+
+## Technical Implementation
+
+### Files Modified:
+1. `app/(dashboard)/list-item/[id]/edit/page.tsx`
+   - Updated taxonomy object to match creation page
+   - Added discount schedule state and form field
+   - Updated form submission to include discount schedule
+   - Updated data loading to populate discount schedule
+
+2. `app/api/listings/[id]/next-price-drop/route.ts`
+   - Fixed params handling to use async/await pattern
+
+### Key Changes:
+- Replaced entire taxonomy object with Facebook Marketplace-aligned categories
+- Added `discountSchedules` constant and state management
+- Added discount schedule dropdown in pricing section with 5-column grid layout
+- Updated form submission to send discount schedule as object with type property
+- Fixed data loading to handle both string and object discount schedule formats
+- Fixed Next.js 15 params handling in API route
+
+## Testing Instructions
+1. Navigate to an existing listing edit page
+2. Verify that department/category/sub-category match the original listing
+3. Verify that discount schedule field is visible and populated
+4. Test editing and saving the discount schedule
+5. Verify that price drop counter works without API errors
+
+## Dependencies
+- Next.js 15 async params handling
+- Existing discount schedule logic from creation page
+- Facebook Marketplace taxonomy structure 

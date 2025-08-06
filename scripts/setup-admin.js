@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -32,7 +32,7 @@ async function setupAdmin() {
       return;
     }
 
-    console.log('Found user:', firstUser.email);
+    console.log('Found user in database');
 
     // Check if user is already a member
     const existingMember = await prisma.member.findFirst({
@@ -62,7 +62,7 @@ async function setupAdmin() {
     }
 
     console.log('Admin setup complete!');
-    console.log('User:', firstUser.email, 'is now an OWNER of the admin organization');
+    console.log('User is now an OWNER of the admin organization');
 
   } catch (error) {
     console.error('Error setting up admin:', error);

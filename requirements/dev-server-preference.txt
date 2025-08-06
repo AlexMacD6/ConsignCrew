@@ -1,0 +1,17 @@
+# Development Server Preference
+
+## User Preference
+- Do NOT automatically start `npm run dev` when a development server is already running
+- User finds it annoying when multiple dev servers are started
+- Only start dev server if explicitly requested or if no server is currently running
+
+## Guidelines
+- Check if dev server is already running before starting a new one
+- Ask user if they want to restart the dev server if needed
+- Only auto-start dev server for initial setup or when explicitly needed
+- Respect user's current development workflow
+
+## Implementation
+- Before running `npm run dev`, check if port 3000 is already in use
+- If dev server is running, inform user and ask if restart is needed
+- Only proceed with dev server start if explicitly requested 

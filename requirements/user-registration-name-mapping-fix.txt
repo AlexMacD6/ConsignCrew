@@ -1,0 +1,108 @@
+# User Registration Name Mapping Fix Requirements
+
+## Issue Description
+User registration was failing with the error: "Unknown argument `name`. Available options are marked with ?." This occurred because BetterAuth was trying to create a user with a `name` field, but the Prisma schema only has `firstName` and `lastName` fields.
+
+## Root Cause
+- OAuth providers (Google, Facebook, TikTok) send user data with a `name` field
+- BetterAuth was trying to create users with this `name` field directly
+- The Prisma schema only has `firstName` and `lastName` fields, not a `name` field
+- This caused a schema mismatch during user creation
+
+## Solution Requirements
+
+### 1. Keep Prisma Schema Clean
+- Maintain `firstName` and `lastName` fields in the user model
+- Do not add a `name` field to the schema
+- Keep the existing field structure for consistency
+
+### 2. Add BetterAuth Name Mapping
+- Add a `beforeUserCreate` callback to BetterAuth configuration
+- Parse the OAuth provider's `name` field into `firstName` and `lastName`
+- Handle edge cases like single names or multiple word names
+- Remove the `name` field before database insertion
+
+### 3. Handle Different Registration Methods
+- OAuth providers: Map `name` to `firstName` and `lastName`
+- Email/Password registration: Use existing `firstName` and `lastName` fields
+- Ensure all registration methods work correctly
+
+## Implementation Details
+
+### Files Modified
+- `app/lib/auth.ts` - Added beforeUserCreate callback for name mapping
+
+### Changes Made
+1. **Added beforeUserCreate callback** to handle OAuth name mapping
+2. **Name parsing logic** to split full name into first and last name
+3. **Field cleanup** to remove the `name` field before database insertion
+4. **Provider-specific handling** to only apply mapping for OAuth providers
+
+### Code Changes
+```typescript
+async beforeUserCreate(user: any, provider: any) {
+  // Handle OAuth providers that send 'name' instead of firstName/lastName
+  if (provider !== "credentials" && provider !== "emailAndPassword" && user.name) {
+    const nameParts = user.name.trim().split(' ');
+    user.firstName = nameParts[0] || '';
+    user.lastName = nameParts.slice(1).join(' ') || '';
+    delete user.name; // Remove the name field since we don't have it in our schema
+  }
+  return user;
+}
+```
+
+## Name Parsing Logic
+
+### Single Name
+- Input: "John"
+- Result: firstName = "John", lastName = ""
+
+### Two Names
+- Input: "John Doe"
+- Result: firstName = "John", lastName = "Doe"
+
+### Multiple Names
+- Input: "John Michael Doe"
+- Result: firstName = "John", lastName = "Michael Doe"
+
+### Edge Cases
+- Empty name: firstName = "", lastName = ""
+- Single space: firstName = "", lastName = ""
+- Multiple spaces: Properly trimmed and split
+
+## Testing Instructions
+
+1. **Test OAuth Registration**:
+   - Try registering with Google OAuth
+   - Verify that the user's name is properly split into firstName and lastName
+   - Check that the user is created successfully in the database
+
+2. **Test Email/Password Registration**:
+   - Try registering with email and password
+   - Verify that firstName and lastName are used directly
+   - Ensure no name mapping is applied
+
+3. **Test Edge Cases**:
+   - Test with single names
+   - Test with multiple word names
+   - Test with names containing extra spaces
+
+4. **Test Database Schema**:
+   - Verify that users are created with correct firstName and lastName
+   - Confirm that no `name` field is present in the database
+
+## Expected Outcome
+
+- **✅ OAuth registration works** without schema errors
+- **✅ Names are properly parsed** into firstName and lastName
+- **✅ Email/password registration** continues to work normally
+- **✅ Database schema remains clean** with only firstName and lastName
+- **✅ No breaking changes** to existing functionality
+
+## Benefits
+
+- **Fixed Registration**: OAuth users can now register successfully
+- **Clean Schema**: Maintains consistent firstName/lastName structure
+- **Better UX**: Users can register with any OAuth provider
+- **Data Consistency**: All users have properly structured name data 

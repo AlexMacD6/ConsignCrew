@@ -1,0 +1,84 @@
+# ZIP Code Database Integration Requirements
+
+## Problem
+The application was using hardcoded ZIP code data from the `getApprovedZipCodes()` function instead of using the actual ZIP codes stored in the Prisma database table.
+
+## Requirements
+
+### 1. Remove Hardcoded ZIP Code Functions
+- Remove dependency on `getApprovedZipCodes()` function
+- Remove dependency on hardcoded ZIP code arrays
+- Use database as the single source of truth for ZIP codes
+
+### 2. Create Database-Based Functions
+- `getApprovedZipCodesFromDB()` - Get all approved ZIP codes from database
+- `isApprovedZipCodeFromDB()` - Check if ZIP code is approved using database
+- `getNeighborhoodNameFromDB()` - Get neighborhood name from database
+
+### 3. Update Form Validation
+- Make ZIP code validation asynchronous
+- Add loading states for ZIP code validation
+- Show real-time validation feedback
+- Use database validation instead of hardcoded checks
+
+### 4. Maintain Backward Compatibility
+- Keep old functions as deprecated fallbacks
+- Graceful error handling if database is unavailable
+- Fallback to hardcoded data if database fails
+
+## Changes Made
+
+### 1. Updated `app/lib/zipcodes.ts`
+- Added `getApprovedZipCodesFromDB()` function
+- Added `isApprovedZipCodeFromDB()` function  
+- Added `getNeighborhoodNameFromDB()` function
+- Marked old functions as deprecated
+
+### 2. Updated `app/(dashboard)/list-item/page.tsx`
+- Replaced hardcoded ZIP code functions with database functions
+- Added async ZIP code validation with useEffect
+- Added validation state management
+- Updated form validation to use async validation
+- Added loading indicators for ZIP code validation
+- Updated neighborhood display to use database data
+
+### 3. Form Validation Improvements
+- Real-time ZIP code validation as user types
+- Loading spinner while validating
+- Immediate feedback on valid/invalid ZIP codes
+- Neighborhood name display from database
+
+## Technical Implementation
+
+### Database Functions
+```typescript
+// Get all approved ZIP codes from database
+export async function getApprovedZipCodesFromDB(): Promise<string[]>
+
+// Check if ZIP code is approved using database  
+export async function isApprovedZipCodeFromDB(zipCode: string): Promise<boolean>
+
+// Get neighborhood name from database
+export async function getNeighborhoodNameFromDB(zipCode: string): Promise<string>
+```
+
+### Form State Management
+```typescript
+const [zipCodeValidation, setZipCodeValidation] = useState<{
+  isValid: boolean | null;
+  neighborhood: string | null;
+}>({ isValid: null, neighborhood: null });
+```
+
+### Async Validation
+- ZIP codes are validated when user enters 5 digits
+- Validation runs in background with loading state
+- Form submission waits for validation to complete
+- Graceful error handling with fallbacks
+
+## Benefits
+- Single source of truth for ZIP codes (database)
+- Real-time validation feedback
+- Better user experience with loading states
+- Maintainable and scalable ZIP code management
+- No more hardcoded ZIP code arrays to maintain 

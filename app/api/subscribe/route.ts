@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addEmailToMailchimp } from '@/lib/mailchimp';
-import { createLeadEvent, sendServerEvent } from '@/lib/meta-pixel';
 
 export async function POST(request: NextRequest) {
   try {
     const { email, source = 'website' } = await request.json();
 
-    console.log('Subscribe API called with:', { email, source });
+    console.log('Subscribe API called with email and source');
 
     // Validate email
     if (!email || !email.includes('@')) {
-      console.log('Invalid email format:', email);
+      console.log('Invalid email format provided');
       return NextResponse.json(
         { error: 'Invalid email address' },
         { status: 400 }
@@ -28,18 +27,9 @@ export async function POST(request: NextRequest) {
     // Add to Mailchimp and database
     console.log('Calling addEmailToMailchimp...');
     const result = await addEmailToMailchimp(email, source);
-    console.log('addEmailToMailchimp result:', result);
+    console.log('addEmailToMailchimp result received');
 
     if (result.success) {
-      // Send server-side Meta Pixel event
-      try {
-        const leadEvent = await createLeadEvent(email, source, 0);
-        await sendServerEvent(leadEvent);
-        console.log('Meta Pixel Lead event sent successfully');
-      } catch (metaError) {
-        console.error('Meta Pixel event failed:', metaError);
-        // Don't fail the subscription if Meta Pixel fails
-      }
 
       return NextResponse.json(
         { 

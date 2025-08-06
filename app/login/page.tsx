@@ -1,16 +1,22 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { authClient } from "../lib/auth-client";
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [error, setError] = useState("");
+  const [showResendButton, setShowResendButton] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect") || "/profile";
 
   /**
    * Handle email/password login using Better Auth
@@ -19,6 +25,8 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     setError("");
+    setShowResendButton(false);
+    setResendMessage("");
 
     try {
       // Use BetterAuth client for email/password login
@@ -28,17 +36,139 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError(
-          result.error.message || "Login failed. Please check your credentials."
-        );
+        let errorMessage =
+          result.error.message ||
+          "Login failed. Please check your credentials.";
+
+        // Improve error messaging for better user experience
+        if (result.error.status === 403) {
+          errorMessage =
+            "Please verify your email address before signing in. Check your inbox for a verification link.";
+          setShowResendButton(true);
+        } else if (
+          errorMessage.toLowerCase().includes("email") ||
+          errorMessage.toLowerCase().includes("verify") ||
+          errorMessage.toLowerCase().includes("unverified")
+        ) {
+          errorMessage =
+            "Please verify your email address before signing in. Check your inbox for a verification link.";
+          setShowResendButton(true);
+        } else if (
+          errorMessage.toLowerCase().includes("invalid") ||
+          errorMessage.toLowerCase().includes("credentials") ||
+          errorMessage.toLowerCase().includes("password") ||
+          errorMessage.toLowerCase().includes("unauthorized") ||
+          result.error.status === 401
+        ) {
+          errorMessage =
+            "Invalid email or password. Please check your credentials and try again. If you've forgotten your password, you can reset it.";
+        } else if (
+          errorMessage.toLowerCase().includes("not found") ||
+          errorMessage.toLowerCase().includes("user not found") ||
+          errorMessage.toLowerCase().includes("account not found")
+        ) {
+          errorMessage =
+            "No account found with this email address. Please check your email or create a new account.";
+        } else if (
+          errorMessage.toLowerCase().includes("network") ||
+          errorMessage.toLowerCase().includes("connection") ||
+          errorMessage.toLowerCase().includes("timeout")
+        ) {
+          errorMessage =
+            "Connection error. Please check your internet connection and try again.";
+        } else if (
+          errorMessage.toLowerCase().includes("rate limit") ||
+          errorMessage.toLowerCase().includes("too many")
+        ) {
+          errorMessage =
+            "Too many login attempts. Please wait a few minutes before trying again.";
+        } else {
+          // Generic fallback with more helpful message
+          errorMessage =
+            "Login failed. Please check your email and password, and ensure your email is verified.";
+        }
+
+        setError(errorMessage);
       } else {
-        // Successful login - redirect to profile or dashboard
-        router.push("/profile");
+        // Successful login - wait a moment for session to be established
+        console.log("Login successful, waiting for session to establish...");
+        setIsRedirecting(true);
+        setTimeout(() => {
+          console.log("Redirecting to:", redirectTo);
+          router.push(redirectTo);
+        }, 1000); // Wait 1 second for session to be established
       }
     } catch (err) {
       setError("Network error. Please try again.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  /**
+   * Handle resending verification email
+   */
+  const handleResendVerification = async () => {
+    if (!email) {
+      setResendMessage(
+        "Please enter your email address above, then click 'Resend Email'."
+      );
+      return;
+    }
+
+    setIsResending(true);
+    setResendMessage("");
+
+    try {
+      const response = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setResendMessage(
+          "Verification email sent! Please check your inbox and spam folder. The link will expire in 24 hours."
+        );
+        setShowResendButton(false);
+      } else {
+        // Improve error messaging for resend verification
+        let errorMessage =
+          data.error ||
+          "Unable to send verification email. Please try again in a few minutes.";
+
+        if (response.status === 400) {
+          if (data.error?.toLowerCase().includes("already verified")) {
+            errorMessage =
+              "Your email is already verified. You can now sign in with your email and password.";
+            setShowResendButton(false);
+          } else if (data.error?.toLowerCase().includes("not found")) {
+            errorMessage =
+              "No account found with this email address. Please check your email or create a new account.";
+          } else {
+            errorMessage =
+              "Unable to send verification email. Please check your email address and try again.";
+          }
+        } else if (response.status === 404) {
+          errorMessage =
+            "No account found with this email address. Please check your email or create a new account.";
+        } else if (response.status === 429) {
+          errorMessage =
+            "Too many verification requests. Please wait a few minutes before trying again.";
+        } else if (response.status >= 500) {
+          errorMessage = "Server error. Please try again in a few minutes.";
+        }
+
+        setResendMessage(errorMessage);
+      }
+    } catch (error) {
+      setResendMessage("Network error. Please try again.");
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -69,8 +199,52 @@ export default function LoginPage() {
 
         {/* Error Display */}
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
-            {error}
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">{error}</div>
+              {showResendButton && (
+                <button
+                  onClick={handleResendVerification}
+                  disabled={isResending}
+                  className="ml-4 px-4 py-2 bg-white border border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400 rounded-md text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                >
+                  {isResending ? (
+                    <span className="flex items-center">
+                      <svg
+                        className="animate-spin -ml-1 mr-2 h-4 w-4 text-red-600"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      Sending...
+                    </span>
+                  ) : (
+                    "Resend Email"
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Resend Success Message */}
+        {resendMessage && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-600 text-sm">
+            {resendMessage}
           </div>
         )}
 
@@ -79,7 +253,7 @@ export default function LoginPage() {
           {/* Google OAuth Button */}
           <button
             onClick={() => handleOAuthLogin("google")}
-            disabled={isLoading}
+            disabled={isLoading || isRedirecting}
             className="w-full py-2 px-4 border border-gray-300 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-50 transition disabled:opacity-50"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -106,7 +280,7 @@ export default function LoginPage() {
           {/* Facebook OAuth Button */}
           <button
             onClick={() => handleOAuthLogin("facebook")}
-            disabled={isLoading}
+            disabled={isLoading || isRedirecting}
             className="w-full py-2 px-4 border border-gray-300 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-50 transition disabled:opacity-50"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#1877F2">
@@ -118,7 +292,7 @@ export default function LoginPage() {
           {/* TikTok OAuth Button */}
           <button
             onClick={() => handleOAuthLogin("tiktok")}
-            disabled={isLoading}
+            disabled={isLoading || isRedirecting}
             className="w-full py-2 px-4 border border-gray-300 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-50 transition disabled:opacity-50"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#000000">
@@ -166,10 +340,14 @@ export default function LoginPage() {
           </div>
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || isRedirecting}
             className="btn btn-primary btn-md w-full"
           >
-            {isLoading ? "Signing in..." : "Sign In"}
+            {isLoading
+              ? "Signing in..."
+              : isRedirecting
+              ? "Redirecting..."
+              : "Sign In"}
           </button>
         </form>
 
@@ -187,5 +365,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }
