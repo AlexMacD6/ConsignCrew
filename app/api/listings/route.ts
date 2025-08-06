@@ -63,6 +63,9 @@ export async function POST(request: NextRequest) {
       tags,
       itemId, // Add itemId to destructuring
       videoId, // Add videoId to destructuring
+      // Treasure fields
+      isTreasure,
+      treasureReason,
     } = body;
 
     // Validate required fields
@@ -147,6 +150,11 @@ export async function POST(request: NextRequest) {
         pattern: pattern || null,
         style: style || null,
         tags: tags || [],
+        // Treasure fields
+        isTreasure: isTreasure || false,
+        treasureReason: treasureReason || null,
+        treasureFlaggedAt: isTreasure ? new Date() : null,
+        treasureFlaggedBy: isTreasure ? session.user.id : null,
         // Link video to listing if videoId is provided
         videos: videoId ? {
           connect: {

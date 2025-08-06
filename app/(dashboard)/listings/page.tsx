@@ -28,11 +28,13 @@ import {
   Check,
   Shield,
   ExternalLink,
+  Sparkles,
 } from "lucide-react";
 import { getNeighborhoodName } from "../../lib/zipcodes";
 import QuestionsDisplay from "../../components/QuestionsDisplay";
 import ImageCarousel from "../../components/ImageCarousel";
 import CustomQRCode from "../../components/CustomQRCode";
+import TreasureBadge from "../../components/TreasureBadge";
 import {
   getFacebookCategories,
   mapToFacebookCategory,
@@ -73,6 +75,7 @@ export default function ListingsPage() {
   const [sortBy, setSortBy] = useState("relevance");
   const [showHidden, setShowHidden] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
+  const [showTreasures, setShowTreasures] = useState(false);
   const [savedListings, setSavedListings] = useState<Set<string>>(new Set());
   const [hiddenListings, setHiddenListings] = useState<Set<string>>(new Set());
   const [selectedListing, setSelectedListing] = useState<any>(null);
@@ -117,9 +120,9 @@ export default function ListingsPage() {
                 [],
               // Create a comprehensive image array for carousel
               all_images: [
+                getPhotoUrl(listing.photos.proof), // AI-generated staged photo as first image
                 getPhotoUrl(listing.photos.hero),
                 getPhotoUrl(listing.photos.back),
-                getPhotoUrl(listing.photos.proof),
                 ...(listing.photos.additional?.map((photo: any) =>
                   getPhotoUrl(photo)
                 ) || []),
@@ -139,6 +142,9 @@ export default function ListingsPage() {
               rating: listing.rating || null, // Use actual rating if available
               reviews: listing.reviews || 0, // Use actual review count if available
               timeLeft: "2d 14h", // Default time for now
+              // Treasure fields
+              isTreasure: listing.isTreasure || false,
+              treasureReason: listing.treasureReason || null,
             };
           });
           setListings(transformedListings);
@@ -190,9 +196,14 @@ export default function ListingsPage() {
       const isSaved = savedListings.has(listing.item_id);
       const shouldShowHidden = showHidden || !isHidden;
       const shouldShowSaved = !showSaved || isSaved;
+      const shouldShowTreasures = !showTreasures || listing.isTreasure;
 
       return (
-        matchesSearch && matchesCategory && shouldShowHidden && shouldShowSaved
+        matchesSearch &&
+        matchesCategory &&
+        shouldShowHidden &&
+        shouldShowSaved &&
+        shouldShowTreasures
       );
     })
     .sort((a, b) => {
@@ -464,6 +475,17 @@ export default function ListingsPage() {
                 <EyeOff className="h-4 w-4" />
                 {showHidden ? "Hide Hidden" : "Show Hidden"}
               </Button>
+
+              {/* Show Treasures Toggle */}
+              <Button
+                variant={showTreasures ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowTreasures(!showTreasures)}
+                className="flex items-center gap-2"
+              >
+                <Sparkles className="h-4 w-4" />
+                {showTreasures ? "Show All" : "Treasures Only"}
+              </Button>
             </div>
           </div>
         </div>
@@ -615,25 +637,35 @@ export default function ListingsPage() {
                     )}
                   </div>
 
-                  {/* Estimated Retail Price - Only show if available */}
-                  {listing.estimated_retail_price && (
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm text-gray-500 line-through">
-                        ${listing.estimated_retail_price.toFixed(2)}
-                      </span>
-                      <div className="flex items-center gap-1 text-xs text-red-600">
-                        <ArrowDown className="h-3 w-3" />
-                        <span>
-                          {Math.round(
-                            ((listing.estimated_retail_price -
-                              listing.list_price) /
-                              listing.estimated_retail_price) *
-                              100
-                          )}
-                          % Off Retail
-                        </span>
-                      </div>
+                  {/* Treasure Badge or Estimated Retail Price */}
+                  {listing.isTreasure ? (
+                    <div className="mb-2">
+                      <TreasureBadge
+                        isTreasure={listing.isTreasure}
+                        treasureReason={listing.treasureReason}
+                        showReason={false}
+                      />
                     </div>
+                  ) : (
+                    listing.estimated_retail_price && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm text-gray-500 line-through">
+                          ${listing.estimated_retail_price.toFixed(2)}
+                        </span>
+                        <div className="flex items-center gap-1 text-xs text-red-600">
+                          <ArrowDown className="h-3 w-3" />
+                          <span>
+                            {Math.round(
+                              ((listing.estimated_retail_price -
+                                listing.list_price) /
+                                listing.estimated_retail_price) *
+                                100
+                            )}
+                            % Off Retail
+                          </span>
+                        </div>
+                      </div>
+                    )
                   )}
 
                   {/* Rating - Only show if there are actual reviews */}

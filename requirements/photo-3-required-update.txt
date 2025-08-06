@@ -1,0 +1,58 @@
+# Photo 3 (Proof) Required Update
+
+## Overview
+Update the photo requirements to make Photo 3 (Proof) required instead of optional, and fix text alignment issues in the photo progress section.
+
+## Requirements
+
+### Functional Requirements
+- Change Photo 3 (Proof) from "Optional" to "Required"
+- Update photo requirements notice to reflect Photo 3 as mandatory
+- Fix text alignment in photo progress section
+- Ensure consistent styling across all photo indicators
+
+### UI/UX Requirements
+- Photo 3 should show "Required" in red text like Photos 1 and 2
+- All photo indicators should have consistent text alignment
+- Additional photos section should maintain "Optional" status
+- Photo requirements notice should accurately reflect new requirements
+
+### Technical Requirements
+- Update photo progress indicators styling
+- Fix additional photos "+" button to match numbered circles
+- Update photo requirements notice text
+- Maintain existing validation logic (already includes proof photo)
+
+## Implementation Details
+
+### Changes Made
+1. **Photo 3 Indicator**
+   - Changed text from "Optional" to "Required"
+   - Updated styling to match Photos 1 and 2 (red text, font-medium)
+
+2. **Additional Photos Indicator**
+   - Fixed "+" button to use same circular styling as numbered indicators
+   - Ensured consistent text alignment across all photo sections
+
+3. **Photo Requirements Notice**
+   - Updated text to include Photo 3 as required
+   - Changed from "Photos #1 (Front) and #2 (Back)" to "Photos #1 (Front), #2 (Back), and #3 (Proof)"
+   - Updated optional section to only mention additional photos
+
+### Validation Logic
+- `hasMinimumPhotos()` function already includes proof photo requirement
+- `isFormValid` already includes proof photo requirement
+- No changes needed to validation logic
+
+## User Experience Impact
+- Users now understand that Photo 3 (Proof) is mandatory
+- Consistent visual alignment across all photo indicators
+- Clear distinction between required and optional photos
+- Form validation already enforces Photo 3 requirement
+
+## Testing
+- Verify Photo 3 shows "Required" in red text
+- Confirm all photo indicators are properly aligned
+- Test form validation with and without Photo 3
+- Verify photo requirements notice is accurate
+- Check responsive behavior on different screen sizes 

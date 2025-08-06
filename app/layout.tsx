@@ -7,6 +7,7 @@ import NavBar from "./components/NavBar";
 import Footer from "./components/Footer";
 import { ModalProvider } from "./contexts/ModalContext";
 import AuthStatus from "./components/AuthStatus";
+import MetaPixelScript from "./components/MetaPixelScript";
 
 export const metadata: Metadata = {
   title: {
@@ -114,6 +115,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             gtag('config', 'G-B483BLYZEF');
           `}
         </Script>
+
+        {/* Meta Pixel Script */}
+        <MetaPixelScript />
 
         {/* JSON-LD Structured Data */}
         <Script

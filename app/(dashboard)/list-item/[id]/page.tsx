@@ -23,6 +23,7 @@ import QuestionsDisplay from "../../../components/QuestionsDisplay";
 import ImageCarousel from "../../../components/ImageCarousel";
 import ListingHistory from "../../../components/ListingHistory";
 import CustomQRCode from "../../../components/CustomQRCode";
+import TreasureBadge from "../../../components/TreasureBadge";
 
 // Mock data for transportation history
 const transportationHistory = [
@@ -233,9 +234,9 @@ export default function ListingDetailPage() {
               data.listing.photos.gallery || [data.listing.photos.hero] || [],
             // Create a comprehensive image array for carousel
             all_images: [
+              data.listing.photos.proof, // AI-generated staged photo as first image
               data.listing.photos.hero,
               data.listing.photos.back,
-              data.listing.photos.proof,
               ...(data.listing.photos.additional || []),
             ].filter(Boolean), // Remove any null/undefined values
             serial_number: data.listing.serialNumber,
@@ -286,6 +287,9 @@ export default function ListingDetailPage() {
             style: data.listing.style || null,
             // productType field removed - not in database schema
             tags: data.listing.tags || [],
+            // Treasure fields
+            isTreasure: data.listing.isTreasure || false,
+            treasureReason: data.listing.treasureReason || null,
             // Video URL - generated from video record or fallback
             videoUrl: videoUrl,
             // Video metadata if available
@@ -557,23 +561,42 @@ export default function ListingDetailPage() {
                   )}
                 </div>
               </div>
-              {listing.estimated_retail_price && (
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="text-lg text-gray-500 line-through">
-                    ${listing.estimated_retail_price.toFixed(2)}
-                  </span>
-                  <div className="flex items-center gap-2 text-sm text-red-600">
-                    <TrendingDown className="h-4 w-4" />
-                    <span className="font-medium">
-                      {Math.round(
-                        ((listing.estimated_retail_price - listing.list_price) /
-                          listing.estimated_retail_price) *
-                          100
-                      )}
-                      % Off Retail
-                    </span>
-                  </div>
+              {listing.isTreasure ? (
+                <div className="mb-4">
+                  <TreasureBadge
+                    isTreasure={listing.isTreasure}
+                    treasureReason={listing.treasureReason}
+                    showReason={true}
+                  />
+                  {listing.priceReasoning && (
+                    <div className="mt-2 text-sm text-gray-600">
+                      <span className="font-medium">
+                        Based on recent collector sales:
+                      </span>{" "}
+                      {listing.priceReasoning}
+                    </div>
+                  )}
                 </div>
+              ) : (
+                listing.estimated_retail_price && (
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-lg text-gray-500 line-through">
+                      ${listing.estimated_retail_price.toFixed(2)}
+                    </span>
+                    <div className="flex items-center gap-2 text-sm text-red-600">
+                      <TrendingDown className="h-4 w-4" />
+                      <span className="font-medium">
+                        {Math.round(
+                          ((listing.estimated_retail_price -
+                            listing.list_price) /
+                            listing.estimated_retail_price) *
+                            100
+                        )}
+                        % Off Retail
+                      </span>
+                    </div>
+                  </div>
+                )
               )}
               <div className="flex gap-3">
                 {isAuthenticated ? (

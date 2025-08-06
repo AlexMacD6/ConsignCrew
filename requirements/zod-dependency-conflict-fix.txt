@@ -7,14 +7,14 @@
 
 ## Solution
 - Downgraded zod from ^4.0.10 to ^3.23.8 in package.json
-- Fixed incorrect import path in app/api/facebook-shop/feed/route.ts
+
 - Cleaned node_modules and package-lock.json for fresh install
 
 ## Changes Made
 1. Updated package.json:
    - Changed "zod": "^4.0.10" to "zod": "^3.23.8"
 
-2. Fixed import path in app/api/facebook-shop/feed/route.ts:
+
    - Changed from "../../../../lib/prisma" to "../../../lib/prisma"
 
 ## Verification

@@ -240,14 +240,7 @@ export default function AdminDashboard() {
       color: "bg-blue-600",
       stats: "Export CSV",
     },
-    {
-      title: "Facebook Shop Management",
-      description: "Manage which listings are enabled for Facebook Shop export",
-      icon: Settings,
-      href: "/admin/facebook-shop",
-      color: "bg-indigo-600",
-      stats: "Manage",
-    },
+
     {
       title: "Quality Check Management",
       description:
@@ -648,16 +641,6 @@ export default function AdminDashboard() {
               }`}
             >
               Security
-            </button>
-            <button
-              onClick={() => setActiveTab("facebook-shop")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "facebook-shop"
-                  ? "border-[#D4AF3D] text-[#D4AF3D]"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Facebook Shop
             </button>
           </div>
         </div>
@@ -1186,125 +1169,6 @@ export default function AdminDashboard() {
                       Online
                     </span>
                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === "facebook-shop" && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Facebook Shop Integration
-              </h2>
-              <Link href="/admin/facebook-shop">
-                <Button className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white">
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Manage Integration
-                </Button>
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Quick Setup
-                </h3>
-                <div className="space-y-4">
-                  <div className="p-4 bg-blue-50 rounded-lg">
-                    <h4 className="font-medium text-blue-900 mb-2">
-                      Step 1: Create API Key
-                    </h4>
-                    <p className="text-sm text-blue-700 mb-3">
-                      Generate a secure API key to connect your listings to
-                      Facebook Shop.
-                    </p>
-                    <Link href="/admin/facebook-shop">
-                      <Button
-                        size="sm"
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        Create API Key
-                      </Button>
-                    </Link>
-                  </div>
-
-                  <div className="p-4 bg-green-50 rounded-lg">
-                    <h4 className="font-medium text-green-900 mb-2">
-                      Step 2: Configure Facebook
-                    </h4>
-                    <p className="text-sm text-green-700 mb-3">
-                      Set up your Facebook Business Manager and configure the
-                      product feed.
-                    </p>
-                    <a
-                      href="https://business.facebook.com/commerce_manager"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Button
-                        size="sm"
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        Open Facebook Business Manager
-                      </Button>
-                    </a>
-                  </div>
-
-                  <div className="p-4 bg-yellow-50 rounded-lg">
-                    <h4 className="font-medium text-yellow-900 mb-2">
-                      Step 3: Add Feed URL
-                    </h4>
-                    <p className="text-sm text-yellow-700">
-                      Use the feed URL from your API key in Facebook's product
-                      catalog settings.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Integration Status
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">
-                      API Keys
-                    </span>
-                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                      Manage
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">
-                      Product Feed
-                    </span>
-                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                      Active
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">
-                      Sync Status
-                    </span>
-                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                      Manual Setup Required
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                  <h4 className="font-medium text-gray-900 mb-2">Need Help?</h4>
-                  <p className="text-sm text-gray-600 mb-3">
-                    Check our documentation for detailed setup instructions.
-                  </p>
-                  <Link href="/admin/facebook-shop">
-                    <Button size="sm" variant="outline">
-                      View Documentation
-                    </Button>
-                  </Link>
                 </div>
               </div>
             </div>

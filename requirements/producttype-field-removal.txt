@@ -19,7 +19,7 @@ Files Modified:
 - app/api/listings/route.ts
 - app/api/listings/[id]/route.ts
 - app/api/ai/generate-comprehensive-listing/route.ts
-- app/api/facebook-shop/export/route.ts
+
 - app/(dashboard)/list-item/[id]/page.tsx
 
 Expected Outcome:

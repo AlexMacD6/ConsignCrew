@@ -177,9 +177,9 @@ model Question {
 }
 
 model Listing {
-  id                   String   @id @default(cuid())
+  id                   String    @id @default(cuid())
   userId               String
-  itemId               String   @unique
+  itemId               String    @unique
   photos               Json
   videoUrl             String?
   department           String
@@ -198,10 +198,20 @@ model Listing {
   modelNumber          String?
   estimatedRetailPrice Float?
   discountSchedule     Json?
-  status               String   @default("active")
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-  views                Int      @default(0)
+  isTreasure           Boolean   @default(false)
+  treasureReason       String? // Why it's flagged as treasure
+  treasureFlaggedAt    DateTime?
+  treasureFlaggedBy    String? // User ID who flagged it
+  // Meta Pixel API Integration
+  metaProductId        String? // Meta's product ID
+  metaCatalogId        String? // Meta's catalog ID
+  metaLastSync         DateTime? // Last sync timestamp
+  metaSyncStatus       String? // success/error/pending/deleted
+  metaErrorDetails     String? // Error details if sync failed
+  status               String    @default("active")
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  views                Int       @default(0)
 
   // Facebook Shop Integration Fields
   facebookShopId      String?   @unique // Unique ID for Facebook Shop

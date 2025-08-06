@@ -157,6 +157,10 @@ Return a single JSON object with the following fields populated (NO COMMENTS IN 
   "style": "string" | null,
   "tags": ["string"],
 
+  // Treasure detection
+  "isTreasure": boolean,
+  "treasureReason": string | null,
+
   // Video analysis (optional)
   videoAnalysis: string | null
 }
@@ -240,7 +244,23 @@ Toys & Games: Board Games, Video Games, Educational, Action Figures
 - estimatedRetailPrice: Original retail value
 - listPrice: Current market value for resale
 - reservePrice: 60% of listPrice (minimum acceptable price)
-- priceReasoning: Detailed market analysis and justification`;
+- priceReasoning: Detailed market analysis and justification
+
+🏴‍☠️ Treasure Detection:
+If the item appears vintage, discontinued, or one-of-a-kind and no reliable MSRP is found, set:
+• "isTreasure": true
+• "estimatedRetailPrice": null
+• "discountSchedule": "None"
+• "treasureReason": Brief explanation of why it's a treasure (e.g., "Vintage 1980s design", "Discontinued model", "One-of-a-kind piece")
+• "priceReasoning": Include 2–3 recent sold-price comps (Etsy, eBay) if available
+
+Treasure indicators:
+- Item appears to be 20+ years old
+- No modern equivalent or MSRP available
+- Condition = "used" 
+- Vintage, antique, or collector appeal
+- Discontinued or rare model
+- One-of-a-kind or handmade piece`;
 
 // ============================================================================
 // END AI SERVICE PHASE 1 PROMPT
@@ -459,6 +479,10 @@ export interface ComprehensiveListingData {
   pattern?: string;
   style?: string;
   tags?: string[];
+  
+  // Treasure detection
+  isTreasure?: boolean;
+  treasureReason?: string;
 }
 
 // Legacy function - removed in favor of comprehensive AI workflow

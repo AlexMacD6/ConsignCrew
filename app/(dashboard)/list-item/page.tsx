@@ -17,6 +17,7 @@ import {
   Loader2,
   CheckCircle,
   Edit,
+  Play,
 } from "lucide-react";
 import { getApprovedZipCodesFromDB } from "../../lib/zipcodes";
 import {
@@ -1163,6 +1164,9 @@ export default function ListItemPage() {
             itemGroupId,
           }),
           tags: tags || [],
+          // Treasure fields (from AI or manual)
+          isTreasure: comprehensiveListing?.isTreasure || false,
+          treasureReason: comprehensiveListing?.treasureReason || null,
           itemId: generatedListingId || itemId,
           qrCodeUrl: generatedQRCode || generateQRCode(itemId),
           videoId: videoData.videoId || null, // Add video ID to link video to listing
@@ -1491,7 +1495,9 @@ export default function ListItemPage() {
                 >
                   3
                 </div>
-                <span className="text-xs text-gray-500">Optional</span>
+                <span className="text-xs text-red-600 font-medium">
+                  Required
+                </span>
                 {photos.proof?.url && photos.proof.url.trim() !== "" && (
                   <div className="relative w-12 h-12">
                     <img
@@ -1512,10 +1518,10 @@ export default function ListItemPage() {
               {/* Additional Photos */}
               <div className="flex flex-col items-center gap-2">
                 <div
-                  className={`text-sm font-medium transition-colors ${
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
                     currentPhotoType === "additional"
-                      ? "text-[#D4AF3D] font-semibold"
-                      : "text-gray-400"
+                      ? "bg-[#D4AF3D] text-white ring-2 ring-[#D4AF3D] ring-offset-2"
+                      : "bg-gray-200 text-gray-600"
                   }`}
                 >
                   +
@@ -1572,12 +1578,12 @@ export default function ListItemPage() {
                 <div className="text-sm text-blue-800">
                   <p className="font-medium mb-1">Minimum Photo Requirements</p>
                   <p className="mb-2">
-                    <strong>Required:</strong> Photos #1 (Front) and #2 (Back)
-                    are mandatory to proceed to the form.
+                    <strong>Required:</strong> Photos #1 (Front), #2 (Back), and
+                    #3 (Proof) are mandatory to proceed to the form.
                   </p>
                   <p className="mb-2">
-                    <strong>Optional:</strong> Photo #3 (Proof) and Additional
-                    photos (up to 10) enhance your listing.
+                    <strong>Optional:</strong> Additional photos (up to 10)
+                    enhance your listing.
                   </p>
                   <p className="text-xs text-blue-600">
                     These photos will be analyzed by AI to automatically fill in
@@ -2314,6 +2320,53 @@ export default function ListItemPage() {
                             ))}
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {/* Video Preview Section */}
+                    {videoData.videoUrl && (
+                      <div className="mb-6">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-sm font-medium text-gray-700">
+                            Video Preview
+                          </h3>
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <span>
+                              Duration: {Math.round(videoData.duration || 0)}s
+                            </span>
+                            <span>•</span>
+                            <span>
+                              {videoData.frameUrls?.length || 0} frames
+                            </span>
+                          </div>
+                        </div>
+                        <div className="relative w-full max-w-md">
+                          <video
+                            src={videoData.videoUrl || undefined}
+                            poster={videoData.thumbnailUrl || undefined}
+                            className="w-full h-48 object-cover rounded-lg border border-gray-200"
+                            controls
+                            preload="metadata"
+                            crossOrigin="anonymous"
+                          >
+                            <source
+                              src={videoData.videoUrl || ""}
+                              type="video/mp4"
+                            />
+                            <source
+                              src={videoData.videoUrl || ""}
+                              type="video/quicktime"
+                            />
+                            Your browser does not support the video tag.
+                          </video>
+                          <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
+                            <Play className="h-3 w-3" />
+                            Video
+                          </div>
+                          <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+                            {Math.round(videoData.duration || 0)}s
+                          </div>
+                        </div>
                       </div>
                     )}
 
