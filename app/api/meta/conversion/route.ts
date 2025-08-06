@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { metaConversionAPI } from '@/app/lib/meta-conversion-api';
-import { auth } from '@/app/lib/auth';
+import { metaConversionAPI } from '../../../lib/meta-conversion-api';
+import { auth } from '../../../lib/auth';
 import { headers } from 'next/headers';
 
 export async function POST(request: NextRequest) {
@@ -21,7 +21,6 @@ export async function POST(request: NextRequest) {
     const headersList = await headers();
     const clientIp = headersList.get('x-forwarded-for') || 
                     headersList.get('x-real-ip') || 
-                    request.ip || 
                     'unknown';
     const userAgent = headersList.get('user-agent') || 'unknown';
 
@@ -123,7 +122,6 @@ export async function trackPageView(request: NextRequest) {
   const headersList = await headers();
   const clientIp = headersList.get('x-forwarded-for') || 
                   headersList.get('x-real-ip') || 
-                  request.ip || 
                   'unknown';
   const userAgent = headersList.get('user-agent') || 'unknown';
   
@@ -152,7 +150,6 @@ export async function trackViewContent(
   const headersList = await headers();
   const clientIp = headersList.get('x-forwarded-for') || 
                   headersList.get('x-real-ip') || 
-                  request.ip || 
                   'unknown';
   const userAgent = headersList.get('user-agent') || 'unknown';
   
@@ -179,7 +176,6 @@ export async function trackSearch(
   const headersList = await headers();
   const clientIp = headersList.get('x-forwarded-for') || 
                   headersList.get('x-real-ip') || 
-                  request.ip || 
                   'unknown';
   const userAgent = headersList.get('user-agent') || 'unknown';
   
@@ -208,7 +204,6 @@ export async function trackLead(
   const headersList = await headers();
   const clientIp = headersList.get('x-forwarded-for') || 
                   headersList.get('x-real-ip') || 
-                  request.ip || 
                   'unknown';
   const userAgent = headersList.get('user-agent') || 'unknown';
   
@@ -235,7 +230,6 @@ export async function trackContact(
   const headersList = await headers();
   const clientIp = headersList.get('x-forwarded-for') || 
                   headersList.get('x-real-ip') || 
-                  request.ip || 
                   'unknown';
   const userAgent = headersList.get('user-agent') || 'unknown';
   

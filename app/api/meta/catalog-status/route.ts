@@ -33,11 +33,11 @@ export async function GET(request: NextRequest) {
         },
       },
       select: {
-        id: listing.id,
-        title: listing.title,
-        metaLastSync: listing.metaLastSync,
-        metaSyncStatus: listing.metaSyncStatus,
-        metaErrorDetails: listing.metaErrorDetails,
+        id: true,
+        title: true,
+        metaLastSync: true,
+        metaSyncStatus: true,
+        metaErrorDetails: true,
         user: {
           select: {
             name: true,
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
       statistics: stats,
       recentSyncs,
       metaConfig: {
-        pixelId: process.env.META_PIXEL_ID ? 'Configured' : 'Not configured',
+        pixelId: process.env.NEXT_PUBLIC_META_PIXEL_ID ? 'Configured' : 'Not configured',
         accessToken: process.env.META_ACCESS_TOKEN ? 'Configured' : 'Not configured',
         catalogId: process.env.META_CATALOG_ID ? 'Configured' : 'Not configured',
         businessId: process.env.META_BUSINESS_ID ? 'Configured' : 'Not configured',

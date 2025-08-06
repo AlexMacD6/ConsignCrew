@@ -18,7 +18,7 @@ Replace the current CSV data feed approach with Meta Pixel API integration for r
 ## Requirements
 
 ### 1. Environment Configuration
-- **META_PIXEL_ID**: Facebook Pixel ID for event tracking
+- **NEXT_PUBLIC_META_PIXEL_ID**: Facebook Pixel ID for event tracking
 - **META_ACCESS_TOKEN**: Long-lived access token for API authentication
 - **META_CATALOG_ID**: Facebook Catalog ID for product management
 - **META_BUSINESS_ID**: Facebook Business Manager ID

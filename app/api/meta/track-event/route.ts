@@ -88,71 +88,78 @@ export async function POST(request: NextRequest) {
 export async function trackViewContent(request: NextRequest) {
   const { content_id, content_type, value, currency } = await request.json();
   
-  return POST(new Request(request.url, {
-    method: 'POST',
-    headers: request.headers,
-    body: JSON.stringify({
-      event_name: 'ViewContent',
-      custom_data: {
-        content_id,
-        content_type,
-        value,
-        currency: currency || 'USD',
-      },
-    }),
-  }));
+  // Use the conversion API directly
+  const { trackViewContent: trackViewContentConversion } = await import('../conversion/route');
+  return trackViewContentConversion(request, {
+    content_name: content_type,
+    content_category: content_type,
+    content_ids: [content_id],
+    value,
+    currency: currency || 'USD',
+  });
 }
 
 export async function trackAddToCart(request: NextRequest) {
   const { content_id, content_type, value, currency, quantity } = await request.json();
   
-  return POST(new Request(request.url, {
-    method: 'POST',
-    headers: request.headers,
-    body: JSON.stringify({
-      event_name: 'AddToCart',
-      custom_data: {
-        content_id,
-        content_type,
-        value,
-        currency: currency || 'USD',
-        quantity: quantity || 1,
-      },
-    }),
-  }));
+  // Use the conversion API directly
+  const { metaConversionAPI } = await import('../../../lib/meta-conversion-api');
+  const { auth } = await import('../../../lib/auth');
+  const { headers } = await import('next/headers');
+  
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+  
+  return metaConversionAPI.trackCustomEvent({
+    event_name: 'AddToCart',
+    custom_data: {
+      content_id,
+      content_type,
+      value,
+      currency: currency || 'USD',
+      quantity: quantity || 1,
+    },
+    user_email: session?.user?.email,
+    user_phone: session?.user?.mobilePhone,
+    external_id: session?.user?.id,
+    event_source_url: request.url,
+  });
 }
 
 export async function trackPurchase(request: NextRequest) {
   const { content_id, content_type, value, currency, num_items } = await request.json();
   
-  return POST(new Request(request.url, {
-    method: 'POST',
-    headers: request.headers,
-    body: JSON.stringify({
-      event_name: 'Purchase',
-      custom_data: {
-        content_id,
-        content_type,
-        value,
-        currency: currency || 'USD',
-        num_items: num_items || 1,
-      },
-    }),
-  }));
+  // Use the conversion API directly
+  const { metaConversionAPI } = await import('../../../lib/meta-conversion-api');
+  const { auth } = await import('../../../lib/auth');
+  const { headers } = await import('next/headers');
+  
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+  
+  return metaConversionAPI.trackCustomEvent({
+    event_name: 'Purchase',
+    custom_data: {
+      content_id,
+      content_type,
+      value,
+      currency: currency || 'USD',
+      num_items: num_items || 1,
+    },
+    user_email: session?.user?.email,
+    user_phone: session?.user?.mobilePhone,
+    external_id: session?.user?.id,
+    event_source_url: request.url,
+  });
 }
 
 export async function trackSearch(request: NextRequest) {
   const { search_string, content_category } = await request.json();
   
-  return POST(new Request(request.url, {
-    method: 'POST',
-    headers: request.headers,
-    body: JSON.stringify({
-      event_name: 'Search',
-      custom_data: {
-        search_string,
-        content_category,
-      },
-    }),
-  }));
+  // Use the conversion API directly
+  const { trackSearch: trackSearchConversion } = await import('../conversion/route');
+  return trackSearchConversion(request, {
+    search_string,
+    content_category,
+  });
 } 

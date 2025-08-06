@@ -47,7 +47,7 @@ class MetaPixelAPI {
   private baseUrl = 'https://graph.facebook.com/v18.0';
 
   constructor() {
-    this.pixelId = process.env.META_PIXEL_ID || '';
+    this.pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID || '';
     this.accessToken = process.env.META_ACCESS_TOKEN || '';
     this.catalogId = process.env.META_CATALOG_ID || '';
     this.businessId = process.env.META_BUSINESS_ID || '';

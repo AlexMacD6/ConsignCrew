@@ -32,7 +32,6 @@ export async function trackPageViewForRequest(request: NextRequest) {
     const headersList = await headers();
     const clientIp = headersList.get('x-forwarded-for') || 
                     headersList.get('x-real-ip') || 
-                    request.ip || 
                     'unknown';
     const userAgent = headersList.get('user-agent') || 'unknown';
 
@@ -73,7 +72,6 @@ export async function trackContentViewForRequest(
     const headersList = await headers();
     const clientIp = headersList.get('x-forwarded-for') || 
                     headersList.get('x-real-ip') || 
-                    request.ip || 
                     'unknown';
     const userAgent = headersList.get('user-agent') || 'unknown';
 
