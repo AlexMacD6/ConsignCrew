@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { calculateImageSimilarityMock } from '@/lib/image-similarity';
+import { getImageSimilarityScore } from '@/lib/image-similarity';
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     // Calculate similarity score
     // Using mock function for now - in production, replace with actual implementation
-    const similarityScore = calculateImageSimilarityMock(imageUrl1, imageUrl2);
+    const similarityScore = await getImageSimilarityScore(imageUrl1, imageUrl2);
 
     return NextResponse.json({
       success: true,
