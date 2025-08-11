@@ -122,8 +122,10 @@ export default function ListingsPage() {
               created_at: listing.createdAt,
               status: listing.status,
               qr_code_url: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${listing.itemId}`,
-              image_urls_staged: getPhotoUrl(listing.photos.hero)
-                ? [getPhotoUrl(listing.photos.hero)] // Convert to CloudFront URL if needed
+              image_urls_staged: getPhotoUrl(listing.photos.staged)
+                ? [getPhotoUrl(listing.photos.staged)] // Use actual staged photo if available
+                : getPhotoUrl(listing.photos.hero)
+                ? [getPhotoUrl(listing.photos.hero)] // Fallback to hero photo
                 : [],
               title: listing.title,
               description: listing.description,
@@ -132,10 +134,10 @@ export default function ListingsPage() {
               image_urls_original:
                 listing.photos.gallery || [getPhotoUrl(listing.photos.hero)] ||
                 [],
-              // Create a comprehensive image array for carousel
+              // Create a comprehensive image array for carousel - put staged photo first if available
               all_images: [
-                getPhotoUrl(listing.photos.proof), // AI-generated staged photo as first image
-                getPhotoUrl(listing.photos.hero),
+                getPhotoUrl(listing.photos.staged), // AI-generated staged photo as FIRST image
+                getPhotoUrl(listing.photos.hero), // Hero photo as second image
                 getPhotoUrl(listing.photos.back),
                 ...(listing.photos.additional?.map((photo: any) =>
                   getPhotoUrl(photo)
@@ -405,9 +407,15 @@ export default function ListingsPage() {
           text: "Pending",
           className: "bg-yellow-600 text-white",
         };
+      case "active":
+      case "listed":
+      case "available":
       default:
-        // Don't show any badge for active/available listings
-        return null;
+        // Show "Available" for active/listed listings
+        return {
+          text: "Available",
+          className: "bg-green-600 text-white",
+        };
     }
   };
 
@@ -453,36 +461,34 @@ export default function ListingsPage() {
       return null;
     }
 
+    // Import discount schedule logic
+    const DISCOUNT_SCHEDULES: Record<string, any> = {
+      "Turbo-30": {
+        type: "Turbo-30",
+        dropIntervals: [0, 3, 6, 9, 12, 15, 18, 21, 24, 30],
+        dropPercentages: [100, 95, 90, 85, 80, 75, 70, 65, 60, 0],
+        totalDuration: 30,
+      },
+      "Classic-60": {
+        type: "Classic-60",
+        dropIntervals: [0, 7, 14, 21, 28, 35, 42, 49, 56, 60],
+        dropPercentages: [100, 90, 80, 75, 70, 65, 60, 55, 50, 0],
+        totalDuration: 60,
+      },
+    };
+
+    const scheduleType = discountSchedule?.type || "Classic-60";
+    const schedule = DISCOUNT_SCHEDULES[scheduleType];
+
+    if (!schedule) {
+      return null;
+    }
+
     const now = new Date();
     const created = new Date(createdAt);
     const daysSinceCreation = Math.floor(
       (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)
     );
-
-    // Handle both string type and full discount schedule object
-    let scheduleType = "Classic-60";
-    if (typeof discountSchedule === "string") {
-      scheduleType = discountSchedule;
-    } else if (discountSchedule && discountSchedule.type) {
-      scheduleType = discountSchedule.type;
-    }
-
-    // Define the discount schedules based on the new methodology
-    const schedules = {
-      "Turbo-30": {
-        dropIntervals: [0, 3, 6, 9, 12, 15, 18, 21, 24, 30],
-        totalDuration: 30,
-      },
-      "Classic-60": {
-        dropIntervals: [0, 7, 14, 21, 28, 35, 42, 49, 56, 60],
-        totalDuration: 60,
-      },
-    };
-
-    const schedule = schedules[scheduleType as keyof typeof schedules];
-    if (!schedule) {
-      return null;
-    }
 
     // If listing has expired, no more drops
     if (daysSinceCreation >= schedule.totalDuration) {
@@ -496,17 +502,33 @@ export default function ListingsPage() {
 
         if (daysUntilNextDrop === 0) {
           return "Any moment now...";
+        } else if (daysUntilNextDrop === 1) {
+          return "1d";
+        } else {
+          return `${daysUntilNextDrop}d`;
         }
-
-        if (daysUntilNextDrop === 1) {
-          return "1 day";
-        }
-
-        return `${daysUntilNextDrop} days`;
       }
     }
 
-    return null;
+    return null; // No more drops
+  };
+
+  // Helper function to check if price drop is within 24 hours
+  const isPriceDropWithin24Hours = (
+    discountSchedule: any,
+    createdAt: string
+  ) => {
+    if (!isClient) {
+      return false;
+    }
+
+    const timeUntilNext = getTimeUntilNextDrop(discountSchedule, createdAt);
+    if (!timeUntilNext) {
+      return false;
+    }
+
+    // Check if it's "Any moment now..." or "1d"
+    return timeUntilNext === "Any moment now..." || timeUntilNext === "1d";
   };
 
   return (
@@ -684,13 +706,18 @@ export default function ListingsPage() {
                     </div>
                   )}
 
-                  {/* Next Price Drop Badge */}
+                  {/* Next Price Drop Badge - Only show if within 24 hours */}
                   {(() => {
+                    const isWithin24Hours = isPriceDropWithin24Hours(
+                      listing.discount_schedule,
+                      listing.created_at
+                    );
                     const nextDrop = getTimeUntilNextDrop(
                       listing.discount_schedule,
                       listing.created_at
                     );
                     return (
+                      isWithin24Hours &&
                       nextDrop && (
                         <div
                           key={`${listing.item_id}-${timeKey}`}
@@ -707,18 +734,6 @@ export default function ListingsPage() {
                   <div className="absolute bottom-2 right-2 bg-white/90 p-1 rounded">
                     <QrCode className="h-4 w-4 text-gray-600" />
                   </div>
-
-                  {/* Status Badge */}
-                  {(() => {
-                    const statusBadge = getStatusBadge(listing.status);
-                    return statusBadge ? (
-                      <div
-                        className={`absolute top-2 left-2 px-2 py-1 rounded text-xs font-medium ${statusBadge.className}`}
-                      >
-                        {statusBadge.text}
-                      </div>
-                    ) : null;
-                  })()}
 
                   {/* Hidden Badge */}
                   {isHidden && (
@@ -1141,9 +1156,7 @@ export default function ListingsPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
-                          <span className="text-xs font-bold">📋</span>
-                        </div>
+                        <CheckCircle className="h-5 w-5 text-gray-400" />
                         <div>
                           <span className="text-sm font-medium text-gray-700">
                             Status:
@@ -1188,27 +1201,6 @@ export default function ListingsPage() {
                                 </span>
                                 <span className="ml-2 text-sm text-gray-600">
                                   {timeLeft}
-                                </span>
-                              </div>
-                            </div>
-                          )
-                        );
-                      })()}
-                      {(() => {
-                        const nextDrop = getTimeUntilNextDrop(
-                          selectedListing.discount_schedule,
-                          selectedListing.created_at
-                        );
-                        return (
-                          nextDrop && (
-                            <div className="flex items-center gap-3">
-                              <TrendingDown className="h-5 w-5 text-gray-400" />
-                              <div>
-                                <span className="text-sm font-medium text-gray-700">
-                                  Next Price Drop:
-                                </span>
-                                <span className="ml-2 text-sm text-gray-600">
-                                  {nextDrop}
                                 </span>
                               </div>
                             </div>

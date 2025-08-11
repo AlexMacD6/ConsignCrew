@@ -741,7 +741,7 @@ export async function generateStagedPhotoPhase2(request: {
     console.log("🎨 Phase 2 - Making OpenAI API call...");
     
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       messages: [
         {
           role: "system",
@@ -873,7 +873,7 @@ export async function generateStagedPhoto(request: StagedPhotoRequest): Promise<
       valueProposition: request.comprehensiveData?.valueProposition,
     };
 
-    const response = await fetch('/api/ai/generate-staged-photo', {
+    const response = await fetch('/api/ai/generate-staged-photo-pebblely', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

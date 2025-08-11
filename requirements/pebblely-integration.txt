@@ -1,0 +1,108 @@
+# Pebblely Integration for Staged Photo Generation
+
+## Problem
+The current DALL-E implementation for generating staged product photos is expensive and slower than needed. We need a more cost-effective and faster solution for creating professional product photography with styled backgrounds.
+
+## Solution
+Replace DALL-E with Pebblely API for staged photo generation. Pebblely specializes in product photography and offers better performance at lower costs.
+
+## Requirements
+
+### 1. Pebblely API Integration
+- Create TypeScript client for Pebblely API
+- Support all major endpoints: remove background, create background, upscale
+- Implement credit management and error handling
+- Base64 and URL image format support
+
+### 2. New API Endpoint
+- Create `/api/ai/generate-staged-photo-pebblely` route
+- Maintain same interface as DALL-E implementation for compatibility
+- Add product category to theme mapping
+- Generate product-specific descriptions
+
+### 3. Theme Intelligence
+- Map product categories to appropriate Pebblely themes
+- Beauty products → Bathroom theme
+- Jewelry → Studio theme
+- Kitchen items → Kitchen theme
+- Furniture → Furniture theme
+- Outdoor items → Nature theme
+- Default → Studio theme
+
+### 4. Workflow Process
+1. Receive product data and hero image URL
+2. Generate AI staging prompt (existing functionality)
+3. Remove background from product photo using Pebblely
+4. Create new professional background using Pebblely
+5. Upload final image to S3
+6. Return public URL and metadata
+
+### 5. Migration Strategy
+- Comment out DALL-E implementation (don't delete)
+- Update existing calls to use new Pebblely endpoint
+- Add environment variable for Pebblely API key
+- Provide migration documentation
+
+### 6. Performance Improvements
+- Faster processing: ~5-8 seconds vs ~15 seconds
+- Better quality for product photography
+- More reliable service uptime
+- Credit-based pricing vs per-API-call
+
+### 7. Error Handling
+- Credit insufficient warnings
+- API failure recovery
+- Detailed error logging
+- Fallback to original image if needed
+
+### 8. Cost Benefits
+- $0.20 - $0.05 per image vs DALL-E pricing
+- Credits-based system with bulk discounts
+- Subscription options for high volume
+- Free tier with 20 credits for testing
+
+## Technical Implementation
+
+### Environment Variables
+```bash
+PEBBLELY_API_KEY=your_api_key_here
+```
+
+### API Usage
+```typescript
+// 2 credits per staging operation
+// 1 credit for background removal
+// 1 credit for background creation
+const result = await pebblelyClient.generateStagedPhoto({
+  imageUrl: heroImageUrl,
+  theme: 'Studio',
+  description: 'Professional product photo',
+  width: 1024,
+  height: 1024
+});
+```
+
+### Files Created
+- `app/lib/pebblely-client.ts` - TypeScript client
+- `app/api/ai/generate-staged-photo-pebblely/route.ts` - API endpoint
+- `app/api/ai/generate-staged-photo-pebblely/README.md` - Documentation
+
+### Files Modified
+- `app/api/ai/generate-staged-photo/route.ts` - Commented out DALL-E
+- `app/lib/ai-service.ts` - Updated endpoint URL
+- `app/(dashboard)/list-item/page.tsx` - Updated endpoint URL
+
+## Testing
+1. Sign up for Pebblely API account
+2. Get API key with free credits
+3. Add to environment variables
+4. Test with product listing form
+5. Verify S3 upload and image quality
+
+## Rollback Plan
+- Uncomment DALL-E implementation
+- Revert endpoint URL changes
+- Remove Pebblely environment variable
+- Original functionality restored
+
+

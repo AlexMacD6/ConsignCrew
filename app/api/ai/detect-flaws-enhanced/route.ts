@@ -90,14 +90,17 @@ export async function POST(request: NextRequest) {
       normalWear: ["light_wear", "minor_scratching", "normal_aging"]
     };
 
-    const enhancedFlawDetectionPrompt = `You are an expert product condition analyst specializing in ${productCategory || 'general'} products. Your task is to analyze product photos and identify flaws, damage, and imperfections that would affect the product's condition or value.
+    const enhancedFlawDetectionPrompt = `You are an expert product condition analyst specializing in ${productCategory || 'general'} products. Your task is to analyze product photos and identify ONLY OBVIOUS and SIGNIFICANT flaws, damage, and imperfections that would clearly affect the product's condition or value.
 
 PRODUCT CONTEXT:
 - Category: ${productCategory || 'General'}
 - Estimated Value: ${estimatedValue ? `$${estimatedValue}` : 'Unknown'}
 - Listed Condition: ${condition || 'Unknown'}
 
-CATEGORY-SPECIFIC FLAW TYPES TO LOOK FOR:
+PHOTOS TO ANALYZE (in order):
+${accessiblePhotoUrls.map((url, index) => `Photo ${index + 1}: ${url}`).join('\n')}
+
+CATEGORY-SPECIFIC FLAW TYPES TO LOOK FOR (ONLY OBVIOUS ONES):
 ${categoryInfo.flawTypes.map(type => `- ${type}`).join('\n')}
 
 NORMAL WEAR PATTERNS (DO NOT FLAG AS FLAWS):
@@ -109,25 +112,28 @@ SEVERITY ASSESSMENT GUIDELINES:
 - Major: ${severityGuidelines.major}
 
 ANALYSIS INSTRUCTIONS:
-1. Only report actual flaws, not normal wear patterns
-2. Consider the product category and expected condition
-3. Assess severity based on impact on functionality and value
-4. Be precise about location and description
-5. Provide confidence level for each assessment
+1. ONLY report OBVIOUS and CLEAR flaws that significantly impact value or functionality
+2. Ignore minor imperfections, normal wear, and subtle issues
+3. Be very conservative - when in doubt, don't flag it as a flaw
+4. Consider the product category and expected condition
+5. Assess severity based on impact on functionality and value
+6. Be precise about location and description
+7. Provide confidence level for each assessment (only report if confidence > 99%)
+8. CRITICAL: Associate each flaw with the EXACT photo where it appears using photoIndex (0-based) and photoUrl
 
 Return your analysis as a JSON object with the following structure:
 {
   "flaws": [
     {
       "photoIndex": 0,
-      "photoUrl": "url_of_photo",
+      "photoUrl": "exact_url_of_photo_where_flaw_appears",
       "flaws": [
         {
           "type": "specific_flaw_type",
           "severity": "minor|moderate|major",
           "location": "specific_location_on_product",
           "description": "detailed_description_of_flaw",
-          "confidence": 0.85,
+          "confidence": 0.99,
           "impactOnValue": "low|medium|high",
           "repairability": "easy|moderate|difficult"
         }
@@ -139,10 +145,10 @@ Return your analysis as a JSON object with the following structure:
   "recommendations": "Suggestions for improving product presentation or condition"
 }
 
-Be thorough but accurate. Only report flaws that are clearly visible and would affect the product's value or functionality.`;
+IMPORTANT: Each flaw must be associated with the specific photo where it appears. Use photoIndex to reference the photo number (0 = first photo, 1 = second photo, etc.) and photoUrl to include the exact URL of that photo. Only report flaws with 99% confidence or higher.`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       messages: [
         {
           role: "system",
@@ -208,35 +214,47 @@ Be thorough but accurate. Only report flaws that are clearly visible and would a
 }
 
 function validateAndCleanFlawData(flawData: any, productCategory: string) {
+  console.log('Raw flaw data received:', JSON.stringify(flawData, null, 2));
+  
   // Validate the structure
   if (!flawData.flaws || !Array.isArray(flawData.flaws)) {
+    console.log('Invalid flaw data structure - no flaws array found');
     return { flaws: [], summary: "Invalid flaw data structure" };
   }
 
   // Clean and validate each flaw entry
-  const cleanedFlaws = flawData.flaws.map((photoFlaw: any) => {
+  const cleanedFlaws = flawData.flaws.map((photoFlaw: any, index: number) => {
+    console.log(`Processing photo flaw ${index}:`, JSON.stringify(photoFlaw, null, 2));
+    
     if (!photoFlaw.flaws || !Array.isArray(photoFlaw.flaws)) {
+      console.log(`Photo flaw ${index} has no valid flaws array`);
       return photoFlaw;
     }
 
     // Filter out low-confidence flaws and validate severity
     const validatedFlaws = photoFlaw.flaws
-      .filter((flaw: any) => {
-        // Remove flaws with very low confidence
-        if (flaw.confidence && flaw.confidence < 0.3) {
+      .filter((flaw: any, flawIndex: number) => {
+        console.log(`Checking flaw ${flawIndex} in photo ${index}:`, JSON.stringify(flaw, null, 2));
+        
+        // Remove flaws with low confidence - only keep very obvious flaws (99% confidence)
+        if (flaw.confidence && flaw.confidence < 0.99) {
+          console.log(`Flaw ${flawIndex} in photo ${index} rejected due to low confidence: ${flaw.confidence}`);
           return false;
         }
         
         // Validate severity
         if (!['minor', 'moderate', 'major'].includes(flaw.severity)) {
           flaw.severity = 'minor'; // Default to minor if invalid
+          console.log(`Flaw ${flawIndex} in photo ${index} severity defaulted to minor`);
         }
 
         // Validate flaw type
         if (!flaw.type || flaw.type.trim() === '') {
+          console.log(`Flaw ${flawIndex} in photo ${index} rejected due to missing type`);
           return false;
         }
 
+        console.log(`Flaw ${flawIndex} in photo ${index} passed validation`);
         return true;
       })
       .map((flaw: any) => ({
@@ -246,17 +264,35 @@ function validateAndCleanFlawData(flawData: any, productCategory: string) {
         repairability: flaw.repairability || 'moderate'
       }));
 
+    console.log(`Photo ${index} has ${validatedFlaws.length} validated flaws`);
+
+    // Only keep the highest confidence flaw per photo
+    const highestConfidenceFlaw = validatedFlaws.length > 0 
+      ? validatedFlaws.reduce((highest: any, current: any) => 
+          (current.confidence || 0) > (highest.confidence || 0) ? current : highest
+        )
+      : null;
+
+    if (highestConfidenceFlaw) {
+      console.log(`Photo ${index} highest confidence flaw:`, JSON.stringify(highestConfidenceFlaw, null, 2));
+    } else {
+      console.log(`Photo ${index} has no flaws meeting confidence threshold`);
+    }
+
     return {
       ...photoFlaw,
-      flaws: validatedFlaws
+      flaws: highestConfidenceFlaw ? [highestConfidenceFlaw] : []
     };
   });
 
-  return {
+  const result = {
     ...flawData,
     flaws: cleanedFlaws,
     summary: flawData.summary || "Flaw analysis completed",
     confidence: flawData.confidence || 0.5,
     recommendations: flawData.recommendations || ""
   };
+
+  console.log('Final cleaned flaw data:', JSON.stringify(result, null, 2));
+  return result;
 } 

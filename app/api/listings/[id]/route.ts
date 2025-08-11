@@ -9,6 +9,8 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const { searchParams } = new URL(request.url);
+    const isEdit = searchParams.get('edit') === 'true';
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!id) {
@@ -18,8 +20,8 @@ export async function GET(
       );
     }
 
-    // Check if user is authenticated for edit access
-    if (!session?.user?.id) {
+    // Only require authentication for edit access
+    if (isEdit && !session?.user?.id) {
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
@@ -87,8 +89,8 @@ export async function GET(
       );
     }
 
-    // Check if the user owns this listing
-    if (listing.userId !== session.user.id) {
+    // Check ownership only for edit access
+    if (isEdit && session?.user?.id && listing.userId !== session.user.id) {
       return NextResponse.json(
         { error: "You can only edit your own listings" },
         { status: 403 }
@@ -213,6 +215,11 @@ export async function PUT(
       pattern,
       style,
       tags,
+
+
+      // Treasure fields
+      isTreasure,
+      treasureReason,
     } = body;
 
     // Validate required fields
@@ -281,6 +288,10 @@ export async function PUT(
         pattern: pattern || null,
         style: style || null,
         tags: tags || [],
+
+        // Treasure fields
+        isTreasure: isTreasure || false,
+        treasureReason: treasureReason || null,
         updatedAt: new Date(),
       },
       include: {

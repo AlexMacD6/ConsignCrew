@@ -25,10 +25,8 @@ import {
   ComprehensiveListingData,
   mapConditionToFacebook,
 } from "../../lib/ai-service";
-import {
-  generateFormFields,
-  FormGenerationData,
-} from "../../lib/ai-form-generator";
+// FormGenerationData interface moved to ai-service for unified typing
+import { FormGenerationData } from "../../lib/ai-form-generator";
 import VideoUpload from "../../components/VideoUpload";
 import VideoProcessingModal from "../../components/VideoProcessingModal";
 import CustomQRCode from "../../components/CustomQRCode";
@@ -427,6 +425,7 @@ export default function ListItemPage() {
     desiredAspectRatio: string;
     targetResolution: string;
     postProcess: string;
+    generatedImageUrl?: string;
   } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -680,7 +679,7 @@ export default function ListItemPage() {
   //   }
   // };
 
-  // Legacy function - removed in favor of comprehensive AI workflow
+  // Updated to use unified AI service for form field generation
 
   const generateFormFieldsData = async () => {
     // Collect photo URLs for AI analysis - convert S3 to CloudFront URLs
@@ -759,24 +758,39 @@ export default function ListItemPage() {
     setComprehensiveError(null);
 
     try {
-      // Use comprehensive listing generation which supports video analysis
-      const { generateComprehensiveListing } = await import(
-        "../../lib/ai-service"
-      );
-      const response = await generateComprehensiveListing(userInput);
-      console.log("🎯 Form Generation Complete:", response);
-      setComprehensiveListing(response.listingData);
+      // Use unified comprehensive listing service
+      const response = await fetch("/api/ai/generate-comprehensive-listing", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...userInput,
+          mode: "comprehensive", // Use comprehensive mode for full analysis
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error || "Failed to generate comprehensive listing"
+        );
+      }
+
+      const data = await response.json();
+      console.log("🎯 Comprehensive Generation Complete:", data);
+      setComprehensiveListing(data.listingData);
 
       // Extract confidence scores if available
-      if (response.confidenceScores) {
-        setConfidenceScores(response.confidenceScores);
-        console.log("🎯 Confidence scores set:", response.confidenceScores);
+      if (data.confidenceScores) {
+        setConfidenceScores(data.confidenceScores);
+        console.log("🎯 Confidence scores set:", data.confidenceScores);
       } else {
         console.log("⚠️ No confidence scores found in response");
       }
 
       // Apply the form data to the form
-      const listingData = response.listingData;
+      const listingData = data.listingData;
       console.log("📝 Setting title to:", listingData.title);
       setTitle(listingData.title);
       setDescription(listingData.description);
@@ -889,18 +903,21 @@ export default function ListItemPage() {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-          const phase2Response = await fetch("/api/ai/generate-staged-photo", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              listingJSON: listingData,
-              photoURLs: accessiblePhotoUrls,
-              videoFrames: videoFrameUrls,
-            }),
-            signal: controller.signal,
-          });
+          const phase2Response = await fetch(
+            "/api/ai/generate-staged-photo-pebblely",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                listingJSON: listingData,
+                photoURLs: accessiblePhotoUrls,
+                videoFrames: videoFrameUrls,
+              }),
+              signal: controller.signal,
+            }
+          );
 
           clearTimeout(timeoutId);
 
@@ -1122,7 +1139,7 @@ export default function ListItemPage() {
       try {
         const formData = {
           photos: {
-            staged: stagedPhotoData?.referenceImageUrl || photos.proof?.url, // AI-generated staged photo
+            staged: stagedPhotoData?.generatedImageUrl || photos.proof?.url, // AI-generated staged photo
             hero: photos.hero,
             back: photos.back,
             proof: photos.proof,

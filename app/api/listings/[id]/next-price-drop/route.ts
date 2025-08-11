@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { DISCOUNT_SCHEDULES, getTimeUntilNextDrop, getNextDropPercentage, calculateNextDropInfo } from '@/lib/discount-schedule';
+import { 
+  DISCOUNT_SCHEDULES, 
+  calculateNextDropInfo, 
+  calculateCurrentPrice 
+} from '@/lib/discount-schedule';
 
 // GET - Get next price drop information for a listing
 export async function GET(
@@ -28,22 +32,14 @@ export async function GET(
       );
     }
 
-    // Check if listing has a discount schedule
+    // Get the original price (first price in history or current price)
+    const originalPrice = listing.priceHistory[0]?.price || listing.price;
+    const currentPrice = listing.price;
+    const reservePrice = listing.reservePrice || 0;
+
+    // Get the discount schedule from the listing
     const discountScheduleData = listing.discountSchedule as any;
-    let scheduleType: string;
-    
-    // Handle both string format (legacy) and object format
-    if (typeof discountScheduleData === 'string') {
-      scheduleType = discountScheduleData;
-    } else if (discountScheduleData?.type) {
-      scheduleType = discountScheduleData.type;
-    } else {
-      return NextResponse.json({
-        success: true,
-        hasPriceDrop: false,
-        message: 'No price drop schedule configured',
-      });
-    }
+    const scheduleType = discountScheduleData?.type || 'Classic-60';
     const discountSchedule = DISCOUNT_SCHEDULES[scheduleType];
 
     if (!discountSchedule) {
@@ -51,29 +47,32 @@ export async function GET(
         success: true,
         hasPriceDrop: false,
         message: 'Invalid discount schedule',
+        currentPrice,
+        originalPrice,
       });
     }
 
-    // Get the original price (first price in history or current price)
-    const originalPrice = listing.priceHistory[0]?.price || listing.price;
-    const currentPrice = listing.price;
-    const reservePrice = listing.reservePrice || 0;
-
-    // Calculate next price drop information
-    const timeUntilNextDrop = getTimeUntilNextDrop(listing.createdAt, discountSchedule);
-    const nextDropPercentage = getNextDropPercentage(listing.createdAt, discountSchedule);
-    
-    // Calculate what the price would be after the next drop
+    // Calculate next drop information using proper discount schedule logic
     const nextDropInfo = calculateNextDropInfo(listing.createdAt, discountSchedule);
-    const nextDropPrice = nextDropInfo 
-      ? Math.round(originalPrice * (nextDropInfo.nextDropPercentage / 100) * 100) / 100
-      : 0;
-    
+
+    if (!nextDropInfo) {
+      return NextResponse.json({
+        success: true,
+        hasPriceDrop: false,
+        message: 'Discount period has ended',
+        currentPrice,
+        originalPrice,
+      });
+    }
+
+    // Calculate the next drop price
+    const nextDropPrice = Math.max(
+      Math.round(originalPrice * (nextDropInfo.nextDropPercentage / 100) * 100) / 100,
+      reservePrice
+    );
+
     // Check if we're already at or below reserve price
-    const isAtReservePrice = currentPrice <= reservePrice;
-    
-    // If at reserve price, no more drops
-    if (isAtReservePrice) {
+    if (nextDropPrice <= reservePrice) {
       return NextResponse.json({
         success: true,
         hasPriceDrop: false,
@@ -83,27 +82,28 @@ export async function GET(
       });
     }
 
-    // If listing has expired, no more drops
-    if (!timeUntilNextDrop) {
-      return NextResponse.json({
-        success: true,
-        hasPriceDrop: false,
-        message: 'Price drop period has ended',
-        currentPrice,
-        originalPrice,
-      });
+    // Format the time until next drop
+    const { daysUntilNextDrop } = nextDropInfo;
+    
+    let timeUntilNextDrop: string;
+    if (daysUntilNextDrop === 0) {
+      timeUntilNextDrop = "Any moment now...";
+    } else if (daysUntilNextDrop === 1) {
+      timeUntilNextDrop = "1d";
+    } else {
+      timeUntilNextDrop = `${daysUntilNextDrop}d`;
     }
 
     return NextResponse.json({
       success: true,
       hasPriceDrop: true,
       timeUntilNextDrop,
-      nextDropPrice: Math.max(nextDropPrice, reservePrice),
+      nextDropPrice,
       currentPrice,
       originalPrice,
       reservePrice,
       scheduleType,
-      nextDropPercentage,
+      nextDropPercentage: nextDropInfo.nextDropPercentage,
     });
 
   } catch (error) {

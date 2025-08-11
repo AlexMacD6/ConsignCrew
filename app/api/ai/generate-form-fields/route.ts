@@ -152,7 +152,7 @@ Provide deep reasoning for each field to maximize value, appeal, and competitive
 
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o", // Using o3 for deep reasoning and comprehensive analysis
+      model: "gpt-5", // Upgraded from gpt-4o for better performance
       messages: [
         {
           role: "system",

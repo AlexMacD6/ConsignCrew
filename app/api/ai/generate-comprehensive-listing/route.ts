@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
       photos,
       video,
       additionalInfo,
+      mode = 'comprehensive', // 'comprehensive' or 'formFields' mode
     } = body;
 
     // Extract photo URLs for AI analysis
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
     console.log('Accessible video frame URLs:', accessibleVideoFrameUrls);
     console.log('Video thumbnail URL:', videoThumbnailUrl);
     console.log('Accessible video thumbnail URL:', accessibleVideoThumbnailUrl);
-    console.log('Model to use:', accessiblePhotoUrls.length > 0 || accessibleVideoUrl || accessibleVideoFrameUrls.length > 0 ? "gpt-4o" : "gpt-4o-mini");
+    console.log('Model to use: gpt-5 (upgraded from gpt-4o)');
     console.log('📸 Photo breakdown - Hero:', photos.hero?.url ? 1 : 0, 'Back:', photos.back?.url ? 1 : 0, 'Proof:', photos.proof?.url ? 1 : 0, 'Additional:', photos.additional?.length || 0);
     console.log('🎥 Video breakdown - URL:', videoUrl ? 1 : 0, 'Frames:', videoFrameUrls.length, 'Thumbnail:', videoThumbnailUrl ? 1 : 0);
     console.log('🎥 Video frame URLs:', videoFrameUrls);
@@ -115,8 +116,19 @@ export async function POST(request: NextRequest) {
       console.log(`Video Frame ${index + 1}: ${url} - Accessible: ${isAccessible}`);
     });
 
-    // Create a comprehensive prompt for the o3 model with visual analysis
-    const prompt = AI_SERVICE_PHASE_1_PROMPT + `
+    // Create a dynamic prompt based on mode (form fields vs comprehensive)
+    const isFormFieldsMode = mode === 'formFields';
+    
+    // Form fields specific prompt for quick generation
+    const formFieldsPrompt = `You are an expert product listing specialist for TreasureHub, a premium consignment marketplace with deep knowledge of e-commerce, pricing strategies, market analysis, consumer psychology, and competitive positioning.
+
+TASK: Perform quick analysis and generate form fields with market insights. ${accessiblePhotoUrls.length > 0 ? `Analyze the provided ${accessiblePhotoUrls.length} photos to identify the actual product, its condition, features, and visual characteristics.` : ""}
+
+RESPONSE FORMAT: Return the same JSON structure as the comprehensive mode but focus on quick, accurate field population for immediate user feedback.`;
+
+    // Use form fields prompt for quick mode, comprehensive prompt for full analysis
+    const basePrompt = isFormFieldsMode ? formFieldsPrompt : AI_SERVICE_PHASE_1_PROMPT;
+    const prompt = basePrompt + `
 
 // ============================================================================
 // DYNAMIC CONTEXT - USER INPUT DATA
@@ -190,9 +202,8 @@ TASK: Generate a comprehensive listing with the following sections:
 
 Focus on accuracy, detail, and maximizing the item's perceived value while maintaining honesty about condition and features.`;
 
-    // Use OpenAI o3 model for comprehensive analysis with visual content
-    // If no accessible images/video frames, use text-only model for better performance
-    const modelToUse = accessiblePhotoUrls.length > 0 || accessibleVideoUrl || accessibleVideoFrameUrls.length > 0 ? "gpt-4o" : "gpt-4o-mini";
+    // Use GPT-5 for all analysis (upgraded from gpt-4o/gpt-4o-mini)
+    const modelToUse = "gpt-5";
     
     // If no accessible images/video/frames, modify the prompt to be text-only focused
     const finalPrompt = accessiblePhotoUrls.length === 0 && !accessibleVideoUrl && accessibleVideoFrameUrls.length === 0
@@ -262,15 +273,17 @@ Focus on accuracy, detail, and maximizing the item's perceived value while maint
       messages: [
         {
           role: "system",
-          content: "You are an expert product listing specialist with deep knowledge of e-commerce, pricing, and marketing. You can analyze visual content including photos and videos to generate accurate, detailed, and compelling product listings."
+          content: isFormFieldsMode 
+            ? "You are an expert product listing specialist with deep knowledge of e-commerce, pricing strategies, market analysis, consumer psychology, competitive positioning, and conversion optimization. Generate quick, accurate form fields with detailed analysis and justification for each decision."
+            : "You are an expert product listing specialist with deep knowledge of e-commerce, pricing, and marketing. You can analyze visual content including photos and videos to generate accurate, detailed, and compelling product listings."
         },
         {
           role: "user",
           content: content
         }
       ],
-      temperature: 0.7,
-      max_tokens: 2000,
+      temperature: isFormFieldsMode ? 0.5 : 0.7, // Lower temperature for form fields for more consistent results
+      max_tokens: isFormFieldsMode ? 1500 : 2000, // Fewer tokens needed for form fields
     });
 
     const responseText = completion.choices[0]?.message?.content;
@@ -387,24 +400,12 @@ Focus on accuracy, detail, and maximizing the item's perceived value while maint
 
     const confidenceScores = calculateAllFieldConfidence(validatedData, confidenceFactors);
 
-    // Detect flaws in photos if we have accessible photo URLs
+    // Only run additional services for comprehensive mode, not form fields mode
     let flawData = null;
-    if (accessiblePhotoUrls.length > 0) {
-      try {
-        console.log('🔍 Starting flaw detection for', accessiblePhotoUrls.length, 'photos');
-        const flawResult = await detectPhotoFlaws(accessiblePhotoUrls);
-        flawData = flawResult.flawData;
-        console.log('✅ Flaw detection completed:', flawData);
-      } catch (flawError) {
-        console.error('❌ Flaw detection failed:', flawError);
-        // Don't fail the entire request if flaw detection fails
-        flawData = { flaws: [], summary: "Flaw detection unavailable" };
-      }
-    }
-
-    // Phase 2: Generate staged photo prompt
     let stagedPhotoData = null;
-    if (accessiblePhotoUrls.length > 0) {
+    
+    if (!isFormFieldsMode && accessiblePhotoUrls.length > 0) {
+      // Phase 2: Generate staged photo prompt (comprehensive mode only)
       try {
         console.log('🎨 Starting Phase 2: Staged photo generation');
         const stagedPhotoResult = await generateStagedPhotoPhase2({
@@ -427,14 +428,23 @@ Focus on accuracy, detail, and maximizing the item's perceived value while maint
       }
     }
 
-    return NextResponse.json({
-      success: true,
-      listingData: validatedData,
-      confidenceScores,
-      analysis: responseText,
-      flawData,
-      stagedPhotoData,
-    });
+    // Return different response based on mode
+    if (isFormFieldsMode) {
+      return NextResponse.json({
+        success: true,
+        formData: validatedData, // Use formData key for compatibility with form fields mode
+        analysis: responseText,
+      });
+    } else {
+      return NextResponse.json({
+        success: true,
+        listingData: validatedData,
+        confidenceScores,
+        analysis: responseText,
+        flawData,
+        stagedPhotoData,
+      });
+    }
 
   } catch (error) {
     console.error('Error generating comprehensive listing:', error);
