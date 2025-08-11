@@ -138,6 +138,17 @@ model verificationToken {
   @@map("verificationToken")
 }
 
+model verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("verification")
+}
+
 model ZipCode {
   id   String @id @default(cuid())
   code String

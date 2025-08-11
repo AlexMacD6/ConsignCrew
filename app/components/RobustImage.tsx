@@ -101,13 +101,6 @@ export default function RobustImage({
         onLoad={handleLoad}
         unoptimized={false} // Allow optimization for S3 images
       />
-
-      {/* Show indicator for S3-stored images */}
-      {isS3Image && !hasError && !isLoading && (
-        <div className="absolute top-2 left-2 bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-          S3 Stored
-        </div>
-      )}
     </div>
   );
 }

@@ -70,10 +70,10 @@ Return your analysis as a JSON object with the following structure:
   "summary": "Overall condition assessment based on all photos"
 }
 
-Be thorough but accurate. Only report flaws that are clearly visible in the photos. If no flaws are detected, return an empty flaws array for that photo.`;
+Be very conservative and accurate. Only report flaws that are OBVIOUSLY visible and would clearly affect the product's value or functionality. When in doubt, do not flag it as a flaw. Only report flaws with 99% confidence or higher.`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       messages: [
         {
           role: "system",

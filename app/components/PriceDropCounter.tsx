@@ -2,10 +2,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { TrendingDown, Clock } from "lucide-react";
 
-interface PriceDropCounterProps {
-  listingId: string;
-}
-
 interface PriceDropInfo {
   hasPriceDrop: boolean;
   timeUntilNextDrop?: string;
@@ -18,13 +14,30 @@ interface PriceDropInfo {
   message?: string;
 }
 
-export default function PriceDropCounter({ listingId }: PriceDropCounterProps) {
+interface PriceDropCounterProps {
+  listingId: string;
+  createdAt?: string; // Add creation date for client-side calculation
+  discountSchedule?: any; // Add discount schedule
+  currentPrice?: number; // Current listing price for calculating actual drop amount
+  originalPrice?: number; // Original listing price
+  reservePrice?: number; // Reserve price
+}
+
+export default function PriceDropCounter({
+  listingId,
+  createdAt,
+  discountSchedule,
+  currentPrice,
+  originalPrice,
+  reservePrice,
+}: PriceDropCounterProps) {
   const [priceDropInfo, setPriceDropInfo] = useState<PriceDropInfo | null>(
     null
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<string>("");
+  const [useClientSideCountdown, setUseClientSideCountdown] = useState(false);
   const isRefreshing = useRef(false);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -70,7 +83,80 @@ export default function PriceDropCounter({ listingId }: PriceDropCounterProps) {
     [listingId]
   );
 
-  // Parse time string and convert to countdown
+  // Client-side discount schedule logic
+  const DISCOUNT_SCHEDULES: Record<string, any> = {
+    "Turbo-30": {
+      type: "Turbo-30",
+      dropIntervals: [0, 3, 6, 9, 12, 15, 18, 21, 24, 30],
+      dropPercentages: [100, 95, 90, 85, 80, 75, 70, 65, 60, 0],
+      totalDuration: 30,
+    },
+    "Classic-60": {
+      type: "Classic-60",
+      dropIntervals: [0, 7, 14, 21, 28, 35, 42, 49, 56, 60],
+      dropPercentages: [100, 90, 80, 75, 70, 65, 60, 55, 50, 0],
+      totalDuration: 60,
+    },
+  };
+
+  // Calculate next drop info client-side
+  const calculateClientSideCountdown = useCallback(() => {
+    if (!createdAt || !discountSchedule) return null;
+
+    const scheduleType = discountSchedule?.type || "Classic-60";
+    const schedule = DISCOUNT_SCHEDULES[scheduleType];
+
+    if (!schedule) return null;
+
+    const now = new Date();
+    const created = new Date(createdAt);
+    const daysSinceCreation = Math.floor(
+      (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    // If listing has expired, no more drops
+    if (daysSinceCreation >= schedule.totalDuration) {
+      return null;
+    }
+
+    // Find the next drop
+    for (let i = 0; i < schedule.dropIntervals.length; i++) {
+      if (schedule.dropIntervals[i] > daysSinceCreation) {
+        const nextDropDay = schedule.dropIntervals[i];
+        const nextDropTime = new Date(
+          created.getTime() + nextDropDay * 24 * 60 * 60 * 1000
+        );
+        const timeUntilDrop = nextDropTime.getTime() - now.getTime();
+
+        if (timeUntilDrop <= 0) {
+          return { timeString: "Any moment now...", nextDropTime };
+        }
+
+        const days = Math.floor(timeUntilDrop / (1000 * 60 * 60 * 24));
+        const hours = Math.floor(
+          (timeUntilDrop % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+        );
+        const minutes = Math.floor(
+          (timeUntilDrop % (1000 * 60 * 60)) / (1000 * 60)
+        );
+
+        let timeString = "";
+        if (days > 0) {
+          timeString += `${days}d `;
+        }
+        if (hours > 0 || days > 0) {
+          timeString += `${hours.toString().padStart(2, "0")}h `;
+        }
+        timeString += `${minutes.toString().padStart(2, "0")}m`;
+
+        return { timeString: timeString.trim(), nextDropTime };
+      }
+    }
+
+    return null;
+  }, [createdAt, discountSchedule]);
+
+  // Parse time string and convert to countdown (fallback for API mode)
   const parseTimeString = (timeString: string): number => {
     // Handle new day-based format
     if (timeString.includes("days")) {
@@ -106,6 +192,21 @@ export default function PriceDropCounter({ listingId }: PriceDropCounterProps) {
     return totalMinutes;
   };
 
+  // Determine if we should use client-side countdown
+  useEffect(() => {
+    // If we have creation date and discount schedule, use client-side calculation
+    if (createdAt && discountSchedule) {
+      setUseClientSideCountdown(true);
+      setLoading(false);
+    } else {
+      // Fall back to API-based approach
+      setUseClientSideCountdown(false);
+      if (listingId) {
+        fetchPriceDropInfo();
+      }
+    }
+  }, [createdAt, discountSchedule, listingId, fetchPriceDropInfo]);
+
   // Update countdown timer
   useEffect(() => {
     // Clear any existing interval
@@ -114,67 +215,76 @@ export default function PriceDropCounter({ listingId }: PriceDropCounterProps) {
       countdownIntervalRef.current = null;
     }
 
-    if (!priceDropInfo?.hasPriceDrop || !priceDropInfo.timeUntilNextDrop) {
-      return;
-    }
-
-    // If it's already "Any moment now...", don't start a countdown
-    if (priceDropInfo.timeUntilNextDrop === "Any moment now...") {
-      setTimeRemaining("Any moment now...");
-      // Only refresh once after a longer delay to avoid excessive API calls
-      if (!refreshTimeoutRef.current) {
-        refreshTimeoutRef.current = setTimeout(() => {
-          fetchPriceDropInfo(false);
-          refreshTimeoutRef.current = null;
-        }, 45000); // Refresh after 45 seconds instead of 30 seconds
-      }
-      return;
-    }
-
-    const totalMinutes = parseTimeString(priceDropInfo.timeUntilNextDrop);
-    const now = new Date();
-    const nextDropTime = new Date(now.getTime() + totalMinutes * 60 * 1000);
-
     const updateCountdown = () => {
-      const currentTime = new Date();
-      const diff = nextDropTime.getTime() - currentTime.getTime();
-
-      if (diff <= 0) {
-        setTimeRemaining("Any moment now...");
-        // Only refresh once after the countdown reaches zero
-        if (!refreshTimeoutRef.current) {
-          refreshTimeoutRef.current = setTimeout(() => {
-            fetchPriceDropInfo(false);
-            refreshTimeoutRef.current = null;
-          }, 45000); // Refresh after 45 seconds instead of 30 seconds
+      if (useClientSideCountdown) {
+        // Client-side calculation - NO API calls needed!
+        const countdownInfo = calculateClientSideCountdown();
+        if (!countdownInfo) {
+          setTimeRemaining("");
+          return;
         }
-        return;
-      }
+        setTimeRemaining(countdownInfo.timeString);
+      } else {
+        // API-based fallback
+        if (!priceDropInfo?.hasPriceDrop || !priceDropInfo.timeUntilNextDrop) {
+          return;
+        }
 
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor(
-        (diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-      );
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        // If it's already "Any moment now...", don't start a countdown
+        if (priceDropInfo.timeUntilNextDrop === "Any moment now...") {
+          setTimeRemaining("Any moment now...");
+          // Only refresh once after countdown expires to check for actual price drop
+          if (!refreshTimeoutRef.current) {
+            refreshTimeoutRef.current = setTimeout(() => {
+              fetchPriceDropInfo(false);
+              refreshTimeoutRef.current = null;
+            }, 300000); // Refresh after 5 minutes instead of 45 seconds
+          }
+          return;
+        }
 
-      let timeString = "";
-      if (days > 0) {
-        timeString += `${days}d `;
-      }
-      if (hours > 0 || days > 0) {
-        timeString += `${hours.toString().padStart(2, "0")}h `;
-      }
-      timeString += `${minutes.toString().padStart(2, "0")}m`;
+        const totalMinutes = parseTimeString(priceDropInfo.timeUntilNextDrop);
+        const now = new Date();
+        const nextDropTime = new Date(now.getTime() + totalMinutes * 60 * 1000);
+        const currentTime = new Date();
+        const diff = nextDropTime.getTime() - currentTime.getTime();
 
-      setTimeRemaining(timeString);
+        if (diff <= 0) {
+          setTimeRemaining("Any moment now...");
+          // Only refresh once after the countdown reaches zero
+          if (!refreshTimeoutRef.current) {
+            refreshTimeoutRef.current = setTimeout(() => {
+              fetchPriceDropInfo(false);
+              refreshTimeoutRef.current = null;
+            }, 300000); // Refresh after 5 minutes instead of 45 seconds
+          }
+          return;
+        }
+
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor(
+          (diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+        );
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+        let timeString = "";
+        if (days > 0) {
+          timeString += `${days}d `;
+        }
+        if (hours > 0 || days > 0) {
+          timeString += `${hours.toString().padStart(2, "0")}h `;
+        }
+        timeString += `${minutes.toString().padStart(2, "0")}m`;
+
+        setTimeRemaining(timeString.trim());
+      }
     };
 
     // Initial update
     updateCountdown();
 
-    // Set up interval - use a longer interval for day-based countdowns
-    const interval = totalMinutes > 1440 ? 60000 : 1000; // 1 minute for day-based, 1 second for hour-based
-    countdownIntervalRef.current = setInterval(updateCountdown, interval);
+    // Set up interval - 1 minute updates are sufficient for day-based countdowns
+    countdownIntervalRef.current = setInterval(updateCountdown, 60000); // Update every minute
 
     // Cleanup function
     return () => {
@@ -188,17 +298,14 @@ export default function PriceDropCounter({ listingId }: PriceDropCounterProps) {
       }
     };
   }, [
+    useClientSideCountdown,
+    calculateClientSideCountdown,
     priceDropInfo?.hasPriceDrop,
     priceDropInfo?.timeUntilNextDrop,
     fetchPriceDropInfo,
   ]);
 
-  // Initial fetch
-  useEffect(() => {
-    if (listingId) {
-      fetchPriceDropInfo();
-    }
-  }, [listingId, fetchPriceDropInfo]);
+  // This is now handled in the determination useEffect above
 
   // Cleanup on unmount
   useEffect(() => {
@@ -231,6 +338,97 @@ export default function PriceDropCounter({ listingId }: PriceDropCounterProps) {
     );
   }
 
+  // For client-side mode, check if there's an active countdown
+  if (useClientSideCountdown) {
+    // If no countdown data or empty time remaining, don't show
+    if (!timeRemaining) {
+      return null;
+    }
+
+    // Calculate next drop price for display
+    const getNextDropPrice = () => {
+      if (!createdAt || !discountSchedule) return null;
+
+      const scheduleType = discountSchedule?.type || "Classic-60";
+      const schedule = DISCOUNT_SCHEDULES[scheduleType];
+      if (!schedule) return null;
+
+      const now = new Date();
+      const created = new Date(createdAt);
+      const daysSinceCreation = Math.floor(
+        (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      // Find the next drop percentage and calculate actual price
+      for (let i = 0; i < schedule.dropIntervals.length; i++) {
+        if (schedule.dropIntervals[i] > daysSinceCreation) {
+          const nextDropPercentage = schedule.dropPercentages[i];
+
+          // Calculate actual dollar amount based on original price
+          if (originalPrice) {
+            const nextDropPrice =
+              Math.round(originalPrice * (nextDropPercentage / 100) * 100) /
+              100;
+            // Don't go below reserve price
+            const finalPrice = reservePrice
+              ? Math.max(nextDropPrice, reservePrice)
+              : nextDropPrice;
+            return `$${finalPrice.toFixed(2)}`;
+          } else if (currentPrice) {
+            // Fallback: estimate based on current price (assume it's still at original price)
+            const nextDropPrice =
+              Math.round(currentPrice * (nextDropPercentage / 100) * 100) / 100;
+            const finalPrice = reservePrice
+              ? Math.max(nextDropPrice, reservePrice)
+              : nextDropPrice;
+            return `$${finalPrice.toFixed(2)}`;
+          } else {
+            // Fallback to percentage if no price data available
+            return `${nextDropPercentage}% of original`;
+          }
+        }
+      }
+      return null;
+    };
+
+    const nextDropPrice = getNextDropPrice();
+
+    return (
+      <div className="flex items-start space-x-3">
+        {/* Timeline dot */}
+        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-red-600 bg-red-50">
+          <TrendingDown className="h-4 w-4" />
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium text-gray-900">
+              Next Price Drop
+            </h4>
+            <div className="flex items-center text-xs text-red-600 font-medium">
+              <Clock className="h-3 w-3 mr-1" />
+              {timeRemaining}
+            </div>
+          </div>
+          <p className="text-sm text-gray-600 mt-1">
+            {nextDropPrice ? (
+              <>
+                Price will drop to{" "}
+                <span className="font-medium text-red-600">
+                  {nextDropPrice}
+                </span>
+              </>
+            ) : (
+              "Next price drop scheduled"
+            )}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // For API mode, check if there's price drop info
   if (!priceDropInfo?.hasPriceDrop) {
     return null; // Don't show anything if no price drop is configured or available
   }

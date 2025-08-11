@@ -14,9 +14,14 @@ function LoginForm() {
   const [showResendButton, setShowResendButton] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [isSendingReset, setIsSendingReset] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/profile";
+  const successMessage = searchParams.get("message");
 
   /**
    * Handle email/password login using Better Auth
@@ -46,30 +51,41 @@ function LoginForm() {
             "Please verify your email address before signing in. Check your inbox for a verification link.";
           setShowResendButton(true);
         } else if (
-          errorMessage.toLowerCase().includes("email") ||
-          errorMessage.toLowerCase().includes("verify") ||
-          errorMessage.toLowerCase().includes("unverified")
+          // Check for specific email verification errors
+          errorMessage.toLowerCase().includes("email not verified") ||
+          errorMessage.toLowerCase().includes("email verification required") ||
+          errorMessage.toLowerCase().includes("unverified email") ||
+          errorMessage.toLowerCase().includes("verify your email") ||
+          errorMessage.toLowerCase().includes("email verification") ||
+          (errorMessage.toLowerCase().includes("verify") &&
+            errorMessage.toLowerCase().includes("email"))
         ) {
           errorMessage =
             "Please verify your email address before signing in. Check your inbox for a verification link.";
           setShowResendButton(true);
         } else if (
+          // Check for invalid credentials/password errors
           errorMessage.toLowerCase().includes("invalid") ||
           errorMessage.toLowerCase().includes("credentials") ||
           errorMessage.toLowerCase().includes("password") ||
           errorMessage.toLowerCase().includes("unauthorized") ||
-          result.error.status === 401
+          result.error.status === 401 ||
+          errorMessage.toLowerCase().includes("incorrect") ||
+          errorMessage.toLowerCase().includes("wrong")
         ) {
           errorMessage =
             "Invalid email or password. Please check your credentials and try again. If you've forgotten your password, you can reset it.";
         } else if (
+          // Check for user not found errors
           errorMessage.toLowerCase().includes("not found") ||
           errorMessage.toLowerCase().includes("user not found") ||
-          errorMessage.toLowerCase().includes("account not found")
+          errorMessage.toLowerCase().includes("account not found") ||
+          errorMessage.toLowerCase().includes("no user")
         ) {
           errorMessage =
             "No account found with this email address. Please check your email or create a new account.";
         } else if (
+          // Check for network/connection errors
           errorMessage.toLowerCase().includes("network") ||
           errorMessage.toLowerCase().includes("connection") ||
           errorMessage.toLowerCase().includes("timeout")
@@ -77,6 +93,7 @@ function LoginForm() {
           errorMessage =
             "Connection error. Please check your internet connection and try again.";
         } else if (
+          // Check for rate limiting errors
           errorMessage.toLowerCase().includes("rate limit") ||
           errorMessage.toLowerCase().includes("too many")
         ) {
@@ -173,6 +190,70 @@ function LoginForm() {
   };
 
   /**
+   * Handle forgot password request
+   */
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSendingReset(true);
+    setResetMessage("");
+
+    try {
+      // Use BetterAuth client for password reset
+      console.log(
+        "🔐 Frontend: Sending password reset request for:",
+        forgotPasswordEmail
+      );
+      const result = await authClient.forgetPassword({
+        email: forgotPasswordEmail,
+        redirectTo: `${window.location.origin}/reset-password`, // URL where user will reset password
+      });
+
+      console.log("🔐 Frontend: Password reset result:", result);
+
+      if (result?.error) {
+        console.error("🔐 Frontend: Password reset error:", result.error);
+        let errorMessage =
+          result.error.message || "Failed to send reset email.";
+
+        if (result.error.status === 404) {
+          errorMessage =
+            "No account found with this email address. Please check your email or create a new account.";
+        } else if (result.error.status === 429) {
+          errorMessage =
+            "Too many reset requests. Please wait a few minutes before trying again.";
+        } else if (result.error.status >= 500) {
+          errorMessage = "Server error. Please try again in a few minutes.";
+        }
+
+        setResetMessage(errorMessage);
+      } else {
+        console.log("✅ Frontend: Password reset successful");
+        setResetMessage(
+          "Password reset email sent! Please check your inbox and spam folder. The link will expire in 1 hour."
+        );
+        setShowForgotPassword(false);
+        setForgotPasswordEmail("");
+      }
+    } catch (err) {
+      console.error("❌ Frontend: Password reset exception:", err);
+      if (err instanceof Error) {
+        console.error("❌ Frontend: Error details:", {
+          name: err.name,
+          message: err.message,
+          stack: err.stack,
+        });
+      }
+      setResetMessage(
+        `Network error: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }. Please try again.`
+      );
+    } finally {
+      setIsSendingReset(false);
+    }
+  };
+
+  /**
    * Handle OAuth login (Google, Facebook, or TikTok)
    */
   const handleOAuthLogin = async (
@@ -245,6 +326,27 @@ function LoginForm() {
         {resendMessage && (
           <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-600 text-sm">
             {resendMessage}
+          </div>
+        )}
+
+        {/* Reset Password Message */}
+        {resetMessage && (
+          <div
+            className={`mb-4 p-3 rounded-lg text-sm ${
+              resetMessage.includes("sent") || resetMessage.includes("success")
+                ? "bg-green-50 border border-green-200 text-green-600"
+                : "bg-red-50 border border-red-200 text-red-600"
+            }`}
+          >
+            {resetMessage}
+          </div>
+        )}
+
+        {/* Password Reset Success Message */}
+        {successMessage === "password-reset-success" && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-600 text-sm">
+            Your password has been successfully reset! You can now sign in with
+            your new password.
           </div>
         )}
 
@@ -328,7 +430,19 @@ function LoginForm() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Password</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium">Password</label>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForgotPassword(true);
+                  setForgotPasswordEmail(email);
+                }}
+                className="text-sm text-[#D4AF3D] hover:underline font-medium"
+              >
+                Forgot password?
+              </button>
+            </div>
             <input
               type="password"
               required
@@ -364,6 +478,83 @@ function LoginForm() {
           </p>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900">
+                Reset Password
+              </h2>
+              <button
+                onClick={() => {
+                  setShowForgotPassword(false);
+                  setResetMessage("");
+                  setForgotPasswordEmail("");
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <p className="text-gray-600 text-sm mb-4">
+              Enter your email address and we'll send you a link to reset your
+              password.
+            </p>
+
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Email</label>
+                <input
+                  type="email"
+                  required
+                  disabled={isSendingReset}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#D4AF3D] disabled:opacity-50"
+                  value={forgotPasswordEmail}
+                  onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                  placeholder="Enter your email address"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotPassword(false);
+                    setResetMessage("");
+                    setForgotPasswordEmail("");
+                  }}
+                  disabled={isSendingReset}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSendingReset}
+                  className="flex-1 px-4 py-2 bg-[#D4AF3D] text-white rounded-lg hover:bg-[#b8932f] disabled:opacity-50"
+                >
+                  {isSendingReset ? "Sending..." : "Send Reset Link"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

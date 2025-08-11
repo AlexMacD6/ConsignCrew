@@ -20,6 +20,7 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: true,
     verificationTokenExpiry: 60 * 60 * 24, // 24 hours
+    resetPasswordTokenExpiry: 60 * 60, // 1 hour for password reset
     sendVerificationEmail: async ({ user, url, token }: { user: any; url: string; token: string }, request: any) => {
       try {
         console.log('BetterAuth: sendVerificationEmail called for user');
@@ -123,8 +124,10 @@ export const auth = betterAuth({
     },
     sendResetPassword: async ({ user, url, token }: { user: any; url: string; token: string }, request: any) => {
       try {
-        console.log('BetterAuth: sendResetPassword called for user');
-        console.log('BetterAuth: Reset URL generated');
+        console.log('🔐 BetterAuth: sendResetPassword called!');
+        console.log('🔐 BetterAuth: User object:', { id: user?.id, email: user?.email, name: user?.name });
+        console.log('🔐 BetterAuth: Reset URL generated:', url);
+        console.log('🔐 BetterAuth: Reset token length:', token?.length);
         
         // Use the correct domain for password reset links
         const productionUrl = url.replace('http://localhost:3000', process.env.BETTER_AUTH_URL || 'https://treasurehub.club');
@@ -170,15 +173,18 @@ export const auth = betterAuth({
           </div>
         `;
         
+        console.log('🔐 BetterAuth: Attempting to send email to:', user.email);
+        console.log('🔐 BetterAuth: Using from email:', process.env.AWS_SES_DEFAULT_FROM_EMAIL);
+        
         await sendEmail(user.email, subject, html);
-        console.log('Password reset email sent successfully');
+        console.log('✅ Password reset email sent successfully to:', user.email);
       } catch (error) {
         console.error('Failed to send password reset email:', error);
         // Fallback to console log for development
         console.log('Send password reset email with link and token');
+        throw error; // Re-throw to let BetterAuth handle the error
       }
     },
-    provider: null, // Using custom email sending with AWS SES
   },
   
   // Social OAuth providers - only enable if credentials are provided

@@ -3,20 +3,12 @@ import React, { useState } from "react";
 import { ChevronLeft, ChevronRight, X, Maximize2, Play } from "lucide-react";
 import RobustImage from "./RobustImage";
 
-interface Flaw {
-  type: string;
-  severity: "minor" | "moderate" | "major";
-  location?: string;
-  description: string;
-}
-
 interface MediaItem {
   type: "image" | "video";
   src: string;
   alt?: string;
   poster?: string;
   duration?: number;
-  flaws?: Flaw[];
 }
 
 interface ImageWithMetadata {
@@ -39,9 +31,6 @@ interface ImageCarouselProps {
   autoPlay?: boolean;
   autoPlayInterval?: number;
   showModal?: boolean;
-  photoFlaws?: {
-    [photoUrl: string]: Flaw[];
-  };
 }
 
 export default function ImageCarousel({
@@ -54,7 +43,6 @@ export default function ImageCarousel({
   autoPlay = false,
   autoPlayInterval = 3000,
   showModal = true,
-  photoFlaws = {},
 }: ImageCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -73,7 +61,7 @@ export default function ImageCarousel({
           type: "image" as const,
           src,
           alt: `${alt} - Image ${index + 1}`,
-          flaws: photoFlaws[src] || [],
+
           label,
         };
       }),
@@ -222,7 +210,6 @@ export default function ImageCarousel({
           width={400}
           height={400}
           className="w-full h-full object-cover rounded-lg"
-          fallbackSrc="/cardboard.jpg"
         />
         {item.label && (
           <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
@@ -246,31 +233,9 @@ export default function ImageCarousel({
                 width={400}
                 height={400}
                 className="w-full h-full object-cover transition-opacity duration-300 cursor-pointer hover:opacity-95"
-                fallbackSrc="/cardboard.jpg"
                 onLoad={() => {}}
                 onError={() => {}}
               />
-
-              {/* Flaw Tags */}
-              {currentItem.flaws && currentItem.flaws.length > 0 && (
-                <div className="absolute top-2 left-2 flex flex-wrap gap-1">
-                  {currentItem.flaws.map((flaw, flawIndex) => (
-                    <div
-                      key={flawIndex}
-                      className={`px-2 py-1 rounded text-xs font-medium text-white ${
-                        flaw.severity === "major"
-                          ? "bg-red-600"
-                          : flaw.severity === "moderate"
-                          ? "bg-orange-500"
-                          : "bg-yellow-600"
-                      }`}
-                      title={`${flaw.type}: ${flaw.description}`}
-                    >
-                      {flaw.type.charAt(0).toUpperCase() + flaw.type.slice(1)}
-                    </div>
-                  ))}
-                </div>
-              )}
 
               {/* Image Label (e.g., for AI-generated images) */}
               {currentItem.label && (
@@ -396,7 +361,6 @@ export default function ImageCarousel({
                 width={800}
                 height={800}
                 className="max-w-full max-h-full object-contain"
-                fallbackSrc="/cardboard.jpg"
               />
 
               {/* Image Counter */}

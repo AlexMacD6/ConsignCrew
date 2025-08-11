@@ -341,8 +341,6 @@ export default function ListingDetailPage() {
                   thumbnailUrl: data.listing.video.thumbnailKey || null,
                 }
               : null,
-            // Flaw detection data
-            flawData: data.listing.flawData || null,
           };
 
           setListing(transformedListing);
@@ -507,61 +505,32 @@ export default function ListingDetailPage() {
     return false;
   };
 
-  const getTimeUntilNextDrop = (discountSchedule: any, createdAt: string) => {
+  const getTimeUntilNextDrop = (createdAt: string) => {
+    // Return null during server-side rendering to prevent hydration mismatch
+    if (typeof window === "undefined") {
+      return null;
+    }
+
     const now = new Date();
     const created = new Date(createdAt);
-    const daysSinceCreation = Math.floor(
-      (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)
+    const nextDropTime = new Date(created.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days from creation
+
+    const timeUntilDrop = nextDropTime.getTime() - now.getTime();
+
+    if (timeUntilDrop <= 0) {
+      return null; // Price drop has already occurred or is happening now
+    }
+
+    const days = Math.floor(timeUntilDrop / (1000 * 60 * 60 * 24));
+    const hours = Math.floor(
+      (timeUntilDrop % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+    );
+    const minutes = Math.floor(
+      (timeUntilDrop % (1000 * 60 * 60)) / (1000 * 60)
     );
 
-    // Handle both string type and full discount schedule object
-    let scheduleType = "Classic-60";
-    if (typeof discountSchedule === "string") {
-      scheduleType = discountSchedule;
-    } else if (discountSchedule && discountSchedule.type) {
-      scheduleType = discountSchedule.type;
-    }
-
-    // Define the discount schedules based on the new methodology
-    const schedules = {
-      "Turbo-30": {
-        dropIntervals: [0, 3, 6, 9, 12, 15, 18, 21, 24, 30],
-        totalDuration: 30,
-      },
-      "Classic-60": {
-        dropIntervals: [0, 7, 14, 21, 28, 35, 42, 49, 56, 60],
-        totalDuration: 60,
-      },
-    };
-
-    const schedule = schedules[scheduleType as keyof typeof schedules];
-    if (!schedule) {
-      return null;
-    }
-
-    // If listing has expired, no more drops
-    if (daysSinceCreation >= schedule.totalDuration) {
-      return null;
-    }
-
-    // Find the next drop
-    for (let i = 0; i < schedule.dropIntervals.length; i++) {
-      if (schedule.dropIntervals[i] > daysSinceCreation) {
-        const daysUntilNextDrop = schedule.dropIntervals[i] - daysSinceCreation;
-
-        if (daysUntilNextDrop === 0) {
-          return "Any moment now...";
-        }
-
-        if (daysUntilNextDrop === 1) {
-          return "1 day";
-        }
-
-        return `${daysUntilNextDrop} days`;
-      }
-    }
-
-    return null;
+    // Return time in milliseconds for external checks (e.g., 24-hour logic)
+    return { formatted: `${days}d ${hours}h ${minutes}m`, raw: timeUntilDrop };
   };
 
   const toggleSaved = (id: string) => {
@@ -934,17 +903,6 @@ export default function ListingDetailPage() {
                 showArrows={true}
                 showDots={true}
                 autoPlay={false}
-                photoFlaws={
-                  listing.flawData?.flaws?.reduce(
-                    (acc: any, photoFlaw: any) => {
-                      if (photoFlaw.photoUrl && photoFlaw.flaws) {
-                        acc[photoFlaw.photoUrl] = photoFlaw.flaws;
-                      }
-                      return acc;
-                    },
-                    {}
-                  ) || {}
-                }
               />
             </div>
 
@@ -1125,10 +1083,7 @@ export default function ListingDetailPage() {
                 </div>
 
                 {(() => {
-                  const timeLeft = getTimeUntilNextDrop(
-                    listing.discount_schedule,
-                    listing.created_at
-                  );
+                  const timeLeft = getTimeUntilNextDrop(listing.created_at);
                   return (
                     timeLeft && (
                       <div className="flex items-center gap-3">
@@ -1138,7 +1093,7 @@ export default function ListingDetailPage() {
                             Next Price Drop:
                           </span>
                           <span className="ml-2 text-sm text-gray-600">
-                            {timeLeft}
+                            {timeLeft.formatted}
                           </span>
                         </div>
                       </div>
@@ -1664,7 +1619,16 @@ export default function ListingDetailPage() {
             </div>
 
             {/* History */}
-            <ListingHistory listingId={listing.item_id} />
+            <ListingHistory
+              listingId={listing.item_id}
+              createdAt={listing.created_at}
+              discountSchedule={listing.discount_schedule}
+              currentPrice={listing.list_price}
+              originalPrice={
+                listing.estimated_retail_price || listing.list_price
+              }
+              reservePrice={listing.reserve_price}
+            />
           </div>
         </div>
       </div>

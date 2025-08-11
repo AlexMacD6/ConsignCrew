@@ -1,0 +1,56 @@
+# Flaw Detection Confidence Fix
+
+## Problem
+The flaw detection system was identifying too many flaws with low confidence levels, creating noise and false positives. Users need a more conservative approach that only shows the most obvious and significant flaws.
+
+## Requirements
+
+### 1. Increase Confidence Threshold
+- Change confidence threshold from 80% to 99%
+- Only report flaws that are extremely obvious and certain
+- Reduce false positive flaw detections
+
+### 2. Limit Flaws Per Photo
+- Show only the highest confidence flaw per photo
+- Remove multiple flaw tags per photo
+- Ensure cleaner, less cluttered flaw display
+
+### 3. Update Both API Endpoints
+- Update `/api/ai/detect-flaws` (basic endpoint)
+- Update `/api/ai/detect-flaws-enhanced` (enhanced endpoint)
+- Ensure consistent behavior across both endpoints
+
+## Technical Implementation
+
+### Confidence Threshold Update
+- Changed confidence filter from `flaw.confidence < 0.8` to `flaw.confidence < 0.99`
+- Updated prompt instructions to reflect 99% confidence requirement
+- Made flaw detection more conservative and accurate
+
+### Single Flaw Per Photo Logic
+- Added logic to find highest confidence flaw per photo
+- Filter out all other flaws for each photo
+- Return only the most significant flaw per photo
+
+### Enhanced Validation
+- Improved flaw data validation and cleaning
+- Better handling of confidence levels and severity
+- More robust error handling for flaw detection
+
+### Edit Listing Page Integration
+- Added flaw photo management section to edit listing page
+- Users can view all flaw photos detected by AI
+- Individual flaw tags can be removed from photos
+- Entire photo flaw data can be cleared
+- Flaw data is properly saved when updating listing
+- Similar UI pattern to tag management for consistency
+
+## Testing
+- Verify flaw detection only shows 99%+ confidence flaws
+- Confirm only one flaw tag appears per photo
+- Test with various product categories and conditions
+- Ensure no false positive flaw detections
+- Verify enhanced endpoint works correctly with new thresholds
+- Test flaw photo management in edit listing page
+- Verify flaw photos can be removed individually or cleared entirely
+- Confirm flaw data is properly saved when updating listing 
