@@ -82,6 +82,12 @@ Generate Facebook Marketplace values:
 - Copy gtin to facebookGtin
 - Use the same category for facebookCategory (unified taxonomy)
 
+Generate Google Product Category:
+- Use the official Google Product Category taxonomy for Facebook Commerce Manager
+- Format: "Primary > Secondary > Tertiary > Quaternary" (e.g., "Home & Garden > Furniture > Bedroom Furniture > Dressers")
+- This ensures proper Facebook catalog integration and ad performance
+- Map from TreasureHub's department/category/subcategory to the closest Google Product Category
+
 Analyze and populate product specifications:
 - gender: Determine from category, description, or visual analysis ("male", "female", "unisex")
 - color: Extract from visual analysis or description and CAPITALIZE (e.g., "Blue", "Black", "White", "Red")
@@ -149,6 +155,7 @@ Return a single JSON object with the following fields populated (NO COMMENTS IN 
   "facebookCondition": "new" | "used" | "refurbished",
   "facebookGtin": "string" | null,
   "facebookCategory": "string",
+  "googleProductCategory": "string", // Official Google Product Category for Facebook Commerce Manager
   "ebayQuery": "string",
 
   // Product Specifications (Facebook Shop Fields)
@@ -194,7 +201,8 @@ Return a single JSON object with the following fields populated (NO COMMENTS IN 
     "material": { "level": "high" | "medium" | "low", "reason": "string" },
     "pattern": { "level": "high" | "medium" | "low", "reason": "string" },
     "style": { "level": "high" | "medium" | "low", "reason": "string" },
-    "tags": { "level": "high" | "medium" | "low", "reason": "string" }
+    "tags": { "level": "high" | "medium" | "low", "reason": "string" },
+    "googleProductCategory": { "level": "high" | "medium" | "low", "reason": "string" }
   }
 }
 

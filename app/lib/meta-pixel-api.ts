@@ -71,7 +71,7 @@ class MetaPixelAPI {
         availability: listing.status === 'active' ? 'in stock' : 'out of stock',
         condition: this.mapCondition(listing.condition),
         brand: listing.facebookBrand || listing.brand || 'TreasureHub',
-        category: `${listing.department} > ${listing.category}`,
+        category: listing.googleProductCategory || `${listing.department} > ${listing.category}`,
         image_url: this.getFirstImageUrl(listing.photos),
         url: `${process.env.NEXT_PUBLIC_BASE_URL}/list-item/${listing.itemId}`,
         gtin: listing.facebookGtin,

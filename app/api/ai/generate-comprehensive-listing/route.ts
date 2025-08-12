@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { calculateAllFieldConfidence, ConfidenceFactors } from '@/lib/ai-confidence-scorer';
 import { AI_SERVICE_PHASE_1_PROMPT, mapConditionToFacebook, ensureFacebookTaxonomy, detectPhotoFlaws, generateStagedPhotoPhase2 } from '@/lib/ai-service';
+import { mapToGoogleProductCategory } from '@/lib/google-product-categories';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -372,7 +373,34 @@ Focus on accuracy, detail, and maximizing the item's perceived value while maint
       style: listingData.style || null,
               // productType field removed - not in database schema
       tags: Array.isArray(listingData.tags) ? listingData.tags : [],
+      googleProductCategory: listingData.googleProductCategory || null,
     };
+
+    // Automatically assign Google Product Category based on TreasureHub taxonomy
+    let googleProductCategory = listingData.googleProductCategory;
+    let googleProductCategoryConfidence: 'high' | 'medium' | 'low' = 'low';
+    
+    if (!googleProductCategory && listingData.department && listingData.category) {
+      const categoryMapping = mapToGoogleProductCategory(
+        listingData.department,
+        listingData.category,
+        listingData.subCategory
+      );
+      
+      if (categoryMapping) {
+        googleProductCategory = categoryMapping.category;
+        googleProductCategoryConfidence = categoryMapping.confidence;
+        console.log(`🗺️ Mapped to Google Product Category: ${googleProductCategory} (confidence: ${googleProductCategoryConfidence})`);
+      } else {
+        // Fallback to a generic category based on department
+        googleProductCategory = `${listingData.department} > ${listingData.category}`;
+        googleProductCategoryConfidence = 'low';
+        console.log(`⚠️ No exact Google Product Category match found, using fallback: ${googleProductCategory}`);
+      }
+    }
+    
+    // Update the validated data with the Google Product Category
+    validatedData.googleProductCategory = googleProductCategory;
 
     // Calculate confidence scores for all AI-generated fields
     const confidenceFactors: ConfidenceFactors = {
@@ -398,7 +426,18 @@ Focus on accuracy, detail, and maximizing the item's perceived value while maint
       }
     };
 
-    const confidenceScores = calculateAllFieldConfidence(validatedData, confidenceFactors);
+    // Add Google Product Category confidence to the scores
+    const confidenceScores = {
+      ...calculateAllFieldConfidence(validatedData, confidenceFactors),
+      googleProductCategory: {
+        level: googleProductCategoryConfidence,
+        reason: googleProductCategoryConfidence === 'high' 
+          ? 'Exact match found in Google Product Category mapping'
+          : googleProductCategoryConfidence === 'medium'
+          ? 'Partial match found in Google Product Category mapping'
+          : 'Fallback category used - no exact mapping found'
+      }
+    };
 
     // Only run additional services for comprehensive mode, not form fields mode
     let flawData = null;
