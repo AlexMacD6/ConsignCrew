@@ -25,6 +25,8 @@ import {
   MessageSquare,
   FileText,
   ExternalLink,
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
 import QuestionManagement from "../components/QuestionManagement";
 
@@ -98,6 +100,12 @@ export default function AdminDashboard() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [processingPriceDrops, setProcessingPriceDrops] = useState(false);
+
+  // Facebook Catalog Sync states
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<any>(null);
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncStats, setSyncStats] = useState<any>(null);
 
   const handleProcessPriceDrops = async () => {
     try {
@@ -561,6 +569,53 @@ export default function AdminDashboard() {
     }
   };
 
+  // Facebook Catalog Sync functions
+  const loadSyncStats = async () => {
+    try {
+      const response = await fetch("/api/admin/sync-facebook-catalog", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSyncStats(data);
+      }
+    } catch (error) {
+      console.error("Error loading sync stats:", error);
+    }
+  };
+
+  const handleFacebookSync = async () => {
+    setIsSyncing(true);
+    setSyncResult(null);
+
+    try {
+      const response = await fetch("/api/admin/sync-facebook-catalog", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      const data = await response.json();
+      setSyncResult(data);
+      setShowSyncModal(true);
+
+      // Refresh sync stats after sync
+      if (data.success) {
+        await loadSyncStats();
+      }
+    } catch (error) {
+      setSyncResult({
+        success: false,
+        error: "Network error occurred",
+        message: error instanceof Error ? error.message : "Failed to sync",
+      });
+      setShowSyncModal(true);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -641,6 +696,19 @@ export default function AdminDashboard() {
               }`}
             >
               Security
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab("facebook");
+                loadSyncStats();
+              }}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "facebook"
+                  ? "border-[#D4AF3D] text-[#D4AF3D]"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              Facebook Catalog
             </button>
           </div>
         </div>
@@ -1175,6 +1243,158 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* Facebook Catalog Sync Tab */}
+        {activeTab === "facebook" && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-gray-900">
+              Facebook Catalog Sync
+            </h2>
+
+            {/* Sync Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <RefreshCw className="w-5 h-5 mr-2 text-blue-600" />
+                  Total Listings
+                </h3>
+                <div className="text-3xl font-bold text-blue-600">
+                  {syncStats?.totalListings || 0}
+                </div>
+                <p className="text-gray-600">Facebook Shop enabled</p>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
+                  Synced
+                </h3>
+                <div className="text-3xl font-bold text-green-600">
+                  {syncStats?.syncedListings || 0}
+                </div>
+                <p className="text-gray-600">Successfully synced to catalog</p>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <AlertCircle className="w-5 h-5 mr-2 text-orange-600" />
+                  Pending
+                </h3>
+                <div className="text-3xl font-bold text-orange-600">
+                  {syncStats?.pendingListings || 0}
+                </div>
+                <p className="text-gray-600">Require manual sync</p>
+              </div>
+            </div>
+
+            {/* Sync Controls */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Facebook Catalog Sync
+                  </h3>
+                  <p className="text-gray-600 mt-1">
+                    Sync existing listings to Facebook catalog for Meta Commerce
+                    Manager integration
+                  </p>
+                </div>
+                <Button
+                  onClick={handleFacebookSync}
+                  disabled={isSyncing}
+                  className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+                >
+                  {isSyncing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  {isSyncing ? "Syncing..." : "Sync Now"}
+                </Button>
+              </div>
+
+              {/* Environment Status */}
+              <div className="space-y-4">
+                <h4 className="font-semibold text-gray-900">
+                  Environment Configuration
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">META_ACCESS_TOKEN</span>
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Required for Meta API access
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">META_CATALOG_ID</span>
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Target Facebook product catalog
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* How It Works */}
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                <h4 className="font-semibold text-blue-800 mb-2">
+                  How It Works
+                </h4>
+                <ul className="text-sm text-blue-700 space-y-1">
+                  <li>
+                    • Syncs existing listings with Facebook Shop enabled to your
+                    catalog
+                  </li>
+                  <li>
+                    • Updates product information including images, prices, and
+                    availability
+                  </li>
+                  <li>
+                    • Enables ViewContent and AddToWishlist events to match
+                    properly
+                  </li>
+                  <li>
+                    • New listings auto-sync when created (if environment is
+                    configured)
+                  </li>
+                </ul>
+              </div>
+
+              {/* External Links */}
+              <div className="mt-6 flex gap-4">
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  onClick={() =>
+                    window.open(
+                      "https://business.facebook.com/commerce/",
+                      "_blank"
+                    )
+                  }
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Facebook Commerce Manager
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  onClick={() =>
+                    window.open(
+                      "https://developers.facebook.com/docs/marketing-api/catalog",
+                      "_blank"
+                    )
+                  }
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Catalog API Documentation
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Create Organization Modal */}
         {showCreateOrgModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -1450,6 +1670,160 @@ export default function AdminDashboard() {
                 >
                   Close
                 </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Facebook Catalog Sync Result Modal */}
+        {showSyncModal && syncResult && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`p-2 rounded-full ${
+                      syncResult.success ? "bg-green-100" : "bg-red-100"
+                    }`}
+                  >
+                    {syncResult.success ? (
+                      <CheckCircle className="h-6 w-6 text-green-600" />
+                    ) : (
+                      <AlertCircle className="h-6 w-6 text-red-600" />
+                    )}
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Facebook Catalog Sync
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setShowSyncModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="h-6 w-6 text-gray-500" />
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6">
+                {syncResult.success ? (
+                  <div className="space-y-4">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <h3 className="font-semibold text-green-800 mb-2">
+                        ✅ Sync Completed Successfully!
+                      </h3>
+                      <p className="text-green-700">
+                        {syncResult.message ||
+                          "Facebook catalog sync completed"}
+                      </p>
+                    </div>
+
+                    {syncResult.processed !== undefined && (
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="text-center p-4 bg-blue-50 rounded-lg">
+                          <div className="text-2xl font-bold text-blue-600">
+                            {syncResult.processed}
+                          </div>
+                          <div className="text-sm text-blue-600">
+                            Total Processed
+                          </div>
+                        </div>
+                        <div className="text-center p-4 bg-green-50 rounded-lg">
+                          <div className="text-2xl font-bold text-green-600">
+                            {syncResult.synced}
+                          </div>
+                          <div className="text-sm text-green-600">
+                            Successfully Synced
+                          </div>
+                        </div>
+                        <div className="text-center p-4 bg-red-50 rounded-lg">
+                          <div className="text-2xl font-bold text-red-600">
+                            {syncResult.errors}
+                          </div>
+                          <div className="text-sm text-red-600">Errors</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {syncResult.errorDetails &&
+                      syncResult.errorDetails.length > 0 && (
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-3">
+                            Error Details:
+                          </h4>
+                          <div className="max-h-48 overflow-y-auto border border-gray-200 rounded">
+                            {syncResult.errorDetails.map(
+                              (detail: any, index: number) => (
+                                <div
+                                  key={index}
+                                  className="p-3 border-b border-gray-100 last:border-b-0 bg-red-50"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-medium text-gray-900">
+                                      {detail.itemId}
+                                    </span>
+                                    <span className="text-xs px-2 py-1 rounded bg-red-100 text-red-800">
+                                      Error
+                                    </span>
+                                  </div>
+                                  <div className="text-xs text-red-600 mt-1">
+                                    {detail.error}
+                                  </div>
+                                </div>
+                              )
+                            )}
+                          </div>
+                        </div>
+                      )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <h3 className="font-semibold text-red-800 mb-2">
+                        ❌ Sync Failed
+                      </h3>
+                      <p className="text-red-700">
+                        {syncResult.message || "An error occurred during sync"}
+                      </p>
+                      {syncResult.error && (
+                        <p className="text-sm text-red-600 mt-2">
+                          Error: {syncResult.error}
+                        </p>
+                      )}
+                    </div>
+
+                    {syncResult.missingVars && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <h4 className="font-semibold text-yellow-800 mb-2">
+                          Missing Environment Variables:
+                        </h4>
+                        <ul className="list-disc list-inside text-yellow-700">
+                          {syncResult.missingVars.map(
+                            (varName: string, index: number) => (
+                              <li key={index}>
+                                <code>{varName}</code>
+                              </li>
+                            )
+                          )}
+                        </ul>
+                        <p className="text-sm text-yellow-600 mt-2">
+                          Please configure these environment variables in your
+                          production environment.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex justify-end mt-6">
+                  <Button
+                    onClick={() => setShowSyncModal(false)}
+                    className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                  >
+                    Close
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

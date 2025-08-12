@@ -76,6 +76,45 @@ export function calculateCurrentPrice(
 }
 
 /**
+ * Calculate the next drop price based on original price and discount schedule
+ * This ensures consistent pricing: $1000 → $950 → $900 → $850 (not compound drops)
+ */
+export function calculateNextDropPriceFromOriginal(
+  originalPrice: number,
+  createdAt: Date,
+  discountSchedule: DiscountSchedule,
+  reservePrice: number = 0
+): number | null {
+  const daysSinceCreation = calculateDaysSinceCreation(createdAt);
+  
+  // If listing has expired, no more drops
+  if (daysSinceCreation >= discountSchedule.totalDuration) {
+    return null;
+  }
+  
+  // Find the next drop interval
+  for (let i = 0; i < discountSchedule.dropIntervals.length; i++) {
+    if (discountSchedule.dropIntervals[i] > daysSinceCreation) {
+      // Use the percentage from the discount schedule (percentage of ORIGINAL price)
+      const nextDropPercentage = discountSchedule.dropPercentages[i];
+      
+      // If this percentage is 0, listing expires
+      if (nextDropPercentage === 0) {
+        return null;
+      }
+      
+      // Calculate price as percentage of ORIGINAL price
+      const nextPrice = Math.round(originalPrice * (nextDropPercentage / 100) * 100) / 100;
+      
+      // Don't go below reserve price
+      return Math.max(nextPrice, reservePrice);
+    }
+  }
+  
+  return null;
+}
+
+/**
  * Calculate the next drop information
  */
 export function calculateNextDropInfo(
@@ -146,9 +185,17 @@ export async function processPriceDrop(listingId: string): Promise<boolean> {
     const currentPrice = listing.price;
     const expectedPrice = calculateCurrentPrice(originalPrice, listing.createdAt, discountSchedule);
 
-    // Check if price drop is needed
-    if (expectedPrice < currentPrice && expectedPrice > 0) {
-      const newPrice = Math.max(expectedPrice, listing.reservePrice || 0);
+    // Use the original-price-based drop calculation for consistent drops
+    const newDropPrice = calculateNextDropPriceFromOriginal(
+      originalPrice,
+      listing.createdAt,
+      discountSchedule,
+      listing.reservePrice || 0
+    );
+
+    // Check if price drop is needed (only if we have a valid next drop price)
+    if (newDropPrice !== null && newDropPrice < currentPrice) {
+      const newPrice = newDropPrice;
       
       // Update the listing price
       await prisma.listing.update({

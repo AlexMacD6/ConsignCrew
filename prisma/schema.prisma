@@ -254,6 +254,9 @@ model Listing {
   tags        String[] @default([]) // Product tags for better categorization
   itemGroupId String? // For product variants
 
+  // Google Product Category for Facebook Commerce Manager
+  googleProductCategory String? // Official Google Product Category ID (e.g., "Home & Garden > Furniture > Bedroom Furniture > Dressers")
+
   user         user             @relation(fields: [userId], references: [id])
   videos       Video[]
   priceHistory PriceHistory[]
