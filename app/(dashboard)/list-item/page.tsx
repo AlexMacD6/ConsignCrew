@@ -25,6 +25,10 @@ import {
   ComprehensiveListingData,
   mapConditionToFacebook,
 } from "../../lib/ai-service";
+import {
+  mapToGoogleProductCategory,
+  getAvailableCategoriesForDepartment,
+} from "../../lib/google-product-categories";
 // FormGenerationData interface moved to ai-service for unified typing
 import { FormGenerationData } from "../../lib/ai-form-generator";
 import VideoUpload from "../../components/VideoUpload";
@@ -323,6 +327,12 @@ export default function ListItemPage() {
   const [facebookBrand, setFacebookBrand] = useState("");
   const [facebookCondition, setFacebookCondition] = useState("");
   const [facebookGtin, setFacebookGtin] = useState("");
+
+  // Google Product Category
+  const [googleProductCategory, setGoogleProductCategory] = useState("");
+  const [availableGoogleCategories, setAvailableGoogleCategories] = useState<
+    string[]
+  >([]);
 
   // Product Specifications (Facebook Shop Fields)
   const [quantity, setQuantity] = useState("1");
@@ -797,6 +807,16 @@ export default function ListItemPage() {
       setDepartment(listingData.department as Department);
       setCategory(listingData.category || "");
       setSubCategory(listingData.subCategory || "");
+
+      // Update available Google Product Categories for existing listing
+      if (listingData.department) {
+        const categories = getAvailableCategoriesForDepartment(
+          listingData.department
+        );
+        setAvailableGoogleCategories(
+          categories.map((cat) => cat.googleProductCategory)
+        );
+      }
       setCondition(mapConditionToFacebook(listingData.condition));
       setPrice(listingData.listPrice.toString());
       setBrand(listingData.brand);
@@ -815,6 +835,7 @@ export default function ListItemPage() {
       setFacebookBrand(listingData.facebookBrand || "");
       setFacebookCondition(listingData.facebookCondition || "");
       setFacebookGtin(listingData.facebookGtin || "");
+      setGoogleProductCategory(listingData.googleProductCategory || "");
 
       // Apply Product Specifications (Facebook Shop Fields)
       setQuantity(listingData.quantity?.toString() || "1");
@@ -840,192 +861,11 @@ export default function ListItemPage() {
       setGeneratedListingId(listingId);
       setGeneratedQRCode(qrCode);
 
-      // Phase 2: Generate staged photo prompt (blocking - wait for completion)
-      if (photos.hero?.url || photos.hero?.key) {
-        console.log("🎨 Phase 2 - Starting staged photo generation...");
-        // Prepare photo URLs for Phase 2
-        const photoUrls = [
-          photos.hero?.url || photos.hero?.key,
-          photos.back?.url || photos.back?.key,
-          ...(photos.additional
-            ? photos.additional.map((p) => p.url || p.key).filter(Boolean)
-            : []),
-        ].filter(Boolean);
-
-        // Convert S3 URLs to CloudFront URLs for OpenAI access
-        const accessiblePhotoUrls = photoUrls.map((url) => {
-          if (url && typeof url === "string") {
-            if (url.includes("s3.us-east-1.amazonaws.com")) {
-              const s3Path = url.split("s3.us-east-1.amazonaws.com/")[1];
-              const cfDomain =
-                process.env.NEXT_PUBLIC_CDN_URL ||
-                "https://dtlqyjbwka60p.cloudfront.net";
-              return `${cfDomain}/${s3Path}`;
-            }
-            return url;
-          }
-          return url;
-        });
-
-        // Prepare video frame URLs if available
-        const videoFrameUrls =
-          videoData.frameUrls?.map((url) => {
-            if (url && typeof url === "string") {
-              if (url.includes("s3.us-east-1.amazonaws.com")) {
-                const s3Path = url.split("s3.us-east-1.amazonaws.com/")[1];
-                const cfDomain =
-                  process.env.NEXT_PUBLIC_CDN_URL ||
-                  "https://dtlqyjbwka60p.cloudfront.net";
-                return `${cfDomain}/${s3Path}`;
-              }
-              return url;
-            }
-            return url;
-          }) || [];
-
-        try {
-          console.log("🎨 Starting Phase 2: Staged photo generation");
-
-          // Call Phase 2 API
-          console.log("🎨 Phase 2 - Sending request with data:", {
-            listingJSONKeys: Object.keys(listingData),
-            photoURLsCount: accessiblePhotoUrls.length,
-            videoFramesCount: videoFrameUrls.length,
-            firstPhotoURL: accessiblePhotoUrls[0],
-            listingDataSample: {
-              title: listingData.title,
-              department: listingData.department,
-              category: listingData.category,
-            },
-          });
-
-          // Add timeout to prevent hanging
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
-          const phase2Response = await fetch(
-            "/api/ai/generate-staged-photo-pebblely",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                listingJSON: listingData,
-                photoURLs: accessiblePhotoUrls,
-                videoFrames: videoFrameUrls,
-              }),
-              signal: controller.signal,
-            }
-          );
-
-          clearTimeout(timeoutId);
-
-          console.log("🎨 Phase 2 - Response status:", phase2Response.status);
-          console.log("🎨 Phase 2 - Response ok:", phase2Response.ok);
-
-          if (!phase2Response.ok) {
-            const errorText = await phase2Response.text();
-            console.error("🎨 Phase 2 - Error response:", errorText);
-            throw new Error(
-              `Phase 2 failed: ${phase2Response.status} ${phase2Response.statusText} - ${errorText}`
-            );
-          }
-
-          const phase2Result = await phase2Response.json();
-          console.log("✅ Phase 2 completed:", phase2Result);
-
-          // Store the staged photo data for later use
-          if (phase2Result.data) {
-            setStagedPhotoData(phase2Result.data);
-
-            // Use the generated image URL from the combined Phase 2+3 response
-            if (phase2Result.data.generatedImageUrl) {
-              setPhotos((prev) => ({
-                ...prev,
-                proof: {
-                  file: null,
-                  key: null,
-                  url: phase2Result.data.generatedImageUrl,
-                },
-              }));
-            } else {
-              // Use fallback proof photo
-              setPhotos((prev) => ({
-                ...prev,
-                proof: {
-                  file: null,
-                  key: null,
-                  url: accessiblePhotoUrls[0] || "",
-                },
-              }));
-            }
-          } else {
-            console.warn("⚠️ Phase 2 - No data in response, using fallback");
-            setStagedPhotoData({
-              referenceImageUrl: accessiblePhotoUrls[0] || "",
-              stagingPrompt: "Professional product photo with clean background",
-              desiredAspectRatio: "1:1",
-              targetResolution: "1024x1024",
-              postProcess: "none",
-            });
-
-            // Use fallback proof photo
-            setPhotos((prev) => ({
-              ...prev,
-              proof: {
-                file: null,
-                key: null,
-                url: accessiblePhotoUrls[0] || "",
-              },
-            }));
-          }
-        } catch (phase2Error) {
-          console.error("❌ Phase 2 failed:", phase2Error);
-          console.error("❌ Phase 2 error details:", {
-            message:
-              phase2Error instanceof Error
-                ? phase2Error.message
-                : "Unknown error",
-            stack: phase2Error instanceof Error ? phase2Error.stack : undefined,
-          });
-
-          // Provide user-friendly error message
-          let errorMessage =
-            "Unknown error occurred during photo staging generation";
-          if (phase2Error instanceof Error) {
-            if (phase2Error.name === "AbortError") {
-              errorMessage = "Photo staging generation timed out (30 seconds)";
-            } else {
-              errorMessage = phase2Error.message;
-            }
-          }
-
-          console.warn(
-            "⚠️ Phase 2 failed, using fallback staging data. Error:",
-            errorMessage
-          );
-
-          // Don't fail the entire process if Phase 2 fails - use fallback data
-          setStagedPhotoData({
-            referenceImageUrl: accessiblePhotoUrls[0] || "",
-            stagingPrompt: "Professional product photo with clean background",
-            desiredAspectRatio: "1:1",
-            targetResolution: "1024x1024",
-            postProcess: "none",
-          });
-
-          // Use fallback proof photo
-          setPhotos((prev) => ({
-            ...prev,
-            proof: {
-              file: null,
-              key: null,
-              url: accessiblePhotoUrls[0] || "",
-            },
-          }));
-        }
-      }
+      // Phase 2: Staged photo generation is currently paused
+      // if (photos.hero?.url || photos.hero?.key) {
+      //   console.log("🎨 Phase 2 - Starting staged photo generation...");
+      //   // ... Phase 2 logic commented out ...
+      // }
     } catch (error) {
       console.error("❌ Error generating form fields:", error);
       setComprehensiveError(
@@ -1173,6 +1013,10 @@ export default function ListItemPage() {
           facebookBrand: brand || null, // Use main brand field
           facebookCondition: condition || null, // Use main condition field
           facebookGtin: facebookGtin || null,
+          googleProductCategory:
+            googleProductCategory ||
+            comprehensiveListing?.googleProductCategory ||
+            null,
 
           // Product Specifications (Facebook Shop Fields)
           quantity: parseInt(quantity) || 1,
@@ -1200,6 +1044,7 @@ export default function ListItemPage() {
         };
 
         console.log("Submitting listing with data:", formData);
+        console.log("Google Product Category:", googleProductCategory);
         console.log("Form validation status:", {
           hasHeroPhoto: !!(photos.hero?.file || photos.hero?.url),
           hasBackPhoto: !!(photos.back?.file || photos.back?.url),
@@ -1212,6 +1057,7 @@ export default function ListItemPage() {
           hasDescription: !!description,
           hasZipCode: !!zipCode,
           zipCodeLength: zipCode?.length,
+          hasGoogleProductCategory: !!googleProductCategory,
           isFormValid,
         });
 
@@ -2000,12 +1846,6 @@ export default function ListItemPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 bg-[#D4AF3D] rounded-full animate-pulse"></div>
-                      <span className="text-sm text-gray-700">
-                        Phase 2: Generating staged photo prompt
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3">
                       <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
                       <span className="text-sm text-gray-500">
                         Finalizing comprehensive analysis
@@ -2015,12 +1855,12 @@ export default function ListItemPage() {
 
                   <div className="mt-6 p-3 bg-blue-50 rounded-lg">
                     <p className="text-xs text-blue-800">
-                      <strong>Expected time:</strong> 30-45 seconds
+                      <strong>Expected time:</strong> 15-25 seconds
                       <br />
-                      <strong>Model:</strong> GPT-4o (deep reasoning & analysis)
+                      <strong>Model:</strong> GPT-5 (deep reasoning & analysis)
                       <br />
-                      <strong>Processing:</strong> Phase 1: Listing generation +
-                      Phase 2: Staged photo prompt
+                      <strong>Processing:</strong> Phase 1: Listing generation
+                      only
                     </p>
                   </div>
 
@@ -2604,6 +2444,21 @@ export default function ListItemPage() {
                             setDepartment(e.target.value as Department);
                             setCategory("");
                             setSubCategory("");
+                            setGoogleProductCategory("");
+                            // Update available Google Product Categories
+                            if (e.target.value) {
+                              const categories =
+                                getAvailableCategoriesForDepartment(
+                                  e.target.value
+                                );
+                              setAvailableGoogleCategories(
+                                categories.map(
+                                  (cat) => cat.googleProductCategory
+                                )
+                              );
+                            } else {
+                              setAvailableGoogleCategories([]);
+                            }
                           }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
                           required
@@ -2684,6 +2539,37 @@ export default function ListItemPage() {
                               </option>
                             ))}
                         </select>
+                      </div>
+
+                      {/* Google Product Category */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                          Google Product Category
+                          <span className="text-xs text-gray-500">
+                            (for Facebook Commerce Manager)
+                          </span>
+                        </label>
+                        <select
+                          value={googleProductCategory}
+                          onChange={(e) =>
+                            setGoogleProductCategory(e.target.value)
+                          }
+                          disabled={!department}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent disabled:bg-gray-100"
+                        >
+                          <option value="">
+                            Select Google Product Category
+                          </option>
+                          {availableGoogleCategories.map((cat) => (
+                            <option key={cat} value={cat}>
+                              {cat}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-gray-500 mt-1">
+                          This ensures proper Facebook catalog integration and
+                          ad performance
+                        </p>
                       </div>
 
                       {/* Title */}

@@ -499,6 +499,7 @@ export interface ComprehensiveListingData {
   facebookCategory?: string;
   facebookCondition?: string;
   facebookGtin?: string;
+  googleProductCategory?: string; // Official Google Product Category for Facebook Commerce Manager
   ebayQuery?: string;
   detailedDescription: string;
   marketingCopy: string;

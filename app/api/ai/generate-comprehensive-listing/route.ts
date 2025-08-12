@@ -443,29 +443,30 @@ Focus on accuracy, detail, and maximizing the item's perceived value while maint
     let flawData = null;
     let stagedPhotoData = null;
     
-    if (!isFormFieldsMode && accessiblePhotoUrls.length > 0) {
-      // Phase 2: Generate staged photo prompt (comprehensive mode only)
-      try {
-        console.log('🎨 Starting Phase 2: Staged photo generation');
-        const stagedPhotoResult = await generateStagedPhotoPhase2({
-          listingJSON: validatedData,
-          photoURLs: accessiblePhotoUrls,
-          videoFrames: accessibleVideoFrameUrls
-        });
-        stagedPhotoData = stagedPhotoResult;
-        console.log('✅ Phase 2 completed: Staged photo prompt generated');
-      } catch (stagedPhotoError) {
-        console.error('❌ Phase 2 failed:', stagedPhotoError);
-        // Don't fail the entire request if staged photo generation fails
-        stagedPhotoData = { 
-          referenceImageUrl: accessiblePhotoUrls[0],
-          stagingPrompt: "Professional product photo with clean background",
-          desiredAspectRatio: "1:1",
-          targetResolution: "1024x1024",
-          postProcess: "none"
-        };
-      }
-    }
+    // Phase 2: Staged photo generation is currently paused
+    // if (!isFormFieldsMode && accessiblePhotoUrls.length > 0) {
+    //   // Phase 2: Generate staged photo prompt (comprehensive mode only)
+    //   try {
+    //     console.log('🎨 Starting Phase 2: Staged photo generation');
+    //     const stagedPhotoResult = await generateStagedPhotoPhase2({
+    //       listingJSON: validatedData,
+    //       photoURLs: accessiblePhotoUrls,
+    //       videoFrames: accessibleVideoFrameUrls
+    //     });
+    //     stagedPhotoData = stagedPhotoResult;
+    //     console.log('✅ Phase 2 completed: Staged photo prompt generated');
+    //   } catch (stagedPhotoError) {
+    //     console.error('❌ Phase 2 failed:', stagedPhotoError);
+    //     // Don't fail the entire request if staged photo generation fails
+    //     stagedPhotoData = { 
+    //       referenceImageUrl: accessiblePhotoUrls[0],
+    //       stagingPrompt: "Professional product photo with clean background",
+    //       desiredAspectRatio: "1:1",
+    //       targetResolution: "1024x1024",
+    //       postProcess: "none"
+    //     };
+    //   }
+    // }
 
     // Return different response based on mode
     if (isFormFieldsMode) {
