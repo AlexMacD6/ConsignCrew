@@ -1,0 +1,55 @@
+# Remove Flaw Management System
+
+## Overview
+Remove all references to the flaw detection and management system from the codebase.
+
+## Changes Made
+
+### 1. Database Schema
+- **Status**: ✅ Already Clean
+- **Note**: The `flawData` JSONB field was already removed from the Listing model in the Prisma schema
+
+### 2. API Routes
+- **Removed**: `app/api/ai/detect-flaws/` directory (empty)
+- **Removed**: `app/api/ai/detect-flaws-enhanced/` directory (empty)
+- **Status**: ✅ Complete
+
+### 3. Database Migrations
+- **Removed**: `prisma/migrations/20250806161832_add_flaw_data_to_listings/` migration
+- **Status**: ✅ Complete
+
+### 4. Requirements Files
+- **Removed**: `requirements/flaw-detection-integration.txt`
+- **Removed**: `requirements/flaw-detection-accuracy-fix.txt`
+- **Removed**: `requirements/flaw-detection-confidence-fix.txt`
+- **Removed**: `requirements/flaw-detection-accuracy-analysis.txt`
+- **Removed**: `requirements/ai-flaw-detection-feature.txt`
+- **Status**: ✅ Complete
+
+### 5. PR Templates
+- **Removed**: `pr-templates/flaw-detection-integration.md`
+- **Removed**: `pr-templates/flaw-detection-accuracy-improvements.md`
+- **Status**: ✅ Complete
+
+### 6. Code References
+- **Updated**: `app/(dashboard)/list-item/[id]/edit/page.tsx`
+  - Removed text reference to "Flaw tags are displayed on photos where detected"
+- **Status**: ✅ Complete
+
+### 7. Build Cache
+- **Removed**: `tsconfig.tsbuildinfo` (regenerated on next build)
+- **Status**: ✅ Complete
+
+## Verification
+- ✅ No remaining references to "flaw" in codebase
+- ✅ No remaining references to "flawData" in codebase
+- ✅ No remaining references to "photoFlaws" in codebase
+- ✅ No remaining references to "detect-flaws" in codebase
+
+## Result
+The flaw management system has been completely removed from the codebase. All related files, database fields, API routes, and code references have been cleaned up.
+
+## Next Steps
+1. Run `npx prisma generate` to regenerate Prisma client
+2. Test the application to ensure no errors from removed flaw functionality
+3. Verify that photo management still works correctly without flaw detection

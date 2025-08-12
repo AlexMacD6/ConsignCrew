@@ -280,36 +280,6 @@ export default function EditListingPage() {
   // Confidence scores for AI-generated fields
   const [confidenceScores, setConfidenceScores] = useState<any>(null);
 
-  // Flaw management state
-  const [flawData, setFlawData] = useState<any>(null);
-  const [flawPhotos, setFlawPhotos] = useState<{ [photoUrl: string]: any[] }>(
-    {}
-  );
-
-  // Flaw management functions
-  const addFlawPhoto = (photoUrl: string, flaw: any) => {
-    setFlawPhotos((prev) => ({
-      ...prev,
-      [photoUrl]: [...(prev[photoUrl] || []), flaw],
-    }));
-  };
-
-  const removeFlawPhoto = (photoUrl: string, flawIndex: number) => {
-    setFlawPhotos((prev) => ({
-      ...prev,
-      [photoUrl]:
-        prev[photoUrl]?.filter((_, index) => index !== flawIndex) || [],
-    }));
-  };
-
-  const clearFlawPhotos = (photoUrl: string) => {
-    setFlawPhotos((prev) => {
-      const newFlawPhotos = { ...prev };
-      delete newFlawPhotos[photoUrl];
-      return newFlawPhotos;
-    });
-  };
-
   // Tag management functions
   const addTag = () => {
     if (tagInput.trim() && !tags.includes(tagInput.trim())) {
@@ -438,21 +408,6 @@ export default function EditListingPage() {
           setPattern(listingData.pattern || "");
           setStyle(listingData.style || "");
           setTags(listingData.tags || []);
-
-          // Load flaw data
-          if (listingData.flawData) {
-            setFlawData(listingData.flawData);
-            // Convert flaw data to photo-based structure
-            const photoFlaws: { [photoUrl: string]: any[] } = {};
-            if (listingData.flawData.flaws) {
-              listingData.flawData.flaws.forEach((photoFlaw: any) => {
-                if (photoFlaw.photoUrl && photoFlaw.flaws) {
-                  photoFlaws[photoFlaw.photoUrl] = photoFlaw.flaws;
-                }
-              });
-            }
-            setFlawPhotos(photoFlaws);
-          }
 
           // Treasure fields
           setIsTreasure(listingData.isTreasure || false);
@@ -764,14 +719,7 @@ export default function EditListingPage() {
             itemGroupId,
           }),
           tags: tags || [],
-          // Flaw data
-          flawData: {
-            ...flawData,
-            flaws: Object.entries(flawPhotos).map(([photoUrl, flaws]) => ({
-              photoUrl,
-              flaws,
-            })),
-          },
+
           // Treasure fields
           isTreasure: isTreasure || false,
           treasureReason: treasureReason || null,
@@ -1375,8 +1323,7 @@ export default function EditListingPage() {
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Photos</h2>
             <p className="text-sm text-gray-600 mb-6">
               Drag and drop photos to reorder them. The first photo will be the
-              main image shown in listings. Flaw tags are displayed on photos
-              where detected.
+              main image shown in listings.
             </p>
 
             {/* Photo Grid with Drag and Drop */}
@@ -1409,9 +1356,6 @@ export default function EditListingPage() {
 
                 if (!photoUrl) return null;
 
-                // Get flaws for this photo
-                const photoFlaws = flawPhotos[photoUrl] || [];
-
                 return (
                   <div
                     key={photoId}
@@ -1431,28 +1375,6 @@ export default function EditListingPage() {
                       alt={`${photoType} photo`}
                       className="w-full h-32 object-cover"
                     />
-
-                    {/* Flaw Tags - Display on thumbnails like listing page */}
-                    {photoFlaws.length > 0 && (
-                      <div className="absolute top-2 left-2 flex flex-wrap gap-1">
-                        {photoFlaws.map((flaw, flawIndex) => (
-                          <div
-                            key={flawIndex}
-                            className={`px-2 py-1 rounded text-xs font-medium text-white ${
-                              flaw.severity === "major"
-                                ? "bg-red-600"
-                                : flaw.severity === "moderate"
-                                ? "bg-orange-500"
-                                : "bg-yellow-600"
-                            }`}
-                            title={`${flaw.type}: ${flaw.description}`}
-                          >
-                            {flaw.type.charAt(0).toUpperCase() +
-                              flaw.type.slice(1)}
-                          </div>
-                        ))}
-                      </div>
-                    )}
 
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200">
                       <div className="absolute top-2 left-2 flex items-center gap-1">
@@ -1476,124 +1398,6 @@ export default function EditListingPage() {
                 );
               })}
             </div>
-
-            {/* Flaw Management for Photos */}
-            {Object.keys(flawPhotos).length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-md font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <svg
-                    className="h-4 w-4 text-red-600"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                  </svg>
-                  Flaw Management
-                </h3>
-                <div className="space-y-4">
-                  {Object.entries(flawPhotos).map(([photoUrl, flaws]) => {
-                    // Find photo title for this URL
-                    let photoTitle = "Unknown";
-                    let photoNumber = 0;
-
-                    if (photos.hero === photoUrl) {
-                      photoTitle = "Hero";
-                      photoNumber = photoOrder.indexOf("hero") + 1;
-                    } else if (photos.back === photoUrl) {
-                      photoTitle = "Back";
-                      photoNumber = photoOrder.indexOf("back") + 1;
-                    } else if (photos.proof === photoUrl) {
-                      photoTitle = "AI Generated";
-                      photoNumber = photoOrder.indexOf("proof") + 1;
-                    } else {
-                      // Find additional photo
-                      const additionalIndex = photos.additional.findIndex(
-                        (p) => p === photoUrl
-                      );
-                      if (additionalIndex !== -1) {
-                        photoTitle = `Additional ${additionalIndex + 1}`;
-                        photoNumber =
-                          photoOrder.indexOf(`additional-${additionalIndex}`) +
-                          1;
-                      }
-                    }
-
-                    return (
-                      <div
-                        key={photoUrl}
-                        className="border border-gray-200 rounded-lg p-4"
-                      >
-                        <div className="flex items-center justify-between mb-3">
-                          <h4 className="text-sm font-medium text-gray-700">
-                            {photoNumber}. {photoTitle}
-                          </h4>
-                          <button
-                            type="button"
-                            onClick={() => clearFlawPhotos(photoUrl)}
-                            className="text-sm text-red-600 hover:text-red-800"
-                          >
-                            Clear All Flaws
-                          </button>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2 mb-3">
-                          {flaws.map((flaw, index) => (
-                            <span
-                              key={index}
-                              className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-800 text-sm rounded-full"
-                            >
-                              <span className="font-medium">{flaw.type}</span>
-                              <span className="text-xs">({flaw.severity})</span>
-                              <button
-                                type="button"
-                                onClick={() => removeFlawPhoto(photoUrl, index)}
-                                className="text-red-600 hover:text-red-800 ml-1"
-                              >
-                                ×
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-
-                        {flaws.length > 0 && (
-                          <div className="space-y-2">
-                            {flaws.map((flaw, index) => (
-                              <div
-                                key={index}
-                                className="border border-gray-200 rounded p-3"
-                              >
-                                <div className="flex items-center justify-between mb-2">
-                                  <strong className="text-sm text-gray-700">
-                                    {flaw.type} ({flaw.severity})
-                                  </strong>
-                                </div>
-                                <textarea
-                                  value={flaw.description || ""}
-                                  onChange={(e) => {
-                                    const updatedFlaws = [...flaws];
-                                    updatedFlaws[index] = {
-                                      ...updatedFlaws[index],
-                                      description: e.target.value,
-                                    };
-                                    setFlawPhotos((prev) => ({
-                                      ...prev,
-                                      [photoUrl]: updatedFlaws,
-                                    }));
-                                  }}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent text-sm"
-                                  rows={2}
-                                  placeholder="Describe the flaw in detail..."
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
 
             {/* Photo Upload */}
             <div className="space-y-4">
