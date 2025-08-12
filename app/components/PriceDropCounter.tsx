@@ -364,7 +364,7 @@ export default function PriceDropCounter({
         if (schedule.dropIntervals[i] > daysSinceCreation) {
           const nextDropPercentage = schedule.dropPercentages[i];
 
-          // Calculate actual dollar amount based on original price
+          // Calculate actual dollar amount based on ORIGINAL price and schedule percentage
           if (originalPrice) {
             const nextDropPrice =
               Math.round(originalPrice * (nextDropPercentage / 100) * 100) /
@@ -375,7 +375,7 @@ export default function PriceDropCounter({
               : nextDropPrice;
             return `$${finalPrice.toFixed(2)}`;
           } else if (currentPrice) {
-            // Fallback: estimate based on current price (assume it's still at original price)
+            // Fallback: estimate based on current price (assume it's the original price)
             const nextDropPrice =
               Math.round(currentPrice * (nextDropPercentage / 100) * 100) / 100;
             const finalPrice = reservePrice

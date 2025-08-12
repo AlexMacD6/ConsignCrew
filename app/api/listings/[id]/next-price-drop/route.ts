@@ -3,7 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { 
   DISCOUNT_SCHEDULES, 
   calculateNextDropInfo, 
-  calculateCurrentPrice 
+  calculateCurrentPrice,
+  calculateNextDropPriceFromOriginal
 } from '@/lib/discount-schedule';
 
 // GET - Get next price drop information for a listing
@@ -65,11 +66,24 @@ export async function GET(
       });
     }
 
-    // Calculate the next drop price
-    const nextDropPrice = Math.max(
-      Math.round(originalPrice * (nextDropInfo.nextDropPercentage / 100) * 100) / 100,
+    // Calculate the next drop price based on ORIGINAL price (for consistent drops)
+    const nextDropPrice = calculateNextDropPriceFromOriginal(
+      originalPrice,
+      listing.createdAt,
+      discountSchedule,
       reservePrice
     );
+
+    // If no next drop price available, return no more drops
+    if (nextDropPrice === null) {
+      return NextResponse.json({
+        success: true,
+        hasPriceDrop: false,
+        message: 'No more price drops available',
+        currentPrice,
+        originalPrice,
+      });
+    }
 
     // Check if we're already at or below reserve price
     if (nextDropPrice <= reservePrice) {

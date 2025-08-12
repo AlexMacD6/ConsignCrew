@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createHistoryEvent, HistoryEvents } from '@/lib/listing-history';
 import { validateGender, validateAgeGroup, validateItemGroupId } from '@/lib/product-specifications';
+import { metaPixelAPI } from '@/lib/meta-pixel-api';
 
 // Generate a random 6-character ID using letters and numbers
 function generateRandomId(): string {
@@ -176,10 +177,98 @@ export async function POST(request: NextRequest) {
     // Create initial history event for listing creation
     await createHistoryEvent(finalItemId, HistoryEvents.LISTING_CREATED(title));
 
+    // Auto-sync to Facebook catalog if enabled and environment is configured
+    let facebookSyncResult = null;
+    if (listing.facebookShopEnabled && 
+        process.env.META_ACCESS_TOKEN && 
+        process.env.META_CATALOG_ID) {
+      try {
+        console.log(`Auto-syncing new listing ${finalItemId} to Facebook catalog...`);
+        
+        // Include user data for the sync (required for metaPixelAPI.syncProduct)
+        const listingWithUser = await prisma.listing.findUnique({
+          where: { id: listing.id },
+          include: {
+            user: {
+              select: {
+                name: true,
+                id: true
+              }
+            }
+          }
+        });
+
+        if (listingWithUser) {
+          const syncResult = await metaPixelAPI.syncProduct(listingWithUser);
+          
+          if (syncResult.success) {
+            // Update listing with sync success
+            await prisma.listing.update({
+              where: { id: listing.id },
+              data: {
+                metaSyncStatus: 'success',
+                metaProductId: syncResult.productId || finalItemId,
+                metaCatalogId: process.env.META_CATALOG_ID,
+                metaLastSync: new Date(),
+                metaErrorDetails: null
+              }
+            });
+            
+            facebookSyncResult = {
+              success: true,
+              productId: syncResult.productId,
+              message: 'Successfully synced to Facebook catalog'
+            };
+            
+            console.log(`✅ Auto-synced listing ${finalItemId} to Facebook catalog`);
+          } else {
+            // Update listing with sync error
+            await prisma.listing.update({
+              where: { id: listing.id },
+              data: {
+                metaSyncStatus: 'error',
+                metaErrorDetails: syncResult.error || 'Unknown sync error',
+                metaLastSync: new Date()
+              }
+            });
+            
+            facebookSyncResult = {
+              success: false,
+              error: syncResult.error,
+              message: 'Failed to sync to Facebook catalog'
+            };
+            
+            console.error(`❌ Failed to auto-sync listing ${finalItemId}: ${syncResult.error}`);
+          }
+        }
+      } catch (syncError) {
+        console.error('Error during Facebook auto-sync:', syncError);
+        
+        // Update listing with sync error
+        await prisma.listing.update({
+          where: { id: listing.id },
+          data: {
+            metaSyncStatus: 'error',
+            metaErrorDetails: syncError instanceof Error ? syncError.message : 'Auto-sync failed',
+            metaLastSync: new Date()
+          }
+        });
+        
+        facebookSyncResult = {
+          success: false,
+          error: syncError instanceof Error ? syncError.message : 'Auto-sync failed',
+          message: 'Facebook auto-sync encountered an error'
+        };
+      }
+    } else {
+      console.log('Facebook auto-sync skipped: either disabled or environment not configured');
+    }
+
     return NextResponse.json({
       success: true,
       listing,
       itemId: finalItemId,
+      facebookSync: facebookSyncResult
     });
 
   } catch (error) {
