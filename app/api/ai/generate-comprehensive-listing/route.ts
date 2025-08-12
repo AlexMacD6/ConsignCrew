@@ -284,7 +284,7 @@ Focus on accuracy, detail, and maximizing the item's perceived value while maint
         }
       ],
       temperature: isFormFieldsMode ? 0.5 : 0.7, // Lower temperature for form fields for more consistent results
-      max_tokens: isFormFieldsMode ? 1500 : 2000, // Fewer tokens needed for form fields
+      max_completion_tokens: 2000, // Consistent token limit for both modes for better quality
     });
 
     const responseText = completion.choices[0]?.message?.content;

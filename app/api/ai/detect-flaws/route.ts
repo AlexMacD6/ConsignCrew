@@ -84,7 +84,7 @@ Be very conservative and accurate. Only report flaws that are OBVIOUSLY visible 
           content: `Please analyze these product photos for flaws and imperfections: ${accessiblePhotoUrls.join(', ')}`
         }
       ],
-      max_tokens: 2000,
+      max_completion_tokens: 2000,
       temperature: 0.1,
     });
 

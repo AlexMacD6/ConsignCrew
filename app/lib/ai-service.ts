@@ -762,7 +762,7 @@ export async function generateStagedPhotoPhase2(request: {
         }
       ],
       temperature: 0.3,
-      max_tokens: 1000
+      max_completion_tokens: 2000
     });
 
     console.log("🎨 Phase 2 - OpenAI API call completed, status:", response.choices?.[0]?.finish_reason);
