@@ -164,7 +164,7 @@ Provide deep reasoning for each field to maximize value, appeal, and competitive
         }
       ],
       temperature: 0.7, // Higher temperature for more creative reasoning and analysis
-      max_tokens: 3000, // Increased token limit for comprehensive analysis
+      max_completion_tokens: 2000, // Consistent token limit for better quality
     });
 
     console.log("✅ Form Fields API: OpenAI response received");
