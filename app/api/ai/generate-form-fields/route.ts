@@ -163,7 +163,8 @@ Provide deep reasoning for each field to maximize value, appeal, and competitive
           content: content
         }
       ],
-      temperature: 0.7, // Higher temperature for more creative reasoning and analysis
+      // GPT-5 only supports default temperature (1), no custom values allowed
+      // temperature: 0.7, // Higher temperature for more creative reasoning and analysis
       max_completion_tokens: 2000, // Consistent token limit for better quality
     });
 

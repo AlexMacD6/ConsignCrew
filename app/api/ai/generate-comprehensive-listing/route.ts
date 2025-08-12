@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { calculateAllFieldConfidence, ConfidenceFactors } from '@/lib/ai-confidence-scorer';
-import { AI_SERVICE_PHASE_1_PROMPT, mapConditionToFacebook, ensureFacebookTaxonomy, detectPhotoFlaws, generateStagedPhotoPhase2 } from '@/lib/ai-service';
+import { AI_SERVICE_PHASE_1_PROMPT, mapConditionToFacebook, ensureFacebookTaxonomy, generateStagedPhotoPhase2 } from '@/lib/ai-service';
 import { mapToGoogleProductCategory } from '@/lib/google-product-categories';
 
 const openai = new OpenAI({
@@ -283,7 +283,8 @@ Focus on accuracy, detail, and maximizing the item's perceived value while maint
           content: content
         }
       ],
-      temperature: isFormFieldsMode ? 0.5 : 0.7, // Lower temperature for form fields for more consistent results
+      // GPT-5 only supports default temperature (1), no custom values allowed
+      // temperature: isFormFieldsMode ? 0.5 : 0.7, // Commented out for GPT-5 compatibility
       max_completion_tokens: 2000, // Consistent token limit for both modes for better quality
     });
 
@@ -440,7 +441,6 @@ Focus on accuracy, detail, and maximizing the item's perceived value while maint
     };
 
     // Only run additional services for comprehensive mode, not form fields mode
-    let flawData = null;
     let stagedPhotoData = null;
     
     // Phase 2: Staged photo generation is currently paused
@@ -481,7 +481,6 @@ Focus on accuracy, detail, and maximizing the item's perceived value while maint
         listingData: validatedData,
         confidenceScores,
         analysis: responseText,
-        flawData,
         stagedPhotoData,
       });
     }

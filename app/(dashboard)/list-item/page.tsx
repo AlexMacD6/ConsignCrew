@@ -2488,20 +2488,46 @@ export default function ListItemPage() {
                             setCategory(e.target.value);
                             setSubCategory("");
                           }}
-                          disabled={!department}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent disabled:bg-gray-100"
+                          disabled={false}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
                           required
                         >
                           <option value="">Select Category</option>
-                          {department &&
-                            taxonomy[department] &&
-                            (Object.keys(taxonomy[department]) as string[]).map(
-                              (cat) => (
+                          {department && taxonomy[department]
+                            ? // Show categories for selected department
+                              (
+                                Object.keys(taxonomy[department]) as string[]
+                              ).map((cat) => (
                                 <option key={cat} value={cat}>
                                   {cat}
                                 </option>
-                              )
-                            )}
+                              ))
+                            : // Show all categories from all departments when no department is selected
+                              (() => {
+                                const allCategories: JSX.Element[] = [];
+                                const deptKeys = Object.keys(taxonomy);
+
+                                for (const dept of deptKeys) {
+                                  const deptData =
+                                    taxonomy[dept as keyof typeof taxonomy];
+                                  if (!deptData) continue;
+
+                                  const catKeys = Object.keys(deptData);
+                                  // Use explicit loop to avoid type inference issues
+                                  for (let i = 0; i < catKeys.length; i++) {
+                                    const cat = catKeys[i];
+                                    allCategories.push(
+                                      <option
+                                        key={`${dept}-${cat}`}
+                                        value={cat}
+                                      >
+                                        {cat}
+                                      </option>
+                                    );
+                                  }
+                                }
+                                return allCategories;
+                              })()}
                         </select>
                       </div>
 
@@ -2518,26 +2544,61 @@ export default function ListItemPage() {
                         <select
                           value={subCategory}
                           onChange={(e) => setSubCategory(e.target.value)}
-                          disabled={!category}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent disabled:bg-gray-100"
+                          disabled={false}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
                           required
                         >
                           <option value="">Select Sub-category</option>
                           {category &&
-                            department &&
-                            taxonomy[department] &&
-                            taxonomy[department][
-                              category as keyof (typeof taxonomy)[typeof department]
-                            ] &&
-                            (
-                              taxonomy[department][
-                                category as keyof (typeof taxonomy)[typeof department]
-                              ] as unknown as string[]
-                            ).map((sub) => (
-                              <option key={sub} value={sub}>
-                                {sub}
-                              </option>
-                            ))}
+                          department &&
+                          taxonomy[department] &&
+                          taxonomy[department][
+                            category as keyof (typeof taxonomy)[typeof department]
+                          ]
+                            ? // Show sub-categories for selected category
+                              (
+                                taxonomy[department][
+                                  category as keyof (typeof taxonomy)[typeof department]
+                                ] as unknown as string[]
+                              ).map((sub) => (
+                                <option key={sub} value={sub}>
+                                  {sub}
+                                </option>
+                              ))
+                            : // Show all sub-categories from all categories when no category is selected
+                              (() => {
+                                const allSubCategories: JSX.Element[] = [];
+                                const deptKeys = Object.keys(taxonomy);
+
+                                for (const dept of deptKeys) {
+                                  const deptData =
+                                    taxonomy[dept as keyof typeof taxonomy];
+                                  if (!deptData) continue;
+
+                                  const catKeys = Object.keys(deptData);
+                                  for (let i = 0; i < catKeys.length; i++) {
+                                    const cat = catKeys[i];
+                                    const catData =
+                                      deptData[cat as keyof typeof deptData];
+                                    if (!Array.isArray(catData)) continue;
+
+                                    // Use explicit loop to avoid type inference issues
+                                    const subArray = catData as string[];
+                                    for (let j = 0; j < subArray.length; j++) {
+                                      const sub = subArray[j];
+                                      allSubCategories.push(
+                                        <option
+                                          key={`${dept}-${cat}-${sub}`}
+                                          value={sub}
+                                        >
+                                          {sub}
+                                        </option>
+                                      );
+                                    }
+                                  }
+                                }
+                                return allSubCategories;
+                              })()}
                         </select>
                       </div>
 
@@ -2554,17 +2615,31 @@ export default function ListItemPage() {
                           onChange={(e) =>
                             setGoogleProductCategory(e.target.value)
                           }
-                          disabled={!department}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent disabled:bg-gray-100"
+                          disabled={false}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
                         >
                           <option value="">
                             Select Google Product Category
                           </option>
-                          {availableGoogleCategories.map((cat) => (
-                            <option key={cat} value={cat}>
-                              {cat}
-                            </option>
-                          ))}
+                          {availableGoogleCategories.length > 0
+                            ? availableGoogleCategories.map((cat) => (
+                                <option key={cat} value={cat}>
+                                  {cat}
+                                </option>
+                              ))
+                            : // Show all available Google Product Categories when none are filtered
+                              Object.keys(taxonomy).flatMap((dept) =>
+                                getAvailableCategoriesForDepartment(dept).map(
+                                  (cat) => (
+                                    <option
+                                      key={`${dept}-${cat.googleProductCategory}`}
+                                      value={cat.googleProductCategory}
+                                    >
+                                      {cat.googleProductCategory}
+                                    </option>
+                                  )
+                                )
+                              )}
                         </select>
                         <p className="text-xs text-gray-500 mt-1">
                           This ensures proper Facebook catalog integration and

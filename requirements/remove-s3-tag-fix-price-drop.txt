@@ -37,29 +37,12 @@
 - **Order**: Hero → Proof (DALL-E) → Back → Additional photos
 - **Result**: Consistent image ordering across main listings and detail pages
 
-### 6. Flaw Detection Confidence Fix
-- **Files**: 
-  - `app/api/ai/detect-flaws-enhanced/route.ts`
-  - `app/api/ai/detect-flaws/route.ts`
-- **Changes**:
-  - Increased confidence threshold from 80% to 99%
-  - Implemented single highest confidence flaw per photo
-  - Updated AI prompts to reflect 99% confidence requirement
-- **Result**: Reduced false positives, only obvious flaws detected
-
-### 7. Edit Listing Page Integration (Flaw Photos)
+### 6. Edit Listing Page Photo Management
 - **File**: `app/(dashboard)/list-item/[id]/edit/page.tsx`
 - **Changes**:
-  - **REMOVED**: Separate "Flaw Photos" component section
-  - **INTEGRATED**: Flaw management directly into Photos Management section
   - **NEW FEATURES**:
     - Photo naming with sequence numbers and titles (e.g., "3. Hero" instead of filenames)
-    - Flaw tags displayed on photo thumbnails (similar to listing page)
-    - Editable flaw descriptions for sellers
-    - Flaw comments still populated but now editable
-    - Flaw management UI integrated within Photos section
-  - **UI**: Flaw tags appear on thumbnails with color-coded severity (red/orange/yellow)
-  - **Functionality**: Sellers can edit flaw descriptions, remove individual flaws, or clear all flaws per photo
+    - Enhanced photo management UI integrated within Photos section
 
 ### 8. Price Drop Timer Fix (History Component)
 - **File**: `app/api/listings/[id]/next-price-drop/route.ts`
@@ -68,22 +51,7 @@
 - **Change**: Updated `getTimeUntilNextDrop` function to match simple 7-day logic
 - **Result**: Timer no longer resets on page reload, correctly shows 7 days from creation
 
-### 9. Flaw Detection Accuracy Fix
-- **Problem**: Flaw tags appeared "randomly generated" and didn't match photos
-- **Root Cause**: 
-  - Critical bug in `validateAndCleanFlawData` function (duplicate return statements)
-  - Missing `flawData` field in PUT route database save
-  - Poor AI prompt for photo association
-- **Files**: 
-  - `app/api/ai/detect-flaws-enhanced/route.ts`
-  - `app/api/listings/[id]/route.ts`
-- **Fixes**:
-  - Removed duplicate return statement in validation function
-  - Added `flawData` field to PUT route destructuring and Prisma update
-  - Improved AI prompt with explicit photo listing and association instructions
-  - Added comprehensive logging for debugging
-  - Enhanced confidence threshold enforcement (99%)
-- **Result**: Flaw tags should now accurately reflect actual flaws in photos
+
 
 ## Technical Details
 
@@ -92,18 +60,7 @@
 const nextDropTime = new Date(created.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days from creation
 ```
 
-### Flaw Detection Logic
-```typescript
-// Only keep flaws with 99%+ confidence
-if (flaw.confidence && flaw.confidence < 0.99) {
-  return false;
-}
 
-// Only keep highest confidence flaw per photo
-const highestConfidenceFlaw = validatedFlaws.reduce((highest, current) => 
-  (current.confidence || 0) > (highest.confidence || 0) ? current : highest
-);
-```
 
 ### Photo Naming Logic
 ```typescript
@@ -120,23 +77,16 @@ const highestConfidenceFlaw = validatedFlaws.reduce((highest, current) =>
    - Check that red badge only appears within 24 hours
 3. **Status Display**: Verify "Available" status appears for active listings
 4. **Image Order**: Confirm DALL-E photo appears second on main listings page
-5. **Flaw Detection**: Test with photos containing obvious flaws, verify only 99% confidence flaws detected
-6. **Edit Listing Page**:
-   - Verify flaw tags appear on photo thumbnails
-   - Test editing flaw descriptions
-   - Test removing individual flaws
+5. **Edit Listing Page**:
    - Verify photo naming shows sequence numbers and titles
-   - Confirm flaw management is integrated into Photos section
+   - Confirm enhanced photo management UI is working
 
 ## Files Modified
 - `app/components/RobustImage.tsx`
-- `app/(dashboard)/listings/page.tsx`
-- `app/api/ai/detect-flaws-enhanced/route.ts`
-- `app/api/ai/detect-flaws/route.ts`
 - `app/(dashboard)/list-item/[id]/edit/page.tsx`
+
 - `app/api/listings/[id]/next-price-drop/route.ts`
 - `app/(dashboard)/list-item/[id]/page.tsx`
 - `app/api/listings/[id]/route.ts`
 - `requirements/remove-s3-tag-fix-price-drop.txt`
-- `requirements/flaw-detection-confidence-fix.txt`
-- `requirements/flaw-detection-accuracy-fix.txt` 
+ 

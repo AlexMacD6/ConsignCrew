@@ -342,7 +342,7 @@ The image will serve as the primary listing photo on TreasureHub and Facebook Sh
    • Camera & lighting hints: 3-quarter front angle, soft natural light, shallow depth of field.  
    • No other branded items, no humans, no pets.  
    • Remove busy backgrounds; use clean, on-brand aesthetic.  
-   • Keep original item flaws subtle but honest (e.g., "small repaired chip on lower drawer remains visible").
+
 
 3. **Return the result in JSON (no comments):**
 
@@ -659,37 +659,7 @@ export async function estimateProductPricing(
   }
 }
 
-/**
- * Detect flaws and imperfections in product photos
- */
-export async function detectPhotoFlaws(photoUrls: string[]): Promise<{
-  flawData: any;
-  analysis: string;
-}> {
-  try {
-    const response = await fetch('/api/ai/detect-flaws', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ photoUrls }),
-    });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to detect flaws');
-    }
-
-    const data = await response.json();
-    return {
-      flawData: data.flawData,
-      analysis: data.analysis
-    };
-  } catch (error) {
-    console.error('Error detecting photo flaws:', error);
-    throw new Error(error instanceof Error ? error.message : 'Failed to detect photo flaws');
-  }
-}
 
 /**
  * Generate a professional staged photo using AI with comprehensive listing data
@@ -761,7 +731,8 @@ export async function generateStagedPhotoPhase2(request: {
           content: JSON.stringify(inputData)
         }
       ],
-      temperature: 0.3,
+      // GPT-5 only supports default temperature (1), no custom values allowed
+      // temperature: 0.3, // Commented out for GPT-5 compatibility
       max_completion_tokens: 2000
     });
 
