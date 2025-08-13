@@ -168,6 +168,13 @@ export default function AdminDashboard() {
     name: "",
   });
 
+  // AI Model Configuration states
+  const [aiModelConfig, setAiModelConfig] = useState({
+    phase1Model: "gpt-4o", // Default to GPT-4o for better visual analysis
+    phase2Model: "gpt-4o", // Default to GPT-4o for Phase 2
+  });
+  const [savingAiConfig, setSavingAiConfig] = useState(false);
+
   // Members modal state
   const [showMembersModal, setShowMembersModal] = useState(false);
   const [selectedOrgForMembers, setSelectedOrgForMembers] =
@@ -304,6 +311,15 @@ export default function AdminDashboard() {
       if (questionsResponse.ok) {
         const questionsData = await questionsResponse.json();
         setPendingQuestions(questionsData.pendingCount || 0);
+      }
+
+      // Load AI model configuration
+      const aiConfigResponse = await fetch("/api/admin/ai-model-config");
+      if (aiConfigResponse.ok) {
+        const aiConfigData = await aiConfigResponse.json();
+        if (aiConfigData.config) {
+          setAiModelConfig(aiConfigData.config);
+        }
       }
     } catch (err) {
       setError("Failed to load admin data");
@@ -566,6 +582,33 @@ export default function AdminDashboard() {
       }
     } catch (err) {
       setError("Failed to delete zip code");
+    }
+  };
+
+  const handleSaveAiModelConfig = async () => {
+    try {
+      setSavingAiConfig(true);
+      setError("");
+      setSuccess("");
+
+      const response = await fetch("/api/admin/ai-model-config", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(aiModelConfig),
+      });
+
+      if (response.ok) {
+        setSuccess("AI Model configuration saved successfully!");
+      } else {
+        const error = await response.json();
+        setError(error.error || "Failed to save AI Model configuration");
+      }
+    } catch (error) {
+      setError("Failed to save AI Model configuration");
+    } finally {
+      setSavingAiConfig(false);
     }
   };
 
@@ -1154,6 +1197,96 @@ export default function AdminDashboard() {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+
+            {/* AI Model Configuration */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                AI Model Configuration
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Configure which AI models to use for different services. Changes
+                take effect immediately.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                {/* AI Service Phase 1 - Comprehensive Listing Generation */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    AI Service Phase 1
+                  </label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Comprehensive listing generation and form fields
+                  </p>
+                  <select
+                    value={aiModelConfig.phase1Model}
+                    onChange={(e) =>
+                      setAiModelConfig({
+                        ...aiModelConfig,
+                        phase1Model: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  >
+                    <option value="gpt-4o">
+                      GPT-4o (Default - Better Visual Analysis)
+                    </option>
+                    <option value="gpt-5">GPT-5 (Advanced Reasoning)</option>
+                  </select>
+                </div>
+
+                {/* AI Service Phase 2 - Staged Photo Generation */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    AI Service Phase 2
+                  </label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Staged photo generation and enhancement
+                  </p>
+                  <select
+                    value={aiModelConfig.phase2Model}
+                    onChange={(e) =>
+                      setAiModelConfig({
+                        ...aiModelConfig,
+                        phase2Model: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  >
+                    <option value="gpt-4o">GPT-4o (Current API)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-600">
+                  <p>
+                    <strong>Current Phase 1 Model:</strong>{" "}
+                    {aiModelConfig.phase1Model}
+                  </p>
+                  <p>
+                    <strong>Current Phase 2 Model:</strong>{" "}
+                    {aiModelConfig.phase2Model}
+                  </p>
+                </div>
+                <Button
+                  onClick={handleSaveAiModelConfig}
+                  disabled={savingAiConfig}
+                  className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                >
+                  {savingAiConfig ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Configuration
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
 

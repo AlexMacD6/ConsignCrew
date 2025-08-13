@@ -1,0 +1,75 @@
+# Photo Upload Options Integration
+
+## Overview
+Add options for users to choose between single photo upload (current system) and bulk photo upload on the list-item page, integrated with the video upload section.
+
+## Current System
+- Users upload photos one by one in sequence: Hero → Back → Proof → Additional
+- Each photo type has specific requirements and validation
+- Photos are processed individually through the existing upload flow
+
+## New Requirements
+
+### 1. Upload Method Selection
+- Add a selection interface in step 2 (Photo Requirements) to choose upload method
+- Two options:
+  - **Single Photo Upload**: Current system (photo by photo)
+  - **Bulk Photo Upload**: Upload multiple photos at once
+
+### 2. Single Photo Upload (Enhanced)
+- Keep existing functionality
+- Improve UI to show it's the "step-by-step" approach
+- Maintain current validation and requirements
+
+### 3. Bulk Photo Upload (New)
+- Allow users to select multiple photos at once
+- Provide drag-and-drop interface
+- Show preview of all selected photos
+- Auto-categorize photos based on user selection or AI analysis
+- Maintain same photo requirements (Hero, Back, Proof, Additional)
+
+### 4. Integration Points
+- Place upload method selection at the top of step 2
+- Integrate with existing video upload workflow
+- Maintain current photo validation logic
+- Ensure both methods lead to the same form generation step
+
+### 5. UI/UX Requirements
+- Clear visual distinction between upload methods
+- Intuitive interface for method selection
+- Consistent styling with existing design
+- Responsive design for mobile and desktop
+
+### 6. Technical Requirements
+- Add new state variables for upload method selection
+- Implement bulk upload handler
+- Maintain existing photo upload API integration
+- Ensure backward compatibility with current system
+
+## Implementation Details
+
+### State Variables to Add
+- `uploadMethod`: "single" | "bulk"
+- `bulkPhotos`: Array of selected photos for bulk upload
+- `bulkUploading`: Loading state for bulk upload
+
+### New Functions to Implement
+- `handleBulkPhotoSelection`: Handle multiple photo selection
+- `handleBulkPhotoUpload`: Process bulk photo upload
+- `autoCategorizePhotos`: Automatically assign photos to required types
+- `validateBulkPhotos`: Ensure bulk photos meet requirements
+
+### UI Components to Add
+- Upload method selection radio buttons/cards
+- Bulk photo selection interface
+- Drag-and-drop area for bulk upload
+- Photo preview grid for bulk selection
+- Auto-categorization interface
+
+## Success Criteria
+- Users can seamlessly switch between upload methods
+- Bulk upload maintains same photo quality and validation
+- Both methods integrate with existing video upload workflow
+- UI remains intuitive and responsive
+- No regression in existing functionality
+

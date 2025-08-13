@@ -23,6 +23,407 @@ import OpenAI from 'openai';
 // ============================================================================
 
 // ============================================================================
+// FACEBOOK TO GOOGLE PRODUCT CATEGORY MAPPING
+// ============================================================================
+// 
+// This mapping system converts Facebook Marketplace categories to Google Product Categories
+// ensuring consistency between the two systems and proper Facebook Commerce Manager integration.
+//
+// Key Features:
+// - Maps Facebook department/category/subcategory to Google Product Category hierarchy
+// - Maintains data integrity and SEO optimization
+// - Supports AI overrides when visual analysis suggests different categorization
+//
+// Last Updated: Category mapping implementation
+// ============================================================================
+
+/**
+ * Maps Facebook Marketplace categories to Google Product Categories
+ * This ensures consistency between Facebook and Google categorization systems
+ */
+export function mapFacebookToGoogleProductCategory(
+  department: string,
+  category: string,
+  subCategory: string
+): {
+  primary: string;
+  secondary: string;
+  tertiary: string;
+  quaternary?: string;
+} {
+  // Handle undefined/null values gracefully
+  if (!department) department = 'Home & Garden';
+  if (!category) category = 'General';
+  if (!subCategory) subCategory = 'Other';
+
+  // Department-level mapping
+  switch (department.toLowerCase()) {
+    case 'furniture':
+      return mapFurnitureCategories(category, subCategory);
+    
+    case 'home & garden':
+      return mapHomeAndGardenCategories(category, subCategory);
+    
+    case 'electronics':
+      return mapElectronicsCategories(category, subCategory);
+    
+    case 'clothing & accessories':
+      return mapClothingCategories(category, subCategory);
+    
+    case 'sporting goods':
+      return mapSportingGoodsCategories(category, subCategory);
+    
+    case 'toys & games':
+      return mapToysAndGamesCategories(category, subCategory);
+    
+    case 'books & media':
+      return mapBooksAndMediaCategories(category, subCategory);
+    
+    case 'automotive':
+      return mapAutomotiveCategories(category, subCategory);
+    
+    case 'health & beauty':
+      return mapHealthAndBeautyCategories(category, subCategory);
+    
+    case 'jewelry & watches':
+      return mapJewelryAndWatchesCategories(category, subCategory);
+    
+    default:
+      return {
+        primary: 'Home & Garden',
+        secondary: 'General',
+        tertiary: 'Other'
+      };
+  }
+}
+
+/**
+ * Maps Furniture categories to Google Product Categories
+ */
+function mapFurnitureCategories(category: string, subCategory: string) {
+  const categoryLower = category.toLowerCase();
+  const subCategoryLower = subCategory.toLowerCase();
+
+  if (categoryLower.includes('bedroom') || subCategoryLower.includes('bedroom')) {
+    return {
+      primary: 'Home & Garden',
+      secondary: 'Furniture',
+      tertiary: 'Bedroom Furniture'
+    };
+  }
+
+  if (categoryLower.includes('living room') || subCategoryLower.includes('living room')) {
+    return {
+      primary: 'Home & Garden',
+      secondary: 'Furniture',
+      tertiary: 'Living Room Furniture'
+    };
+  }
+
+  if (categoryLower.includes('dining') || subCategoryLower.includes('dining')) {
+    return {
+      primary: 'Home & Garden',
+      secondary: 'Furniture',
+      tertiary: 'Dining Room Furniture'
+    };
+  }
+
+  if (categoryLower.includes('office') || subCategoryLower.includes('office')) {
+    return {
+      primary: 'Home & Garden',
+      secondary: 'Furniture',
+      tertiary: 'Office Furniture'
+    };
+  }
+
+  if (categoryLower.includes('outdoor') || subCategoryLower.includes('outdoor')) {
+    return {
+      primary: 'Home & Garden',
+      secondary: 'Furniture',
+      tertiary: 'Outdoor Furniture'
+    };
+  }
+
+  if (categoryLower.includes('storage') || subCategoryLower.includes('storage')) {
+    return {
+      primary: 'Home & Garden',
+      secondary: 'Furniture',
+      tertiary: 'Storage Furniture'
+    };
+  }
+
+  // Default furniture mapping
+  return {
+    primary: 'Home & Garden',
+    secondary: 'Furniture',
+    tertiary: 'General Furniture'
+  };
+}
+
+/**
+ * Maps Home & Garden categories to Google Product Categories
+ */
+function mapHomeAndGardenCategories(category: string, subCategory: string) {
+  const categoryLower = category.toLowerCase();
+  const subCategoryLower = subCategory.toLowerCase();
+
+  if (categoryLower.includes('furniture') || subCategoryLower.includes('furniture')) {
+    return mapFurnitureCategories(category, subCategory);
+  }
+
+  if (categoryLower.includes('lighting') || subCategoryLower.includes('lighting')) {
+    return {
+      primary: 'Home & Garden',
+      secondary: 'Lighting',
+      tertiary: 'General Lighting'
+    };
+  }
+
+  if (categoryLower.includes('kitchen') || subCategoryLower.includes('kitchen')) {
+    return {
+      primary: 'Home & Garden',
+      secondary: 'Kitchen & Dining',
+      tertiary: 'Kitchen Accessories'
+    };
+  }
+
+  if (categoryLower.includes('bathroom') || subCategoryLower.includes('bathroom')) {
+    return {
+      primary: 'Home & Garden',
+      secondary: 'Bathroom',
+      tertiary: 'Bathroom Accessories'
+    };
+  }
+
+  if (categoryLower.includes('storage') || subCategoryLower.includes('storage')) {
+    return {
+      primary: 'Home & Garden',
+      secondary: 'Storage & Organization',
+      tertiary: 'General Storage'
+    };
+  }
+
+  if (categoryLower.includes('garden') || subCategoryLower.includes('garden')) {
+    return {
+      primary: 'Home & Garden',
+      secondary: 'Garden & Outdoor',
+      tertiary: 'Garden Tools'
+    };
+  }
+
+  // Default home & garden mapping
+  return {
+    primary: 'Home & Garden',
+    secondary: 'Home Décor',
+    tertiary: 'General Décor'
+  };
+}
+
+/**
+ * Maps Electronics categories to Google Product Categories
+ */
+function mapElectronicsCategories(category: string, subCategory: string) {
+  const categoryLower = category.toLowerCase();
+  const subCategoryLower = subCategory.toLowerCase();
+
+  if (categoryLower.includes('computer') || subCategoryLower.includes('computer')) {
+    return {
+      primary: 'Electronics',
+      secondary: 'Computers & Tablets',
+      tertiary: 'Laptops'
+    };
+  }
+
+  if (categoryLower.includes('phone') || subCategoryLower.includes('phone')) {
+    return {
+      primary: 'Electronics',
+      secondary: 'Mobile Phones',
+      tertiary: 'Smartphones'
+    };
+  }
+
+  if (categoryLower.includes('audio') || subCategoryLower.includes('audio')) {
+    return {
+      primary: 'Electronics',
+      secondary: 'Audio Equipment',
+      tertiary: 'Speakers'
+    };
+  }
+
+  if (categoryLower.includes('camera') || subCategoryLower.includes('camera')) {
+    return {
+      primary: 'Electronics',
+      secondary: 'Cameras & Photo',
+      tertiary: 'Digital Cameras'
+    };
+  }
+
+  if (categoryLower.includes('tv') || subCategoryLower.includes('tv')) {
+    return {
+      primary: 'Electronics',
+      secondary: 'TVs & Video',
+      tertiary: 'Televisions'
+    };
+  }
+
+  if (categoryLower.includes('gaming') || subCategoryLower.includes('gaming')) {
+    return {
+      primary: 'Electronics',
+      secondary: 'Gaming',
+      tertiary: 'Gaming Consoles'
+    };
+  }
+
+  // Default electronics mapping
+  return {
+    primary: 'Electronics',
+    secondary: 'General Electronics',
+    tertiary: 'Other Electronics'
+  };
+}
+
+/**
+ * Maps Clothing categories to Google Product Categories
+ */
+function mapClothingCategories(category: string, subCategory: string) {
+  const categoryLower = category.toLowerCase();
+  const subCategoryLower = subCategory.toLowerCase();
+
+  if (categoryLower.includes('men') || subCategoryLower.includes('men')) {
+    return {
+      primary: 'Clothing & Accessories',
+      secondary: "Men's Clothing",
+      tertiary: 'Shirts'
+    };
+  }
+
+  if (categoryLower.includes('women') || subCategoryLower.includes('women')) {
+    return {
+      primary: 'Clothing & Accessories',
+      secondary: "Women's Clothing",
+      tertiary: 'Dresses'
+    };
+  }
+
+  if (categoryLower.includes('kids') || subCategoryLower.includes('kids')) {
+    return {
+      primary: 'Clothing & Accessories',
+      secondary: "Kids' Clothing",
+      tertiary: 'Boys Clothing'
+    };
+  }
+
+  if (categoryLower.includes('shoes') || subCategoryLower.includes('shoes')) {
+    return {
+      primary: 'Clothing & Accessories',
+      secondary: 'Shoes',
+      tertiary: 'Sneakers'
+    };
+  }
+
+  if (categoryLower.includes('jewelry') || subCategoryLower.includes('jewelry')) {
+    return {
+      primary: 'Clothing & Accessories',
+      secondary: 'Jewelry & Watches',
+      tertiary: 'Necklaces'
+    };
+  }
+
+  // Default clothing mapping
+  return {
+    primary: 'Clothing & Accessories',
+    secondary: 'General Clothing',
+    tertiary: 'Other Clothing'
+  };
+}
+
+/**
+ * Maps Sporting Goods categories to Google Product Categories
+ */
+function mapSportingGoodsCategories(category: string, subCategory: string) {
+  const categoryLower = category.toLowerCase();
+  const subCategoryLower = subCategory.toLowerCase();
+
+  if (categoryLower.includes('fitness') || subCategoryLower.includes('fitness')) {
+    return {
+      primary: 'Sporting Goods',
+      secondary: 'Fitness Equipment',
+      tertiary: 'Treadmills'
+    };
+  }
+
+  if (categoryLower.includes('team') || subCategoryLower.includes('team')) {
+    return {
+      primary: 'Sporting Goods',
+      secondary: 'Team Sports',
+      tertiary: 'Basketballs'
+    };
+  }
+
+  // Default sporting goods mapping
+  return {
+    primary: 'Sporting Goods',
+    secondary: 'General Sports',
+    tertiary: 'Other Sports'
+  };
+}
+
+/**
+ * Maps Toys & Games categories to Google Product Categories
+ */
+function mapToysAndGamesCategories(category: string, subCategory: string) {
+  return {
+    primary: 'Toys & Games',
+    secondary: 'General Toys',
+    tertiary: 'Other Toys'
+  };
+}
+
+/**
+ * Maps Books & Media categories to Google Product Categories
+ */
+function mapBooksAndMediaCategories(category: string, subCategory: string) {
+  return {
+    primary: 'Books & Media',
+    secondary: 'Books',
+    tertiary: 'Fiction'
+  };
+}
+
+/**
+ * Maps Automotive categories to Google Product Categories
+ */
+function mapAutomotiveCategories(category: string, subCategory: string) {
+  return {
+    primary: 'Automotive',
+    secondary: 'Auto Parts',
+    tertiary: 'General Parts'
+  };
+}
+
+/**
+ * Maps Health & Beauty categories to Google Product Categories
+ */
+function mapHealthAndBeautyCategories(category: string, subCategory: string) {
+  return {
+    primary: 'Health & Beauty',
+    secondary: 'Personal Care',
+    tertiary: 'General Care'
+  };
+}
+
+/**
+ * Maps Jewelry & Watches categories to Google Product Categories
+ */
+function mapJewelryAndWatchesCategories(category: string, subCategory: string) {
+  return {
+    primary: 'Clothing & Accessories',
+    secondary: 'Jewelry & Watches',
+    tertiary: 'Necklaces'
+  };
+}
+
+// ============================================================================
 // AI SERVICE PHASE 2 PROMPT - STAGED AI PHOTO GENERATION
 // ============================================================================
 // 
@@ -415,6 +816,10 @@ export function ensureFacebookTaxonomy(
   category: string;
   subCategory: string;
 } {
+  // Handle undefined/null values gracefully
+  if (!department) department = 'Home & Garden';
+  if (!category) category = 'General';
+  if (!subCategory) subCategory = 'Other';
   // Facebook Marketplace departments
   const facebookDepartments = [
     'Furniture', 'Electronics', 'Home & Garden', 'Clothing & Accessories',
@@ -438,7 +843,7 @@ export function ensureFacebookTaxonomy(
 
   // For furniture items, ensure they're in the Furniture department
   if (mappedDepartment === 'Home & Garden' && 
-      (category.toLowerCase().includes('dresser') || 
+      category && (category.toLowerCase().includes('dresser') || 
        category.toLowerCase().includes('table') || 
        category.toLowerCase().includes('chair') || 
        category.toLowerCase().includes('bed') || 

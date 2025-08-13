@@ -1,0 +1,88 @@
+# AI JSON Phase 1 Service Test Script Requirements
+
+## Overview
+Create a dedicated test script to verify the AI JSON Phase 1 service is working correctly with the new Google Product Category restructuring.
+
+## Purpose
+- Test the AI form generation service using recently uploaded URLs
+- Verify that Google Product Categories are now properly separated into Primary, Secondary, and Tertiary fields
+- Validate that the GPT-5 model is working correctly with the Responses API
+- Ensure both comprehensive listing and form fields modes are functioning
+
+## Test Data Requirements
+- Use actual URLs from recent uploads (CY646S item)
+- Include 4 photos from the recent upload
+- Include 5 video frames from the recent video upload
+- Include video thumbnail URL
+- Use realistic user input describing the storage unit
+
+## Test Scenarios
+
+### 1. Comprehensive Listing Generation Test
+- **Mode**: 'comprehensive'
+- **Expected Output**: Full listing data with all fields populated
+- **Key Validation**: Google Product Categories should have separate Primary, Secondary, Tertiary fields
+- **Success Criteria**: 
+  - Status 200
+  - All required fields populated
+  - New Google category structure working
+  - Debug information showing correct model usage
+
+### 2. Form Fields Mode Test
+- **Mode**: 'form-fields'
+- **Expected Output**: Form data with essential fields
+- **Key Validation**: Google Product Categories should still be separated
+- **Success Criteria**:
+  - Status 200
+  - Form data properly structured
+  - Google categories in new format
+
+## Technical Requirements
+
+### Script Features
+- **HTTP Client**: Use Node.js built-in http/https modules
+- **Timeout**: 2 minutes for AI processing
+- **Error Handling**: Comprehensive error handling and reporting
+- **Response Parsing**: Handle both JSON and text responses
+- **Logging**: Detailed console output with emojis for readability
+
+### Validation Checks
+- **Response Status**: Verify 200 OK responses
+- **Data Structure**: Check for required fields
+- **Google Categories**: Validate new separated structure
+- **Model Information**: Verify GPT-5 model usage
+- **Debug Data**: Confirm debug information is present
+
+### Output Format
+- **Console Output**: Clear, formatted test results
+- **Success Indicators**: ✅ for passed tests, ❌ for failed tests
+- **Detailed Reporting**: Show all generated data and validation results
+- **Summary**: Overall test suite results and recommendations
+
+## Test Execution
+- **Command**: `node scripts/test-ai-json-phase1.js`
+- **Prerequisites**: Next.js dev server running on port 3000
+- **Dependencies**: None (uses built-in Node.js modules)
+- **Output**: Console-based test results with detailed validation
+
+## Success Metrics
+1. **API Connectivity**: Successfully connect to localhost:3000
+2. **Response Processing**: Handle both success and error responses
+3. **Data Validation**: Verify all expected fields are present
+4. **Structure Validation**: Confirm Google Product Categories are separated
+5. **Model Validation**: Verify GPT-5 model is being used correctly
+6. **Debug Information**: Confirm debug data is being returned
+
+## Error Handling
+- **Connection Errors**: Handle server not running scenarios
+- **Timeout Errors**: Handle AI processing delays
+- **Parse Errors**: Handle malformed JSON responses
+- **API Errors**: Handle OpenAI API failures
+- **Validation Errors**: Handle missing or incorrect data
+
+## Future Enhancements
+- **Batch Testing**: Test multiple different item types
+- **Performance Metrics**: Track response times and success rates
+- **Regression Testing**: Compare results across different model versions
+- **Integration Testing**: Test with actual database operations
+

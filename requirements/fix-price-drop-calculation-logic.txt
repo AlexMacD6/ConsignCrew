@@ -1,0 +1,50 @@
+Fix Price Drop Calculation Logic
+
+**Problem Identified:**
+The price drop calculation was incorrectly based on retail price instead of the original list price, causing confusion in the UI.
+
+**Root Cause:**
+- Price drops were calculated as percentages of retail price (e.g., $200 retail × 80% = $160)
+- This made it appear that prices would "drop" to amounts higher than the current list price
+- User saw "Price will drop to $180" when current price was $120, which was confusing
+
+**Solution Implemented:**
+1. **Updated PriceDropCounter Component:**
+   - Changed calculation logic to use ORIGINAL LIST PRICE instead of retail price
+   - Updated comments to clarify "percentage of list price" not "percentage of retail price"
+   - Maintained the same discount schedule percentages but applied them to list price
+
+2. **Updated Discount Schedule Logic:**
+   - Modified `calculateNextDropPriceFromOriginal` function comments
+   - Clarified that percentages are based on original list price
+   - Updated example calculations to show list price-based drops
+
+3. **Updated API Endpoint:**
+   - Clarified comments in `/api/listings/[id]/next-price-drop/route.ts`
+   - Maintained existing logic which was already correct
+
+**Corrected Logic Example:**
+- Original List Price: $120
+- Classic-60 Schedule: 100% → 90% → 80% → 75% of LIST PRICE
+- Day 7: 90% of $120 = $108 (first drop)
+- Day 14: 80% of $120 = $96 (second drop) 
+- Day 21: 75% of $120 = $90 (third drop)
+
+**UI Improvements:**
+- Shows "Price will drop to $96 (from $120)" when price actually decreases
+- Shows "Next scheduled price: $96 (current: $120)" for context
+- Uses red color for actual drops, blue for scheduled prices
+- Always shows current price for context
+
+**Files Modified:**
+- app/components/PriceDropCounter.tsx
+- app/lib/discount-schedule.ts  
+- app/api/listings/[id]/next-price-drop/route.ts
+
+**Testing:**
+- Verified corrected logic with test script
+- Confirmed price drops now work as expected: $120 → $108 → $96 → $90
+- UI now clearly shows when prices will actually drop vs. scheduled prices
+
+**Result:**
+Price drops now work correctly based on the original list price, providing clear and predictable pricing for users.

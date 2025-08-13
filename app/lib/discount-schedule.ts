@@ -76,8 +76,9 @@ export function calculateCurrentPrice(
 }
 
 /**
- * Calculate the next drop price based on original price and discount schedule
- * This ensures consistent pricing: $1000 → $950 → $900 → $850 (not compound drops)
+ * Calculate the next drop price based on original list price and discount schedule
+ * This ensures consistent pricing: $120 → $108 → $96 → $90 (not compound drops)
+ * All percentages are based on the original list price, not retail price
  */
 export function calculateNextDropPriceFromOriginal(
   originalPrice: number,
@@ -95,7 +96,7 @@ export function calculateNextDropPriceFromOriginal(
   // Find the next drop interval
   for (let i = 0; i < discountSchedule.dropIntervals.length; i++) {
     if (discountSchedule.dropIntervals[i] > daysSinceCreation) {
-      // Use the percentage from the discount schedule (percentage of ORIGINAL price)
+      // Use the percentage from the discount schedule (percentage of ORIGINAL LIST PRICE)
       const nextDropPercentage = discountSchedule.dropPercentages[i];
       
       // If this percentage is 0, listing expires
@@ -103,7 +104,7 @@ export function calculateNextDropPriceFromOriginal(
         return null;
       }
       
-      // Calculate price as percentage of ORIGINAL price
+      // Calculate price as percentage of ORIGINAL LIST PRICE
       const nextPrice = Math.round(originalPrice * (nextDropPercentage / 100) * 100) / 100;
       
       // Don't go below reserve price

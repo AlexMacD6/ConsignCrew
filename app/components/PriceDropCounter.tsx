@@ -364,18 +364,23 @@ export default function PriceDropCounter({
         if (schedule.dropIntervals[i] > daysSinceCreation) {
           const nextDropPercentage = schedule.dropPercentages[i];
 
-          // Calculate actual dollar amount based on ORIGINAL price and schedule percentage
-          if (originalPrice) {
-            const nextDropPrice =
+          // Calculate actual dollar amount based on ORIGINAL LIST PRICE and schedule percentage
+          // The discount schedule percentages represent the percentage of the original list price
+          // This ensures consistent, predictable price drops from the list price
+          if (currentPrice && originalPrice) {
+            // Calculate what the next drop percentage represents in dollars from original list price
+            const nextDropDollarAmount =
               Math.round(originalPrice * (nextDropPercentage / 100) * 100) /
               100;
+
             // Don't go below reserve price
             const finalPrice = reservePrice
-              ? Math.max(nextDropPrice, reservePrice)
-              : nextDropPrice;
+              ? Math.max(nextDropDollarAmount, reservePrice)
+              : nextDropDollarAmount;
+
             return `$${finalPrice.toFixed(2)}`;
           } else if (currentPrice) {
-            // Fallback: estimate based on current price (assume it's the original price)
+            // Fallback: if we only have current price, show percentage drop from current price
             const nextDropPrice =
               Math.round(currentPrice * (nextDropPercentage / 100) * 100) / 100;
             const finalPrice = reservePrice
@@ -384,7 +389,7 @@ export default function PriceDropCounter({
             return `$${finalPrice.toFixed(2)}`;
           } else {
             // Fallback to percentage if no price data available
-            return `${nextDropPercentage}% of original`;
+            return `${nextDropPercentage}% of list price`;
           }
         }
       }
@@ -414,10 +419,28 @@ export default function PriceDropCounter({
           <p className="text-sm text-gray-600 mt-1">
             {nextDropPrice ? (
               <>
-                Price will drop to{" "}
-                <span className="font-medium text-red-600">
-                  {nextDropPrice}
-                </span>
+                {currentPrice &&
+                parseFloat(nextDropPrice.replace("$", "")) < currentPrice ? (
+                  <>
+                    Price will drop to{" "}
+                    <span className="font-medium text-red-600">
+                      {nextDropPrice}
+                    </span>
+                    <span className="text-gray-500 ml-1">
+                      (from ${currentPrice.toFixed(2)})
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    Next scheduled price:{" "}
+                    <span className="font-medium text-blue-600">
+                      {nextDropPrice}
+                    </span>
+                    <span className="text-gray-500 ml-1">
+                      (current: ${currentPrice?.toFixed(2)})
+                    </span>
+                  </>
+                )}
               </>
             ) : (
               "Next price drop scheduled"
@@ -450,10 +473,31 @@ export default function PriceDropCounter({
           </div>
         </div>
         <p className="text-sm text-gray-600 mt-1">
-          Price will drop to{" "}
-          <span className="font-medium text-red-600">
-            ${priceDropInfo.nextDropPrice?.toFixed(2)}
-          </span>
+          {priceDropInfo.nextDropPrice && priceDropInfo.currentPrice ? (
+            priceDropInfo.nextDropPrice < priceDropInfo.currentPrice ? (
+              <>
+                Price will drop to{" "}
+                <span className="font-medium text-red-600">
+                  ${priceDropInfo.nextDropPrice.toFixed(2)}
+                </span>
+                <span className="text-gray-500 ml-1">
+                  (from ${priceDropInfo.currentPrice.toFixed(2)})
+                </span>
+              </>
+            ) : (
+              <>
+                Next scheduled price:{" "}
+                <span className="font-medium text-blue-600">
+                  ${priceDropInfo.nextDropPrice.toFixed(2)}
+                </span>
+                <span className="text-gray-500 ml-1">
+                  (current: ${priceDropInfo.currentPrice.toFixed(2)})
+                </span>
+              </>
+            )
+          ) : (
+            "Next price drop scheduled"
+          )}
         </p>
       </div>
     </div>

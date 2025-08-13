@@ -66,7 +66,8 @@ export async function GET(
       });
     }
 
-    // Calculate the next drop price based on ORIGINAL price (for consistent drops)
+    // Calculate the next drop price based on ORIGINAL LIST PRICE (for consistent drops)
+    // The discount schedule percentages are applied to the original list price, not retail price
     const nextDropPrice = calculateNextDropPriceFromOriginal(
       originalPrice,
       listing.createdAt,

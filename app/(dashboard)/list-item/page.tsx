@@ -24,6 +24,7 @@ import {
   // generateStagedPhoto, // TODO: Re-enable in Phase 2
   ComprehensiveListingData,
   mapConditionToFacebook,
+  mapFacebookToGoogleProductCategory,
 } from "../../lib/ai-service";
 import {
   mapToGoogleProductCategory,
@@ -34,6 +35,7 @@ import { FormGenerationData } from "../../lib/ai-form-generator";
 import VideoUpload from "../../components/VideoUpload";
 import VideoProcessingModal from "../../components/VideoProcessingModal";
 import CustomQRCode from "../../components/CustomQRCode";
+import ProgressBar, { Step } from "../../components/ProgressBar";
 import {
   ConfidenceBadge,
   ConfidenceSummary,
@@ -120,6 +122,22 @@ const taxonomy = {
       "Shelving",
     ],
     "Rugs & Textiles": ["Area Rugs", "Carpets", "Blankets", "Throws"],
+    // Added missing categories that AI generates
+    Furniture: [
+      "Bedroom Furniture",
+      "Living Room Furniture",
+      "Dining Room Furniture",
+      "Office Furniture",
+      "Outdoor Furniture",
+      "Storage Furniture",
+    ],
+    "Garden & Outdoor": [
+      "Garden Tools",
+      "Planters",
+      "Outdoor Decor",
+      "Patio Furniture",
+      "BBQ & Grilling",
+    ],
   },
   "Clothing & Accessories": {
     "Men's Clothing": ["Shirts", "Pants", "Jackets", "Shoes", "Accessories"],
@@ -307,6 +325,7 @@ export default function ListItemPage() {
   );
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
+  const [userInput, setUserInput] = useState("");
   const [zipCode, setZipCode] = useState("");
 
   // New fields to match listing structure
@@ -328,8 +347,17 @@ export default function ListItemPage() {
   const [facebookCondition, setFacebookCondition] = useState("");
   const [facebookGtin, setFacebookGtin] = useState("");
 
-  // Google Product Category
+  // Google Product Category (Legacy - keeping for backward compatibility)
   const [googleProductCategory, setGoogleProductCategory] = useState("");
+
+  // Google Product Categories (New separated fields)
+  const [googleProductCategoryPrimary, setGoogleProductCategoryPrimary] =
+    useState("");
+  const [googleProductCategorySecondary, setGoogleProductCategorySecondary] =
+    useState("");
+  const [googleProductCategoryTertiary, setGoogleProductCategoryTertiary] =
+    useState("");
+
   const [availableGoogleCategories, setAvailableGoogleCategories] = useState<
     string[]
   >([]);
@@ -379,6 +407,17 @@ export default function ListItemPage() {
     error: null,
     uploaded: false,
   });
+
+  // Photo upload method selection
+  const [uploadMethod, setUploadMethod] = useState<"single" | "bulk">("single");
+  const [bulkPhotos, setBulkPhotos] = useState<
+    Array<{
+      file: File;
+      preview: string;
+      type?: "hero" | "back" | "proof" | "additional";
+    }>
+  >([]);
+  const [bulkUploading, setBulkUploading] = useState(false);
 
   // AI analysis state (legacy - keeping for staged photo)
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
@@ -650,6 +689,153 @@ export default function ListItemPage() {
     setStep(1);
   };
 
+  // Bulk photo upload handlers
+  const handleBulkPhotoSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      const newBulkPhotos = files.map((file) => ({
+        file,
+        preview: URL.createObjectURL(file),
+        type: undefined, // Will be auto-categorized later
+      }));
+      setBulkPhotos(newBulkPhotos);
+    }
+  };
+
+  const handleBulkPhotoUpload = async () => {
+    if (bulkPhotos.length === 0) return;
+
+    try {
+      setBulkUploading(true);
+      setUploadError(null);
+
+      // Use stored itemId for S3 key
+      const uploadItemId = itemId || generateItemId();
+
+      // Auto-categorize photos based on order and requirements
+      const categorizedPhotos = autoCategorizePhotos(bulkPhotos);
+
+      // Upload each photo
+      for (const photo of categorizedPhotos) {
+        if (photo.type) {
+          const formData = new FormData();
+          formData.append("file", photo.file);
+          formData.append("photoType", photo.type);
+          formData.append("itemId", uploadItemId);
+
+          const uploadResponse = await fetch("/api/upload/photo", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!uploadResponse.ok) {
+            const errorData = await uploadResponse.json();
+            throw new Error(errorData.error || "Upload failed");
+          }
+
+          const result = await uploadResponse.json();
+
+          // Update photo state
+          if (photo.type === "additional") {
+            setPhotos((prev) => ({
+              ...prev,
+              additional: [
+                ...prev.additional,
+                {
+                  file: photo.file,
+                  key: result.key,
+                  url: result.url,
+                },
+              ],
+            }));
+          } else if (
+            photo.type &&
+            (photo.type === "hero" ||
+              photo.type === "back" ||
+              photo.type === "proof")
+          ) {
+            const photoType = photo.type as "hero" | "back" | "proof";
+            setPhotos((prev) => ({
+              ...prev,
+              [photoType]: {
+                file: photo.file,
+                key: result.key,
+                url: result.url,
+              },
+            }));
+          }
+        }
+      }
+
+      // Clear bulk photos and show success
+      setBulkPhotos([]);
+      setShowFlash(true);
+      setTimeout(() => {
+        setShowFlash(false);
+        // Move to form generation step
+        setStep(3);
+        // Automatically trigger form field generation
+        setTimeout(async () => {
+          try {
+            console.log("🔄 Starting auto form generation...");
+            await generateFormFieldsData();
+            console.log("✅ Auto form generation completed successfully");
+          } catch (error) {
+            console.error("❌ Auto form generation failed:", error);
+            setComprehensiveError(
+              "AI form generation failed. You can still fill out the form manually."
+            );
+          }
+        }, 1000);
+      }, 800);
+    } catch (error) {
+      console.error("Error uploading bulk photos:", error);
+      setUploadError(
+        error instanceof Error ? error.message : "Bulk upload failed"
+      );
+    } finally {
+      setBulkUploading(false);
+    }
+  };
+
+  const autoCategorizePhotos = (photos: typeof bulkPhotos) => {
+    const categorized = [...photos];
+    let heroIndex = -1;
+    let backIndex = -1;
+    let proofIndex = -1;
+
+    // Find the best photos for required types
+    for (let i = 0; i < categorized.length; i++) {
+      const photo = categorized[i];
+      if (heroIndex === -1) {
+        photo.type = "hero";
+        heroIndex = i;
+      } else if (backIndex === -1) {
+        photo.type = "back";
+        backIndex = i;
+      } else if (proofIndex === -1) {
+        photo.type = "proof";
+        proofIndex = i;
+      } else {
+        photo.type = "additional";
+      }
+    }
+
+    return categorized;
+  };
+
+  const validateBulkPhotos = () => {
+    return bulkPhotos.length >= 2; // Need at least hero and back
+  };
+
+  const clearBulkPhotos = () => {
+    setBulkPhotos([]);
+  };
+
+  const removeBulkPhoto = (index: number) => {
+    setBulkPhotos((prev) => prev.filter((_, i) => i !== index));
+  };
+
   // Legacy AI analysis function - removed in favor of comprehensive AI workflow
 
   // TODO: Re-enable staged photo generation in Phase 2
@@ -724,48 +910,35 @@ export default function ListItemPage() {
       proof: { url: photoUrls[2] || null },
       additional: photoUrls.slice(3).map((url) => ({ url })),
     });
+    console.log("📸 Raw photos state:", photos);
+    console.log("📸 Photo URLs array:", photoUrls);
     console.log("🎥 Video data for AI:", videoData);
     console.log("🎥 Video frame URLs:", videoData.frameUrls);
     console.log("🎥 Video frame count:", videoData.frameUrls?.length || 0);
 
-    // Use default values if fields are empty for auto-generation
-    const userInput = {
-      title: title || "Product",
-      description: description || "Product description",
-      department: department || "Furniture",
-      category: category || "Other",
-      subCategory: subCategory || "General",
-      condition: condition || "GOOD",
-      price: parseFloat(price) || 100,
-      brand: brand || undefined,
-      additionalInfo: `${height ? `Height: ${height} inches. ` : ""}${
-        width ? `Width: ${width} inches. ` : ""
-      }${depth ? `Depth: ${depth} inches. ` : ""}${
-        serialNumber ? `Serial: ${serialNumber}. ` : ""
-      }${modelNumber ? `Model: ${modelNumber}. ` : ""}${
-        estimatedRetailPrice ? `Retail: $${estimatedRetailPrice}. ` : ""
-      }${discountSchedule ? `Schedule: ${discountSchedule}.` : ""}`,
-      // Add visual content for AI analysis
-      photos: {
-        hero: { url: photoUrls[0] || null },
-        back: { url: photoUrls[1] || null },
-        proof: { url: photoUrls[2] || null },
-        additional: photoUrls.slice(3).map((url) => ({ url })),
-      },
-      // Add video data if available
-      video:
-        videoData.videoId && videoData.thumbnailUrl
-          ? {
-              videoId: videoData.videoId,
-              frameUrls: videoData.frameUrls,
-              thumbnailUrl: videoData.thumbnailUrl,
-              duration: videoData.duration || 0,
-            }
-          : undefined,
-    };
+    // Use the userInput state variable if available, otherwise use default values
+    const aiUserInput = userInput || "Product description for AI analysis";
 
     setGeneratingComprehensive(true);
     setComprehensiveError(null);
+
+    // Log what we're about to send to the API
+    console.log("🚀 Sending to AI API:", {
+      userInput,
+      photoUrls,
+      videoData,
+      mode: "comprehensive",
+    });
+
+    // Prepare the photos object for the API
+    const photosForApi = {
+      hero: { url: photoUrls[0] || null },
+      back: { url: photoUrls[1] || null },
+      proof: { url: photoUrls[2] || null },
+      additional: photoUrls.slice(3).map((url) => ({ url })),
+    };
+
+    console.log("📸 Photos object being sent to API:", photosForApi);
 
     try {
       // Use unified comprehensive listing service
@@ -775,7 +948,18 @@ export default function ListItemPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ...userInput,
+          userInput: aiUserInput,
+          photos: photosForApi,
+          video:
+            videoData.videoId && videoData.thumbnailUrl
+              ? {
+                  url: videoData.videoUrl,
+                  videoId: videoData.videoId,
+                  frameUrls: videoData.frameUrls,
+                  thumbnailUrl: videoData.thumbnailUrl,
+                  duration: videoData.duration || 0,
+                }
+              : undefined,
           mode: "comprehensive", // Use comprehensive mode for full analysis
         }),
       });
@@ -789,6 +973,21 @@ export default function ListItemPage() {
 
       const data = await response.json();
       console.log("🎯 Comprehensive Generation Complete:", data);
+
+      // DEBUG: Log model information received from API
+      if (data.debug) {
+        console.log("🔍 DEBUG: Model Information from API");
+        console.log("🔍 Model Requested:", data.debug.modelRequested);
+        console.log("🔍 Model Actually Used:", data.debug.modelUsed);
+        console.log(
+          "🔍 Model Match:",
+          data.debug.modelMatch ? "✅ EXACT MATCH" : "❌ MODEL MISMATCH"
+        );
+        console.log("🔍 Full Debug Info:", data.debug);
+      } else {
+        console.log("⚠️ No debug information received from API");
+      }
+
       setComprehensiveListing(data.listingData);
 
       // Extract confidence scores if available
@@ -804,9 +1003,23 @@ export default function ListItemPage() {
       console.log("📝 Setting title to:", listingData.title);
       setTitle(listingData.title);
       setDescription(listingData.description);
-      setDepartment(listingData.department as Department);
-      setCategory(listingData.category || "");
-      setSubCategory(listingData.subCategory || "");
+
+      // Use AI-generated Facebook categories as PRIMARY source
+      // If AI didn't provide them, fall back to legacy fields
+      const aiDepartment =
+        listingData.facebookDepartment || listingData.department;
+      const aiCategory = listingData.facebookCategory || listingData.category;
+      const aiSubCategory =
+        listingData.facebookSubCategory || listingData.subCategory;
+
+      console.log("🔍 DEBUG: AI-Generated Facebook Categories");
+      console.log("🔍 Department:", aiDepartment);
+      console.log("🔍 Category:", aiCategory);
+      console.log("🔍 Sub-Category:", aiSubCategory);
+
+      setDepartment(aiDepartment as Department);
+      setCategory(aiCategory || "");
+      setSubCategory(aiSubCategory || "");
 
       // Update available Google Product Categories for existing listing
       if (listingData.department) {
@@ -835,7 +1048,63 @@ export default function ListItemPage() {
       setFacebookBrand(listingData.facebookBrand || "");
       setFacebookCondition(listingData.facebookCondition || "");
       setFacebookGtin(listingData.facebookGtin || "");
-      setGoogleProductCategory(listingData.googleProductCategory || "");
+
+      // DEBUG: Log Google Product Categories received
+      console.log("🔍 DEBUG: Google Product Categories Received");
+      console.log("🔍 Primary:", listingData.googleProductCategoryPrimary);
+      console.log("🔍 Secondary:", listingData.googleProductCategorySecondary);
+      console.log("🔍 Tertiary:", listingData.googleProductCategoryTertiary);
+      console.log("🔍 Legacy Field:", listingData.googleProductCategory);
+
+      // Set the new separated Google Product Category fields
+      // If AI provides them, use those; otherwise, map from Facebook categories
+      if (
+        listingData.googleProductCategoryPrimary &&
+        listingData.googleProductCategorySecondary &&
+        listingData.googleProductCategoryTertiary
+      ) {
+        // AI provided complete Google categories
+        setGoogleProductCategoryPrimary(
+          listingData.googleProductCategoryPrimary
+        );
+        setGoogleProductCategorySecondary(
+          listingData.googleProductCategorySecondary
+        );
+        setGoogleProductCategoryTertiary(
+          listingData.googleProductCategoryTertiary
+        );
+      } else {
+        // AI didn't provide Google categories, map from AI-generated Facebook categories
+        const googleMapping = mapFacebookToGoogleProductCategory(
+          aiDepartment || "",
+          aiCategory || "",
+          aiSubCategory || ""
+        );
+        setGoogleProductCategoryPrimary(googleMapping.primary);
+        setGoogleProductCategorySecondary(googleMapping.secondary);
+        setGoogleProductCategoryTertiary(googleMapping.tertiary);
+      }
+
+      // Also set the legacy field for backward compatibility
+      const finalGoogleMapping = {
+        primary:
+          listingData.googleProductCategoryPrimary ||
+          googleProductCategoryPrimary,
+        secondary:
+          listingData.googleProductCategorySecondary ||
+          googleProductCategorySecondary,
+        tertiary:
+          listingData.googleProductCategoryTertiary ||
+          googleProductCategoryTertiary,
+      };
+
+      setGoogleProductCategory(
+        listingData.googleProductCategory ||
+          `${finalGoogleMapping.primary} > ${finalGoogleMapping.secondary} > ${finalGoogleMapping.tertiary}`
+      );
+
+      // Note: userInput is preserved so users can see what they originally typed
+      // This helps them understand what information the AI used for generation
 
       // Apply Product Specifications (Facebook Shop Fields)
       setQuantity(listingData.quantity?.toString() || "1");
@@ -1114,6 +1383,31 @@ export default function ListItemPage() {
   const [reservePrice, setReservePrice] = useState<string>("");
   const [itemId, setItemId] = useState<string>("");
 
+  // Progress steps configuration
+  const progressSteps: Step[] = [
+    {
+      id: 1,
+      title: "Video & Description",
+      description: "Upload video (optional) and describe your item",
+      status: "pending",
+      required: false,
+    },
+    {
+      id: 2,
+      title: "Photo Upload",
+      description: "Upload required photos (Front, Back, Proof)",
+      status: "pending",
+      required: true,
+    },
+    {
+      id: 3,
+      title: "AI Form Generation",
+      description: "AI analyzes photos and generates listing details",
+      status: "pending",
+      required: true,
+    },
+  ];
+
   // Generate itemId once when component mounts
   useEffect(() => {
     if (!itemId) {
@@ -1153,16 +1447,16 @@ export default function ListItemPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      {/* Debug info */}
-      <div className="fixed top-4 left-4 bg-black text-white p-2 rounded text-xs z-50">
-        Step: {step} | Video: {videoData.videoId ? "Y" : "N"} | Processing:{" "}
-        {videoData.processing ? "Y" : "N"} | Form Gen:{" "}
-        {generatingComprehensive ? "Y" : "N"} | Generated:{" "}
-        {comprehensiveListing ? "Y" : "N"}
-      </div>
       <div className="w-full max-w-6xl mx-auto">
         {step === 1 && (
           <div className="flex flex-col items-center justify-center min-h-[80vh] bg-white rounded-xl shadow-lg p-8 relative">
+            {/* Progress Bar */}
+            <ProgressBar
+              steps={progressSteps}
+              currentStep={0}
+              className="mb-8 w-full max-w-4xl"
+            />
+
             <h1 className="text-2xl font-bold mb-6 text-[#D4AF3D]">
               Video Upload (Optional)
             </h1>
@@ -1205,6 +1499,46 @@ export default function ListItemPage() {
                 </div>
               )}
 
+              {/* User Input Section - Item Description for AI */}
+              <div className="mt-8 w-full max-w-2xl">
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                      <svg
+                        className="w-4 h-4 text-white"
+                        fill="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-green-800">
+                      Item Description for AI Analysis
+                    </h3>
+                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                      Enhanced AI Results
+                    </span>
+                  </div>
+                  <p className="text-sm text-green-700 mb-3 leading-relaxed">
+                    Describe your item to help our AI generate more accurate
+                    listings. Include details about brand, condition, features,
+                    and any specific information that photos might not show.
+                  </p>
+                  <div>
+                    <label className="block text-sm font-medium text-green-800 mb-2">
+                      Item Description *
+                    </label>
+                    <textarea
+                      value={userInput}
+                      onChange={(e) => setUserInput(e.target.value)}
+                      rows={4}
+                      className="w-full px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
+                      placeholder="e.g., This is a vintage leather armchair from the 1960s. It has some wear on the arms but the seat and back are in excellent condition. Made by Herman Miller, includes original tags..."
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="mt-8 flex justify-center">
                 <button
                   onClick={() => setStep(2)}
@@ -1219,6 +1553,13 @@ export default function ListItemPage() {
 
         {step === 2 && (
           <div className="flex flex-col items-center justify-center min-h-[80vh] bg-white rounded-xl shadow-lg p-8 relative">
+            {/* Progress Bar */}
+            <ProgressBar
+              steps={progressSteps}
+              currentStep={1}
+              className="mb-8 w-full max-w-4xl"
+            />
+
             {/* Navigation Buttons - Top Corners */}
             <div className="absolute top-6 left-6 right-6 flex justify-between items-center">
               {/* Back to Video Upload Button - Top Left */}
@@ -1264,6 +1605,102 @@ export default function ListItemPage() {
               Photo Requirements
             </h1>
 
+            {/* Upload Method Selection */}
+            <div className="w-full max-w-2xl mb-8">
+              <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
+                  Choose Your Upload Method
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Single Photo Upload Option */}
+                  <label className="relative cursor-pointer">
+                    <input
+                      type="radio"
+                      name="uploadMethod"
+                      value="single"
+                      checked={uploadMethod === "single"}
+                      onChange={(e) =>
+                        setUploadMethod(e.target.value as "single" | "bulk")
+                      }
+                      className="sr-only"
+                    />
+                    <div
+                      className={`p-4 rounded-lg border-2 transition-all ${
+                        uploadMethod === "single"
+                          ? "border-[#D4AF3D] bg-[#D4AF3D]/5"
+                          : "border-gray-200 bg-white hover:border-gray-300"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                            uploadMethod === "single"
+                              ? "border-[#D4AF3D] bg-[#D4AF3D]"
+                              : "border-gray-300"
+                          }`}
+                        >
+                          {uploadMethod === "single" && (
+                            <div className="w-2 h-2 bg-white rounded-full"></div>
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">
+                            Single Photo Upload
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            Step-by-step, one photo at a time
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </label>
+
+                  {/* Bulk Photo Upload Option */}
+                  <label className="relative cursor-pointer">
+                    <input
+                      type="radio"
+                      name="uploadMethod"
+                      value="bulk"
+                      checked={uploadMethod === "bulk"}
+                      onChange={(e) =>
+                        setUploadMethod(e.target.value as "single" | "bulk")
+                      }
+                      className="sr-only"
+                    />
+                    <div
+                      className={`p-4 rounded-lg border-2 transition-all ${
+                        uploadMethod === "bulk"
+                          ? "border-[#D4AF3D] bg-[#D4AF3D]/5"
+                          : "border-gray-200 bg-white hover:border-gray-300"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                            uploadMethod === "bulk"
+                              ? "border-[#D4AF3D] bg-[#D4AF3D]"
+                              : "border-gray-300"
+                          }`}
+                        >
+                          {uploadMethod === "bulk" && (
+                            <div className="w-2 h-2 bg-white rounded-full"></div>
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">
+                            Bulk Photo Upload
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            Upload multiple photos at once
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
             {videoData.processing && (
               <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <div className="flex items-center gap-2 text-sm text-blue-700">
@@ -1287,495 +1724,513 @@ export default function ListItemPage() {
                 </div>
               )}
 
-            {/* Photo Progress with Previews */}
-            <div className="flex items-center gap-4 mb-8">
-              {/* Photo 1 - Hero */}
-              <div className="flex flex-col items-center gap-2">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
-                    currentPhotoType === "hero"
-                      ? "bg-[#D4AF3D] text-white ring-2 ring-[#D4AF3D] ring-offset-2"
-                      : photos.hero?.file || photos.hero?.url
-                      ? "bg-green-500 text-white"
-                      : "bg-gray-200 text-gray-600"
-                  }`}
-                >
-                  1
-                </div>
-                <span className="text-xs text-red-600 font-medium">
-                  Required
-                </span>
-                {photos.hero?.url && photos.hero.url.trim() !== "" && (
-                  <div className="relative w-12 h-12">
-                    <img
-                      src={photos.hero.url}
-                      alt="Hero photo preview"
-                      className="w-full h-full object-cover rounded-lg border border-gray-200"
-                    />
-                    <button
-                      onClick={() => removePhoto("hero")}
-                      className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+            {/* Single Photo Upload Interface */}
+            {uploadMethod === "single" && (
+              <>
+                {/* Photo Progress with Previews */}
+                <div className="flex items-center gap-4 mb-8">
+                  {/* Photo 1 - Hero */}
+                  <div className="flex flex-col items-center gap-2">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                        currentPhotoType === "hero"
+                          ? "bg-[#D4AF3D] text-white ring-2 ring-[#D4AF3D] ring-offset-2"
+                          : photos.hero?.file || photos.hero?.url
+                          ? "bg-green-500 text-white"
+                          : "bg-gray-200 text-gray-600"
+                      }`}
                     >
-                      ×
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Photo 2 - Back */}
-              <div className="flex flex-col items-center gap-2">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
-                    currentPhotoType === "back"
-                      ? "bg-[#D4AF3D] text-white ring-2 ring-[#D4AF3D] ring-offset-2"
-                      : photos.back?.file || photos.back?.url
-                      ? "bg-green-500 text-white"
-                      : "bg-gray-200 text-gray-600"
-                  }`}
-                >
-                  2
-                </div>
-                <span className="text-xs text-red-600 font-medium">
-                  Required
-                </span>
-                {photos.back?.url && photos.back.url.trim() !== "" && (
-                  <div className="relative w-12 h-12">
-                    <img
-                      src={photos.back.url}
-                      alt="Back photo preview"
-                      className="w-full h-full object-cover rounded-lg border border-gray-200"
-                    />
-                    <button
-                      onClick={() => removePhoto("back")}
-                      className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
-                    >
-                      ×
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Photo 3 - Proof */}
-              <div className="flex flex-col items-center gap-2">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
-                    currentPhotoType === "proof"
-                      ? "bg-[#D4AF3D] text-white ring-2 ring-[#D4AF3D] ring-offset-2"
-                      : photos.proof?.file || photos.proof?.url
-                      ? "bg-green-500 text-white"
-                      : "bg-gray-200 text-gray-600"
-                  }`}
-                >
-                  3
-                </div>
-                <span className="text-xs text-red-600 font-medium">
-                  Required
-                </span>
-                {photos.proof?.url && photos.proof.url.trim() !== "" && (
-                  <div className="relative w-12 h-12">
-                    <img
-                      src={photos.proof.url}
-                      alt="Proof photo preview"
-                      className="w-full h-full object-cover rounded-lg border border-gray-200"
-                    />
-                    <button
-                      onClick={() => removePhoto("proof")}
-                      className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
-                    >
-                      ×
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Additional Photos */}
-              <div className="flex flex-col items-center gap-2">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
-                    currentPhotoType === "additional"
-                      ? "bg-[#D4AF3D] text-white ring-2 ring-[#D4AF3D] ring-offset-2"
-                      : "bg-gray-200 text-gray-600"
-                  }`}
-                >
-                  +
-                </div>
-                <span className="text-xs text-gray-500">Optional</span>
-                {photos.additional && photos.additional.length > 0 && (
-                  <div className="flex gap-1">
-                    {safeMap(photos.additional, (photo, index) => {
-                      const imageSrc =
-                        photo.url ||
-                        (photo.file ? URL.createObjectURL(photo.file) : null);
-                      return imageSrc ? (
-                        <div key={index} className="relative w-12 h-12">
-                          <img
-                            src={imageSrc}
-                            alt={`Additional photo ${index + 1} preview`}
-                            className="w-full h-full object-cover rounded-lg border border-gray-200"
-                          />
-                          <button
-                            onClick={() => removePhoto("additional", index)}
-                            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ) : null;
-                    })}
-                    {photos.additional.length > 2 && (
-                      <div className="w-12 h-12 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center text-xs text-gray-500">
-                        +{photos.additional.length - 2}
+                      1
+                    </div>
+                    <span className="text-xs text-red-600 font-medium">
+                      Required
+                    </span>
+                    {photos.hero?.url && photos.hero.url.trim() !== "" && (
+                      <div className="relative w-12 h-12">
+                        <img
+                          src={photos.hero.url}
+                          alt="Hero photo preview"
+                          className="w-full h-full object-cover rounded-lg border border-gray-200"
+                        />
+                        <button
+                          onClick={() => removePhoto("hero")}
+                          className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                        >
+                          ×
+                        </button>
                       </div>
                     )}
                   </div>
-                )}
-              </div>
-            </div>
 
-            {/* Photo Requirements Notice */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 max-w-md">
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0">
-                  <svg
-                    className="w-5 h-5 text-blue-600"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <div className="text-sm text-blue-800">
-                  <p className="font-medium mb-1">Minimum Photo Requirements</p>
-                  <p className="mb-2">
-                    <strong>Required:</strong> Photos #1 (Front), #2 (Back), and
-                    #3 (Proof) are mandatory to proceed to the form.
-                  </p>
-                  <p className="mb-2">
-                    <strong>Optional:</strong> Additional photos (up to 10)
-                    enhance your listing.
-                  </p>
-                  <p className="text-xs text-blue-600">
-                    These photos will be analyzed by AI to automatically fill in
-                    item details.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Current Photo Type Instructions */}
-            <div className="text-center mb-6 max-w-md">
-              <h2 className="text-lg font-semibold mb-2">
-                {currentPhotoType === "hero" && "Photo #1: Front-On Hero"}
-                {currentPhotoType === "back" &&
-                  "Photo #2: Full Back / Underside"}
-                {currentPhotoType === "proof" &&
-                  "Photo #3: Proof / Identification"}
-                {currentPhotoType === "additional" &&
-                  "Additional Photos (Optional)"}
-              </h2>
-
-              <div className="text-sm text-gray-600 mb-4">
-                {currentPhotoType === "hero" && (
-                  <>
-                    <p className="font-medium mb-2">What to capture:</p>
-                    <p>
-                      Entire item, centered, front-facing. Include any
-                      detachable pieces that normally stay attached.
-                    </p>
-                    <p className="font-medium mt-3 mb-2">Shooting tips:</p>
-                    <ul className="text-left space-y-1">
-                      <li>• Place on uncluttered surface or wall</li>
-                      <li>• Shoot straight-on (eye-level), not angled</li>
-                      <li>• Fill ~80% of frame—but leave clean margins</li>
-                      <li>
-                        • Use daylight or neutral lamp; avoid window back-glare
-                      </li>
-                      <li>• Remove cords, trash, personal items from scene</li>
-                    </ul>
-                  </>
-                )}
-                {currentPhotoType === "back" && (
-                  <>
-                    <p className="font-medium mb-2">What to capture:</p>
-                    <p>
-                      Entire rear (or underside) of the same item. Show ports,
-                      hinges, back fabric, cabinet backs, battery doors.
-                    </p>
-                    <p className="font-medium mt-3 mb-2">Shooting tips:</p>
-                    <ul className="text-left space-y-1">
-                      <li>• Step back to capture the whole reverse side</li>
-                      <li>• Flip small items face-down on a clean surface</li>
-                      <li>• Keep lighting consistent with Photo 1</li>
-                      <li>• Don't crop off feet, plugs, or vent areas</li>
-                    </ul>
-                  </>
-                )}
-                {currentPhotoType === "proof" && (
-                  <>
-                    <p className="font-medium mb-2">What to capture:</p>
-                    <p>One of the following based on your item type:</p>
-                    <ul className="text-left space-y-1 mb-3">
-                      <li>
-                        • Electronics & Appliances: powered-on screen or label
-                        plate with model + serial
-                      </li>
-                      <li>• Luxury Bags / Shoes: logo stamp & date code</li>
-                      <li>
-                        • Furniture: wood grain or tag showing brand + fabric
-                        code
-                      </li>
-                      <li>
-                        • Collectibles: maker's mark, limited-edition number
-                      </li>
-                    </ul>
-                    <p className="font-medium mb-2">Shooting tips:</p>
-                    <ul className="text-left space-y-1">
-                      <li>
-                        • Fill frame with label or lit screen—text must be
-                        legible
-                      </li>
-                      <li>• Use flash only if it doesn't blow out ink</li>
-                      <li>• Hold phone steady; tap focus on text</li>
-                      <li>
-                        • For power shots, show full screen—no standby splash
-                      </li>
-                    </ul>
-                  </>
-                )}
-                {currentPhotoType === "additional" && (
-                  <>
-                    <p className="font-medium mb-2">
-                      Additional Photos (up to 10):
-                    </p>
-                    <p>
-                      Show unique features, damage, accessories, or different
-                      angles that help buyers understand the item.
-                    </p>
-                    <p className="font-medium mt-3 mb-2">Guidance:</p>
-                    <ul className="text-left space-y-1">
-                      <li>• Close-ups of any damage or wear</li>
-                      <li>• Different angles or perspectives</li>
-                      <li>• Included accessories or parts</li>
-                      <li>• Size comparison with common objects</li>
-                      <li>• Functionality demonstrations</li>
-                    </ul>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Current Photo Upload Area */}
-            <div className="w-full flex flex-col items-center">
-              {/* Photo Preview for Current Step */}
-              {(() => {
-                let imageSrc = null;
-
-                if (currentPhotoType === "hero" && photos.hero) {
-                  imageSrc =
-                    photos.hero.url ||
-                    (photos.hero.file
-                      ? URL.createObjectURL(photos.hero.file)
-                      : null);
-                } else if (currentPhotoType === "back" && photos.back) {
-                  imageSrc =
-                    photos.back.url ||
-                    (photos.back.file
-                      ? URL.createObjectURL(photos.back.file)
-                      : null);
-                } else if (currentPhotoType === "proof" && photos.proof) {
-                  imageSrc =
-                    photos.proof.url ||
-                    (photos.proof.file
-                      ? URL.createObjectURL(photos.proof.file)
-                      : null);
-                } else if (
-                  currentPhotoType === "additional" &&
-                  photos.additional &&
-                  photos.additional.length > 0
-                ) {
-                  const lastAdditional =
-                    photos.additional[photos.additional.length - 1];
-                  imageSrc =
-                    lastAdditional.url ||
-                    (lastAdditional.file
-                      ? URL.createObjectURL(lastAdditional.file)
-                      : null);
-                }
-
-                return imageSrc ? (
-                  <div className="mb-4 relative">
-                    <img
-                      src={imageSrc}
-                      alt={`${currentPhotoType} photo preview`}
-                      className="w-64 h-64 object-cover rounded-xl border border-gray-200"
-                    />
-                    <button
-                      type="button"
-                      onClick={clearCurrentPhoto}
-                      className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                  {/* Photo 2 - Back */}
+                  <div className="flex flex-col items-center gap-2">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                        currentPhotoType === "back"
+                          ? "bg-[#D4AF3D] text-white ring-2 ring-[#D4AF3D] ring-offset-2"
+                          : photos.back?.file || photos.back?.url
+                          ? "bg-green-500 text-white"
+                          : "bg-gray-200 text-gray-600"
+                      }`}
                     >
-                      ×
-                    </button>
+                      2
+                    </div>
+                    <span className="text-xs text-red-600 font-medium">
+                      Required
+                    </span>
+                    {photos.back?.url && photos.back.url.trim() !== "" && (
+                      <div className="relative w-12 h-12">
+                        <img
+                          src={photos.back.url}
+                          alt="Back photo preview"
+                          className="w-full h-full object-cover rounded-lg border border-gray-200"
+                        />
+                        <button
+                          onClick={() => removePhoto("back")}
+                          className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
                   </div>
-                ) : null;
-              })()}
 
-              {/* Upload Area */}
-              <label
-                htmlFor="photo-input"
-                className={`w-full flex flex-col items-center cursor-pointer ${
-                  (currentPhotoType === "hero" &&
-                    (photos.hero?.file || photos.hero?.url)) ||
-                  (currentPhotoType === "back" &&
-                    (photos.back?.file || photos.back?.url)) ||
-                  (currentPhotoType === "proof" &&
-                    (photos.proof?.file || photos.proof?.url)) ||
-                  (currentPhotoType === "additional" &&
-                    photos.additional &&
-                    photos.additional.length >= 10)
-                    ? "hidden"
-                    : ""
-                }`}
-              >
-                <input
-                  id="photo-input"
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={handleImageChange}
-                />
-                <div className="w-64 h-64 bg-gray-100 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center mb-2">
-                  <span className="text-gray-400">
-                    {currentPhotoType === "additional"
-                      ? photos.additional && photos.additional.length >= 10
-                        ? "Maximum photos reached"
-                        : `Add photo ${
-                            photos.additional ? photos.additional.length + 1 : 1
-                          } of 10`
-                      : "Tap to take or choose a photo"}
-                  </span>
+                  {/* Photo 3 - Proof */}
+                  <div className="flex flex-col items-center gap-2">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                        currentPhotoType === "proof"
+                          ? "bg-[#D4AF3D] text-white ring-2 ring-[#D4AF3D] ring-offset-2"
+                          : photos.proof?.file || photos.proof?.url
+                          ? "bg-green-500 text-white"
+                          : "bg-gray-200 text-gray-600"
+                      }`}
+                    >
+                      3
+                    </div>
+                    <span className="text-xs text-red-600 font-medium">
+                      Required
+                    </span>
+                    {photos.proof?.url && photos.proof.url.trim() !== "" && (
+                      <div className="relative w-12 h-12">
+                        <img
+                          src={photos.proof.url}
+                          alt="Proof photo preview"
+                          className="w-full h-full object-cover rounded-lg border border-gray-200"
+                        />
+                        <button
+                          onClick={() => removePhoto("proof")}
+                          className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Additional Photos */}
+                  <div className="flex flex-col items-center gap-2">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                        currentPhotoType === "additional"
+                          ? "bg-[#D4AF3D] text-white ring-2 ring-[#D4AF3D] ring-offset-2"
+                          : "bg-gray-200 text-gray-600"
+                      }`}
+                    >
+                      +
+                    </div>
+                    <span className="text-xs text-gray-500">Optional</span>
+                    {photos.additional && photos.additional.length > 0 && (
+                      <div className="flex gap-1">
+                        {safeMap(photos.additional, (photo, index) => {
+                          const imageSrc =
+                            photo.url ||
+                            (photo.file
+                              ? URL.createObjectURL(photo.file)
+                              : null);
+                          return imageSrc ? (
+                            <div key={index} className="relative w-12 h-12">
+                              <img
+                                src={imageSrc}
+                                alt={`Additional photo ${index + 1} preview`}
+                                className="w-full h-full object-cover rounded-lg border border-gray-200"
+                              />
+                              <button
+                                onClick={() => removePhoto("additional", index)}
+                                className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ) : null;
+                        })}
+                        {photos.additional.length > 2 && (
+                          <div className="w-12 h-12 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center text-xs text-gray-500">
+                            +{photos.additional.length - 2}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </label>
-            </div>
 
-            <p className="text-gray-500 text-sm">
-              {currentPhotoType === "additional"
-                ? photos.additional && photos.additional.length >= 10
-                  ? "Maximum of 10 additional photos reached"
-                  : `Add more photos (optional) - ${
-                      photos.additional ? photos.additional.length : 0
-                    }/10`
-                : "Tap to take or choose a photo"}
-            </p>
+                {/* Photo Requirements Notice */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 max-w-md">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0">
+                      <svg
+                        className="w-5 h-5 text-blue-600"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                    <div className="text-sm text-blue-800">
+                      <p className="font-medium mb-1">
+                        Minimum Photo Requirements
+                      </p>
+                      <p className="mb-2">
+                        <strong>Required:</strong> Photos #1 (Front), #2 (Back),
+                        and #3 (Proof) are mandatory to proceed to the form.
+                      </p>
+                      <p className="mb-2">
+                        <strong>Optional:</strong> Additional photos (up to 10)
+                        enhance your listing.
+                      </p>
+                      <p className="text-xs text-blue-600">
+                        These photos will be analyzed by AI to automatically
+                        fill in item details.
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
-            {/* Proceed to Form Button with validation */}
-            {currentPhotoType === "additional" && (
-              <div className="mt-4">
-                {hasMinimumPhotos() ? (
-                  <button
-                    type="button"
-                    disabled={videoData.processing}
-                    onClick={async () => {
-                      // Don't proceed if video is still processing
-                      if (videoData.processing) {
-                        console.log(
-                          "Cannot proceed - video is still processing"
-                        );
-                        return;
-                      }
+                {/* Current Photo Type Instructions */}
+                <div className="text-center mb-6 max-w-md">
+                  <h2 className="text-lg font-semibold mb-2">
+                    {currentPhotoType === "hero" && "Photo #1: Front-On Hero"}
+                    {currentPhotoType === "back" &&
+                      "Photo #2: Full Back / Underside"}
+                    {currentPhotoType === "proof" &&
+                      "Photo #3: Proof / Identification"}
+                    {currentPhotoType === "additional" &&
+                      "Additional Photos (Optional)"}
+                  </h2>
 
-                      console.log(
-                        "Proceed to Form button clicked, current step:",
-                        step
-                      );
-                      // Transition to form and automatically trigger AI enhancement
-                      console.log("Setting step to 3");
-                      setStep(3);
-                      console.log("Step should now be 3");
+                  <div className="text-sm text-gray-600 mb-4">
+                    {currentPhotoType === "hero" && (
+                      <>
+                        <p className="font-medium mb-2">What to capture:</p>
+                        <p>
+                          Entire item, centered, front-facing. Include any
+                          detachable pieces that normally stay attached.
+                        </p>
+                        <p className="font-medium mt-3 mb-2">Shooting tips:</p>
+                        <ul className="text-left space-y-1">
+                          <li>• Place on uncluttered surface or wall</li>
+                          <li>• Shoot straight-on (eye-level), not angled</li>
+                          <li>• Fill ~80% of frame—but leave clean margins</li>
+                          <li>
+                            • Use daylight or neutral lamp; avoid window
+                            back-glare
+                          </li>
+                          <li>
+                            • Remove cords, trash, personal items from scene
+                          </li>
+                        </ul>
+                      </>
+                    )}
+                    {currentPhotoType === "back" && (
+                      <>
+                        <p className="font-medium mb-2">What to capture:</p>
+                        <p>
+                          Entire rear (or underside) of the same item. Show
+                          ports, hinges, back fabric, cabinet backs, battery
+                          doors.
+                        </p>
+                        <p className="font-medium mt-3 mb-2">Shooting tips:</p>
+                        <ul className="text-left space-y-1">
+                          <li>• Step back to capture the whole reverse side</li>
+                          <li>
+                            • Flip small items face-down on a clean surface
+                          </li>
+                          <li>• Keep lighting consistent with Photo 1</li>
+                          <li>• Don't crop off feet, plugs, or vent areas</li>
+                        </ul>
+                      </>
+                    )}
+                    {currentPhotoType === "proof" && (
+                      <>
+                        <p className="font-medium mb-2">What to capture:</p>
+                        <p>One of the following based on your item type:</p>
+                        <ul className="text-left space-y-1 mb-3">
+                          <li>
+                            • Electronics & Appliances: powered-on screen or
+                            label plate with model + serial
+                          </li>
+                          <li>• Luxury Bags / Shoes: logo stamp & date code</li>
+                          <li>
+                            • Furniture: wood grain or tag showing brand +
+                            fabric code
+                          </li>
+                          <li>
+                            • Collectibles: maker's mark, limited-edition number
+                          </li>
+                        </ul>
+                        <p className="font-medium mb-2">Shooting tips:</p>
+                        <ul className="text-left space-y-1">
+                          <li>
+                            • Fill frame with label or lit screen—text must be
+                            legible
+                          </li>
+                          <li>• Use flash only if it doesn't blow out ink</li>
+                          <li>• Hold phone steady; tap focus on text</li>
+                          <li>
+                            • For power shots, show full screen—no standby
+                            splash
+                          </li>
+                        </ul>
+                      </>
+                    )}
+                    {currentPhotoType === "additional" && (
+                      <>
+                        <p className="font-medium mb-2">
+                          Additional Photos (up to 10):
+                        </p>
+                        <p>
+                          Show unique features, damage, accessories, or
+                          different angles that help buyers understand the item.
+                        </p>
+                        <p className="font-medium mt-3 mb-2">Guidance:</p>
+                        <ul className="text-left space-y-1">
+                          <li>• Close-ups of any damage or wear</li>
+                          <li>• Different angles or perspectives</li>
+                          <li>• Included accessories or parts</li>
+                          <li>• Size comparison with common objects</li>
+                          <li>• Functionality demonstrations</li>
+                        </ul>
+                      </>
+                    )}
+                  </div>
+                </div>
 
-                      // Automatically trigger form field generation after a short delay to ensure form is rendered
-                      setTimeout(async () => {
-                        try {
-                          console.log("🔄 Starting auto form generation...");
-                          await generateFormFieldsData();
-                          console.log(
-                            "✅ Auto form generation completed successfully"
-                          );
-                        } catch (error) {
-                          console.error(
-                            "❌ Auto form generation failed:",
-                            error
-                          );
-                          // Show user-friendly error message
-                          setComprehensiveError(
-                            "AI form generation failed. You can still fill out the form manually."
-                          );
-                          // Don't block the user experience if AI fails
-                        }
-                      }, 1000); // Increased delay to ensure form is fully rendered
-                    }}
-                    className={`px-6 py-3 rounded-lg transition-colors font-medium ${
-                      videoData.processing
-                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                        : "bg-[#D4AF3D] text-white hover:bg-[#b8932f]"
+                {/* Current Photo Upload Area */}
+                <div className="w-full flex flex-col items-center">
+                  {/* Photo Preview for Current Step */}
+                  {(() => {
+                    let imageSrc = null;
+
+                    if (currentPhotoType === "hero" && photos.hero) {
+                      imageSrc =
+                        photos.hero.url ||
+                        (photos.hero.file
+                          ? URL.createObjectURL(photos.hero.file)
+                          : null);
+                    } else if (currentPhotoType === "back" && photos.back) {
+                      imageSrc =
+                        photos.back.url ||
+                        (photos.back.file
+                          ? URL.createObjectURL(photos.back.file)
+                          : null);
+                    } else if (currentPhotoType === "proof" && photos.proof) {
+                      imageSrc =
+                        photos.proof.url ||
+                        (photos.proof.file
+                          ? URL.createObjectURL(photos.proof.file)
+                          : null);
+                    } else if (
+                      currentPhotoType === "additional" &&
+                      photos.additional &&
+                      photos.additional.length > 0
+                    ) {
+                      const lastAdditional =
+                        photos.additional[photos.additional.length - 1];
+                      imageSrc =
+                        lastAdditional.url ||
+                        (lastAdditional.file
+                          ? URL.createObjectURL(lastAdditional.file)
+                          : null);
+                    }
+
+                    return imageSrc ? (
+                      <div className="mb-4 relative">
+                        <img
+                          src={imageSrc}
+                          alt={`${currentPhotoType} photo preview`}
+                          className="w-64 h-64 object-cover rounded-xl border border-gray-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={clearCurrentPhoto}
+                          className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ) : null;
+                  })()}
+
+                  {/* Upload Area */}
+                  <label
+                    htmlFor="photo-input"
+                    className={`w-full flex flex-col items-center cursor-pointer ${
+                      (currentPhotoType === "hero" &&
+                        (photos.hero?.file || photos.hero?.url)) ||
+                      (currentPhotoType === "back" &&
+                        (photos.back?.file || photos.back?.url)) ||
+                      (currentPhotoType === "proof" &&
+                        (photos.proof?.file || photos.proof?.url)) ||
+                      (currentPhotoType === "additional" &&
+                        photos.additional &&
+                        photos.additional.length >= 10)
+                        ? "hidden"
+                        : ""
                     }`}
                   >
-                    {videoData.processing ? (
-                      <span className="flex items-center gap-2">
-                        <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
-                        Processing Video...
+                    <input
+                      id="photo-input"
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={handleImageChange}
+                    />
+                    <div className="w-64 h-64 bg-gray-100 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center mb-2">
+                      <span className="text-gray-400">
+                        {currentPhotoType === "additional"
+                          ? photos.additional && photos.additional.length >= 10
+                            ? "Maximum photos reached"
+                            : `Add photo ${
+                                photos.additional
+                                  ? photos.additional.length + 1
+                                  : 1
+                              } of 10`
+                          : "Tap to take or choose a photo"}
                       </span>
-                    ) : (
-                      "Generate Form Fields"
-                    )}
-                  </button>
-                ) : (
-                  <div className="text-center">
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-3">
-                      <div className="flex items-center justify-center gap-2 mb-2">
-                        <AlertCircle className="h-5 w-5 text-yellow-600" />
-                        <span className="text-sm font-medium text-yellow-800">
-                          Minimum Photo Requirements Not Met
-                        </span>
-                      </div>
-                      <p className="text-sm text-yellow-700">
-                        You need at least 2 photos (Front and Back) to proceed
-                        to the form.
-                      </p>
-                      <div className="mt-2 text-xs text-yellow-600">
-                        Missing:{" "}
-                        {!photos.hero?.file && !photos.hero?.url
-                          ? "Front photo, "
-                          : ""}
-                        {!photos.back?.file && !photos.back?.url
-                          ? "Back photo"
-                          : ""}
-                      </div>
                     </div>
-                    <button
-                      type="button"
-                      disabled
-                      className="px-6 py-3 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed font-medium"
-                    >
-                      Generate Form Fields
-                    </button>
+                  </label>
+                </div>
+
+                <p className="text-gray-500 text-sm">
+                  {currentPhotoType === "additional"
+                    ? photos.additional && photos.additional.length >= 10
+                      ? "Maximum of 10 additional photos reached"
+                      : `Add more photos (optional) - ${
+                          photos.additional ? photos.additional.length : 0
+                        }/10`
+                    : "Tap to take or choose a photo"}
+                </p>
+
+                {/* Proceed to Form Button with validation */}
+                {currentPhotoType === "additional" && (
+                  <div className="mt-4">
+                    {hasMinimumPhotos() ? (
+                      <button
+                        type="button"
+                        disabled={videoData.processing}
+                        onClick={async () => {
+                          // Don't proceed if video is still processing
+                          if (videoData.processing) {
+                            console.log(
+                              "Cannot proceed - video is still processing"
+                            );
+                            return;
+                          }
+
+                          console.log(
+                            "Proceed to Form button clicked, current step:",
+                            step
+                          );
+                          // Transition to form and automatically trigger AI enhancement
+                          console.log("Setting step to 3");
+                          setStep(3);
+                          console.log("Step should now be 3");
+
+                          // Automatically trigger form field generation after a short delay to ensure form is rendered
+                          setTimeout(async () => {
+                            try {
+                              console.log(
+                                "🔄 Starting auto form generation..."
+                              );
+                              await generateFormFieldsData();
+                              console.log(
+                                "✅ Auto form generation completed successfully"
+                              );
+                            } catch (error) {
+                              console.error(
+                                "❌ Auto form generation failed:",
+                                error
+                              );
+                              // Show user-friendly error message
+                              setComprehensiveError(
+                                "AI form generation failed. You can still fill out the form manually."
+                              );
+                              // Don't block the user experience if AI fails
+                            }
+                          }, 1000); // Increased delay to ensure form is fully rendered
+                        }}
+                        className={`px-6 py-3 rounded-lg transition-colors font-medium ${
+                          videoData.processing
+                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                            : "bg-[#D4AF3D] text-white hover:bg-[#b8932f]"
+                        }`}
+                      >
+                        {videoData.processing ? (
+                          <span className="flex items-center gap-2">
+                            <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
+                            Processing Video...
+                          </span>
+                        ) : (
+                          "Generate Form Fields"
+                        )}
+                      </button>
+                    ) : (
+                      <div className="text-center">
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-3">
+                          <div className="flex items-center justify-center gap-2 mb-2">
+                            <AlertCircle className="h-5 w-5 text-yellow-600" />
+                            <span className="text-sm font-medium text-yellow-800">
+                              Minimum Photo Requirements Not Met
+                            </span>
+                          </div>
+                          <p className="text-sm text-yellow-700">
+                            You need at least 2 photos (Front and Back) to
+                            proceed to the form.
+                          </p>
+                          <div className="mt-2 text-xs text-yellow-600">
+                            Missing:{" "}
+                            {!photos.hero?.file && !photos.hero?.url
+                              ? "Front photo, "
+                              : ""}
+                            {!photos.back?.file && !photos.back?.url
+                              ? "Back photo"
+                              : ""}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          disabled
+                          className="px-6 py-3 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed font-medium"
+                        >
+                          Generate Form Fields
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
-            )}
 
-            {showFlash && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 z-10 animate-fade-in">
-                <CheckCircleIcon className="w-24 h-24 text-green-500 animate-pop" />
-              </div>
-            )}
-            <style>{`
+                {showFlash && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 z-10 animate-fade-in">
+                    <CheckCircleIcon className="w-24 h-24 text-green-500 animate-pop" />
+                  </div>
+                )}
+                <style>{`
               @keyframes fade-in {
                 from { opacity: 0; }
                 to { opacity: 1; }
@@ -1792,11 +2247,134 @@ export default function ListItemPage() {
                 animation: pop 0.6s ease-out;
               }
             `}</style>
+              </>
+            )}
+
+            {/* Bulk Photo Upload Interface */}
+            {uploadMethod === "bulk" && (
+              <>
+                {/* Bulk Photo Selection */}
+                <div className="w-full max-w-2xl mb-8">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-blue-900 mb-4 text-center">
+                      Bulk Photo Upload
+                    </h3>
+                    <p className="text-sm text-blue-700 mb-4 text-center">
+                      Select multiple photos at once. We'll automatically
+                      categorize them for you.
+                    </p>
+
+                    {/* Drag & Drop Area */}
+                    <div className="border-2 border-dashed border-blue-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors">
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleBulkPhotoSelection}
+                        className="hidden"
+                        id="bulk-photo-input"
+                      />
+                      <label
+                        htmlFor="bulk-photo-input"
+                        className="cursor-pointer"
+                      >
+                        <div className="flex flex-col items-center gap-3">
+                          <Upload className="w-12 h-12 text-blue-500" />
+                          <div>
+                            <p className="text-lg font-medium text-blue-900">
+                              {bulkPhotos.length > 0
+                                ? `${bulkPhotos.length} photo${
+                                    bulkPhotos.length !== 1 ? "s" : ""
+                                  } selected`
+                                : "Click to select photos or drag & drop"}
+                            </p>
+                            <p className="text-sm text-blue-600">
+                              Minimum 2 photos required (Front + Back)
+                            </p>
+                          </div>
+                        </div>
+                      </label>
+                    </div>
+
+                    {/* Selected Photos Preview */}
+                    {bulkPhotos.length > 0 && (
+                      <div className="mt-6">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-medium text-blue-900">
+                            Selected Photos ({bulkPhotos.length})
+                          </h4>
+                          <button
+                            onClick={clearBulkPhotos}
+                            className="text-sm text-red-600 hover:text-red-700 font-medium"
+                          >
+                            Clear All
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {bulkPhotos.map((photo, index) => (
+                            <div key={index} className="relative group">
+                              <img
+                                src={photo.preview}
+                                alt={`Photo ${index + 1}`}
+                                className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                              />
+                              <button
+                                onClick={() => removeBulkPhoto(index)}
+                                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                ×
+                              </button>
+                              <div className="absolute bottom-1 left-1 right-1 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                                {photo.type || "Auto-categorize"}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Upload Button */}
+                        <div className="mt-6 text-center">
+                          <button
+                            onClick={handleBulkPhotoUpload}
+                            disabled={!validateBulkPhotos() || bulkUploading}
+                            className={`px-8 py-3 rounded-lg font-medium transition-colors ${
+                              validateBulkPhotos() && !bulkUploading
+                                ? "bg-[#D4AF3D] text-white hover:bg-[#b8932f]"
+                                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                            }`}
+                          >
+                            {bulkUploading ? (
+                              <span className="flex items-center gap-2">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Uploading Photos...
+                              </span>
+                            ) : (
+                              `Upload ${bulkPhotos.length} Photo${
+                                bulkPhotos.length !== 1 ? "s" : ""
+                              } & Generate Form`
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 
         {step === 3 && (
           <>
+            {/* Progress Bar */}
+            <div className="w-full max-w-6xl mx-auto mb-8">
+              <ProgressBar
+                steps={progressSteps}
+                currentStep={2}
+                className="w-full"
+              />
+            </div>
+
             {/* AI Generation Loading Screen */}
             {generatingComprehensive && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -2445,6 +3023,12 @@ export default function ListItemPage() {
                             setCategory("");
                             setSubCategory("");
                             setGoogleProductCategory("");
+                            // Reset new Google Product Category fields
+                            setGoogleProductCategoryPrimary("");
+                            setGoogleProductCategorySecondary("");
+                            setGoogleProductCategoryTertiary("");
+                            // Reset user input when department changes
+                            setUserInput("");
                             // Update available Google Product Categories
                             if (e.target.value) {
                               const categories =
@@ -2487,6 +3071,30 @@ export default function ListItemPage() {
                           onChange={(e) => {
                             setCategory(e.target.value);
                             setSubCategory("");
+
+                            // Auto-map to Google Product Categories
+                            if (e.target.value && department) {
+                              const googleMapping =
+                                mapFacebookToGoogleProductCategory(
+                                  department,
+                                  e.target.value,
+                                  ""
+                                );
+                              setGoogleProductCategoryPrimary(
+                                googleMapping.primary
+                              );
+                              setGoogleProductCategorySecondary(
+                                googleMapping.secondary
+                              );
+                              setGoogleProductCategoryTertiary(
+                                googleMapping.tertiary
+                              );
+
+                              // Also set the legacy field for backward compatibility
+                              setGoogleProductCategory(
+                                `${googleMapping.primary} > ${googleMapping.secondary} > ${googleMapping.tertiary}`
+                              );
+                            }
                           }}
                           disabled={false}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
@@ -2543,7 +3151,33 @@ export default function ListItemPage() {
                         </label>
                         <select
                           value={subCategory}
-                          onChange={(e) => setSubCategory(e.target.value)}
+                          onChange={(e) => {
+                            setSubCategory(e.target.value);
+
+                            // Update Google Product Categories with subcategory
+                            if (e.target.value && category && department) {
+                              const googleMapping =
+                                mapFacebookToGoogleProductCategory(
+                                  department,
+                                  category,
+                                  e.target.value
+                                );
+                              setGoogleProductCategoryPrimary(
+                                googleMapping.primary
+                              );
+                              setGoogleProductCategorySecondary(
+                                googleMapping.secondary
+                              );
+                              setGoogleProductCategoryTertiary(
+                                googleMapping.tertiary
+                              );
+
+                              // Also set the legacy field for backward compatibility
+                              setGoogleProductCategory(
+                                `${googleMapping.primary} > ${googleMapping.secondary} > ${googleMapping.tertiary}`
+                              );
+                            }
+                          }}
                           disabled={false}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
                           required
@@ -2600,51 +3234,6 @@ export default function ListItemPage() {
                                 return allSubCategories;
                               })()}
                         </select>
-                      </div>
-
-                      {/* Google Product Category */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                          Google Product Category
-                          <span className="text-xs text-gray-500">
-                            (for Facebook Commerce Manager)
-                          </span>
-                        </label>
-                        <select
-                          value={googleProductCategory}
-                          onChange={(e) =>
-                            setGoogleProductCategory(e.target.value)
-                          }
-                          disabled={false}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                        >
-                          <option value="">
-                            Select Google Product Category
-                          </option>
-                          {availableGoogleCategories.length > 0
-                            ? availableGoogleCategories.map((cat) => (
-                                <option key={cat} value={cat}>
-                                  {cat}
-                                </option>
-                              ))
-                            : // Show all available Google Product Categories when none are filtered
-                              Object.keys(taxonomy).flatMap((dept) =>
-                                getAvailableCategoriesForDepartment(dept).map(
-                                  (cat) => (
-                                    <option
-                                      key={`${dept}-${cat.googleProductCategory}`}
-                                      value={cat.googleProductCategory}
-                                    >
-                                      {cat.googleProductCategory}
-                                    </option>
-                                  )
-                                )
-                              )}
-                        </select>
-                        <p className="text-xs text-gray-500 mt-1">
-                          This ensures proper Facebook catalog integration and
-                          ad performance
-                        </p>
                       </div>
 
                       {/* Title */}
