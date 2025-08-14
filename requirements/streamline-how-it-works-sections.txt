@@ -1,0 +1,29 @@
+# Streamline How It Works Sections
+
+## Problem
+- "How It Works" content is duplicated across multiple pages (main landing, seller landing, admin)
+- Content is written inline in each page, making updates difficult
+- Need to create reusable components to eliminate duplication
+
+## Requirements
+1. Create a reusable `HowItWorksBuyer` component for buyer-focused steps
+2. Create a reusable `HowItWorksSeller` component for seller-focused steps  
+3. Replace inline content in all pages with these components
+4. Ensure consistent styling and animations across all instances
+5. Make future updates easier by centralizing content
+
+## Components to Create
+- `app/components/HowItWorksBuyer.tsx` - 5-step buyer process
+- `app/components/HowItWorksSeller.tsx` - 5-step seller process
+
+## Pages to Update
+- `app/page.tsx` - Replace inline buyer How It Works
+- `app/seller-landing/page.tsx` - Replace inline seller How It Works  
+- `app/admin/page.tsx` - Replace inline How It Works
+
+## Benefits
+- Single source of truth for each How It Works section
+- Easier maintenance and updates
+- Consistent styling and behavior
+- Reduced code duplication
+- Better component reusability

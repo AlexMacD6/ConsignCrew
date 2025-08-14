@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { processAllPriceDrops } from '@/lib/discount-schedule';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
+import { trackProductPriceChange } from "@/lib/meta-pixel-client";
 
 export async function POST(request: NextRequest) {
   try {

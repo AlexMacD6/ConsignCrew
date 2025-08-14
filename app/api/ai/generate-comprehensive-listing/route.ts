@@ -309,10 +309,17 @@ IMPORTANT: Return ONLY valid JSON. No additional text, comments, or explanations
     // Use the model configured in the admin dashboard
     const modelToUse = getPhase1Model();
     
+    // COST CONTROL: Validate that we're using the correct model to avoid unnecessary costs
+    const isGpt5 = isUsingGpt5(1);
+    if (isGpt5 && modelToUse !== 'gpt-5') {
+      console.warn(`⚠️ COST CONTROL WARNING: Admin dashboard shows GPT-5 but model is ${modelToUse}`);
+    }
+    
     // DEBUG: Log model configuration details
     console.log('🔍 DEBUG: Model Configuration');
     console.log('🔍 Requested Model:', modelToUse);
     console.log('🔍 Model Type:', typeof modelToUse);
+    console.log(`🔍 Cost Control: Using ${isGpt5 ? 'GPT-5 (Higher Cost)' : 'GPT-4o (Standard Cost)'}`);
     console.log('🔍 Environment Check:', {
       OPENAI_API_KEY: process.env.OPENAI_API_KEY ? 'Configured' : 'Missing',
       NODE_ENV: process.env.NODE_ENV,
@@ -382,20 +389,20 @@ IMPORTANT: Return ONLY valid JSON. No additional text, comments, or explanations
     
     console.log(`📊 Total content items being sent to AI: ${content.length}`);
     console.log(`📊 Content breakdown: ${content.filter(c => c.type === 'text').length} text, ${content.filter(c => c.type === 'image_url').length} images/video`);
-    console.log(`🤖 Using GPT-5 with Responses API for top-tier accuracy`);
-    console.log(`🔑 OpenAI API key configured: ${process.env.OPENAI_API_KEY ? 'Yes' : 'No'}`);
-    console.log(`🚀 Migrated from Chat Completions to Responses API for better GPT-5 support`);
     
-    // Determine which API to use based on the selected model
-    const isGpt5 = isUsingGpt5(1);
+    // Determine which API to use based on the selected model (already declared above)
     
-    console.log(`🚀 Making OpenAI API call with ${modelToUse} using ${isGpt5 ? 'GPT-5 Responses API' : 'GPT-4o Chat Completions API'}...`);
+    // COST CONTROL: Log which model will be used and its cost implications
+    console.log(`💰 COST CONTROL: Admin Dashboard Model Selection`);
+    console.log(`💰 Phase 1 Model: ${modelToUse}`);
+    console.log(`💰 Will use ${isGpt5 ? 'GPT-5 (Higher Cost)' : 'GPT-4o (Standard Cost)'}`);
+    console.log(`💰 API Method: ${isGpt5 ? 'Responses API' : 'Chat Completions API'}`);
     
-    if (isGpt5) {
-      console.log('📡 Using GPT-5 Responses API for maximum accuracy...');
-    } else {
-      console.log('📡 Using GPT-4o Chat Completions API for better visual analysis...');
+    if (!isGpt5) {
+      console.log(`💰 SAVING COSTS: Using GPT-4o as configured in admin dashboard`);
     }
+    
+    console.log(`🚀 Making OpenAI API call with ${modelToUse}...`);
     console.log(`🎯 Requested model: ${modelToUse}`);
     
     // Build the comprehensive prompt based on the selected model
@@ -445,16 +452,18 @@ IMPORTANT: Return ONLY valid JSON. No additional text, comments, or explanations
     console.log('🔍 Input length:', fullPrompt.length);
     console.log('🔍 Content items:', content.length);
     
-    // DEBUG: Log the actual API call parameters
+    // DEBUG: Log the actual API call parameters for cost transparency
     const apiCallParams = isGpt5 ? {
       model: modelToUse,
-      input: fullPrompt.substring(0, 200) + '...' // Show first 200 chars
+      input: fullPrompt.substring(0, 200) + '...', // Show first 200 chars
+      cost: 'HIGH (GPT-5 Responses API)'
     } : {
       model: modelToUse,
       messages: [{ role: "user", content: fullPrompt.substring(0, 200) + '...' }],
       max_tokens: 4000,
       temperature: 0.3,
-      response_format: { type: "json_object" }
+      response_format: { type: "json_object" },
+      cost: 'STANDARD (GPT-4o Chat Completions API)'
     };
     console.log('🔍 DEBUG: API Call Parameters:', JSON.stringify(apiCallParams, null, 2));
     
@@ -763,6 +772,14 @@ IMPORTANT: Return ONLY valid JSON. No additional text, comments, or explanations
     //   }
     // }
 
+    // COST SUMMARY: Log what was actually used for billing transparency
+    console.log('💰 COST SUMMARY: AI Service Completed');
+    console.log(`💰 Admin Dashboard Model: ${modelToUse}`);
+    console.log(`💰 Actual Model Used: ${actualModelUsed}`);
+    console.log(`💰 Cost Tier: ${isGpt5 ? 'HIGH (GPT-5)' : 'STANDARD (GPT-4o)'}`);
+    console.log(`💰 API Method: ${isGpt5 ? 'Responses API' : 'Chat Completions API'}`);
+    console.log(`💰 Model Match: ${modelToUse === actualModelUsed ? '✅ YES' : '❌ NO'}`);
+    
     // DEBUG: Log final response being sent to UI
     console.log('🔍 DEBUG: Final Response to UI');
     console.log('🔍 Response Mode:', isFormFieldsMode ? 'Form Fields' : 'Comprehensive');

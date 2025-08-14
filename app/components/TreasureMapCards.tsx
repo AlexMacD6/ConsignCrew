@@ -337,70 +337,72 @@ export default function TreasureMapCards() {
   }, []);
   const cards = [
     {
-      title: "Zero Hassle Listing",
+      title: "Vetted Quality",
       description:
-        "Snap photos, add descriptions. Our automated system creates perfect listings in minutes.",
+        "Every item is quality-checked before delivery & payment. Shop with confidence.",
       icon: (
         <svg
           className="w-32 h-32 text-black"
           fill="currentColor"
           viewBox="0 0 24 24"
         >
-          <path d="M7 2v11h3v9l7-12h-4l4-8z" />
+          <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" />
         </svg>
       ),
       treasureMapContent: (
         <div className="space-y-3">
           <ul className="text-left space-y-2">
-            <li>• Snap photos of your item</li>
-            <li>• System creates professional listing</li>
-            <li>• Done in under 1 minute</li>
+            <li>• Every item is quality-checked before delivery & payment</li>
+            <li>• No guessing on condition — what you see is what you get</li>
+            <li>• Shop with confidence knowing items meet our standards</li>
           </ul>
         </div>
       ),
     },
     {
-      title: "Transparent Earnings",
+      title: "Safe Transactions",
       description:
-        "Know exactly what you'll earn with our clear, all-inclusive pricing structure.",
+        "We hold funds securely until delivery is confirmed. No meeting strangers or risky cash deals.",
       icon: (
         <svg
           className="w-32 h-32 text-black"
           fill="currentColor"
           viewBox="0 0 24 24"
         >
-          <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+          <path d="M12 1L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 1ZM12 7L19 9.11V11C19 15.52 16.02 19.69 12 20.93C7.98 19.69 5 15.52 5 11V9.11L12 7Z" />
         </svg>
       ),
       treasureMapContent: (
         <div className="space-y-3">
           <ul className="text-left space-y-2">
-            <li>• All-inclusive fees</li>
-            <li>• Higher value = lower percentage</li>
-            <li>• Automated pricing recommendations</li>
+            <li>• We hold funds securely until delivery is confirmed</li>
+            <li>• No meeting strangers or risky cash deals</li>
+            <li>• Clear return policy for damaged or misrepresented items</li>
           </ul>
         </div>
       ),
     },
     {
-      title: "Safe & Fast Payout",
+      title: "Faster, Easier Buying",
       description:
-        "Funds held securely in escrow. Instant payout when your item sells.",
+        "Handpicked items released in exclusive batches. First to click 'Buy' gets the item.",
       icon: (
         <svg
           className="w-32 h-32 text-black"
           fill="currentColor"
           viewBox="0 0 24 24"
         >
-          <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+          <path d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2Z" />
         </svg>
       ),
       treasureMapContent: (
-        <div className="space-y-3">
+        <div className="text-left space-y-2">
           <ul className="text-left space-y-2">
-            <li>• Funds held securely digitally</li>
-            <li>• Concierge pick-up and drop-off service</li>
-            <li>• Track your delivery online</li>
+            <li>• Handpicked items released in exclusive batches</li>
+            <li>
+              • Prices drop on a schedule until sold (Dutch auction style)
+            </li>
+            <li>• First to click "Buy" gets the item — no bidding wars</li>
           </ul>
         </div>
       ),

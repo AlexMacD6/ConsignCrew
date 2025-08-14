@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://treasurehub.club",
     siteName: "TreasureHub",
-    title: "TreasureHub | Sell Stress-Free",
+    title: "TreasureHub | Find Local Treasures",
     description:
       "Professional consignment service that handles everything from pickup to sale. Get the most value for your belongings.",
     images: [
@@ -61,7 +61,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "TreasureHub | Sell Stress-Free",
+    title: "TreasureHub | Find Local Treasures",
     description:
       "Professional consignment service that handles everything from pickup to sale.",
     images: ["/TreasureHub - Banner Black.png"],
@@ -82,8 +82,11 @@ export const metadata: Metadata = {
     google: "your-google-verification-code", // Replace with actual verification code
   },
   icons: {
-    icon: "/TreasureHub - Favicon Black.png",
-    shortcut: "/TreasureHub - Favicon Black.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/TreasureHub - Favicon Black.png", sizes: "32x32", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
     apple: "/TreasureHub - Favicon Black.png",
   },
 };
@@ -92,6 +95,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
+        {/* Favicon to prevent 404 errors */}
+        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/TreasureHub - Favicon Black.png" />
+        
         {/* Google Tag Manager */}
         <Script id="google-tag-manager" strategy="beforeInteractive">
           {`

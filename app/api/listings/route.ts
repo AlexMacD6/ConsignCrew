@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { createHistoryEvent, HistoryEvents } from '@/lib/listing-history';
 import { validateGender, validateAgeGroup, validateItemGroupId } from '@/lib/product-specifications';
 import { metaPixelAPI } from '@/lib/meta-pixel-api';
+import { trackCatalogUpdate, trackProductStatusChange } from '@/lib/meta-pixel-client';
 
 // Generate a random 6-character ID using letters and numbers
 function generateRandomId(): string {
@@ -213,6 +214,28 @@ export async function POST(request: NextRequest) {
                 metaErrorDetails: null
               }
             });
+            
+            // Send real-time catalog update event to Meta
+            try {
+              await trackCatalogUpdate({
+                content_ids: [finalItemId],
+                content_type: 'product',
+                content_name: listing.title,
+                content_category: `${listing.department} > ${listing.category}`,
+                value: listing.price,
+                currency: 'USD',
+                brand: listing.facebookBrand || listing.brand || 'TreasureHub',
+                condition: listing.condition,
+                availability: listing.status === 'active' ? 'in stock' : 'out of stock',
+                price: listing.price,
+                sale_price: listing.reservePrice || listing.price,
+                action: 'add',
+                new_status: listing.status
+              });
+              console.log(`✅ Sent catalog update event for ${finalItemId}`);
+            } catch (eventError) {
+              console.warn(`⚠️ Failed to send catalog update event for ${finalItemId}:`, eventError);
+            }
             
             facebookSyncResult = {
               success: true,

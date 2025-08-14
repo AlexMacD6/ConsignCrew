@@ -1,0 +1,64 @@
+# Meta Pixel Real-Time Catalog Updates
+
+## Problem
+- Meta Pixel is only receiving events from a few days ago
+- Catalog is not updating instantly when products change
+- Missing real-time synchronization between your app and Meta's catalog
+
+## Solution: Implement Real-Time Event Tracking
+
+### 1. Enhanced Meta Pixel Client Functions
+- **`trackCatalogUpdate`**: Tracks when products are added/updated/deleted
+- **`trackProductStatusChange`**: Tracks when product availability changes
+- **`trackProductPriceChange`**: Tracks when prices are updated
+
+### 2. Real-Time Event Triggers
+- **Product Creation**: Sends catalog update event when new listings are created
+- **Status Changes**: Sends status change events during quality checks
+- **Price Updates**: Sends price change events during price drops
+- **Product Deletion**: Sends catalog update events when items are removed
+
+### 3. Webhook Integration
+- **Endpoint**: `/api/meta/webhook` for Meta to receive real-time updates
+- **Verification**: Webhook verification for secure communication
+- **Event Processing**: Handles various Meta webhook event types
+
+### 4. Environment Variables Required
+```env
+META_WEBHOOK_VERIFY_TOKEN=your_webhook_verify_token_here
+```
+
+### 5. Implementation Details
+
+#### Meta Pixel Events Added:
+- **CatalogUpdate**: Product added/updated/deleted/status changed
+- **ProductStatusChange**: Availability changes (active/inactive/sold)
+- **ProductPriceChange**: Price updates and discounts
+
+#### Real-Time Triggers:
+- Listing creation in `/api/listings/route.ts`
+- Quality check status updates in `/api/admin/quality-check/[id]/route.ts`
+- Price drop processing in `/api/admin/process-price-drops/route.ts`
+
+#### Webhook Features:
+- GET endpoint for webhook verification
+- POST endpoint for receiving Meta events
+- Signature verification (placeholder for production)
+
+### 6. Benefits
+- **Instant Catalog Updates**: Meta receives real-time product changes
+- **Better Tracking**: Improved conversion tracking and analytics
+- **Reduced Latency**: No more delays in catalog synchronization
+- **Enhanced User Experience**: Buyers see current inventory and prices
+
+### 7. Next Steps
+1. Set up webhook in Meta Business Manager
+2. Configure webhook verification token
+3. Test real-time event tracking
+4. Monitor Meta Commerce Manager for instant updates
+
+### 8. Testing
+- Create new listings and verify Meta receives events
+- Update product status and check for status change events
+- Modify prices and confirm price change events
+- Monitor Meta Commerce Manager for real-time updates

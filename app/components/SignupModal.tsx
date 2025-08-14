@@ -157,7 +157,7 @@ export default function SignupModal({ isOpen, onClose }: SignupModalProps) {
                 </h2>
                 <p className="text-gray-600">
                   Be the first to know when we launch and get exclusive early
-                  access.
+                  access to start selling with us.
                 </p>
               </div>
 
@@ -179,7 +179,7 @@ export default function SignupModal({ isOpen, onClose }: SignupModalProps) {
                     disabled={isSubmitting}
                     className="w-full btn btn-primary btn-lg"
                   >
-                    {isSubmitting ? "Joining..." : "Get Early Access"}
+                    {isSubmitting ? "Joining..." : "Join Seller List"}
                   </button>
                 </form>
               ) : (

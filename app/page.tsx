@@ -9,7 +9,7 @@ import TreasureMapCards from "./components/TreasureMapCards";
 import Roadmap from "./components/Roadmap";
 
 import EarlyAccessTracker from "./components/EarlyAccessTracker";
-import IntegratedVideoPlayer from "./components/IntegratedVideoPlayer";
+import HeroListingsCarousel from "./components/HeroListingsCarousel";
 import { trackCompleteRegistration } from "./lib/meta-pixel-client";
 
 // Dynamically import the 3D background to prevent SSR issues
@@ -25,9 +25,9 @@ const ThreeScene = dynamic(() => import("./components/ThreeScene"), {
   ),
 });
 
-// Dynamically import pain points section
-const PainPointsSection = dynamic(
-  () => import("./components/PainPointsSection"),
+// Dynamically import buyer pain points section
+const BuyerPainPointsSection = dynamic(
+  () => import("./components/BuyerPainPointsSection"),
   {
     ssr: false,
   }
@@ -167,17 +167,15 @@ export default function HomePage() {
 
             <div className="max-w-7xl mx-auto relative z-10">
               <div className="grid lg:grid-cols-5 gap-8 lg:gap-16 items-center">
-                {/* Video Section - Left Side (3 columns) */}
+                {/* Image Carousel Section - Left Side (3 columns) */}
                 <div className="lg:col-span-3 order-2 lg:order-1">
                   <ScrollSection animationType="fadeInLeft" delay={200}>
-                    <IntegratedVideoPlayer
-                      videoId="9hmtpNu3_Lk"
-                      title="TreasureHub - How Easy It Is To Get Paid"
-                      aspectRatio="16/10"
-                      showControls={false}
-                      autoplay={true}
-                      muted={true}
-                    />
+                    <div className="w-full h-[400px] lg:h-[500px]">
+                      <HeroListingsCarousel
+                        autoPlayInterval={5000}
+                        maxListings={6}
+                      />
+                    </div>
                   </ScrollSection>
                 </div>
 
@@ -186,101 +184,85 @@ export default function HomePage() {
                   <ScrollSection animationType="fadeInRight" delay={400}>
                     <div className="text-left">
                       <div className="mb-6">
-                        {/* Logo and Title - Stack on mobile, side by side on desktop */}
-                        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 mb-6 text-center sm:text-left">
+                        {/* Houston Stamp Image - Positioned absolutely to not affect text layout */}
+                        <div className="absolute top-24 right-0 transform translate-x-4 z-10">
                           <img
-                            src="/TreasureHub - Logo.png"
-                            alt="TreasureHub"
-                            className="h-16 sm:h-20 w-auto"
+                            src="/built_in_houston_top_right.png"
+                            alt="Built in Houston, TX"
+                            className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 object-contain drop-shadow-lg"
                           />
-                          <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-900 leading-tight">
-                            Sell{" "}
+                        </div>
+
+                        {/* Main Headline */}
+                        <div className="mb-6">
+                          <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 leading-tight mb-4">
+                            Houston's{" "}
                             <span className="text-treasure-500">
-                              Stress-Free
+                              Treasure Chest
                             </span>
                           </h1>
-                        </div>
-                        <div className="max-w-2xl relative">
-                          <p className="text-lg sm:text-xl lg:text-2xl text-gray-700 mb-6 sm:mb-8 text-center sm:text-left">
-                            Turn clutter into cash without the hassle
-                          </p>
-                          <ul className="text-base sm:text-lg text-gray-700 mb-6 space-y-3 text-left">
-                            <li className="flex items-center justify-start">
-                              <span className="text-treasure-500 mr-3 text-lg sm:text-xl">
-                                •
-                              </span>
-                              Automatically generated listings
-                            </li>
-                            <li className="flex items-center justify-start">
-                              <span className="text-treasure-500 mr-3 text-lg sm:text-xl">
-                                •
-                              </span>
-                              Set discount schedules
-                            </li>
-                            <li className="flex items-center justify-start">
-                              <span className="text-treasure-500 mr-3 text-lg sm:text-xl">
-                                •
-                              </span>
-                              Concierge pick-up/delivery
-                            </li>
-                            <li className="flex items-center justify-start">
-                              <span className="text-treasure-500 mr-3 text-lg sm:text-xl">
-                                •
-                              </span>
-                              Instant payouts
-                            </li>
-                          </ul>
 
-                          {/* Houston Stamp Image - Positioned absolutely to not affect text layout */}
-                          <div className="absolute top-24 right-0 transform translate-x-4 z-10">
-                            <img
-                              src="/built_in_houston_top_right.png"
-                              alt="Built in Houston, TX"
-                              className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 object-contain drop-shadow-lg"
-                            />
-                          </div>
+                          {/* Subheadline */}
+                          <p className="text-xl sm:text-2xl lg:text-3xl text-gray-700 mb-8 leading-relaxed">
+                            Curated goods. Verified quality. Delivered to your
+                            door.
+                          </p>
                         </div>
+
+                        {/* Secondary CTA - Buyer Mailing List */}
+                        <div className="mb-8">
+                          <p className="text-gray-600 text-lg mb-4">
+                            Be the first to know about new drops and exclusive
+                            deals
+                          </p>
+
+                          {/* Email Form for Buyer Mailing List */}
+                          <form
+                            onSubmit={handleEmailSubmit}
+                            className="w-full max-w-lg"
+                          >
+                            <div className="flex flex-col sm:flex-row gap-3">
+                              <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="Enter your email"
+                                className="flex-1 px-4 py-3 bg-white/90 backdrop-blur-md border-2 border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-treasure-500 focus:bg-white transition-all text-base font-medium shadow-lg"
+                                required
+                              />
+                              <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className="bg-gray-800 hover:bg-gray-900 text-white font-semibold px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 whitespace-nowrap"
+                              >
+                                {isSubmitting
+                                  ? "Joining..."
+                                  : "Join Buyer List"}
+                              </button>
+                            </div>
+                            {showSuccessMessage && (
+                              <p
+                                className={`text-green-600 text-sm mt-2 transition-opacity duration-500 ${
+                                  showSuccessMessage
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                }`}
+                              >
+                                ✅ You're on the buyer list! We'll notify you
+                                about new drops and deals.
+                              </p>
+                            )}
+                            {error && (
+                              <p className="text-red-600 text-sm mt-2">
+                                {error}
+                              </p>
+                            )}
+                          </form>
+                        </div>
+
+                        {/* Early Access Tracker */}
+                        <EarlyAccessTracker refreshTrigger={refreshTrigger} />
                       </div>
-
-                      {/* Early Access Tracker */}
-                      <EarlyAccessTracker refreshTrigger={refreshTrigger} />
-
-                      {/* Email Form */}
-                      <form
-                        onSubmit={handleEmailSubmit}
-                        className="w-full max-w-lg mx-auto sm:mx-0"
-                      >
-                        <div className="flex flex-col sm:flex-row gap-3">
-                          <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="Enter your email"
-                            className="flex-1 px-4 sm:px-6 py-3 sm:py-4 bg-white/80 backdrop-blur-md border-2 border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-treasure-500 focus:bg-white transition-all text-base sm:text-lg font-medium shadow-lg"
-                            required
-                          />
-                          <button
-                            type="submit"
-                            disabled={isSubmitting}
-                            className="btn btn-primary btn-xl whitespace-nowrap w-full sm:w-auto"
-                          >
-                            {isSubmitting ? "Joining..." : "Get Early Access"}
-                          </button>
-                        </div>
-                        {showSuccessMessage && (
-                          <p
-                            className={`text-green-600 text-sm mt-2 transition-opacity duration-500 ${
-                              showSuccessMessage ? "opacity-100" : "opacity-0"
-                            }`}
-                          >
-                            ✅ You're on the list! We'll notify you when we
-                            launch.
-                          </p>
-                        )}
-                        {error && (
-                          <p className="text-red-600 text-sm mt-2">{error}</p>
-                        )}
-                      </form>
                     </div>
                   </ScrollSection>
                 </div>
@@ -289,9 +271,9 @@ export default function HomePage() {
           </section>
         </ScrollSection>
 
-        {/* Pain Points Section */}
+        {/* Buyer Pain Points Section */}
         <ScrollSection animationType="scaleIn" threshold={0.3}>
-          <PainPointsSection />
+          <BuyerPainPointsSection />
         </ScrollSection>
 
         {/* How It Works Section */}
@@ -307,8 +289,8 @@ export default function HomePage() {
                     How It Works
                   </h2>
                   <p className="text-lg sm:text-xl text-gray-700 max-w-3xl mx-auto px-4">
-                    From listing to payout in 5 simple steps. We handle
-                    everything else.
+                    From browsing to delivery in a few simple steps. We handle
+                    the rest.
                   </p>
                 </div>
               </ScrollSection>
@@ -333,15 +315,17 @@ export default function HomePage() {
                         </svg>
                       </div>
                       <h3 className="text-xl font-bold text-gray-900 mb-2">
-                        Snap & List
+                        Browse New Drops
                       </h3>
                       <p className="text-gray-700 text-sm mb-4 flex-grow">
-                        Take a photo, our automated system generates your
-                        listing with optimized title, description, and keywords.
+                        We release handpicked batches of local treasures at set
+                        times. First to click "Buy" gets the item — no bidding
+                        wars. All items are quality-verified and ready to
+                        deliver.
                       </p>
                       <div className="mt-auto">
                         <p className="text-gray-500 text-xs mb-3">
-                          ≈ 1 minute total
+                          Daily drops
                         </p>
                         {/* Arrow inside */}
                         <div className="flex items-center justify-center">
@@ -366,14 +350,18 @@ export default function HomePage() {
                         </svg>
                       </div>
                       <h3 className="text-xl font-bold text-gray-900 mb-2">
-                        Smart Price
+                        Watch the Price Drop!
                       </h3>
                       <p className="text-gray-700 text-sm mb-4 flex-grow">
-                        Our automated system analyzes market data and suggests
-                        the optimal price. Accept or adjust to your preference.
+                        Each item starts at its full value and decreases on a
+                        set schedule until it's gone. Like a Dutch auction —
+                        wait and you might save more… but risk losing it to
+                        someone else.
                       </p>
                       <div className="mt-auto">
-                        <p className="text-gray-500 text-xs mb-3">Instant</p>
+                        <p className="text-gray-500 text-xs mb-3">
+                          Live Price Updates
+                        </p>
                         {/* Arrow inside */}
                         <div className="flex items-center justify-center">
                           <div className="w-6 h-1 bg-gradient-to-r from-treasure-500 to-treasure-500/60"></div>
@@ -397,15 +385,15 @@ export default function HomePage() {
                         </svg>
                       </div>
                       <h3 className="text-xl font-bold text-gray-900 mb-2">
-                        Stay-Home Storage
+                        Buy Safely & Securely
                       </h3>
                       <p className="text-gray-700 text-sm mb-4 flex-grow">
-                        Your item stays safely at home until it sells. No need
-                        to ship or store elsewhere.
+                        Simple checkout with buyer protection built in. Pay
+                        online — we hold funds until your item arrives.
                       </p>
                       <div className="mt-auto">
                         <p className="text-gray-500 text-xs mb-3">
-                          Days → weeks
+                          Escrow Protection
                         </p>
                         {/* Arrow inside */}
                         <div className="flex items-center justify-center">
@@ -430,16 +418,14 @@ export default function HomePage() {
                         </svg>
                       </div>
                       <h3 className="text-xl font-bold text-gray-900 mb-2">
-                        Concierge Pickup
+                        Fast Local Delivery
                       </h3>
                       <p className="text-gray-700 text-sm mb-4 flex-grow">
-                        Once buyer pays, our driver collects your item and
-                        handles all shipping logistics.
+                        No shipping from strangers — we handle the handoff. Most
+                        deliveries happen in 1 – 3 days.
                       </p>
                       <div className="mt-auto">
-                        <p className="text-gray-500 text-xs mb-3">
-                          Same / next day
-                        </p>
+                        <p className="text-gray-500 text-xs mb-3">1 – 3 days</p>
                         {/* Arrow inside */}
                         <div className="flex items-center justify-center">
                           <div className="w-6 h-1 bg-gradient-to-r from-treasure-500 to-treasure-500/60"></div>
@@ -464,16 +450,21 @@ export default function HomePage() {
                         </svg>
                       </div>
                       <h3 className="text-xl font-bold text-gray-900 mb-2">
-                        Secure Payout
+                        Enjoy & Repeat
                       </h3>
                       <p className="text-gray-700 text-sm mb-4 flex-grow">
-                        Funds are held securely and automatically released once
-                        delivery is confirmed.
+                        Your next find drops weekly. New batches keep inventory
+                        fresh and exciting.
                       </p>
                       <div className="mt-auto">
                         <p className="text-gray-500 text-xs mb-3">
-                          Money in ≤ 24 h
+                          Weekly Drops
                         </p>
+                        {/* Arrow inside */}
+                        <div className="flex items-center justify-center">
+                          <div className="w-6 h-1 bg-gradient-to-r from-treasure-500 to-treasure-500/60"></div>
+                          <div className="w-0 h-0 border-l-3 border-l-treasure-500 border-t-1.5 border-t-transparent border-b-1.5 border-b-transparent ml-1"></div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -496,15 +487,14 @@ export default function HomePage() {
                       </svg>
                     </div>
                     <h3 className="text-lg font-bold text-gray-900 mb-1">
-                      Snap & List
+                      Browse New Drops
                     </h3>
                     <p className="text-gray-700 text-sm mb-1">
-                      Take a photo, our automated system generates your listing
-                      with optimized title, description, and keywords.
+                      We release handpicked batches of local treasures at set
+                      times. First to click "Buy" gets the item — no bidding
+                      wars. All items are quality-checked.
                     </p>
-                    <p className="text-gray-500 text-xs mb-2">
-                      ≈ 1 minute total
-                    </p>
+                    <p className="text-gray-500 text-xs mb-2">Weekly Drops</p>
                     <div className="flex justify-center">
                       <div className="w-0 h-0 border-l-3 border-l-treasure-500 border-t-2 border-t-transparent border-b-2 border-b-transparent"></div>
                     </div>
@@ -525,13 +515,17 @@ export default function HomePage() {
                       </svg>
                     </div>
                     <h3 className="text-lg font-bold text-gray-900 mb-1">
-                      Smart Price
+                      Watch the Price Drop!
                     </h3>
                     <p className="text-gray-700 text-sm mb-1">
-                      Our automated system analyzes market data and suggests the
-                      optimal price. Accept or adjust to your preference.
+                      Each item starts at the listing price and decreases on a
+                      set schedule until it's gone. Like a Dutch auction — wait
+                      and you might save more… but risk losing it to someone
+                      else.
                     </p>
-                    <p className="text-gray-500 text-xs mb-2">Instant</p>
+                    <p className="text-gray-500 text-xs mb-2">
+                      Live Price Tracking
+                    </p>
                     <div className="flex justify-center">
                       <div className="w-0 h-0 border-l-3 border-l-treasure-500 border-t-2 border-t-transparent border-b-2 border-b-transparent"></div>
                     </div>
@@ -552,13 +546,15 @@ export default function HomePage() {
                       </svg>
                     </div>
                     <h3 className="text-lg font-bold text-gray-900 mb-1">
-                      Stay-Home Storage
+                      Buy Safely & Securely
                     </h3>
                     <p className="text-gray-700 text-sm mb-1">
-                      Your item stays safely at home until it sells. No need to
-                      ship or store elsewhere.
+                      Simple checkout with buyer protection built in. Pay online
+                      — we hold funds until your item is delivered and accepted.
                     </p>
-                    <p className="text-gray-500 text-xs mb-2">Days → weeks</p>
+                    <p className="text-gray-500 text-xs mb-2">
+                      Escrow Protection
+                    </p>
                     <div className="flex justify-center">
                       <div className="w-0 h-0 border-l-3 border-l-treasure-500 border-t-2 border-t-transparent border-b-2 border-b-transparent"></div>
                     </div>
@@ -579,15 +575,13 @@ export default function HomePage() {
                       </svg>
                     </div>
                     <h3 className="text-lg font-bold text-gray-900 mb-1">
-                      Concierge Pickup
+                      Fast Local Delivery
                     </h3>
                     <p className="text-gray-700 text-sm mb-1">
-                      Once buyer pays, our driver collects your item and handles
-                      all shipping logistics.
+                      No shipping from strangers — we handle the handoff. Most
+                      deliveries happen in 1 – 3 days at your conveinence.
                     </p>
-                    <p className="text-gray-500 text-xs mb-2">
-                      Same / next day
-                    </p>
+                    <p className="text-gray-500 text-xs mb-2">1 - 3 Days</p>
                     <div className="flex justify-center">
                       <div className="w-0 h-0 border-l-3 border-l-treasure-500 border-t-2 border-t-transparent border-b-2 border-b-transparent"></div>
                     </div>
@@ -609,14 +603,14 @@ export default function HomePage() {
                       </svg>
                     </div>
                     <h3 className="text-lg font-bold text-gray-900 mb-1">
-                      Secure Payout
+                      Enjoy Your New Treasure!
                     </h3>
                     <p className="text-gray-700 text-sm mb-1">
-                      Funds are held securely and automatically released once
-                      delivery is confirmed.
+                      Your next treasure could drop tomorrow. Keep an eye out
+                      for new batches keep inventory fresh and exciting.
                     </p>
                     <p className="text-gray-500 text-xs mb-2">
-                      Money in ≤ 24 h
+                      Watch for New Drops
                     </p>
                     <div className="flex justify-center">
                       <div className="w-0 h-0 border-l-3 border-l-treasure-500 border-t-2 border-t-transparent border-b-2 border-b-transparent"></div>
@@ -624,32 +618,6 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-            </div>
-          </section>
-        </ScrollSection>
-
-        {/* Transparent Pricing Section */}
-        <ScrollSection animationType="fadeInUp" threshold={0.2}>
-          <section
-            id="pricing"
-            className="py-12 lg:py-20 px-4 bg-white/80 backdrop-blur-sm"
-          >
-            <div className="max-w-6xl mx-auto">
-              <ScrollSection animationType="fadeInUp" delay={200}>
-                <div className="text-center mb-12 lg:mb-16">
-                  <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 lg:mb-6">
-                    Transparent Pricing
-                  </h2>
-                  <p className="text-lg sm:text-xl text-gray-700 max-w-3xl mx-auto px-4">
-                    Interactive pricing calculator. See exactly what you'll earn
-                    based on your item's value.
-                  </p>
-                </div>
-              </ScrollSection>
-
-              <ScrollSection animationType="scaleIn" delay={400}>
-                <PriceSlider />
-              </ScrollSection>
             </div>
           </section>
         </ScrollSection>
@@ -666,11 +634,14 @@ export default function HomePage() {
             <div className="max-w-4xl mx-auto text-center">
               <ScrollSection animationType="fadeInUp" delay={200}>
                 <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 lg:mb-6">
-                  Ready to Sell{" "}
-                  <span className="text-treasure-500">Stress-Free</span>?
+                  Ready to{" "}
+                  <span className="text-treasure-500">
+                    Find Local Treasures
+                  </span>
+                  ?
                 </h2>
                 <p className="text-lg sm:text-xl text-gray-700 mb-6 lg:mb-8 max-w-2xl mx-auto px-4">
-                  Join the Crew to maximize value and minimize your hassle.
+                  Discover deals on local treasures.
                 </p>
               </ScrollSection>
               <ScrollSection animationType="scaleIn" delay={400}>

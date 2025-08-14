@@ -41,18 +41,16 @@ const checkWebGLSupport = () => {
   }
 };
 
-// Optimized Floating Box Component
+// Simplified Floating Box Component with reduced complexity
 function FloatingBox({
   position,
   color,
   size = 1,
-  logoTexture,
   index,
 }: {
   position: [number, number, number];
   color: string;
   size?: number;
-  logoTexture?: THREE.Texture;
   index: number;
 }) {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -61,84 +59,58 @@ function FloatingBox({
 
   useFrame((state) => {
     if (meshRef.current) {
-      // Use continuous time without modulo to prevent sudden jumps
+      // Simplified animations to reduce GPU load
       const time = state.clock.elapsedTime + animationOffset;
 
-      // Smoother, more subtle animations
-      meshRef.current.rotation.x = Math.sin(time * 0.3) * 0.2;
-      meshRef.current.rotation.y = Math.sin(time * 0.2) * 0.2;
+      // Reduced animation intensity
+      meshRef.current.rotation.x = Math.sin(time * 0.2) * 0.1;
+      meshRef.current.rotation.y = Math.sin(time * 0.15) * 0.1;
       meshRef.current.position.y =
-        initialPosition[1] + Math.sin(time * 0.4) * 0.3;
+        initialPosition[1] + Math.sin(time * 0.3) * 0.2;
     }
   });
 
   return (
-    <Float speed={1} rotationIntensity={0.3} floatIntensity={0.3}>
+    <Float speed={0.5} rotationIntensity={0.2} floatIntensity={0.2}>
       <mesh ref={meshRef} position={position}>
         <boxGeometry args={[size, size, size]} />
         <meshStandardMaterial
           color={color}
           transparent
-          opacity={0.8}
+          opacity={0.6}
           metalness={0.1}
-          roughness={0.3}
+          roughness={0.4}
         />
-
-        {/* Simplified logo display */}
-        {logoTexture && (
-          <mesh position={[0, 0, size / 2 + 0.01]}>
-            <planeGeometry args={[size * 0.7, size * 0.35]} />
-            <meshBasicMaterial
-              map={logoTexture}
-              transparent
-              opacity={0.8}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-        )}
       </mesh>
     </Float>
   );
 }
 
-// Optimized Particle System with fewer particles
-function ParticleSystem({ count = 200 }: { count?: number }) {
-  const particles = useMemo(() => {
-    const temp = [];
-    for (let i = 0; i < count; i++) {
-      const time = Math.random() * 100;
-      const factor = 20 + Math.random() * 100;
-      const speed = 0.005 + Math.random() * 0.01; // Slower speed
-      const x = Math.random() * 1000 - 500; // Smaller range
-      const y = Math.random() * 1000 - 500;
-      const z = Math.random() * 1000 - 500;
-      temp.push({ time, factor, speed, x, y, z });
-    }
-    return temp;
-  }, [count]);
-
+// Simplified Particle System with reduced count
+function ParticleSystem({ count = 150 }: { count?: number }) {
   const points = useRef<THREE.Points>(null);
-  const positions = useMemo(
-    () => new Float32Array(particles.length * 3),
-    [particles.length]
-  );
+
+  const particles = useMemo(() => {
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+
+    for (let i = 0; i < count; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 40;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 40;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 40;
+
+      colors[i * 3] = 0.8 + Math.random() * 0.2;
+      colors[i * 3 + 1] = 0.6 + Math.random() * 0.4;
+      colors[i * 3 + 2] = 0.2 + Math.random() * 0.3;
+    }
+
+    return { positions, colors };
+  }, [count]);
 
   useFrame((state) => {
     if (points.current) {
-      particles.forEach((particle, i) => {
-        const { factor, speed, x, y, z } = particle;
-        // Use continuous time without modulo
-        const t = state.clock.elapsedTime * speed + factor;
-
-        positions[i * 3] = x + Math.sin(t) * 30;
-        positions[i * 3 + 1] = y + Math.cos(t) * 30;
-        positions[i * 3 + 2] = z + Math.sin(t) * 30;
-      });
-
-      if (points.current.geometry.attributes.position) {
-        points.current.geometry.attributes.position.array = positions;
-        points.current.geometry.attributes.position.needsUpdate = true;
-      }
+      // Simplified particle movement
+      points.current.rotation.y += 0.001;
     }
   });
 
@@ -147,222 +119,105 @@ function ParticleSystem({ count = 200 }: { count?: number }) {
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
-          count={particles.length}
-          array={positions}
-          itemSize={3}
+          args={[particles.positions, 3]}
+        />
+        <bufferAttribute
+          attach="attributes-color"
+          args={[particles.colors, 3]}
         />
       </bufferGeometry>
       <pointsMaterial
-        size={1.5}
-        color="#D4AF3D"
+        size={0.1}
+        vertexColors
         transparent
-        opacity={0.4}
+        opacity={0.6}
         sizeAttenuation
       />
     </points>
   );
 }
 
-// Main Scene Component
+// Simplified Scene Component
 function Scene() {
   const groupRef = useRef<THREE.Group>(null);
-  const [logoTexture, setLogoTexture] = useState<THREE.Texture | null>(null);
-
-  // Load the logo texture with proper cleanup
-  useEffect(() => {
-    const textureLoader = new THREE.TextureLoader();
-    let mounted = true;
-
-    textureLoader.load(
-      "/TreasureHub Centered.png",
-      (texture) => {
-        if (mounted) {
-          setLogoTexture(texture);
-        }
-      },
-      undefined,
-      (error) => {
-        console.warn("Failed to load logo texture:", error);
-        if (mounted) {
-          setLogoTexture(null);
-        }
-      }
-    );
-
-    return () => {
-      mounted = false;
-      if (logoTexture) {
-        logoTexture.dispose();
-      }
-    };
-  }, []);
-
-  useFrame((state) => {
-    if (groupRef.current) {
-      // Smoother rotation
-      groupRef.current.rotation.y = state.clock.elapsedTime * 0.05;
-    }
-  });
 
   // Reduced number of floating boxes for better performance
   const floatingBoxes = useMemo(
     () => [
       {
-        position: [-5, 2, -5] as [number, number, number],
+        position: [-8, 2, -5] as [number, number, number],
         color: "#D4AF3D",
-        size: 1.5,
+        size: 0.8,
         index: 0,
       },
       {
-        position: [5, -2, 3] as [number, number, number],
+        position: [6, -1, -3] as [number, number, number],
         color: "#825E08",
-        size: 1,
+        size: 0.6,
         index: 1,
       },
       {
-        position: [0, 5, -8] as [number, number, number],
-        color: "#D4AF3D",
-        size: 0.8,
+        position: [-4, 3, 8] as [number, number, number],
+        color: "#B8860B",
+        size: 0.7,
         index: 2,
       },
       {
-        position: [-8, -3, 0] as [number, number, number],
-        color: "#825E08",
-        size: 1.2,
+        position: [8, -2, 6] as [number, number, number],
+        color: "#DAA520",
+        size: 0.5,
         index: 3,
-      },
-      {
-        position: [8, 1, -3] as [number, number, number],
-        color: "#D4AF3D",
-        size: 0.6,
-        index: 4,
-      },
-      {
-        position: [-3, -5, 5] as [number, number, number],
-        color: "#825E08",
-        size: 1.3,
-        index: 5,
-      },
-      {
-        position: [3, 4, 8] as [number, number, number],
-        color: "#D4AF3D",
-        size: 0.9,
-        index: 6,
-      },
-      {
-        position: [-10, 0, -10] as [number, number, number],
-        color: "#825E08",
-        size: 1.1,
-        index: 7,
-      },
-      {
-        position: [12, 3, -6] as [number, number, number],
-        color: "#D4AF3D",
-        size: 1.4,
-        index: 8,
-      },
-      {
-        position: [-12, -1, 7] as [number, number, number],
-        color: "#825E08",
-        size: 0.7,
-        index: 9,
       },
     ],
     []
   );
 
+  useFrame((state) => {
+    if (groupRef.current) {
+      // Very subtle group rotation
+      groupRef.current.rotation.y += 0.0005;
+    }
+  });
+
   return (
     <group ref={groupRef}>
-      {/* Ambient Light */}
+      {/* Ambient lighting for better performance */}
       <ambientLight intensity={0.4} />
+      <directionalLight position={[10, 10, 5]} intensity={0.3} />
 
-      {/* Directional Light */}
-      <directionalLight
-        position={[10, 10, 5]}
-        intensity={0.8}
-        castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
-      />
+      {/* Simplified Particle System */}
+      <ParticleSystem count={150} />
 
-      {/* Point Light */}
-      <pointLight position={[-10, -10, -10]} intensity={0.3} color="#D4AF3D" />
-
-      {/* Stars Background */}
-      <Stars
-        radius={100}
-        depth={50}
-        count={2000}
-        factor={4}
-        saturation={0}
-        fade
-        speed={0.5}
-      />
-
-      {/* Optimized Particle System */}
-      <ParticleSystem count={300} />
-
-      {/* Floating Boxes */}
+      {/* Reduced Floating Boxes */}
       {floatingBoxes.map((box, index) => (
         <FloatingBox
           key={index}
           position={box.position}
           color={box.color}
           size={box.size}
-          logoTexture={logoTexture || undefined}
           index={box.index}
         />
       ))}
 
-      {/* Simplified Background Elements */}
-      <mesh position={[-15, 0, -15]} rotation={[0, Math.PI / 4, 0]}>
-        <boxGeometry args={[8, 8, 8]} />
-        <meshStandardMaterial
-          color="#D4AF3D"
-          transparent
-          opacity={0.05}
-          wireframe
-        />
-      </mesh>
-
-      <mesh position={[15, 0, 15]} rotation={[0, -Math.PI / 4, 0]}>
-        <boxGeometry args={[6, 6, 6]} />
-        <meshStandardMaterial
-          color="#825E08"
-          transparent
-          opacity={0.05}
-          wireframe
-        />
-      </mesh>
+      {/* Removed complex background elements for better performance */}
     </group>
   );
 }
 
-// Simple Error Fallback - Just background color
+// Clean Error Fallback - Just background color, no error indicators
 function ErrorFallback() {
   return <div className="w-full h-full bg-[#f9fafb]" />;
 }
 
-// Main ThreeScene Component with Enhanced Performance
+// Optimized Main ThreeScene Component
 export default function ThreeScene() {
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
   const [webglSupported, setWebglSupported] = useState<boolean | null>(null);
 
-  const resetScene = useCallback(() => {
-    console.log("Resetting 3D scene...");
-    setHasError(false);
-    setIsLoading(true);
-    setRetryCount((prev) => prev + 1);
-
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 200);
-  }, []);
-
   useEffect(() => {
-    // Prevent Three.js from showing any error displays globally
+    // Suppress Three.js error displays globally
     const originalError = console.error;
     const originalWarn = console.warn;
 
@@ -373,9 +228,10 @@ export default function ThreeScene() {
         message.includes("Three.js") ||
         message.includes("context") ||
         message.includes("happy") ||
-        message.includes("face")
+        message.includes("face") ||
+        message.includes("sad")
       ) {
-        // Suppress Three.js error displays including happy face
+        // Suppress Three.js error displays
         return;
       }
       originalError.apply(console, args);
@@ -388,9 +244,10 @@ export default function ThreeScene() {
         message.includes("Three.js") ||
         message.includes("context") ||
         message.includes("happy") ||
-        message.includes("face")
+        message.includes("face") ||
+        message.includes("sad")
       ) {
-        // Suppress Three.js warning displays including happy face
+        // Suppress Three.js warning displays
         return;
       }
       originalWarn.apply(console, args);
@@ -420,13 +277,16 @@ export default function ThreeScene() {
         console.warn("WebGL context lost");
         setHasError(true);
 
-        // Don't retry automatically to prevent the sad face from appearing
-        if (retryCount < 2) {
+        // Reduced retry attempts to prevent context thrashing
+        if (retryCount < 1) {
           setTimeout(() => {
-            if (!hasError) {
-              resetScene();
-            }
-          }, 2000);
+            // Reset scene logic inline to avoid dependency issues
+            console.log("Resetting 3D scene...");
+            setHasError(false);
+            setIsLoading(true);
+            setRetryCount((prev) => prev + 1);
+            setTimeout(() => setIsLoading(false), 200);
+          }, 3000); // Increased delay
         } else {
           setWebglSupported(false);
         }
@@ -449,7 +309,7 @@ export default function ThreeScene() {
       console.error = originalError;
       console.warn = originalWarn;
     };
-  }, [retryCount, resetScene]);
+  }, [retryCount]);
 
   if (webglSupported === false || hasError) {
     // Return a clean fallback without any Three.js artifacts
@@ -489,29 +349,28 @@ export default function ThreeScene() {
           preserveDrawingBuffer: false,
           failIfMajorPerformanceCaveat: false,
           logarithmicDepthBuffer: false,
-          // Prevent Three.js from showing error displays
-          onerror: null,
         }}
         onCreated={({ gl }) => {
           try {
             console.log("WebGL context created successfully");
             gl.setClearColor("#f9fafb", 1);
 
-            // Prevent the default Three.js sad face from appearing
-            if (gl && gl.canvas && gl.canvas.addEventListener) {
-              gl.canvas.addEventListener(
+            // Enhanced context loss prevention
+            const canvas = gl.domElement;
+            if (canvas && canvas.addEventListener) {
+              canvas.addEventListener(
                 "webglcontextlost",
-                (event) => {
+                (event: Event) => {
                   event.preventDefault();
                   console.warn(
-                    "WebGL context lost, preventing default sad face"
+                    "WebGL context lost, preventing default displays"
                   );
                   setHasError(true);
                 },
                 false
               );
 
-              gl.canvas.addEventListener(
+              canvas.addEventListener(
                 "webglcontextrestored",
                 () => {
                   console.log("WebGL context restored");
@@ -521,10 +380,10 @@ export default function ThreeScene() {
               );
 
               // Prevent any Three.js error displays on the canvas
-              gl.canvas.style.pointerEvents = "none";
-              gl.canvas.addEventListener(
+              canvas.style.pointerEvents = "none";
+              canvas.addEventListener(
                 "error",
-                (e) => {
+                (e: Event) => {
                   e.preventDefault();
                   e.stopPropagation();
                 },
@@ -545,7 +404,7 @@ export default function ThreeScene() {
           enablePan={false}
           enableRotate={true}
           autoRotate
-          autoRotateSpeed={0.3}
+          autoRotateSpeed={0.2}
           maxPolarAngle={Math.PI / 2}
           minPolarAngle={Math.PI / 2}
         />
