@@ -328,10 +328,6 @@ export default function EditListingPage() {
     error: null,
   });
 
-  // Validation state
-  const [zipCodeValid, setZipCodeValid] = useState<boolean | null>(null);
-  const [zipCodeValidating, setZipCodeValidating] = useState(false);
-
   // Load existing listing data and user profile
   useEffect(() => {
     const fetchListingAndUserData = async () => {
@@ -445,11 +441,6 @@ export default function EditListingPage() {
             });
           }
           setPhotoOrder(order);
-
-          // Validate zip code
-          if (listingData.zipCode) {
-            validateZipCode(listingData.zipCode);
-          }
         } else {
           throw new Error(data.error || "Failed to fetch listing");
         }
@@ -485,23 +476,6 @@ export default function EditListingPage() {
       fetchListingAndUserData();
     }
   }, [params.id]);
-
-  const validateZipCode = async (zip: string) => {
-    setZipCodeValidating(true);
-    try {
-      // Simplified validation - just check if it's a 5-digit code
-      const isValid = /^\d{5}$/.test(zip);
-      setZipCodeValid(isValid);
-      if (isValid) {
-        setNeighborhood("Houston Area");
-      }
-    } catch (error) {
-      console.error("Error validating zip code:", error);
-      setZipCodeValid(false);
-    } finally {
-      setZipCodeValidating(false);
-    }
-  };
 
   // Video upload handlers
   const handleVideoUploaded = async (data: {
@@ -658,16 +632,27 @@ export default function EditListingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!zipCodeValid) {
-      setError("Please enter a valid zip code");
+    console.log("Form submission started");
+    console.log("Current state:", {
+      zipCode,
+      saving,
+      photos: photos.hero,
+    });
+
+    // Allow submission if zip code is empty (will be validated on server)
+    if (!zipCode) {
+      console.log("No zip code provided");
+      setError("Please enter a zip code");
       return;
     }
 
     if (!photos.hero) {
+      console.log("No hero photo");
       setError("Please upload a hero photo");
       return;
     }
 
+    console.log("All validations passed, proceeding with submission");
     setSaving(true);
     setError(null);
 
@@ -1064,30 +1049,12 @@ export default function EditListingPage() {
                   <input
                     type="text"
                     value={zipCode}
-                    onChange={(e) => {
-                      setZipCode(e.target.value);
-                      setZipCodeValid(null);
-                    }}
-                    onBlur={() => validateZipCode(zipCode)}
+                    onChange={(e) => setZipCode(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
                     placeholder="Enter zip code"
                     required
                   />
-                  {zipCodeValidating && (
-                    <Loader2 className="absolute right-3 top-2.5 h-5 w-5 animate-spin text-gray-400" />
-                  )}
-                  {zipCodeValid === true && (
-                    <CheckCircleIcon className="absolute right-3 top-2.5 h-5 w-5 text-green-500" />
-                  )}
-                  {zipCodeValid === false && (
-                    <AlertCircle className="absolute right-3 top-2.5 h-5 w-5 text-red-500" />
-                  )}
                 </div>
-                {zipCodeValid === false && (
-                  <p className="mt-1 text-sm text-red-600">
-                    Please enter a valid zip code in our service area
-                  </p>
-                )}
               </div>
 
               {/* Neighborhood */}
@@ -1885,7 +1852,7 @@ export default function EditListingPage() {
             </Button>
             <Button
               type="submit"
-              disabled={saving || !zipCodeValid}
+              disabled={saving}
               className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
             >
               {saving ? (
