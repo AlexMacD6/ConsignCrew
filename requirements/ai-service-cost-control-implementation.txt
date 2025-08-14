@@ -72,3 +72,4 @@ Ensure that the AI service only uses GPT-5 when explicitly selected in the admin
 - GPT-5: Higher cost, advanced reasoning capabilities
 - Recommendation: Start with GPT-4o, upgrade to GPT-5 only when needed
 
+
