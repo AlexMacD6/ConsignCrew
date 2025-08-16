@@ -48,8 +48,19 @@ export default function HeroListingsCarousel({
         setError(null);
 
         console.log("Fetching listings from /api/listings...");
-        const response = await fetch("/api/listings?status=active&limit=20");
 
+        // Add timeout and better error handling
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+        const response = await fetch("/api/listings?status=active&limit=20", {
+          signal: controller.signal,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        clearTimeout(timeoutId);
         console.log("Response status:", response.status);
 
         if (!response.ok) {
@@ -107,17 +118,30 @@ export default function HeroListingsCarousel({
         }
       } catch (err) {
         console.error("Error fetching listings:", err);
-        setError(
-          `Failed to load listings: ${
-            err instanceof Error ? err.message : "Unknown error"
-          }`
-        );
+
+        // More specific error handling
+        if (err instanceof Error) {
+          if (err.name === "AbortError") {
+            setError("Request timed out. Please try again.");
+          } else if (err.message.includes("Failed to fetch")) {
+            setError(
+              "Network error. Please check your connection and try again."
+            );
+          } else {
+            setError(`Failed to load listings: ${err.message}`);
+          }
+        } else {
+          setError("An unexpected error occurred while loading listings.");
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    fetchListings();
+    // Only fetch if we're on the client side
+    if (typeof window !== "undefined") {
+      fetchListings();
+    }
   }, [maxListings]);
 
   // Auto-play functionality
@@ -236,7 +260,6 @@ export default function HeroListingsCarousel({
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-1">
-                    <DollarSign className="h-4 w-4 text-treasure-400" />
                     <span className="font-bold text-xl">
                       ${currentListing.price.toFixed(2)}
                     </span>

@@ -2,7 +2,6 @@
   "name": "consigncrew-packing-tetris",
   "private": true,
   "version": "0.0.0",
-  "type": "module",
   "description": "A comprehensive marketplace platform with AI-powered listing generation and video processing capabilities",
   "engines": {
     "node": ">=18.0.0"

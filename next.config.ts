@@ -25,7 +25,6 @@ const nextConfig: NextConfig = {
 		},
 	},
 	images: {
-		domains: ['d1lbhlimt20t50.cloudfront.net'],
 		remotePatterns: [
 			new URL('https://d3hcmh2afavni1.cloudfront.net/**'),
 			new URL('https://d137kvqp5ded0n.cloudfront.net/**'),
@@ -46,7 +45,7 @@ const nextConfig: NextConfig = {
 	webpack: (config, { dev, isServer }) => {
 		config.resolve.alias = {
 			...config.resolve.alias,
-			'@': path.resolve(__dirname, 'src'),
+			'@': path.resolve(__dirname, 'app'),
 		}
 		
 		// Add fallbacks for Node.js modules that might be imported in client-side code

@@ -24,12 +24,12 @@ model user {
   country         String?
   invitationsSent Invitation[] @relation("InvitationsSent")
   listings        Listing[]
-  videos          Video[]
   members         Member[]
   answers         Question[]   @relation("QuestionAnsweredBy")
   approvals       Question[]   @relation("QuestionApprovedBy")
   questions       Question[]   @relation("QuestionCreatedBy")
   teamMemberships TeamMember[]
+  videos          Video[]
   accounts        account[]
   sessions        session[]
 
@@ -188,78 +188,67 @@ model Question {
 }
 
 model Listing {
-  id                   String    @id @default(cuid())
-  userId               String
-  itemId               String    @unique
-  photos               Json
-  videoUrl             String?
-  department           String
-  category             String
-  subCategory          String
-  title                String
-  condition            String
-  price                Float
-  reservePrice         Float?
-  description          String
-  brand                String?
-  height               String?
-  width                String?
-  depth                String?
-  serialNumber         String?
-  modelNumber          String?
-  estimatedRetailPrice Float?
-  discountSchedule     Json?
-  isTreasure           Boolean   @default(false)
-  treasureReason       String? // Why it's flagged as treasure
-  treasureFlaggedAt    DateTime?
-  treasureFlaggedBy    String? // User ID who flagged it
-  // Meta Pixel API Integration
-  metaProductId        String? // Meta's product ID
-  metaCatalogId        String? // Meta's catalog ID
-  metaLastSync         DateTime? // Last sync timestamp
-  metaSyncStatus       String? // success/error/pending/deleted
-  metaErrorDetails     String? // Error details if sync failed
-  status               String    @default("active")
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-  views                Int       @default(0)
-
-  // Facebook Shop Integration Fields
-  facebookShopId      String?   @unique // Unique ID for Facebook Shop
-  facebookCategory    String? // Facebook product category
-  facebookCondition   String? // new/used/refurbished for Facebook
-  facebookBrand       String? // Brand name for Facebook
-  facebookGtin        String? // GTIN/UPC code (optional)
-  facebookShopEnabled Boolean   @default(true) // Enable/disable Facebook sync
-  facebookLastSync    DateTime? // Last successful sync timestamp
-  facebookSyncStatus  String? // success/error/pending
-  qualityChecked      Boolean   @default(false) // Quality check status
-
-  // Product Availability & Pricing
-  quantity               Int       @default(1) // Number of items available for sale
-  salePrice              Float? // Discounted/sale price
-  salePriceEffectiveDate DateTime? // When sale price is active
-
-  // Product Specifications
-  gender   String? // "male", "female", "unisex"
-  color    String? // Product color
-  size     String? // Product size
-  ageGroup String? // "adult", "kids", "infant"
-  material String? // Product material
-  pattern  String? // Product pattern
-  style    String? // Product style
-
-  // Enhanced Categorization
-  tags        String[] @default([]) // Product tags for better categorization
-  itemGroupId String? // For product variants
-
-  // Google Product Category for Facebook Commerce Manager
-  googleProductCategory String? // Official Google Product Category ID (e.g., "Home & Garden > Furniture > Bedroom Furniture > Dressers")
-
-  user         user             @relation(fields: [userId], references: [id])
-  videos       Video[]
-  priceHistory PriceHistory[]
-  history      ListingHistory[]
+  id                     String           @id @default(cuid())
+  userId                 String
+  itemId                 String           @unique
+  photos                 Json
+  department             String
+  category               String
+  subCategory            String
+  title                  String
+  condition              String
+  price                  Float
+  description            String
+  brand                  String?
+  serialNumber           String?
+  modelNumber            String?
+  estimatedRetailPrice   Float?
+  discountSchedule       Json?
+  status                 String           @default("active")
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  views                  Int              @default(0)
+  videoUrl               String?
+  reservePrice           Float?
+  depth                  String?
+  height                 String?
+  width                  String?
+  facebookBrand          String?
+  facebookCategory       String?
+  facebookCondition      String?
+  facebookGtin           String?
+  facebookLastSync       DateTime?
+  facebookShopEnabled    Boolean          @default(true)
+  facebookShopId         String?          @unique
+  facebookSyncStatus     String?
+  qualityChecked         Boolean          @default(false)
+  ageGroup               String?
+  color                  String?
+  gender                 String?
+  itemGroupId            String?
+  material               String?
+  pattern                String?
+  quantity               Int              @default(1)
+  salePrice              Float?
+  salePriceEffectiveDate DateTime?
+  size                   String?
+  style                  String?
+  tags                   String[]         @default([])
+  isTreasure             Boolean          @default(false)
+  metaCatalogId          String?
+  metaErrorDetails       String?
+  metaLastSync           DateTime?
+  metaProductId          String?
+  metaSyncStatus         String?
+  treasureFlaggedAt      DateTime?
+  treasureFlaggedBy      String?
+  treasureReason         String?
+  flawData               Json?
+  googleProductCategory  String?
+  user                   user             @relation(fields: [userId], references: [id])
+  history                ListingHistory[]
+  priceHistory           PriceHistory[]
+  videos                 Video[]          @relation("ListingToVideo")
 
   @@index([userId])
   @@index([status])
@@ -283,10 +272,10 @@ model PriceHistory {
 model ListingHistory {
   id          String   @id @default(cuid())
   listingId   String
-  eventType   String // "created", "status_changed", "price_changed", "sold", "in_transit", etc.
-  eventTitle  String // Human-readable title like "Listing Created", "Status Changed to Sold"
-  description String // Detailed description of the event
-  metadata    Json? // Additional data like old_value, new_value, etc.
+  eventType   String
+  eventTitle  String
+  description String
+  metadata    Json?
   createdAt   DateTime @default(now())
   listing     Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
@@ -326,9 +315,8 @@ model Contact {
 model TreasureDrop {
   id             String        @id @default(cuid())
   name           String
-  location       Json // { lat: number, lng: number }
-  radius         Float         @default(328) // Radius in feet (100 meters = ~328 feet)
-  status         String        @default("active") // "active" | "found"
+  location       Json
+  status         String        @default("active")
   clue           String
   image          String?
   reward         String
@@ -337,6 +325,7 @@ model TreasureDrop {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   treasureCodeId String?       @unique
+  radius         Float         @default(328)
   treasureCode   TreasureCode? @relation(fields: [treasureCodeId], references: [id])
 
   @@index([status])
@@ -346,7 +335,6 @@ model TreasureDrop {
 
 model TreasureRedemption {
   id                String       @id @default(cuid())
-  treasureCodeId    String
   firstName         String
   lastName          String
   email             String
@@ -366,6 +354,7 @@ model TreasureRedemption {
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   expiresAt         DateTime
+  treasureCodeId    String
   treasureCode      TreasureCode @relation(fields: [treasureCodeId], references: [id])
 
   @@index([treasureCodeId])
@@ -390,14 +379,14 @@ model TreasureCode {
 
 model FacebookApiKey {
   id         String    @id @default(cuid())
-  name       String // Human-readable name for the key
-  apiKey     String    @unique // The actual API key
+  name       String
+  apiKey     String    @unique
   isActive   Boolean   @default(true)
   lastUsed   DateTime?
   usageCount Int       @default(0)
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
-  createdBy  String // User ID who created the key
+  createdBy  String
 
   @@index([apiKey])
   @@index([isActive])
@@ -405,65 +394,48 @@ model FacebookApiKey {
 }
 
 model Video {
-  id               String  @id @default(cuid())
-  userId           String
-  originalFilename String
-  originalSize     Int // File size in bytes
-  duration         Float? // Video duration in seconds
-  resolution       String? // e.g., "1920x1080"
-
-  // File paths in S3
-  rawVideoKey       String // Raw uploaded video
-  processedVideoKey String? // Compressed video
-  thumbnailKey      String? // Preview thumbnail
-  frameKeys         Json? // Array of AI frame keys
-
-  // Processing status
-  status          String  @default("pending") // pending, processing, completed, failed
-  processingError String? // Error message if processing failed
-
-  // Metadata
-  mimeType  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  user     user      @relation(fields: [userId], references: [id])
-  listings Listing[]
+  id                String    @id @default(cuid())
+  userId            String
+  originalFilename  String
+  originalSize      Int
+  duration          Float?
+  resolution        String?
+  rawVideoKey       String
+  processedVideoKey String?
+  thumbnailKey      String?
+  frameKeys         Json?
+  status            String    @default("pending")
+  processingError   String?
+  mimeType          String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  user              user      @relation(fields: [userId], references: [id])
+  listings          Listing[] @relation("ListingToVideo")
 
   @@index([userId])
   @@index([status])
   @@index([createdAt])
 }
 
-// eBay Platform Notifications Models
 model EbayNotification {
-  id                  String   @id @default(cuid())
-  notificationId      String   @unique // eBay's notification ID
-  topic               String // e.g., "ITEM_UPDATED", "PRICE_CHANGED"
-  dataSchema          String // eBay's data schema version
-  dataVersion         String // eBay's data version
-  eventId             String // eBay's event ID
-  eventDate           DateTime // When the event occurred
-  publishDate         DateTime // When eBay published the notification
-  publishAttemptCount Int      @default(0)
-
-  // Notification payload
-  payload         Json // Full notification payload from eBay
-  processed       Boolean @default(false)
-  processingError String?
-
-  // Related item tracking
-  ebayItemId String?
-  ebayItem   EbayItem? @relation(fields: [ebayItemId], references: [id])
-
-  // Relations
-  logs EbayNotificationLog[]
-
-  // Audit fields
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  processedAt DateTime?
+  id                  String                @id @default(cuid())
+  notificationId      String                @unique
+  topic               String
+  dataSchema          String
+  dataVersion         String
+  eventId             String
+  eventDate           DateTime
+  publishDate         DateTime
+  publishAttemptCount Int                   @default(0)
+  payload             Json
+  processed           Boolean               @default(false)
+  processingError     String?
+  ebayItemId          String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  processedAt         DateTime?
+  ebayItem            EbayItem?             @relation(fields: [ebayItemId], references: [id])
+  logs                EbayNotificationLog[]
 
   @@index([notificationId])
   @@index([topic])
@@ -473,31 +445,23 @@ model EbayNotification {
 }
 
 model EbayItem {
-  id          String  @id @default(cuid())
-  ebayItemId  String  @unique // eBay's item ID
-  title       String
-  price       Decimal
-  currency    String  @default("USD")
-  condition   String?
-  brand       String?
-  modelNumber String?
-  gtin        String?
-
-  // Market data
-  marketPrice     Decimal?
-  priceHistory    Json? // Array of price changes
-  lastPriceUpdate DateTime?
-
-  // Status tracking
-  status           String    @default("active") // active, sold, ended, error
+  id               String             @id @default(cuid())
+  ebayItemId       String             @unique
+  title            String
+  price            Decimal
+  currency         String             @default("USD")
+  condition        String?
+  brand            String?
+  modelNumber      String?
+  gtin             String?
+  marketPrice      Decimal?
+  priceHistory     Json?
+  lastPriceUpdate  DateTime?
+  status           String             @default("active")
   lastNotification DateTime?
-
-  // Relations
-  notifications EbayNotification[]
-
-  // Audit fields
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  notifications    EbayNotification[]
 
   @@index([ebayItemId])
   @@index([status])
@@ -505,17 +469,13 @@ model EbayItem {
 }
 
 model EbayNotificationLog {
-  id      String @id @default(cuid())
-  level   String // info, warning, error
-  message String
-  context Json? // Additional context data
-
-  // Related notification (optional)
+  id                 String            @id @default(cuid())
+  level              String
+  message            String
+  context            Json?
   ebayNotificationId String?
+  createdAt          DateTime          @default(now())
   ebayNotification   EbayNotification? @relation(fields: [ebayNotificationId], references: [id])
-
-  // Audit fields
-  createdAt DateTime @default(now())
 
   @@index([level])
   @@index([createdAt])

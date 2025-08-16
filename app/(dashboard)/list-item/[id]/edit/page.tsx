@@ -639,13 +639,6 @@ export default function EditListingPage() {
       photos: photos.hero,
     });
 
-    // Allow submission if zip code is empty (will be validated on server)
-    if (!zipCode) {
-      console.log("No zip code provided");
-      setError("Please enter a zip code");
-      return;
-    }
-
     if (!photos.hero) {
       console.log("No hero photo");
       setError("Please upload a hero photo");
@@ -670,8 +663,7 @@ export default function EditListingPage() {
           condition,
           price: parseFloat(price),
           description,
-          zipCode,
-          neighborhood,
+
           brand: brand || null,
           height: height || null,
           width: width || null,
@@ -1029,47 +1021,6 @@ export default function EditListingPage() {
                   Turbo-30: 30% off every 30 days | Classic-60: 10% off every 60
                   days
                 </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Location */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Location
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Zip Code */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Zip Code *
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={zipCode}
-                    onChange={(e) => setZipCode(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                    placeholder="Enter zip code"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Neighborhood */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Neighborhood
-                </label>
-                <input
-                  type="text"
-                  value={neighborhood}
-                  onChange={(e) => setNeighborhood(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                  placeholder="Neighborhood will be auto-filled"
-                  readOnly
-                />
               </div>
             </div>
           </div>

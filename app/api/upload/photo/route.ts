@@ -5,7 +5,7 @@ import {
   getPublicUrl, 
   validateFileSize, 
   getMaxFileSize 
-} from '../../../../src/aws/imageStore';
+} from '@/lib/aws-image-store';
 
 export async function POST(request: NextRequest) {
   try {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { metaPixelAPI } from '@/lib/meta-pixel-api';
+import { syncListingToFacebook } from '@/lib/facebook-catalog-sync';
 
 /**
  * Manual sync endpoint to sync existing listings to Facebook catalog
@@ -29,15 +29,17 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Get all active listings that are enabled for Facebook Shop but haven't been synced
+    // Get all active listings that are enabled for Facebook Shop and need syncing
     const listings = await prisma.listing.findMany({
       where: {
         status: 'active',
         facebookShopEnabled: true,
         OR: [
-          { metaLastSync: null },
-          { metaSyncStatus: 'error' },
-          { metaSyncStatus: 'pending' }
+          { metaLastSync: null },           // Never synced
+          { metaSyncStatus: 'error' },      // Failed sync
+          { metaSyncStatus: 'pending' },    // Pending sync
+          { metaSyncStatus: 'synced' },     // Already synced but needs update
+          { metaSyncStatus: 'success' }     // Successfully synced but may need updates
         ]
       },
       include: {
@@ -74,8 +76,22 @@ export async function POST(request: NextRequest) {
           }
         });
 
-        // Sync to Meta catalog
-        const syncResult = await metaPixelAPI.syncProduct(listing);
+        // Debug: Log what we're sending
+        console.log('Sync Debug:', {
+          listingId: listing.itemId,
+          title: listing.title,
+          accessToken: process.env.META_ACCESS_TOKEN ? `${process.env.META_ACCESS_TOKEN.substring(0, 20)}...` : 'NOT SET',
+          catalogId: process.env.META_CATALOG_ID || 'NOT SET'
+        });
+
+        // Use our new automatic sync service - determine action based on existing status
+        const action = listing.metaProductId ? 'update' : 'create';
+        console.log(`Using action: ${action} for listing ${listing.itemId}`);
+        
+        const syncResult = await syncListingToFacebook({ 
+          action, 
+          listingId: listing.itemId 
+        });
 
         if (syncResult.success) {
           // Update with success status
@@ -83,7 +99,7 @@ export async function POST(request: NextRequest) {
             where: { id: listing.id },
             data: {
               metaSyncStatus: 'success',
-              metaProductId: syncResult.productId || listing.itemId,
+              metaProductId: syncResult.facebookId || listing.itemId,
               metaCatalogId: process.env.META_CATALOG_ID,
               metaErrorDetails: null,
               metaLastSync: new Date()
@@ -95,7 +111,7 @@ export async function POST(request: NextRequest) {
             itemId: listing.itemId,
             title: listing.title,
             status: 'success',
-            metaProductId: syncResult.productId
+            metaProductId: syncResult.facebookId
           });
 
           console.log(`✅ Successfully synced ${listing.itemId} to Facebook catalog`);

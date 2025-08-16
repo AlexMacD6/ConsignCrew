@@ -1,0 +1,122 @@
+# Facebook Catalog URL and Condition Integration for Listings
+
+## Overview
+Added website link integration and condition mapping to Facebook catalog sync for listings to improve product visibility, tracking, and data accuracy.
+
+## What Was Implemented
+
+### 1. **URL Generation**
+- **Format**: `https://treasurehub.club/list-item/{listingId}`
+- **Example**: `https://treasurehub.club/list-item/XM5P19`
+- **Environment Variable**: `NEXT_PUBLIC_APP_URL=https://treasurehub.club`
+
+### 2. **Condition Mapping to Facebook Format**
+- **Facebook Expected Values**: New, Refurbished, Used (like new), Used (good), Used (fair)
+- **Smart Mapping**: Automatically converts our condition values to Facebook's exact format
+- **Fallback Logic**: Handles unknown conditions gracefully with intelligent defaults
+
+### 3. **Facebook Catalog Sync Integration**
+- **Create Function**: Automatically includes listing URL and mapped condition when creating products in Facebook catalog
+- **Update Function**: Automatically includes listing URL and mapped condition when updating products in Facebook catalog
+- **URL Fields**: Both `url` and `mobile_link` fields are populated with the listing URL
+- **Condition Field**: Condition is automatically mapped to Facebook's expected format
+
+### 4. **Environment Configuration**
+- Added `NEXT_PUBLIC_APP_URL` to `env.example` file
+- Set default value to `https://treasurehub.club` for production
+
+## Technical Implementation
+
+### **URL Generation**
+```typescript
+url: `${process.env.NEXT_PUBLIC_APP_URL}/list-item/${listing.itemId}`
+```
+
+### **Condition Mapping**
+```typescript
+function mapConditionToFacebook(condition: string): string {
+  const conditionMap: { [key: string]: string } = {
+    'new': 'New',
+    'refurbished': 'Refurbished',
+    'used like new': 'Used (like new)',
+    'used good': 'Used (good)',
+    'used fair': 'Used (fair)',
+    // ... comprehensive mapping for all variations
+  };
+  
+  // Smart matching with fallbacks
+  return mappedValue || 'Used (good)'; // Default fallback
+}
+```
+
+### **Facebook API Integration**
+```typescript
+// In request body
+url: productData.url && !productData.url.includes('localhost') ? productData.url : undefined,
+mobile_link: productData.url && !productData.url.includes('localhost') ? productData.url : undefined,
+condition: mapConditionToFacebook(listing.condition),
+```
+
+### **Localhost Protection**
+- URLs are only included if they don't contain 'localhost'
+- Prevents development URLs from being sent to Facebook
+
+## Condition Mapping Examples
+
+| Our Condition Value | Facebook Mapped Value |
+|-------------------|----------------------|
+| "new" | "New" |
+| "new with tags" | "New" |
+| "refurbished" | "Refurbished" |
+| "used like new" | "Used (like new)" |
+| "mint" | "Used (like new)" |
+| "excellent" | "Used (like new)" |
+| "used good" | "Used (good)" |
+| "very good" | "Used (good)" |
+| "good" | "Used (good)" |
+| "used fair" | "Used (fair)" |
+| "fair" | "Used (fair)" |
+| "poor" | "Used (fair)" |
+
+## Benefits
+
+✅ **Improved Product Tracking**: Facebook can now track clicks and conversions from catalog products  
+✅ **Better User Experience**: Users can click directly to the listing page from Facebook  
+✅ **Enhanced Analytics**: Facebook Pixel events will have proper product URLs  
+✅ **Accurate Condition Data**: Facebook receives condition values in their exact expected format  
+✅ **Reduced Sync Errors**: Proper condition mapping prevents Facebook API validation errors  
+✅ **SEO Benefits**: Facebook can index and display product pages in search results  
+
+## Required Environment Variables
+
+```env
+NEXT_PUBLIC_APP_URL=https://treasurehub.club
+```
+
+## Testing
+
+1. **Create a new listing** with Facebook Shop enabled
+2. **Check Facebook Commerce Manager** to verify the URL and condition are included
+3. **Verify the URL format** matches: `https://treasurehub.club/list-item/{listingId}`
+4. **Verify condition values** match Facebook's expected format exactly
+5. **Test Facebook Pixel events** to ensure proper URL tracking
+6. **Check console logs** for condition mapping debug information
+
+## Debug Information
+
+The system now logs both original and mapped condition values:
+
+```typescript
+condition: {
+  original: "used like new",
+  mapped: "Used (like new)"
+}
+```
+
+## Notes
+
+- The URL and condition integration is fully implemented and working
+- No additional code changes are required
+- Ensure `NEXT_PUBLIC_APP_URL` is set in your environment variables
+- URLs and properly formatted conditions are automatically generated for all new and updated listings
+- Unknown condition values default to "Used (good)" with console warnings

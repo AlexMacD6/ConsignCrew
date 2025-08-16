@@ -32,12 +32,17 @@ import QuestionManagement from "../components/QuestionManagement";
 
 interface User {
   id: string;
-  firstName: string;
-  lastName: string;
+  name: string;
   email: string;
   mobilePhone?: string;
-  role?: string;
-  organizations?: any[];
+  emailVerified: boolean;
+  primaryRole?: string;
+  organizations?: Array<{
+    id: string;
+    name: string;
+    role: string;
+  }>;
+  totalOrganizations?: number;
 }
 
 interface Organization {
@@ -173,6 +178,25 @@ export default function AdminDashboard() {
     phase1Model: "gpt-4o", // Default to GPT-4o for better visual analysis
     phase2Model: "gpt-4o", // Default to GPT-4o for Phase 2
   });
+
+  // User Management states
+  const [selectedUserForRole, setSelectedUserForRole] = useState<User | null>(
+    null
+  );
+  const [selectedUserForOrg, setSelectedUserForOrg] = useState<User | null>(
+    null
+  );
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [showOrgModal, setShowOrgModal] = useState(false);
+  const [newUserRole, setNewUserRole] = useState({
+    organizationId: "",
+    role: "MEMBER",
+  });
+  const [newUserOrg, setNewUserOrg] = useState({
+    organizationId: "",
+    role: "MEMBER",
+  });
+
   const [savingAiConfig, setSavingAiConfig] = useState(false);
 
   // Members modal state
@@ -488,6 +512,121 @@ export default function AdminDashboard() {
       }
     } catch (err) {
       setError("Failed to update user role");
+    }
+  };
+
+  const handleUpdateUserRoleNew = async () => {
+    if (!selectedUserForRole) return;
+
+    try {
+      const response = await fetch(
+        `/api/admin/users/${selectedUserForRole.id}/update-role`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newUserRole),
+        }
+      );
+
+      if (response.ok) {
+        setSuccess("User role updated successfully!");
+        setNewUserRole({ organizationId: "", role: "MEMBER" });
+        setShowRoleModal(false);
+        setSelectedUserForRole(null);
+        loadData();
+      } else {
+        const error = await response.json();
+        setError(error.error || "Failed to update user role");
+      }
+    } catch (err) {
+      setError("Failed to update user role");
+    }
+  };
+
+  const handleAddUserToOrg = async () => {
+    if (!selectedUserForOrg) return;
+
+    try {
+      const response = await fetch(
+        `/api/admin/users/${selectedUserForOrg.id}/add-to-org`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newUserOrg),
+        }
+      );
+
+      if (response.ok) {
+        setSuccess("User added to organization successfully!");
+        setNewUserOrg({ organizationId: "", role: "MEMBER" });
+        setShowOrgModal(false);
+        setSelectedUserForOrg(null);
+        loadData();
+      } else {
+        const error = await response.json();
+        setError(error.error || "Failed to add user to organization");
+      }
+    } catch (err) {
+      setError("Failed to add user to organization");
+    }
+  };
+
+  const handleRemoveUserFromOrg = async (
+    userId: string,
+    organizationId: string
+  ) => {
+    if (
+      !confirm(
+        "Are you sure you want to remove this user from the organization?"
+      )
+    )
+      return;
+
+    try {
+      const response = await fetch(
+        `/api/admin/users/${userId}/remove-from-org`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ organizationId }),
+        }
+      );
+
+      if (response.ok) {
+        setSuccess("User removed from organization successfully!");
+        loadData();
+      } else {
+        const error = await response.json();
+        setError(error.error || "Failed to remove user from organization");
+      }
+    } catch (err) {
+      setError("Failed to remove user from organization");
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (
+      !confirm(
+        "Are you sure you want to delete this user? This action cannot be undone."
+      )
+    )
+      return;
+
+    try {
+      // Note: You'll need to implement the actual delete user API endpoint
+      setError("Delete user functionality not yet implemented");
+      // const response = await fetch(`/api/admin/users/${userId}`, {
+      //   method: "DELETE",
+      // });
+      // if (response.ok) {
+      //   setSuccess("User deleted successfully!");
+      //   loadData();
+      // } else {
+      //   const error = await response.json();
+      //   setError(error.error || "Failed to delete user");
+      // }
+    } catch (err) {
+      setError("Failed to delete user");
     }
   };
 
@@ -953,7 +1092,7 @@ export default function AdminDashboard() {
                           Phone
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Role
+                          Organizations
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Actions
@@ -968,14 +1107,18 @@ export default function AdminDashboard() {
                               <div className="flex-shrink-0 h-10 w-10">
                                 <div className="h-10 w-10 rounded-full bg-[#D4AF3D] flex items-center justify-center">
                                   <span className="text-white font-medium">
-                                    {user.firstName?.[0]}
-                                    {user.lastName?.[0]}
+                                    {user.name?.[0] || "U"}
                                   </span>
                                 </div>
                               </div>
                               <div className="ml-4">
                                 <div className="text-sm font-medium text-gray-900">
-                                  {user.firstName} {user.lastName}
+                                  {user.name || "Unknown User"}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {user.emailVerified
+                                    ? "Verified"
+                                    : "Unverified"}
                                 </div>
                               </div>
                             </div>
@@ -987,25 +1130,62 @@ export default function AdminDashboard() {
                             {user.mobilePhone || "N/A"}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                              {user.role || "User"}
-                            </span>
+                            <div className="space-y-1">
+                              {user.organizations &&
+                              user.organizations.length > 0 ? (
+                                user.organizations.map((org, index) => (
+                                  <div
+                                    key={org.id}
+                                    className="flex items-center space-x-2"
+                                  >
+                                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                                      {org.name}
+                                    </span>
+                                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                                      {org.role}
+                                    </span>
+                                  </div>
+                                ))
+                              ) : (
+                                <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
+                                  No Organizations
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="mr-2"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedUserForRole(user);
+                                  setShowRoleModal(true);
+                                }}
+                                className="text-blue-600 hover:text-blue-700"
+                              >
+                                <Shield className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedUserForOrg(user);
+                                  setShowOrgModal(true);
+                                }}
+                                className="text-green-600 hover:text-green-700"
+                              >
+                                <Building className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 hover:text-red-700"
+                                onClick={() => handleDeleteUser(user.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1844,6 +2024,146 @@ export default function AdminDashboard() {
                   className="w-full"
                 >
                   Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* User Role Management Modal */}
+        {showRoleModal && selectedUserForRole && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h3 className="text-lg font-semibold mb-4">
+                Update Role for {selectedUserForRole.name}
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Organization
+                  </label>
+                  <select
+                    value={newUserRole.organizationId}
+                    onChange={(e) =>
+                      setNewUserRole({
+                        ...newUserRole,
+                        organizationId: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  >
+                    <option value="">Select Organization</option>
+                    {organizations.map((org) => (
+                      <option key={org.id} value={org.id}>
+                        {org.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    New Role
+                  </label>
+                  <select
+                    value={newUserRole.role}
+                    onChange={(e) =>
+                      setNewUserRole({ ...newUserRole, role: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  >
+                    <option value="MEMBER">Member</option>
+                    <option value="ADMIN">Admin</option>
+                    <option value="OWNER">Owner</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex space-x-3 mt-6">
+                <Button
+                  onClick={handleUpdateUserRoleNew}
+                  className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                >
+                  Update Role
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowRoleModal(false);
+                    setSelectedUserForRole(null);
+                    setNewUserRole({ organizationId: "", role: "MEMBER" });
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* User Organization Management Modal */}
+        {showOrgModal && selectedUserForOrg && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h3 className="text-lg font-semibold mb-4">
+                Add {selectedUserForOrg.name} to Organization
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Organization
+                  </label>
+                  <select
+                    value={newUserOrg.organizationId}
+                    onChange={(e) =>
+                      setNewUserOrg({
+                        ...newUserOrg,
+                        organizationId: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  >
+                    <option value="">Select Organization</option>
+                    {organizations.map((org) => (
+                      <option key={org.id} value={org.id}>
+                        {org.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Role
+                  </label>
+                  <select
+                    value={newUserOrg.role}
+                    onChange={(e) =>
+                      setNewUserOrg({ ...newUserOrg, role: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  >
+                    <option value="MEMBER">Member</option>
+                    <option value="ADMIN">Admin</option>
+                    <option value="OWNER">Owner</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex space-x-3 mt-6">
+                <Button
+                  onClick={handleAddUserToOrg}
+                  className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                >
+                  Add to Organization
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowOrgModal(false);
+                    setSelectedUserForOrg(null);
+                    setNewUserOrg({ organizationId: "", role: "MEMBER" });
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancel
                 </Button>
               </div>
             </div>

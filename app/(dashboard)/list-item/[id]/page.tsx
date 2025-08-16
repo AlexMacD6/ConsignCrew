@@ -34,6 +34,63 @@ import {
 } from "../../../lib/meta-pixel-client";
 import ProductStructuredData from "../../../components/ProductStructuredData";
 
+// Calculate current sales price based on discount schedule and listing duration
+const calculateCurrentSalesPrice = (listing: any) => {
+  if (!listing.discount_schedule || !listing.created_at) {
+    return null;
+  }
+
+  const scheduleType = listing.discount_schedule?.type || "Classic-60";
+  const DISCOUNT_SCHEDULES: Record<string, any> = {
+    "Turbo-30": {
+      dropIntervals: [0, 3, 6, 9, 12, 15, 18, 21, 24, 30],
+      dropPercentages: [100, 95, 90, 85, 80, 75, 70, 65, 60, 0],
+      totalDuration: 30,
+    },
+    "Classic-60": {
+      dropIntervals: [0, 7, 14, 21, 28, 35, 42, 49, 56, 60],
+      dropPercentages: [100, 90, 80, 75, 70, 65, 60, 55, 50, 0],
+      totalDuration: 60,
+    },
+  };
+
+  const schedule = DISCOUNT_SCHEDULES[scheduleType];
+  if (!schedule) return null;
+
+  const now = new Date();
+  const created = new Date(listing.created_at);
+  const daysSinceCreation = Math.floor(
+    (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  // If listing has expired, return reserve price or list price
+  if (daysSinceCreation >= schedule.totalDuration) {
+    return listing.reserve_price || listing.list_price;
+  }
+
+  // Find the current applicable discount percentage
+  let currentPercentage = 100; // Start at 100% (full price)
+
+  for (let i = 0; i < schedule.dropIntervals.length; i++) {
+    if (daysSinceCreation >= schedule.dropIntervals[i]) {
+      currentPercentage = schedule.dropPercentages[i];
+    } else {
+      break; // Found the current applicable percentage
+    }
+  }
+
+  // Calculate current sales price based on list price and current percentage
+  const currentSalesPrice =
+    Math.round(listing.list_price * (currentPercentage / 100) * 100) / 100;
+
+  // Don't go below reserve price
+  if (listing.reserve_price && currentSalesPrice < listing.reserve_price) {
+    return listing.reserve_price;
+  }
+
+  return currentSalesPrice;
+};
+
 // Mock data for transportation history
 const transportationHistory = [
   {
@@ -909,9 +966,33 @@ export default function ListingDetailPage() {
             {/* Price Information */}
             <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-4xl font-bold text-gray-900">
-                  ${listing.list_price.toFixed(2)}
-                </span>
+                <div className="flex items-center gap-3">
+                  {(() => {
+                    const currentSalesPrice =
+                      calculateCurrentSalesPrice(listing);
+                    if (
+                      currentSalesPrice &&
+                      currentSalesPrice < listing.list_price
+                    ) {
+                      return (
+                        <>
+                          <span className="text-4xl font-bold text-gray-900">
+                            ${currentSalesPrice.toFixed(2)}
+                          </span>
+                          <span className="text-2xl font-bold text-gray-400 line-through">
+                            ${listing.list_price.toFixed(2)}
+                          </span>
+                        </>
+                      );
+                    } else {
+                      return (
+                        <span className="text-4xl font-bold text-gray-900">
+                          ${listing.list_price.toFixed(2)}
+                        </span>
+                      );
+                    }
+                  })()}
+                </div>
                 <div className="flex gap-2">
                   {hasRecentPriceDrop(listing) && (
                     <div className="text-sm bg-red-600 text-white px-3 py-1 rounded font-medium">
@@ -1623,10 +1704,10 @@ export default function ListingDetailPage() {
               listingId={listing.item_id}
               createdAt={listing.created_at}
               discountSchedule={listing.discount_schedule}
-              currentPrice={listing.list_price}
-              originalPrice={
-                listing.estimated_retail_price || listing.list_price
+              currentPrice={
+                calculateCurrentSalesPrice(listing) || listing.list_price
               }
+              originalPrice={listing.list_price}
               reservePrice={listing.reserve_price}
             />
           </div>
