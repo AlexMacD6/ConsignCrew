@@ -1,24 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 /**
- * Search Orders API
+ * Search for order by session ID
  * 
- * GET /api/orders/search?sessionId=cs_test_...
- * 
- * Used by the order thanks page to find order details by Stripe session ID
+ * GET /api/orders/search?sessionId=session_id
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: request.headers });
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get('sessionId');
 
@@ -42,14 +31,6 @@ export async function GET(request: NextRequest) {
         },
         buyer: {
           select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        seller: {
-          select: {
-            id: true,
             name: true,
             email: true,
           },
@@ -64,27 +45,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check if user has access to this order
-    const isAdmin = session.user.role === 'admin';
-    const isBuyer = order.buyerId === session.user.id;
-    const isSeller = order.sellerId === session.user.id;
-
-    if (!isAdmin && !isBuyer && !isSeller) {
-      return NextResponse.json(
-        { error: 'Access denied' },
-        { status: 403 }
-      );
-    }
-
     return NextResponse.json({
       success: true,
       order,
     });
 
   } catch (error) {
-    console.error('Error searching orders:', error);
+    console.error('Error searching for order:', error);
     return NextResponse.json(
-      { error: 'Failed to search orders' },
+      { error: 'Failed to search for order' },
       { status: 500 }
     );
   }

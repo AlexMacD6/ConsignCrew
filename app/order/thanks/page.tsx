@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle, Package, Clock, MapPin } from "lucide-react";
 import { Button } from "../../components/ui/button";
@@ -20,7 +20,8 @@ interface Order {
   };
 }
 
-export default function OrderThanksPage() {
+// Component that handles the search params
+function OrderThanksContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
   const [order, setOrder] = useState<Order | null>(null);
@@ -289,5 +290,26 @@ export default function OrderThanksPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Loading component for Suspense fallback
+function OrderThanksLoading() {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#D4AF3D] mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading your order details...</p>
+      </div>
+    </div>
+  );
+}
+
+// Main export component with Suspense boundary
+export default function OrderThanksPage() {
+  return (
+    <Suspense fallback={<OrderThanksLoading />}>
+      <OrderThanksContent />
+    </Suspense>
   );
 }
