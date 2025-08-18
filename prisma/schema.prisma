@@ -33,6 +33,8 @@ model user {
   accounts        account[]
   sessions        session[]
   inventoryLists  InventoryList[]
+  buyerOrders     Order[]         @relation("BuyerOrders") // Buyer orders
+  sellerOrders    Order[]         @relation("SellerOrders") // Seller orders
 
   @@index([email])
   @@index([zipCode])
@@ -206,6 +208,8 @@ model Listing {
   estimatedRetailPrice   Float?
   discountSchedule       Json?
   status                 String           @default("active")
+  isHeld                 Boolean          @default(false) // Item is held during checkout
+  heldUntil              DateTime? // When the hold expires
   createdAt              DateTime         @default(now())
   updatedAt              DateTime         @updatedAt
   views                  Int              @default(0)
@@ -252,6 +256,7 @@ model Listing {
   videos                 Video[]          @relation("ListingToVideo")
   inventoryLists         InventoryList[]
   inventoryItems         InventoryItem[]
+  orders                 Order[] // New relation to orders
 
   @@index([userId])
   @@index([status])
@@ -527,4 +532,66 @@ model InventoryItem {
   @@unique([listId, itemNumber])
   @@index([listId])
   @@index([itemNumber])
+}
+
+model Order {
+  id        String  @id @default(cuid())
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id])
+  buyerId   String
+  buyer     user    @relation("BuyerOrders", fields: [buyerId], references: [id])
+  sellerId  String
+  seller    user    @relation("SellerOrders", fields: [sellerId], references: [id])
+
+  // Stripe fields
+  stripePaymentIntentId   String? @unique
+  stripeCheckoutSessionId String? @unique
+  stripeChargeId          String?
+
+  // Order details
+  amount   Float
+  currency String      @default("usd")
+  status   OrderStatus @default(PENDING)
+
+  // Checkout timer fields
+  checkoutExpiresAt DateTime? // When the checkout session expires
+  isHeld            Boolean   @default(false) // Whether the item is temporarily held
+
+  // Shipping and delivery
+  shippingAddress Json?
+  trackingNumber  String?
+  deliveredAt     DateTime?
+  finalizedAt     DateTime?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Dispute handling
+  disputeReason    String?
+  disputeCreatedAt DateTime?
+
+  // Future: Stripe Connect transfer fields
+  // transferId        String?
+  // transferAmount    Float?
+  // transferStatus    String?
+
+  @@index([listingId])
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING // Order created, payment pending
+  PAID // Payment received, order confirmed
+  PROCESSING // Order being prepared
+  SHIPPED // Order shipped
+  DELIVERED // Order delivered
+  FINALIZED // Order finalized (delivered + 24h return window)
+  DISPUTED // Payment dispute created
+  CANCELLED // Order cancelled
+  REFUNDED // Order refunded
 }

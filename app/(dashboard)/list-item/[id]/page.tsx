@@ -29,6 +29,7 @@ import { getDisplayPrice } from "../../../lib/price-calculator";
 import {
   getStandardizedCondition,
   isNewCondition,
+  getConditionColor,
 } from "../../../lib/condition-utils";
 import {
   trackMetaPixelEvent,
@@ -38,7 +39,26 @@ import {
 } from "../../../lib/meta-pixel-client";
 import ProductStructuredData from "../../../components/ProductStructuredData";
 
-// Use the utility function from price-calculator.ts instead of local function
+// Import the time calculation function
+import { getTimeUntilNextDrop } from "../../../lib/price-calculator";
+
+// Helper function to format dates
+const formatDate = (dateString: string | Date | null | undefined): string => {
+  if (!dateString) return "Unknown";
+
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "Invalid Date";
+
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  } catch (error) {
+    return "Invalid Date";
+  }
+};
 
 // Mock data for transportation history
 const transportationHistory = [
@@ -145,6 +165,8 @@ export default function ListingDetailPage() {
   const isAuthenticated = !!session?.user;
   const currentUserId = session?.user?.id || null;
   const [isAdmin, setIsAdmin] = useState(false);
+  const [loadingPurchase, setLoadingPurchase] = useState(false); // New state for purchase loading
+  const [ownListingConfirmOpen, setOwnListingConfirmOpen] = useState(false);
 
   // Function to generate video URL from video record
   const generateVideoUrl = (videoRecord: any) => {
@@ -196,250 +218,26 @@ export default function ListingDetailPage() {
         if (!response.ok) {
           if (response.status === 401) {
             setAuthError(true);
-            setListing(null);
-            setLoading(false);
-            return;
+          } else {
+            throw new Error(`HTTP error! status: ${response.status}`);
           }
-          const errorData = await response.json();
-          throw new Error(
-            errorData.error || `HTTP ${response.status}: ${response.statusText}`
-          );
+          return;
         }
 
         const data = await response.json();
+        console.log("API response data:", data); // Debug log
 
-        if (data.success) {
-          // Debug logging for video data
-          console.log("Raw listing data:", data.listing);
-          console.log("Video data from API:", data.listing.video);
-          console.log("VideoUrl from API:", data.listing.videoUrl);
-
-          // Generate video URL from video record if available
-          let videoUrl = null;
-          if (
-            data.listing.video &&
-            (data.listing.video.rawVideoKey ||
-              data.listing.video.processedVideoKey)
-          ) {
-            videoUrl = generateVideoUrl(data.listing.video);
-            console.log("Generated video URL from video record:", videoUrl);
-          } else if (data.listing.videoUrl) {
-            // Fallback to direct videoUrl if available
-            videoUrl = data.listing.videoUrl;
-            console.log("Using fallback videoUrl:", videoUrl);
-          }
-
-          console.log("Final videoUrl for component:", videoUrl);
-          console.log(
-            "Video metadata:",
-            data.listing.video
-              ? {
-                  duration: data.listing.video.duration,
-                  resolution: data.listing.video.resolution,
-                  thumbnailUrl: data.listing.video.thumbnailKey || null,
-                }
-              : null
-          );
-
-          // Transform the API data to match the expected format
-          const transformedListing = {
-            item_id: data.listing.itemId,
-            seller_id: data.listing.userId,
-            created_at: data.listing.createdAt,
-            status: data.listing.status,
-            qr_code_url: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${data.listing.itemId}`,
-            image_urls_staged: data.listing.photos.hero
-              ? [data.listing.photos.hero]
-              : [],
-            title: data.listing.title,
-            description: data.listing.description,
-            category_id: `${data.listing.department}_${data.listing.category}_${data.listing.subCategory}`,
-            department: data.listing.department,
-            category: data.listing.category,
-            subCategory: data.listing.subCategory,
-            condition: data.listing.condition,
-            image_urls_original:
-              data.listing.photos.gallery || [data.listing.photos.hero] || [],
-            // Create a comprehensive image array for carousel
-            all_images: [
-              {
-                src: data.listing.photos.hero,
-                type: "hero",
-                label: null,
-              },
-              {
-                src: data.listing.photos.proof,
-                type: "ai_generated",
-                label: "Staged scene - for inspiration",
-              },
-              {
-                src: data.listing.photos.back,
-                type: "back",
-                label: null,
-              },
-              ...(data.listing.photos.additional || []).map(
-                (photo: string) => ({
-                  src: photo,
-                  type: "additional",
-                  label: null,
-                })
-              ),
-            ].filter((img) => img.src), // Remove any null/undefined sources
-            serial_number: data.listing.serialNumber,
-            model_number: data.listing.modelNumber,
-            brand: data.listing.brand,
-            dimensions: data.listing.dimensions,
-            height: data.listing.height,
-            width: data.listing.width,
-            depth: data.listing.depth,
-            discount_schedule: data.listing.discountSchedule || {
-              type: "Classic-60",
-            },
-            zip_code: data.listing.zipCode,
-            list_price: data.listing.price,
-            reserve_price:
-              data.listing.reservePrice || data.listing.price * 0.8,
-            estimated_retail_price: data.listing.estimatedRetailPrice,
-            seller_name: data.listing.user.name || "Unknown Seller",
-            seller_organization: data.listing.user.organization,
-            location: data.listing.neighborhood,
-            rating: data.listing.rating || null,
-            reviews: data.listing.reviews || 0,
-            views: data.listing.views || 0, // Add views from database
-            timeLeft: null, // Will be calculated dynamically
-            // Additional fields for detail page
-            fee_pct: 8.5, // Mock fee percentage
-            price_range_low: data.listing.price * 0.7, // Mock price range
-            price_range_high: data.listing.price * 1.3,
-            gtin: data.listing.gtin || null,
-            insights_query: data.listing.insights_query || null,
-            priceHistory: data.listing.priceHistory || [],
-            user: data.listing.user,
-            // Facebook Shop fields
-            facebookShopEnabled: data.listing.facebookShopEnabled || false,
-            facebookBrand: data.listing.facebookBrand || null,
-            facebookCondition: data.listing.facebookCondition || null,
-            facebookGtin: data.listing.facebookGtin || null,
-            // Product Specifications (Facebook Shop Fields)
-            quantity: data.listing.quantity || 1,
-            salePrice: data.listing.salePrice || null,
-            salePriceEffectiveDate: data.listing.salePriceEffectiveDate || null,
-            itemGroupId: data.listing.itemGroupId || null,
-            gender: data.listing.gender || null,
-            color: data.listing.color || null,
-            size: data.listing.size || null,
-            ageGroup: data.listing.ageGroup || null,
-            material: data.listing.material || null,
-            pattern: data.listing.pattern || null,
-            style: data.listing.style || null,
-            // productType field removed - not in database schema
-            tags: data.listing.tags || [],
-            // Treasure fields
-            isTreasure: data.listing.isTreasure || false,
-            treasureReason: data.listing.treasureReason || null,
-            // Video URL - generated from video record or fallback
-            videoUrl: videoUrl,
-            // Video metadata if available
-            video: data.listing.video
-              ? {
-                  duration: data.listing.video.duration,
-                  resolution: data.listing.video.resolution,
-                  thumbnailUrl: data.listing.video.thumbnailKey || null,
-                }
-              : null,
-          };
-
-          setListing(transformedListing);
-
-          // Calculate similarity between AI and hero images for admin users
-          if (
-            isAdmin &&
-            data.listing.photos.hero &&
-            data.listing.photos.proof
-          ) {
-            calculateSimilarity(
-              data.listing.photos.hero,
-              data.listing.photos.proof
-            );
-          }
-
-          // Track Facebook Pixel ViewContent event for catalog ingestion
-          try {
-            console.log(
-              "ViewContent: Starting tracking for listing:",
-              transformedListing.title
-            );
-
-            const viewContentData = {
-              content_ids: [transformedListing.item_id], // Required field
-              content_type: "product" as const,
-              content_name: transformedListing.title,
-              content_category: `${transformedListing.department}/${transformedListing.category}/${transformedListing.subCategory}`,
-              value: transformedListing.list_price,
-              currency: "USD",
-              // Additional Facebook Shop catalog fields
-              brand: transformedListing.brand || undefined,
-              condition: transformedListing.condition || undefined,
-              availability:
-                transformedListing.status === "LISTED"
-                  ? "in stock"
-                  : "out of stock",
-              price: transformedListing.list_price,
-              sale_price: transformedListing.salePrice || undefined,
-              gtin: transformedListing.gtin || undefined,
-              // Enhanced Facebook Shop catalog fields
-              gender: transformedListing.gender || undefined,
-              color: transformedListing.color || undefined,
-              size: transformedListing.size || undefined,
-              age_group: transformedListing.ageGroup || undefined,
-              material: transformedListing.material || undefined,
-              pattern: transformedListing.pattern || undefined,
-              style: transformedListing.style || undefined,
-              // Product specifications
-              quantity: transformedListing.quantity || undefined,
-              item_group_id: transformedListing.itemGroupId || undefined,
-              // Sale information
-              sale_price_effective_date:
-                transformedListing.salePriceEffectiveDate || undefined,
-              // Video information (if available)
-              video_url: transformedListing.videoUrl || undefined,
-              // Additional product details
-              description: transformedListing.description || undefined,
-              image_url: transformedListing.image_urls_staged?.[0] || undefined,
-            };
-
-            console.log("ViewContent: Data prepared:", viewContentData);
-
-            await trackViewContent(viewContentData);
-
-            console.log("ViewContent: Tracking completed successfully");
-          } catch (pixelError) {
-            console.error(
-              "Error tracking Facebook Pixel ViewContent:",
-              pixelError
-            );
-            // Don't fail the page load if pixel tracking fails
-          }
-
-          // Track the view for this listing
-          try {
-            await fetch(`/api/listings/${params.id}/view`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-            });
-          } catch (viewError) {
-            console.error("Error tracking view:", viewError);
-            // Don't fail the page load if view tracking fails
-          }
+        if (data.success && data.listing) {
+          console.log("Setting listing:", data.listing); // Debug log
+          console.log("Listing itemId:", data.listing.itemId); // Debug log
+          setListing(data.listing);
         } else {
+          console.error("API response missing listing:", data); // Debug log
           throw new Error(data.error || "Failed to fetch listing");
         }
       } catch (error) {
         console.error("Error fetching listing:", error);
-        // Don't fallback to mock data - show error instead
-        setListing(null);
+        setAuthError(true);
       } finally {
         setLoading(false);
       }
@@ -478,14 +276,6 @@ export default function ListingDetailPage() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
   const hasRecentPriceDrop = (listing: any) => {
     // Check if listing has price history and if there's been a price drop in last 48 hours
     if (!listing.priceHistory || listing.priceHistory.length < 2) {
@@ -511,34 +301,6 @@ export default function ListingDetailPage() {
     return false;
   };
 
-  const getTimeUntilNextDrop = (createdAt: string) => {
-    // Return null during server-side rendering to prevent hydration mismatch
-    if (typeof window === "undefined") {
-      return null;
-    }
-
-    const now = new Date();
-    const created = new Date(createdAt);
-    const nextDropTime = new Date(created.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days from creation
-
-    const timeUntilDrop = nextDropTime.getTime() - now.getTime();
-
-    if (timeUntilDrop <= 0) {
-      return null; // Price drop has already occurred or is happening now
-    }
-
-    const days = Math.floor(timeUntilDrop / (1000 * 60 * 60 * 24));
-    const hours = Math.floor(
-      (timeUntilDrop % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-    );
-    const minutes = Math.floor(
-      (timeUntilDrop % (1000 * 60 * 60)) / (1000 * 60)
-    );
-
-    // Return time in milliseconds for external checks (e.g., 24-hour logic)
-    return { formatted: `${days}d ${hours}h ${minutes}m`, raw: timeUntilDrop };
-  };
-
   const toggleSaved = (id: string) => {
     setSavedListings((prev) => {
       const newSet = new Set(prev);
@@ -554,15 +316,18 @@ export default function ListingDetailPage() {
           trackAddToWishlist({
             content_name: listing.title,
             content_category: `${listing.department}/${listing.category}/${listing.subCategory}`,
-            content_ids: [listing.item_id],
-            value: listing.list_price,
+            content_ids: [listing.itemId],
+            value: listing.price,
             currency: "USD",
             brand: listing.brand || undefined,
-            condition: listing.condition || undefined,
+            condition:
+              listing.facebookCondition || listing.condition || undefined,
             availability:
-              listing.status === "LISTED" ? "in stock" : "out of stock",
-            price: listing.list_price,
-            sale_price: listing.salePrice || undefined,
+              listing.status === "active" ? "in stock" : "out of stock",
+            price: listing.price,
+            sale_price: getDisplayPrice(listing).isDiscounted
+              ? getDisplayPrice(listing).price
+              : undefined,
             gtin: listing.gtin || undefined,
           }).catch((error) => {
             console.error("Error tracking AddToWishlist:", error);
@@ -662,6 +427,86 @@ export default function ListingDetailPage() {
       console.error("Network error calculating similarity:", error);
     } finally {
       setLoadingSimilarity(false);
+    }
+  };
+
+  const handleBuyNow = async () => {
+    if (!listing || !isAuthenticated) {
+      setAuthError(true);
+      return;
+    }
+
+    // Debug: Log the listing object to see its structure
+    console.log("Listing object in handleBuyNow:", listing);
+    console.log("Listing ID field:", listing.itemId);
+    console.log("Listing ID from params:", params.id);
+
+    // Use the ID from params if itemId is not available
+    const listingId = listing.itemId || params.id;
+
+    if (!listingId) {
+      console.error("No listing ID available:", { listing, params });
+      alert(
+        "Unable to identify listing. Please refresh the page and try again."
+      );
+      return;
+    }
+
+    // If owner, open confirmation modal first
+    if (listing?.user?.id === currentUserId) {
+      setOwnListingConfirmOpen(true);
+      return;
+    }
+    setLoadingPurchase(true);
+    try {
+      const response = await fetch("/api/checkout/sessions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          listingId: listingId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Redirect to Stripe Checkout
+        window.location.href = data.url;
+      } else {
+        throw new Error(data.error || "Failed to create checkout session");
+      }
+    } catch (error) {
+      console.error("Error creating checkout session:", error);
+      alert("Failed to create checkout session. Please try again.");
+    } finally {
+      setLoadingPurchase(false);
+    }
+  };
+
+  const confirmBuyOwnListing = async () => {
+    if (!listing) return;
+    const listingId = listing.itemId || params.id;
+    setOwnListingConfirmOpen(false);
+    setLoadingPurchase(true);
+    try {
+      const response = await fetch("/api/checkout/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ listingId, overrideOwnPurchase: true }),
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        window.location.href = data.url;
+      } else {
+        throw new Error(data.error || "Failed to create checkout session");
+      }
+    } catch (error) {
+      console.error("Error creating checkout session:", error);
+      alert("Failed to create checkout session. Please try again.");
+    } finally {
+      setLoadingPurchase(false);
     }
   };
 
@@ -821,23 +666,75 @@ export default function ListingDetailPage() {
     );
   }
 
+  // Create all_images array from available photos
+  const createAllImages = () => {
+    const images = [];
+
+    // Add hero photo if available
+    if (listing.photos?.hero) {
+      images.push({
+        src: listing.photos.hero,
+        type: "hero",
+        label: null,
+      });
+    }
+
+    // Add staged photo if available
+    if (listing.photos?.staged) {
+      images.push({
+        src: listing.photos.staged,
+        type: "staged",
+        label: "Staged scene - for inspiration",
+      });
+    }
+
+    // Add back photo if available
+    if (listing.photos?.back) {
+      images.push({
+        src: listing.photos.back,
+        type: "back",
+        label: null,
+      });
+    }
+
+    // Add additional photos if available
+    if (
+      listing.photos?.additional &&
+      Array.isArray(listing.photos.additional)
+    ) {
+      listing.photos.additional.forEach((photo: string) => {
+        if (photo) {
+          images.push({
+            src: photo,
+            type: "additional",
+            label: null,
+          });
+        }
+      });
+    }
+
+    return images;
+  };
+
+  const allImages = createAllImages();
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Structured Data for Facebook Shop Catalog */}
       <ProductStructuredData
         product={{
-          item_id: listing.item_id,
+          itemId: listing.itemId,
           title: listing.title,
           description: listing.description,
-          list_price: listing.list_price,
+          price: listing.price,
           status: listing.status,
           brand: listing.brand,
           condition: listing.condition,
           department: listing.department,
           category: listing.category,
           subCategory: listing.subCategory,
-          all_images: listing.all_images,
-          url: `https://treasurehub.club/list-item/${listing.item_id}`,
+          all_images: allImages,
+          url: `https://treasurehub.club/list-item/${listing.itemId}`,
         }}
       />
 
@@ -894,7 +791,7 @@ export default function ListingDetailPage() {
             {/* Main Image Carousel */}
             <div className="mb-6">
               <ImageCarousel
-                images={listing.all_images}
+                images={allImages}
                 video={
                   listing.videoUrl
                     ? {
@@ -998,8 +895,19 @@ export default function ListingDetailPage() {
               )}
               <div className="flex gap-3">
                 {isAuthenticated ? (
-                  <Button className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white">
-                    Buy it Now
+                  <Button
+                    className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                    onClick={handleBuyNow}
+                    disabled={loadingPurchase}
+                  >
+                    {loadingPurchase ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Processing...
+                      </>
+                    ) : (
+                      "Buy it Now"
+                    )}
                   </Button>
                 ) : (
                   <div className="flex gap-2 w-full">
@@ -1020,6 +928,35 @@ export default function ListingDetailPage() {
                 )}
               </div>
             </div>
+
+            {/* Confirm purchase own listing modal */}
+            {ownListingConfirmOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    This is your own listing
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    You are about to purchase your own item. Are you sure you
+                    want to continue?
+                  </p>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setOwnListingConfirmOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                      onClick={confirmBuyOwnListing}
+                    >
+                      Yes, Continue
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Admin-only AI Similarity Score */}
             {isAdmin && (
@@ -1088,7 +1025,7 @@ export default function ListingDetailPage() {
                     </span>
                     <span
                       className={`ml-2 px-2 py-1 rounded text-xs ${getConditionColor(
-                        listing.condition
+                        getStandardizedCondition(listing)
                       )}`}
                     >
                       {getStandardizedCondition(listing)}
@@ -1102,13 +1039,13 @@ export default function ListingDetailPage() {
                       Listed:
                     </span>
                     <span className="ml-2 text-sm text-gray-600">
-                      {formatDate(listing.created_at)}
+                      {formatDate(listing.createdAt || listing.created_at)}
                     </span>
                   </div>
                 </div>
 
                 {(() => {
-                  const timeLeft = getTimeUntilNextDrop(listing.created_at);
+                  const timeLeft = getTimeUntilNextDrop(listing);
                   return (
                     timeLeft && (
                       <div className="flex items-center gap-3">
@@ -1117,7 +1054,7 @@ export default function ListingDetailPage() {
                             Next Price Drop:
                           </span>
                           <span className="ml-2 text-sm text-gray-600">
-                            {timeLeft.formatted}
+                            {timeLeft.timeString}
                           </span>
                         </div>
                       </div>
@@ -1590,7 +1527,7 @@ export default function ListingDetailPage() {
               </h3>
               <div className="text-center">
                 <CustomQRCode
-                  itemId={listing.item_id}
+                  itemId={listing.itemId}
                   size={150}
                   className="mx-auto"
                 />
@@ -1599,12 +1536,14 @@ export default function ListingDetailPage() {
 
             {/* History */}
             <ListingHistory
-              listingId={listing.item_id}
-              createdAt={listing.created_at}
-              discountSchedule={listing.discount_schedule}
+              listingId={listing.itemId}
+              createdAt={listing.createdAt || listing.created_at}
+              discountSchedule={
+                listing.discountSchedule || listing.discount_schedule
+              }
               currentPrice={getDisplayPrice(listing).price}
-              originalPrice={listing.list_price}
-              reservePrice={listing.reserve_price}
+              originalPrice={listing.price}
+              reservePrice={listing.reservePrice || listing.reserve_price}
             />
           </div>
         </div>

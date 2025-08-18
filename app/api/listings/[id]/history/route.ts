@@ -5,10 +5,11 @@ import { prisma } from '@/lib/prisma';
 // GET - Fetch listing history
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  ctx: { params: Promise<{ id: string }> }
 ) {
   try {
-    const listingId = params.id;
+    const { id } = await ctx.params;
+    const listingId = id;
 
     // Find the listing by itemId
     const listing = await prisma.listing.findUnique({
@@ -45,7 +46,7 @@ export async function GET(
 // POST - Create a new history event
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  ctx: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth.api.getSession({ headers: request.headers });
@@ -53,7 +54,8 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const listingId = params.id;
+    const { id } = await ctx.params;
+    const listingId = id;
     const body = await request.json();
     const { eventType, eventTitle, description, metadata } = body;
 

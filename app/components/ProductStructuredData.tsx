@@ -5,11 +5,13 @@
 
 interface ProductStructuredDataProps {
   product: {
-    item_id: string;
-    title: string;
-    description: string;
-    list_price: number;
-    status: string;
+    item_id?: string;
+    itemId?: string;
+    title?: string;
+    description?: string;
+    list_price?: number;
+    price?: number;
+    status?: string;
     brand?: string;
     condition?: string;
     department?: string;
@@ -25,6 +27,8 @@ export default function ProductStructuredData({
 }: ProductStructuredDataProps) {
   // Map listing status to Schema.org availability
   const getAvailability = (status: string) => {
+    if (!status) return "https://schema.org/InStock";
+
     switch (status.toUpperCase()) {
       case "LISTED":
       case "ACTIVE":
@@ -74,25 +78,38 @@ export default function ProductStructuredData({
 
   // Get all product images
   const getImages = () => {
+    if (!product.all_images || !Array.isArray(product.all_images)) {
+      return [];
+    }
+
     return product.all_images
       .filter((img) => img.src && img.src.trim() !== "")
       .map((img) => img.src);
   };
 
+  // Get the price - handle both old and new field names
+  const getPrice = () => {
+    const price = product.list_price || product.price;
+    if (typeof price === "number") {
+      return price.toString();
+    }
+    return "0";
+  };
+
   const structuredData = {
     "@context": "https://schema.org/",
     "@type": "Product",
-    productID: product.item_id,
-    sku: product.item_id,
-    name: product.title,
-    description: product.description,
+    productID: product.item_id || product.itemId,
+    sku: product.item_id || product.itemId,
+    name: product.title || "Product",
+    description: product.description || "",
     category: getCategory(),
     ...(product.brand && { brand: { "@type": "Brand", name: product.brand } }),
     offers: {
       "@type": "Offer",
-      price: product.list_price.toString(),
+      price: getPrice(),
       priceCurrency: "USD",
-      availability: getAvailability(product.status),
+      availability: getAvailability(product.status || ""),
       itemCondition: getCondition(product.condition),
       url: product.url,
       seller: {

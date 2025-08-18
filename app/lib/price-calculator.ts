@@ -34,23 +34,28 @@ export function calculateCurrentSalesPrice(listing: any): number | null {
   // Handle both 'price' and 'list_price' field names
   const listPrice = listing.list_price || listing.price;
   
-  if (!listing.discount_schedule || !listing.created_at || !listPrice) {
+  // Handle both old and new field names
+  const discountSchedule = listing.discountSchedule || listing.discount_schedule;
+  const createdAt = listing.createdAt || listing.created_at;
+  const reservePrice = listing.reservePrice || listing.reserve_price;
+  
+  if (!discountSchedule || !createdAt || !listPrice) {
     return null;
   }
 
-  const scheduleType = listing.discount_schedule?.type || "Classic-60";
+  const scheduleType = discountSchedule.type || "Classic-60";
   const schedule = DISCOUNT_SCHEDULES[scheduleType];
   if (!schedule) return null;
 
   const now = new Date();
-  const created = new Date(listing.created_at);
+  const created = new Date(createdAt);
   const daysSinceCreation = Math.floor(
     (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)
   );
 
   // If listing has expired, return reserve price or list price
   if (daysSinceCreation >= schedule.totalDuration) {
-    return listing.reserve_price || listPrice;
+    return reservePrice || listPrice;
   }
 
   // Find the current applicable discount percentage
@@ -68,8 +73,8 @@ export function calculateCurrentSalesPrice(listing: any): number | null {
   const currentSalesPrice = Math.round(listPrice * (currentPercentage / 100) * 100) / 100;
   
   // Don't go below reserve price
-  if (listing.reserve_price && currentSalesPrice < listing.reserve_price) {
-    return listing.reserve_price;
+  if (reservePrice && currentSalesPrice < reservePrice) {
+    return reservePrice;
   }
 
   return currentSalesPrice;
@@ -117,16 +122,21 @@ export function calculateNextDropPrice(listing: any): number | null {
   // Handle both 'price' and 'list_price' field names
   const listPrice = listing.list_price || listing.price;
   
-  if (!listing.discount_schedule || !listing.created_at || !listPrice) {
+  // Handle both old and new field names
+  const discountSchedule = listing.discountSchedule || listing.discount_schedule;
+  const createdAt = listing.createdAt || listing.created_at;
+  const reservePrice = listing.reservePrice || listing.reserve_price;
+  
+  if (!discountSchedule || !createdAt || !listPrice) {
     return null;
   }
 
-  const scheduleType = listing.discount_schedule?.type || "Classic-60";
+  const scheduleType = discountSchedule.type || "Classic-60";
   const schedule = DISCOUNT_SCHEDULES[scheduleType];
   if (!schedule) return null;
 
   const now = new Date();
-  const created = new Date(listing.created_at);
+  const created = new Date(createdAt);
   const daysSinceCreation = Math.floor(
     (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)
   );
@@ -145,8 +155,8 @@ export function calculateNextDropPrice(listing: any): number | null {
       const nextDropDollarAmount = Math.round(listPrice * (nextDropPercentage / 100) * 100) / 100;
       
       // Don't go below reserve price
-      const finalPrice = listing.reserve_price
-        ? Math.max(nextDropDollarAmount, listing.reserve_price)
+      const finalPrice = reservePrice
+        ? Math.max(nextDropDollarAmount, reservePrice)
         : nextDropDollarAmount;
       
       return finalPrice;
@@ -162,16 +172,21 @@ export function calculateNextDropPrice(listing: any): number | null {
  * @returns Object containing time string and next drop time, or null if no more drops
  */
 export function getTimeUntilNextDrop(listing: any): { timeString: string; nextDropTime: Date } | null {
-  if (!listing.discount_schedule || !listing.created_at) {
+  // Handle both old and new field names
+  const discountSchedule = listing.discountSchedule || listing.discount_schedule;
+  const createdAt = listing.createdAt || listing.created_at;
+  const reservePrice = listing.reservePrice || listing.reserve_price;
+  
+  if (!discountSchedule || !createdAt) {
     return null;
   }
 
-  const scheduleType = listing.discount_schedule?.type || "Classic-60";
+  const scheduleType = discountSchedule.type || "Classic-60";
   const schedule = DISCOUNT_SCHEDULES[scheduleType];
   if (!schedule) return null;
 
   const now = new Date();
-  const created = new Date(listing.created_at);
+  const created = new Date(createdAt);
   const daysSinceCreation = Math.floor(
     (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)
   );
