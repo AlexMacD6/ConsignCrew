@@ -1,0 +1,138 @@
+[
+  {
+    "id": "cmdnvzh5b0000l5040w8bvfet",
+    "email": "alex.macdonald@maritimeep.com",
+    "signupNumber": 1,
+    "source": "hero",
+    "createdAt": "2025-07-29T01:57:05.807Z",
+    "updatedAt": "2025-07-29T01:57:05.807Z"
+  },
+  {
+    "id": "cmdpg3sg80000la046s2905vl",
+    "email": "macdonald.alex@hotmail.com",
+    "signupNumber": 2,
+    "source": "hero",
+    "createdAt": "2025-07-30T04:08:05.576Z",
+    "updatedAt": "2025-07-30T04:08:05.576Z"
+  },
+  {
+    "id": "cmducwbw90000l704e2049swj",
+    "email": "d_haecker1@yahoo.com",
+    "signupNumber": 3,
+    "source": "hero",
+    "createdAt": "2025-08-02T14:37:09.561Z",
+    "updatedAt": "2025-08-02T14:37:09.561Z"
+  },
+  {
+    "id": "cmdvxr1wt0000jx04xzcwb4dt",
+    "email": "vjeff1234@gmail.com",
+    "signupNumber": 4,
+    "source": "hero",
+    "createdAt": "2025-08-03T17:08:41.453Z",
+    "updatedAt": "2025-08-03T17:08:41.453Z"
+  },
+  {
+    "id": "cmdw01o0w0000l104g45svk1s",
+    "email": "sweet_0k@yahoo.com",
+    "signupNumber": 5,
+    "source": "hero",
+    "createdAt": "2025-08-03T18:12:55.904Z",
+    "updatedAt": "2025-08-03T18:12:55.904Z"
+  },
+  {
+    "id": "cmdw01xr10001l1043vm9dcyl",
+    "email": "naybor101@gmail.com",
+    "signupNumber": 6,
+    "source": "hero",
+    "createdAt": "2025-08-03T18:13:08.509Z",
+    "updatedAt": "2025-08-03T18:13:08.509Z"
+  },
+  {
+    "id": "cmdxbd39d0000jo04e324a39c",
+    "email": "dp28@hotmail.com",
+    "signupNumber": 7,
+    "source": "hero",
+    "createdAt": "2025-08-04T16:17:30.817Z",
+    "updatedAt": "2025-08-04T16:17:30.817Z"
+  },
+  {
+    "id": "cmdxprwv10000jp04wbtbq5bd",
+    "email": "twodlrbill2@aol.com",
+    "signupNumber": 8,
+    "source": "hero",
+    "createdAt": "2025-08-04T23:00:56.989Z",
+    "updatedAt": "2025-08-04T23:00:56.989Z"
+  },
+  {
+    "id": "cmdxpsoht0001jp047afzkc3z",
+    "email": "lphearse528@gmail.com",
+    "signupNumber": 9,
+    "source": "hero",
+    "createdAt": "2025-08-04T23:01:32.802Z",
+    "updatedAt": "2025-08-04T23:01:32.802Z"
+  },
+  {
+    "id": "cmdyn1v270000lc04i091voxy",
+    "email": "abbottann2222@gmail.com",
+    "signupNumber": 10,
+    "source": "hero",
+    "createdAt": "2025-08-05T14:32:28.543Z",
+    "updatedAt": "2025-08-05T14:32:28.543Z"
+  },
+  {
+    "id": "cmdyn36vf0001lc04gjeny9x4",
+    "email": "bpcole@earthlink.net",
+    "signupNumber": 11,
+    "source": "hero",
+    "createdAt": "2025-08-05T14:33:30.507Z",
+    "updatedAt": "2025-08-05T14:33:30.507Z"
+  },
+  {
+    "id": "cmdyn3hpo0002lc04zesyjwob",
+    "email": "carynsue2016@gmail.com",
+    "signupNumber": 12,
+    "source": "hero",
+    "createdAt": "2025-08-05T14:33:44.543Z",
+    "updatedAt": "2025-08-05T14:33:44.543Z"
+  },
+  {
+    "id": "cmdz1tvfb0000jo04tv8za943",
+    "email": "Abbottann2222@gmail.com",
+    "signupNumber": 13,
+    "source": "hero",
+    "createdAt": "2025-08-05T21:26:10.008Z",
+    "updatedAt": "2025-08-05T21:26:10.008Z"
+  },
+  {
+    "id": "cme0u1p0t0000js04j94ccapk",
+    "email": "leannehorn00@gmail.com",
+    "signupNumber": 14,
+    "source": "hero",
+    "createdAt": "2025-08-07T03:23:50.381Z",
+    "updatedAt": "2025-08-07T03:23:50.381Z"
+  },
+  {
+    "id": "cme0ydlkp0000l204kvwq1bnj",
+    "email": "kifijiha@forexnews.bg",
+    "signupNumber": 15,
+    "source": "modal",
+    "createdAt": "2025-08-07T05:25:04.250Z",
+    "updatedAt": "2025-08-07T05:25:04.250Z"
+  },
+  {
+    "id": "cme1zppek0000jo04fmx5mhpg",
+    "email": "scottandme2023@gmail.com",
+    "signupNumber": 16,
+    "source": "hero",
+    "createdAt": "2025-08-07T22:50:14.877Z",
+    "updatedAt": "2025-08-07T22:50:14.877Z"
+  },
+  {
+    "id": "cme6dxnw30000jx04qph5eeyz",
+    "email": "leannemacdonald77@gmail.com",
+    "signupNumber": 17,
+    "source": "hero",
+    "createdAt": "2025-08-11T00:39:25.491Z",
+    "updatedAt": "2025-08-11T00:39:25.491Z"
+  }
+]

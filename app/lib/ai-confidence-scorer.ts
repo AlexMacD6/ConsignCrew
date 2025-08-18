@@ -52,7 +52,7 @@ function calculateFieldConfidence(
   factors: ConfidenceFactors,
   aiValue: any
 ): ConfidenceScore {
-  const baseScore = 50; // Start with medium confidence
+  const baseScore = 65; // Start with higher base confidence since AI is analyzing visual data
   let adjustments = 0;
   const reasoningFactors: string[] = [];
 
@@ -196,11 +196,54 @@ function calculateFieldConfidence(
       
       break;
 
+    case 'department':
+    case 'category':
+    case 'subCategory':
+      // Category fields are highly accurate when AI analyzes visual content
+      adjustments += factors.hasPhotos ? 25 : 0;
+      adjustments += factors.photoCount >= 2 ? 15 : 0;
+      adjustments += factors.hasVideo ? 10 : 0;
+      adjustments += factors.userProvidedInfo[fieldName] ? 10 : 0;
+      
+      if (factors.hasPhotos) reasoningFactors.push('Product category clearly visible in photos');
+      if (factors.photoCount >= 2) reasoningFactors.push('Multiple angles confirm category');
+      if (factors.hasVideo) reasoningFactors.push('Video provides additional context');
+      if (factors.userProvidedInfo[fieldName]) reasoningFactors.push('User provided category reference');
+      break;
+
+    case 'features':
+      adjustments += factors.hasPhotos ? 20 : -10;
+      adjustments += factors.hasVideo ? 15 : 0;
+      adjustments += factors.hasVideoFrames ? 10 : 0;
+      adjustments += factors.photoCount >= 3 ? 10 : 0;
+      adjustments += factors.userProvidedInfo.description ? 5 : 0;
+      
+      if (factors.hasPhotos) reasoningFactors.push('Features visible in photos');
+      if (factors.hasVideo) reasoningFactors.push('Functionality demonstrated in video');
+      if (factors.hasVideoFrames) reasoningFactors.push('Video frame analysis');
+      if (factors.photoCount >= 3) reasoningFactors.push('Multiple photo angles');
+      if (factors.userProvidedInfo.description) reasoningFactors.push('User description analysis');
+      break;
+
+    case 'keywords':
+      adjustments += factors.hasPhotos ? 15 : -5;
+      adjustments += factors.userProvidedInfo.title ? 15 : 0;
+      adjustments += factors.userProvidedInfo.description ? 10 : 0;
+      adjustments += factors.userProvidedInfo.brand ? 10 : 0;
+      adjustments += factors.photoCount >= 2 ? 5 : 0;
+      
+      if (factors.hasPhotos) reasoningFactors.push('Visual keyword extraction');
+      if (factors.userProvidedInfo.title) reasoningFactors.push('Title-based keywords');
+      if (factors.userProvidedInfo.description) reasoningFactors.push('Description analysis');
+      if (factors.userProvidedInfo.brand) reasoningFactors.push('Brand-specific keywords');
+      if (factors.photoCount >= 2) reasoningFactors.push('Multi-angle analysis');
+      break;
+
     default:
       // Generic scoring for other fields
-      adjustments += factors.hasPhotos ? 10 : -5;
+      adjustments += factors.hasPhotos ? 15 : -5;
       adjustments += factors.userProvidedInfo[fieldName] ? 15 : 0;
-      adjustments += factors.photoCount >= 2 ? 5 : 0;
+      adjustments += factors.photoCount >= 2 ? 10 : 0;
       
       if (factors.hasPhotos) reasoningFactors.push('Visual analysis available');
       if (factors.userProvidedInfo[fieldName]) reasoningFactors.push('User provided data');
@@ -219,8 +262,8 @@ function calculateFieldConfidence(
   const finalScore = Math.max(0, Math.min(100, baseScore + adjustments));
   
   let level: ConfidenceLevel;
-  if (finalScore >= 75) level = 'high';
-  else if (finalScore >= 50) level = 'medium';
+  if (finalScore >= 80) level = 'high';
+  else if (finalScore >= 60) level = 'medium';
   else level = 'low';
 
   return {

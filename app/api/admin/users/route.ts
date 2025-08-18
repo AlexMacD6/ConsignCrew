@@ -65,12 +65,13 @@ export async function GET(request: NextRequest) {
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       emailVerified: user.emailVerified,
-      role: user.members.length > 0 ? user.members[0].role : 'USER',
+      primaryRole: user.members.length > 0 ? user.members[0].role : 'NO_ROLE',
       organizations: user.members.map(member => ({
         id: member.organization.id,
         name: member.organization.name,
         role: member.role,
       })),
+      totalOrganizations: user.members.length,
     }));
 
     return NextResponse.json({ users: usersWithOrganizations });

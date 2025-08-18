@@ -1,0 +1,189 @@
+# Facebook Catalog Sale Price Integration
+
+## Overview
+Enhanced Facebook catalog sync to use Facebook's "Sale price" field instead of constantly changing the main list price. This maintains the original list price while showing discounted prices through the sale price field, aligning with Facebook's catalog structure. **NEW**: Added expiration handling that keeps prices at reserve price instead of 0% and prevents expired listings from being synced to Facebook.
+
+## What Was Implemented
+
+### 1. **Sale Price Logic**
+- **Original Price Preservation**: Main `price` field always shows the original listing price
+- **Sale Price Activation**: `sale_price` field activates after first discount interval (not at 100% original price)
+- **Reserve Price Protection**: Sale price won't go below the reserve price
+- **Schedule Integration**: Works with both Turbo-30 and Classic-60 discount schedules
+- **Expiration Handling**: At expiration, keeps price at reserve price instead of 0%
+
+### 2. **Facebook API Integration**
+- **Main Price Field**: Always contains the original listing price
+- **Sale Price Field**: Contains discounted price when applicable
+- **Conditional Logic**: Only sends sale_price when discount schedule indicates it should be used
+- **Create & Update**: Both product creation and updates use the same sale price logic
+- **Active Listing Check**: Only syncs listings that are within their active discount period
+
+### 3. **Discount Schedule Integration**
+- **New Function**: `calculateFacebookSalePrice()` determines when to activate sale prices
+- **Smart Timing**: Sale price only activates after first price drop (day 3 for Turbo-30, day 7 for Classic-60)
+- **Price Calculation**: Uses existing discount schedule percentages and intervals
+- **Expiration Handling**: No sale price when listing expires, but keeps reserve price
+- **Active Status Tracking**: `isListingActiveForFacebook()` checks if listing should be synced
+
+### 4. **Enhanced Debug Logging**
+- **Price Calculation Debug**: Shows original price, current price, Facebook price, and sale price
+- **Schedule Information**: Displays discount schedule type and days since creation
+- **Sale Price Activation**: Logs when sale price is added to Facebook API requests
+- **Active Status**: Shows whether listing is active for Facebook sync
+
+### 5. **Expiration Management**
+- **Reserve Price Protection**: Expired listings maintain reserve price instead of going to 0%
+- **Facebook Sync Prevention**: Expired listings are automatically excluded from Facebook sync
+- **Graceful Degradation**: System handles expiration without breaking price calculations
+
+## Technical Implementation
+
+### **New Functions Added**
+```typescript
+// Check if listing should be synced to Facebook
+export function isListingActiveForFacebook(
+  createdAt: Date,
+  discountSchedule: DiscountSchedule,
+  currentStatus: string = 'active'
+): boolean
+
+// Get effective price for Facebook (handles expiration)
+export function getEffectiveFacebookPrice(
+  originalPrice: number,
+  createdAt: Date,
+  discountSchedule: DiscountSchedule,
+  reservePrice: number = 0
+): number
+
+// Check if listing should be synced (simplified)
+export function shouldSyncListingToFacebook(
+  createdAt: Date,
+  discountSchedule: DiscountSchedule | null,
+  currentStatus: string = 'active'
+): boolean
+```
+
+### **Facebook API Request Structure**
+```typescript
+// Main price field (always original price)
+price: facebookPrice, // Original listing price
+
+// Sale price field (conditional)
+...(productData.salePrice && shouldUseSalePrice && { sale_price: productData.salePrice })
+```
+
+### **Price Calculation Logic**
+1. **Original Price**: Retrieved from price history or current price
+2. **Current Drop Index**: Calculated based on days since creation
+3. **Sale Price Activation**: Only when currentDropIndex > 0 (not at 100% original price)
+4. **Reserve Protection**: Final sale price = max(discounted price, reserve price)
+5. **Expiration Check**: If expired, keep at reserve price and don't sync to Facebook
+
+## Facebook Catalog Behavior
+
+### **Before First Discount (100% Original Price)**
+- **Main Price**: Shows original listing price
+- **Sale Price**: Not set (checkbox unchecked)
+- **Display**: Shows original price without discount indication
+- **Facebook Sync**: ✅ Active and synced
+
+### **After First Discount (e.g., 95% for Turbo-30)**
+- **Main Price**: Shows original listing price
+- **Sale Price**: Shows discounted price (checkbox checked)
+- **Display**: Shows original price crossed out with sale price highlighted
+- **Facebook Sync**: ✅ Active and synced
+
+### **At Expiration (Past Schedule Duration)**
+- **Main Price**: Shows original listing price
+- **Sale Price**: Not set (checkbox unchecked)
+- **Display**: Shows original price (item effectively expired)
+- **Facebook Sync**: ❌ Not synced (expired)
+- **Price Protection**: Maintains reserve price instead of 0%
+
+## Schedule Examples
+
+### **Turbo-30 Schedule**
+- **Day 0-2**: No sale price (100% original) - ✅ Facebook Sync Active
+- **Day 3**: Sale price = 95% of original - ✅ Facebook Sync Active
+- **Day 6**: Sale price = 90% of original - ✅ Facebook Sync Active
+- **Day 9**: Sale price = 85% of original - ✅ Facebook Sync Active
+- **...continues until day 30**
+- **Day 30+**: Expired - ❌ Facebook Sync Inactive (reserve price maintained)
+
+### **Classic-60 Schedule**
+- **Day 0-6**: No sale price (100% original) - ✅ Facebook Sync Active
+- **Day 7**: Sale price = 90% of original - ✅ Facebook Sync Active
+- **Day 14**: Sale price = 80% of original - ✅ Facebook Sync Active
+- **Day 21**: Sale price = 75% of original - ✅ Facebook Sync Active
+- **...continues until day 60**
+- **Day 60+**: Expired - ❌ Facebook Sync Inactive (reserve price maintained)
+
+## Benefits
+
+✅ **Better Price Presentation**: Original price always visible for reference  
+✅ **Facebook Compliance**: Uses Facebook's intended sale price field structure  
+✅ **Professional Appearance**: Shows proper discount presentation with strikethrough  
+✅ **Price History Preservation**: Original price remains unchanged in database  
+✅ **Reserve Price Protection**: Won't sell below minimum acceptable price  
+✅ **Schedule Flexibility**: Works with existing discount schedule system  
+✅ **User Experience**: Clear price progression and discount visibility  
+✅ **Expiration Management**: Graceful handling of expired listings  
+✅ **Facebook Sync Control**: Only active listings are synced to Facebook  
+✅ **Price Integrity**: Maintains reserve prices instead of going to 0%  
+
+## Testing
+
+### **Test Sale Price Activation**
+1. **Create listing** with discount schedule
+2. **Wait for first discount interval** (day 3 for Turbo-30, day 7 for Classic-60)
+3. **Check Facebook catalog** for sale price field activation
+4. **Verify price display** shows original + sale price
+
+### **Test Price Progression**
+1. **Monitor price changes** at each discount interval
+2. **Verify sale price updates** while main price remains constant
+3. **Check reserve price protection** doesn't allow prices below minimum
+
+### **Test Expiration Handling**
+1. **Wait for schedule completion** (day 30 for Turbo-30, day 60 for Classic-60)
+2. **Verify sale price removal** when item expires
+3. **Check main price** still shows original listing price
+4. **Verify Facebook sync stops** for expired listings
+5. **Confirm reserve price** is maintained instead of 0%
+
+### **Test Facebook Sync Control**
+1. **Enable Facebook Shop** for listings with discount schedules
+2. **Check console logs** for active status information
+3. **Verify expired listings** are not synced to Facebook
+4. **Monitor Facebook Commerce Manager** for proper price display
+
+## Required Environment Variables
+
+No additional environment variables required beyond existing Facebook configuration:
+```env
+META_ACCESS_TOKEN=your_meta_access_token_here
+META_CATALOG_ID=your_meta_catalog_id_here
+NEXT_PUBLIC_APP_URL=https://treasurehub.club
+```
+
+## Notes
+
+- **Sale price only activates** after the first discount interval (not at 100% original price)
+- **Main price field** always contains the original listing price for reference
+- **Facebook processing** may take time to reflect sale price changes
+- **Reserve price protection** ensures items don't sell below acceptable minimum
+- **Backward compatible** with existing listings and discount schedules
+- **Debug logging** provides comprehensive price calculation information
+- **Expired listings** are automatically excluded from Facebook sync
+- **Reserve prices** are maintained at expiration instead of going to 0%
+- **Active status tracking** prevents unnecessary Facebook API calls
+
+## Future Enhancements
+
+- **Sale price effective dates** for precise timing control
+- **Multiple sale price tiers** for complex discount strategies
+- **Sale price notifications** when discounts activate
+- **Performance optimization** for bulk sale price updates
+- **Automatic listing status updates** when schedules expire
+- **Bulk Facebook sync operations** for multiple active listings

@@ -254,4 +254,96 @@ export function createContentsArray(cartItems: CartItem[]) {
     condition: item.condition,
     availability: item.availability,
   }));
+}
+
+/**
+ * Track product catalog update event
+ * This ensures Meta receives real-time updates about product changes
+ */
+export async function trackCatalogUpdate(product: ProductEvent & {
+  action: 'add' | 'update' | 'delete' | 'status_change';
+  previous_status?: string;
+  new_status?: string;
+}) {
+  await trackMetaPixelEvent('CustomEvent', {
+    event_name: 'CatalogUpdate',
+    content_ids: product.content_ids,
+    content_type: 'product',
+    content_name: product.content_name,
+    content_category: product.content_category,
+    value: product.value,
+    currency: product.currency,
+    brand: product.brand,
+    condition: product.condition,
+    availability: product.availability,
+    price: product.price,
+    sale_price: product.sale_price,
+    // Catalog update specific fields
+    catalog_action: product.action,
+    previous_status: product.previous_status,
+    new_status: product.new_status,
+    update_timestamp: new Date().toISOString()
+  });
+}
+
+/**
+ * Track product status change event
+ * Specifically for when products become available/unavailable
+ */
+export async function trackProductStatusChange(product: ProductEvent & {
+  previous_status: string;
+  new_status: string;
+  reason?: string;
+}) {
+  await trackMetaPixelEvent('CustomEvent', {
+    event_name: 'ProductStatusChange',
+    content_ids: product.content_ids,
+    content_type: 'product',
+    content_name: product.content_name,
+    content_category: product.content_category,
+    value: product.value,
+    currency: product.currency,
+    brand: product.brand,
+    condition: product.condition,
+    availability: product.new_status === 'active' ? 'in stock' : 'out of stock',
+    price: product.price,
+    sale_price: product.sale_price,
+    // Status change specific fields
+    previous_status: product.previous_status,
+    new_status: product.new_status,
+    status_change_reason: product.reason,
+    change_timestamp: new Date().toISOString()
+  });
+}
+
+/**
+ * Track product price change event
+ * For when prices are updated or discounts are applied
+ */
+export async function trackProductPriceChange(product: ProductEvent & {
+  previous_price: number;
+  new_price: number;
+  discount_percentage?: number;
+  price_change_reason?: string;
+}) {
+  await trackMetaPixelEvent('CustomEvent', {
+    event_name: 'ProductPriceChange',
+    content_ids: product.content_ids,
+    content_type: 'product',
+    content_name: product.content_name,
+    content_category: product.content_category,
+    value: product.value,
+    currency: product.currency,
+    brand: product.brand,
+    condition: product.condition,
+    availability: product.availability,
+    price: product.new_price,
+    previous_price: product.previous_price,
+    sale_price: product.sale_price,
+    // Price change specific fields
+    price_change_amount: product.previous_price - product.new_price,
+    discount_percentage: product.discount_percentage,
+    price_change_reason: product.price_change_reason,
+    change_timestamp: new Date().toISOString()
+  });
 } 

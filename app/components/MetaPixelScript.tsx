@@ -17,6 +17,12 @@ export default function MetaPixelScript() {
       {/* Meta Pixel Base Code */}
       <Script id="meta-pixel" strategy="afterInteractive">
         {`
+          // Prevent multiple initializations
+          if (window.metaPixelInitialized) {
+            console.log('Meta Pixel: Already initialized, skipping...');
+            return;
+          }
+          
           console.log('Meta Pixel: Script loading...');
           
           !function(f,b,e,v,n,t,s)
@@ -37,6 +43,9 @@ export default function MetaPixelScript() {
             
             fbq('track', 'PageView');
             console.log('Meta Pixel: PageView tracked');
+            
+            // Mark as initialized
+            window.metaPixelInitialized = true;
           } else {
             console.warn('Meta Pixel: Missing pixel ID or fbq not available');
           }

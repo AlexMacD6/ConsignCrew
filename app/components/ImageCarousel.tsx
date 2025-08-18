@@ -47,9 +47,12 @@ export default function ImageCarousel({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Ensure images is an array and filter out empty items
+  const validImages = Array.isArray(images) ? images : [];
+
   // Create media items array: images first, then video if available
   const mediaItems: (MediaItem & { label?: string | null })[] = [
-    ...images
+    ...validImages
       .filter((item) => {
         const src = typeof item === "string" ? item : item.src;
         return src && src.trim() !== "";

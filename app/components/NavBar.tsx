@@ -108,6 +108,12 @@ export default function NavBar() {
         <Link href="/our-origin" className="hover:text-[#D4AF3D] transition">
           Our Origin
         </Link>
+        <Link
+          href="/seller-landing"
+          className="hover:text-[#D4AF3D] transition"
+        >
+          Become a Seller
+        </Link>
         {session?.user && (
           <Link
             href="/treasure-hunt"
@@ -273,6 +279,13 @@ export default function NavBar() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Our Origin
+              </Link>
+              <Link
+                href="/seller-landing"
+                className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Become a Seller
               </Link>
               {session?.user && (
                 <Link

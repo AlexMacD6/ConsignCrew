@@ -4,7 +4,7 @@
  */
 
 interface MetaProduct {
-  id: string;
+  id?: string; // Make optional since we don't send it for new products
   title: string;
   description: string;
   price: number;
@@ -15,6 +15,7 @@ interface MetaProduct {
   category: string;
   image_url: string;
   url: string;
+  external_id?: string; // Our internal ID for reference
   gtin?: string;
   mpn?: string;
   shipping_weight?: {
@@ -48,8 +49,8 @@ class MetaPixelAPI {
 
   constructor() {
     this.pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID || '';
-    this.accessToken = process.env.META_ACCESS_TOKEN || '';
-    this.catalogId = process.env.META_CATALOG_ID || '';
+    this.accessToken = process.env.FACEBOOK_ACCESS_TOKEN || '';
+    this.catalogId = process.env.FACEBOOK_CATALOG_ID || '';
     this.businessId = process.env.META_BUSINESS_ID || '';
 
     if (!this.pixelId || !this.accessToken || !this.catalogId) {
@@ -63,7 +64,6 @@ class MetaPixelAPI {
   async syncProduct(listing: any): Promise<{ success: boolean; productId?: string; error?: string }> {
     try {
       const product: MetaProduct = {
-        id: listing.itemId,
         title: listing.title,
         description: listing.description,
         price: listing.price,
@@ -74,6 +74,7 @@ class MetaPixelAPI {
         category: listing.googleProductCategory || `${listing.department} > ${listing.category}`,
         image_url: this.getFirstImageUrl(listing.photos),
         url: `${process.env.NEXT_PUBLIC_BASE_URL}/list-item/${listing.itemId}`,
+        external_id: listing.itemId, // Store our internal ID for reference
         gtin: listing.facebookGtin,
         mpn: listing.modelNumber,
         shipping_weight: {
@@ -88,6 +89,14 @@ class MetaPixelAPI {
           treasure_reason: listing.treasureReason
         }
       };
+
+      // Debug: Log the API call details
+      console.log('MetaPixelAPI Debug:', {
+        url: `${this.baseUrl}/${this.catalogId}/products`,
+        accessToken: this.accessToken ? `${this.accessToken.substring(0, 20)}...` : 'NOT SET',
+        catalogId: this.catalogId || 'NOT SET',
+        productData: JSON.stringify(product, null, 2)
+      });
 
       const response = await fetch(`${this.baseUrl}/${this.catalogId}/products`, {
         method: 'POST',

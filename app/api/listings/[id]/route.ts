@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
-import { validateGender, validateAgeGroup, validateItemGroupId } from "@/lib/product-specifications";
+import { prisma } from "../../../lib/prisma";
+import { auth } from "../../../lib/auth";
+import { validateGender, validateAgeGroup, validateItemGroupId } from "../../../lib/product-specifications";
 
 export async function GET(
   request: NextRequest,
@@ -304,6 +304,36 @@ export async function PUT(
         },
       },
     });
+
+    // Auto-sync to Facebook catalog if enabled
+    if (updatedListing.facebookShopEnabled) {
+      try {
+        console.log(`🔄 Auto-syncing updated listing ${id} to Facebook catalog...`);
+        console.log(`📊 Updated listing data being synced:`, {
+          itemId: id,
+          title: updatedListing.title,
+          price: updatedListing.price,
+          quantity: updatedListing.quantity,
+          facebookShopEnabled: updatedListing.facebookShopEnabled
+        });
+        
+        // Import and call the Facebook sync service
+        const { syncListingToFacebook } = await import('../../../lib/facebook-catalog-sync');
+        const syncResult = await syncListingToFacebook({
+          action: 'update',
+          listingId: id
+        });
+        
+        if (syncResult.success) {
+          console.log(`✅ Successfully synced updated listing ${id} to Facebook catalog`);
+        } else {
+          console.error(`❌ Failed to sync updated listing ${id} to Facebook:`, syncResult);
+        }
+      } catch (error) {
+        console.error('❌ Facebook sync failed for updated listing:', error);
+        // Don't fail the listing update if sync fails
+      }
+    }
 
     return NextResponse.json({
       success: true,

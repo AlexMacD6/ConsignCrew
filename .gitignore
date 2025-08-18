@@ -66,4 +66,20 @@ jspm_packages/
 .yarn-integrity
 
 # dotenv environment variables file
-.env 
+.env
+
+# Sensitive data exports - NEVER commit these
+data-export/*.json
+data-export/*.csv
+**/session.json
+**/tokens.json
+**/credentials.json
+**/secrets.json
+
+# Database dumps
+*.sql
+*.dump
+
+# Backup files
+*.bak
+*.backup 

@@ -4,15 +4,53 @@ import { prisma } from '@/lib/prisma';
 import { createHistoryEvent, HistoryEvents } from '@/lib/listing-history';
 import { validateGender, validateAgeGroup, validateItemGroupId } from '@/lib/product-specifications';
 import { metaPixelAPI } from '@/lib/meta-pixel-api';
+import { trackCatalogUpdate, trackProductStatusChange } from '@/lib/meta-pixel-client';
 
-// Generate a random 6-character ID using letters and numbers
-function generateRandomId(): string {
+// Generate a unique random 6-character ID using letters and numbers
+async function generateUniqueRandomId(): Promise<string> {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = '';
-  for (let i = 0; i < 6; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  let attempts = 0;
+  const maxAttempts = 15; // Increased attempts
+  
+  console.log('Starting unique ID generation...');
+  
+  while (attempts < maxAttempts) {
+    let result = '';
+    for (let i = 0; i < 6; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    
+    console.log(`Attempt ${attempts + 1}: Generated ID: ${result}`);
+    
+    try {
+      // Check if this ID already exists in the database
+      const existingListing = await prisma.listing.findUnique({
+        where: { itemId: result },
+        select: { id: true }
+      });
+      
+      if (!existingListing) {
+        console.log(`✅ Found unique ID: ${result} after ${attempts + 1} attempts`);
+        return result; // Found a unique ID
+      } else {
+        console.log(`❌ ID ${result} already exists, retrying...`);
+      }
+    } catch (dbError) {
+      console.error(`Database error checking ID ${result}:`, dbError);
+      // Continue to next attempt if database check fails
+    }
+    
+    attempts++;
   }
-  return result;
+  
+  // If we can't find a unique ID after max attempts, use timestamp-based ID
+  console.log(`⚠️ Could not find unique ID after ${maxAttempts} attempts, using timestamp-based ID`);
+  const timestamp = Date.now().toString(36).slice(-6).toUpperCase();
+  const randomChars = Array.from({length: 4}, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
+  const fallbackId = `F${randomChars}${timestamp}`;
+  
+  console.log(`Generated fallback ID: ${fallbackId}`);
+  return fallbackId;
 }
 
 export async function POST(request: NextRequest) {
@@ -96,10 +134,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Use provided itemId or generate one if not provided
-    const finalItemId = itemId || generateRandomId();
+    let finalItemId;
+    if (itemId) {
+      finalItemId = itemId;
+    } else {
+      try {
+        finalItemId = await generateUniqueRandomId();
+        console.log(`Generated unique itemId: ${finalItemId}`);
+      } catch (error) {
+        console.error('Error generating unique itemId:', error);
+        // Fallback to timestamp-based ID if generation fails
+        finalItemId = `FALLBACK_${Date.now().toString(36).toUpperCase()}`;
+        console.log(`Using fallback itemId: ${finalItemId}`);
+      }
+    }
 
     // Transform photos to use CloudFront URLs instead of S3 keys
-    const { getPublicUrl } = await import('../../../src/aws/imageStore');
+    const { getPublicUrl } = await import('@/lib/aws-image-store');
     
     const transformedPhotos = {
       staged: photos.staged || null, // AI-generated staged photo URL
@@ -113,169 +164,218 @@ export async function POST(request: NextRequest) {
 
 
 
-    const listing = await prisma.listing.create({
-      data: {
-        userId: session.user.id,
-        itemId: finalItemId,
-        photos: transformedPhotos,
-        videoUrl: videoUrl || null,
-        department,
-        category,
-        subCategory,
-        title,
-        condition,
-        price: parseFloat(price),
-        reservePrice: reservePrice ? parseFloat(reservePrice) : parseFloat(price) * 0.6,
-        description,
-        brand: brand || null,
-        height: height || null,
-        width: width || null,
-        depth: depth || null,
-        serialNumber: serialNumber || null,
-        modelNumber: modelNumber || null,
-        estimatedRetailPrice: estimatedRetailPrice ? parseFloat(estimatedRetailPrice) : null,
-        discountSchedule: discountSchedule || null,
-        // Facebook Shop Integration Fields
-        facebookShopEnabled: facebookShopEnabled !== undefined ? facebookShopEnabled : true,
-        facebookBrand: facebookBrand || null,
-        facebookCategory: facebookCategory || null,
-        facebookCondition: facebookCondition || null,
-        facebookGtin: facebookGtin || null,
-        // Product Specifications (Facebook Shop Fields)
-        quantity: quantity || 1,
-        salePrice: salePrice ? parseFloat(salePrice) : null,
-        salePriceEffectiveDate: salePriceEffectiveDate ? new Date(salePriceEffectiveDate) : null,
-        itemGroupId: itemGroupId || null,
-        gender: gender || null,
-        color: color || null,
-        size: size || null,
-        ageGroup: ageGroup || 'adult',
-        material: material || null,
-        pattern: pattern || null,
-        style: style || null,
-        tags: tags || [],
-        // Treasure fields
-        isTreasure: isTreasure || false,
-        treasureReason: treasureReason || null,
-        treasureFlaggedAt: isTreasure ? new Date() : null,
-        treasureFlaggedBy: isTreasure ? session.user.id : null,
+    console.log(`Attempting to create listing with itemId: ${finalItemId}`);
+    
+    let listing;
+    try {
+      listing = await prisma.listing.create({
+        data: {
+          userId: session.user.id,
+          itemId: finalItemId,
+          photos: transformedPhotos,
+          videoUrl: videoUrl || null,
+          department,
+          category,
+          subCategory,
+          title,
+          condition,
+          price: parseFloat(price),
+          reservePrice: reservePrice ? parseFloat(reservePrice) : parseFloat(price) * 0.6,
+          description,
+          brand: brand || null,
+          height: height || null,
+          width: width || null,
+          depth: depth || null,
+          serialNumber: serialNumber || null,
+          modelNumber: modelNumber || null,
+          estimatedRetailPrice: estimatedRetailPrice ? parseFloat(estimatedRetailPrice) : null,
+          discountSchedule: discountSchedule || null,
+          // Facebook Shop Integration Fields
+          facebookShopEnabled: facebookShopEnabled !== undefined ? facebookShopEnabled : true,
+          facebookBrand: facebookBrand || null,
+          facebookCategory: facebookCategory || null,
+          facebookCondition: facebookCondition || null,
+          facebookGtin: facebookGtin || null,
+          // Product Specifications (Facebook Shop Fields)
+          quantity: quantity || 1,
+          salePrice: salePrice ? parseFloat(salePrice) : null,
+          salePriceEffectiveDate: salePriceEffectiveDate ? new Date(salePriceEffectiveDate) : null,
+          itemGroupId: itemGroupId || null,
+          gender: gender || null,
+          color: color || null,
+          size: size || null,
+          ageGroup: ageGroup || 'adult',
+          material: material || null,
+          pattern: pattern || null,
+          style: style || null,
+          tags: tags || [],
+          // Treasure fields
+          isTreasure: isTreasure || false,
+          treasureReason: treasureReason || null,
+          treasureFlaggedAt: isTreasure ? new Date() : null,
+          treasureFlaggedBy: isTreasure ? session.user.id : null,
 
-        // Link video to listing if videoId is provided
-        videos: videoId ? {
-          connect: {
-            id: videoId
-          }
-        } : undefined,
-        priceHistory: {
-          create: {
-            price: parseFloat(price),
+          // Link video to listing if videoId is provided
+          videos: videoId ? {
+            connect: {
+              id: videoId
+            }
+          } : undefined,
+          priceHistory: {
+            create: {
+              price: parseFloat(price),
+            },
           },
         },
-      },
-    });
+      });
+      console.log(`✅ Listing created successfully with ID: ${listing.id}`);
+    } catch (createError) {
+      console.error('❌ Error creating listing:', createError);
+      if (createError instanceof Error && createError.message.includes('Unique constraint failed')) {
+        console.error(`Duplicate itemId detected: ${finalItemId}`);
+        // Try to generate a new ID and retry once
+        try {
+          const newItemId = await generateUniqueRandomId();
+          console.log(`Retrying with new itemId: ${newItemId}`);
+          
+          listing = await prisma.listing.create({
+            data: {
+              userId: session.user.id,
+              itemId: newItemId,
+              photos: transformedPhotos,
+              videoUrl: videoUrl || null,
+              department,
+              category,
+              subCategory,
+              title,
+              condition,
+              price: parseFloat(price),
+              reservePrice: reservePrice ? parseFloat(reservePrice) : parseFloat(price) * 0.6,
+              description,
+              brand: brand || null,
+              height: height || null,
+              width: width || null,
+              depth: depth || null,
+              serialNumber: serialNumber || null,
+              modelNumber: modelNumber || null,
+              estimatedRetailPrice: estimatedRetailPrice ? parseFloat(estimatedRetailPrice) : null,
+              discountSchedule: discountSchedule || null,
+              // Facebook Shop Integration Fields
+              facebookShopEnabled: facebookShopEnabled !== undefined ? facebookShopEnabled : true,
+              facebookBrand: facebookBrand || null,
+              facebookCategory: facebookCategory || null,
+              facebookCondition: facebookCondition || null,
+              facebookGtin: facebookGtin || null,
+              // Product Specifications (Facebook Shop Fields)
+              quantity: quantity || 1,
+              salePrice: salePrice ? parseFloat(salePrice) : null,
+              salePriceEffectiveDate: salePriceEffectiveDate ? new Date(salePriceEffectiveDate) : null,
+              itemGroupId: itemGroupId || null,
+              gender: gender || null,
+              color: color || null,
+              size: size || null,
+              ageGroup: ageGroup || 'adult',
+              material: material || null,
+              pattern: pattern || null,
+              style: style || null,
+              tags: tags || [],
+              // Treasure fields
+              isTreasure: isTreasure || false,
+              treasureReason: treasureReason || null,
+              treasureFlaggedAt: isTreasure ? new Date() : null,
+              treasureFlaggedBy: isTreasure ? session.user.id : null,
+
+              // Link video to listing if videoId is provided
+              videos: videoId ? {
+                connect: {
+                  id: videoId
+                }
+              } : undefined,
+              priceHistory: {
+                create: {
+                  price: parseFloat(price),
+                },
+              },
+            },
+          });
+          console.log(`✅ Listing created successfully on retry with ID: ${listing.id}`);
+        } catch (retryError) {
+          console.error('❌ Retry also failed:', retryError);
+          throw new Error(`Failed to create listing after retry: ${retryError instanceof Error ? retryError.message : 'Unknown error'}`);
+        }
+      } else {
+        throw createError;
+      }
+    }
 
     // Create initial history event for listing creation
     await createHistoryEvent(finalItemId, HistoryEvents.LISTING_CREATED(title));
 
-    // Auto-sync to Facebook catalog if enabled and environment is configured
-    let facebookSyncResult = null;
-    if (listing.facebookShopEnabled && 
-        process.env.META_ACCESS_TOKEN && 
-        process.env.META_CATALOG_ID) {
+    // Auto-sync to Facebook catalog if enabled
+    if (listing.facebookShopEnabled) {
       try {
-        console.log(`Auto-syncing new listing ${finalItemId} to Facebook catalog...`);
-        
-        // Include user data for the sync (required for metaPixelAPI.syncProduct)
-        const listingWithUser = await prisma.listing.findUnique({
-          where: { id: listing.id },
-          include: {
-            user: {
-              select: {
-                name: true,
-                id: true
-              }
-            }
-          }
+        console.log(`🎯 Auto-syncing new listing ${finalItemId} to Facebook catalog...`);
+        console.log(`📊 Listing data being synced:`, {
+          itemId: finalItemId,
+          title: listing.title,
+          price: listing.price,
+          quantity: listing.quantity,
+          facebookShopEnabled: listing.facebookShopEnabled
         });
-
-        if (listingWithUser) {
-          const syncResult = await metaPixelAPI.syncProduct(listingWithUser);
-          
-          if (syncResult.success) {
-            // Update listing with sync success
-            await prisma.listing.update({
-              where: { id: listing.id },
-              data: {
-                metaSyncStatus: 'success',
-                metaProductId: syncResult.productId || finalItemId,
-                metaCatalogId: process.env.META_CATALOG_ID,
-                metaLastSync: new Date(),
-                metaErrorDetails: null
-              }
-            });
-            
-            facebookSyncResult = {
-              success: true,
-              productId: syncResult.productId,
-              message: 'Successfully synced to Facebook catalog'
-            };
-            
-            console.log(`✅ Auto-synced listing ${finalItemId} to Facebook catalog`);
-          } else {
-            // Update listing with sync error
-            await prisma.listing.update({
-              where: { id: listing.id },
-              data: {
-                metaSyncStatus: 'error',
-                metaErrorDetails: syncResult.error || 'Unknown sync error',
-                metaLastSync: new Date()
-              }
-            });
-            
-            facebookSyncResult = {
-              success: false,
-              error: syncResult.error,
-              message: 'Failed to sync to Facebook catalog'
-            };
-            
-            console.error(`❌ Failed to auto-sync listing ${finalItemId}: ${syncResult.error}`);
-          }
+        
+        // Import and call the Facebook sync service
+        const { syncListingToFacebook } = await import('@/lib/facebook-catalog-sync');
+        const syncResult = await syncListingToFacebook({
+          action: 'create',
+          listingId: finalItemId
+        });
+        
+        if (syncResult.success) {
+          console.log(`✅ Successfully synced listing ${finalItemId} to Facebook catalog`);
+        } else {
+          console.error(`❌ Failed to sync listing ${finalItemId} to Facebook:`, syncResult);
         }
-      } catch (syncError) {
-        console.error('Error during Facebook auto-sync:', syncError);
-        
-        // Update listing with sync error
-        await prisma.listing.update({
-          where: { id: listing.id },
-          data: {
-            metaSyncStatus: 'error',
-            metaErrorDetails: syncError instanceof Error ? syncError.message : 'Auto-sync failed',
-            metaLastSync: new Date()
-          }
-        });
-        
-        facebookSyncResult = {
-          success: false,
-          error: syncError instanceof Error ? syncError.message : 'Auto-sync failed',
-          message: 'Facebook auto-sync encountered an error'
-        };
+      } catch (error) {
+        console.error('❌ Facebook sync failed for new listing:', error);
+                // Don't fail the listing creation if sync fails
       }
-    } else {
-      console.log('Facebook auto-sync skipped: either disabled or environment not configured');
     }
 
-    return NextResponse.json({
+        return NextResponse.json({
       success: true,
       listing,
-      itemId: finalItemId,
-      facebookSync: facebookSyncResult
+      itemId: finalItemId
     });
 
   } catch (error) {
-    console.error('Error creating listing:', error);
+    console.error('❌ Error creating listing:', error);
+    
+    // Provide more detailed error information
+    let errorMessage = 'Failed to create listing';
+    let statusCode = 500;
+    
+    if (error instanceof Error) {
+      if (error.message.includes('Unique constraint failed')) {
+        errorMessage = 'Listing ID already exists. Please try again.';
+        statusCode = 409; // Conflict
+      } else if (error.message.includes('Foreign key constraint failed')) {
+        errorMessage = 'Invalid user or video reference.';
+        statusCode = 400; // Bad Request
+      } else if (error.message.includes('Invalid value')) {
+        errorMessage = 'Invalid data provided for listing.';
+        statusCode = 400; // Bad Request
+      } else {
+        errorMessage = error.message;
+      }
+    }
+    
+    console.error(`Returning error: ${errorMessage} (Status: ${statusCode})`);
+    
     return NextResponse.json({
-      error: error instanceof Error ? error.message : 'Failed to create listing'
-    }, { status: 500 });
+      error: errorMessage,
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    }, { status: statusCode });
   }
 }
 

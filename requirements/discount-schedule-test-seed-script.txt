@@ -1,0 +1,183 @@
+# Discount Schedule Test Seed Script
+
+## Overview
+Created a comprehensive seed script to populate the database with test listings that have different discount schedules and creation dates. This allows testing of the Facebook sale price integration across various scenarios including active, discounted, and expired listings.
+
+## What Was Implemented
+
+### 1. **Test Listing Categories**
+- **Electronics**: Smartphones, laptops, TVs, audio equipment, cameras, gaming PCs
+- **Furniture**: Living room, outdoor, office furniture
+- **Clothing**: Shoes, accessories
+- **Home & Garden**: Kitchen appliances, tools
+- **Sports**: Various sports equipment
+
+### 2. **Discount Schedule Test Scenarios**
+
+#### **Turbo-30 Schedule (7 listings)**
+- **Day 0**: iPhone 15 Pro Max - 100% price (no sale price)
+- **Day 3**: MacBook Air M2 - 95% price (sale price active)
+- **Day 6**: Samsung QLED TV - 90% price (sale price active)
+- **Day 9**: Sony Headphones - 85% price (sale price active)
+- **Day 15**: Nike Air Jordan - 75% price (sale price active)
+- **Day 21**: IKEA Sofa - 65% price (sale price active)
+- **Day 30**: Canon Camera - EXPIRED (60% price, not synced to Facebook)
+
+#### **Classic-60 Schedule (7 listings)**
+- **Day 0**: Dell XPS Laptop - 100% price (no sale price)
+- **Day 7**: Adidas Running Shoes - 90% price (sale price active)
+- **Day 14**: LG OLED TV - 80% price (sale price active)
+- **Day 21**: Leather Recliner - 75% price (sale price active)
+- **Day 35**: Gaming PC - 65% price (sale price active)
+- **Day 49**: KitchenAid Mixer - 55% price (sale price active)
+- **Day 60**: Patio Furniture - EXPIRED (50% price, not synced to Facebook)
+
+#### **No Discount Schedule (2 listings)**
+- Wireless Bluetooth Speaker - No sale price
+- Coffee Table - No sale price
+
+### 3. **Realistic Test Data**
+- **Brands**: Apple, Samsung, Nike, Adidas, IKEA, Sony, LG, Canon, Dell, HP
+- **Conditions**: new, used like new, used good, used fair, refurbished
+- **Materials**: Plastic, Metal, Wood, Fabric, Glass, Leather, Ceramic
+- **Colors**: Black, White, Red, Blue, Green, Silver, Gold, Brown, Gray, Pink
+- **Prices**: Range from $89.99 to $2,999.99 with realistic reserve prices
+- **Photos**: Placeholder images for all required photo fields
+
+### 4. **Comprehensive Test Coverage**
+- **Price Ranges**: Various price points to test different discount amounts
+- **Reserve Prices**: Set at 75% of original price for realistic testing
+- **Creation Dates**: Spread across different time periods to test all discount stages
+- **Facebook Integration**: All listings have `facebookShopEnabled: true`
+- **Price History**: Each listing includes initial price in price history table
+
+## Technical Implementation
+
+### **Script Structure**
+```javascript
+// Main function to create test listings
+async function createTestListings()
+
+// Helper functions
+function generateItemId()           // Creates unique 8-character IDs
+function generateDate(daysAgo)      // Generates dates relative to today
+function generatePhotos()           // Creates placeholder photo objects
+```
+
+### **Database Integration**
+- Uses Prisma client for database operations
+- Creates listings with all required fields
+- Includes price history records
+- Sets realistic creation dates for testing
+
+### **Error Handling**
+- Individual listing creation errors don't stop the script
+- Comprehensive error logging for debugging
+- Graceful cleanup with Prisma disconnect
+
+## Test Scenarios Covered
+
+### **1. Sale Price Activation Testing**
+- **Before First Discount**: Verify no sale price is set
+- **After First Discount**: Verify sale price activates correctly
+- **Price Progression**: Test multiple discount stages
+
+### **2. Expiration Testing**
+- **Turbo-30 Expired**: Day 30+ listings should not sync to Facebook
+- **Classic-60 Expired**: Day 60+ listings should not sync to Facebook
+- **Reserve Price Protection**: Verify expired listings maintain reserve price
+
+### **3. Facebook Sync Testing**
+- **Active Listings**: Should sync with appropriate sale prices
+- **Expired Listings**: Should not sync to Facebook
+- **No Schedule**: Should work normally without discount logic
+
+### **4. Price Calculation Testing**
+- **Original Price**: Always preserved in main price field
+- **Sale Price**: Correctly calculated based on schedule and days
+- **Reserve Price**: Never goes below minimum acceptable price
+
+## Usage Instructions
+
+### **Running the Script**
+```bash
+# Navigate to scripts directory
+cd scripts
+
+# Run the seed script
+node seed-discount-schedule-test-listings.js
+```
+
+### **Prerequisites**
+- Database connection configured
+- Prisma client installed
+- Valid user ID (replace 'test-user-id' in script)
+- Required database tables exist
+
+### **Expected Output**
+```
+🚀 Starting to create test listings for discount schedule testing...
+
+✅ Created: iPhone 15 Pro Max - 256GB - Space Black
+   Item ID: ABC12345
+   Price: $1199.99 | Reserve: $899.99
+   Schedule: Turbo-30
+   Created: 0 days ago
+   Sale Price: 100% of original (no sale price)
+   Status: active
+
+✅ Created: MacBook Air M2 - 13-inch - 8GB RAM - 256GB SSD
+   Item ID: DEF67890
+   Price: $999.99 | Reserve: $749.99
+   Schedule: Turbo-30
+   Created: 3 days ago
+   Sale Price: 95% of original
+   Status: active
+
+... (continues for all listings)
+
+🎉 Seed script completed!
+✅ Created: 16 listings
+❌ Errors: 0 listings
+
+📊 Test Scenarios Created:
+   • Turbo-30: 7 listings (various stages including expired)
+   • Classic-60: 7 listings (various stages including expired)
+   • No Schedule: 2 listings (for comparison)
+```
+
+## Testing Checklist
+
+### **After Running Seed Script**
+1. **Verify Database**: Check that all 16 listings were created
+2. **Check Facebook Sync**: Enable Facebook Shop for test listings
+3. **Monitor Console Logs**: Look for price calculation debugging
+4. **Test Sale Price Logic**: Verify sale prices activate correctly
+5. **Test Expiration**: Confirm expired listings don't sync to Facebook
+
+### **Expected Facebook Behavior**
+- **Day 0-2 (Turbo-30)**: No sale price, main price shows original
+- **Day 3+ (Turbo-30)**: Sale price active, main price shows original
+- **Day 30+ (Turbo-30)**: Not synced to Facebook (expired)
+- **Day 0-6 (Classic-60)**: No sale price, main price shows original
+- **Day 7+ (Classic-60)**: Sale price active, main price shows original
+- **Day 60+ (Classic-60)**: Not synced to Facebook (expired)
+
+## Benefits
+
+✅ **Comprehensive Testing**: Covers all discount schedule stages  
+✅ **Realistic Data**: Uses real-world product examples and prices  
+✅ **Expiration Testing**: Includes expired listings to test sync prevention  
+✅ **Price Validation**: Tests various price ranges and discount amounts  
+✅ **Facebook Integration**: All listings ready for Facebook Shop testing  
+✅ **Debug Information**: Clear logging for troubleshooting  
+✅ **Easy Cleanup**: Can be easily removed or modified for testing  
+
+## Notes
+
+- **User ID Required**: Replace 'test-user-id' with actual user ID before running
+- **Database Cleanup**: Consider removing test listings after testing
+- **Photo URLs**: Uses placeholder images that may not display properly
+- **Realistic Testing**: Creation dates are relative to current date
+- **Facebook Sync**: All listings have Facebook Shop enabled for testing
+- **Price History**: Each listing includes initial price for accurate calculations

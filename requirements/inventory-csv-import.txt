@@ -1,0 +1,67 @@
+Inventory CSV Import and Management System
+
+## Overview
+Implement functionality to upload CSV files of inventory that will appear in the Admin Dashboard, enabling linking each listing to an item in the uploaded inventory to quickly pull in additional information before posting the listing.
+
+## Core Features
+
+### 1. CSV File Upload
+- Accept CSV files through Admin Dashboard
+- Parse CSV content and validate format
+- Store inventory data in database
+- Support for bulk inventory imports
+
+### 2. Inventory Management
+- Create and manage multiple inventory lists
+- View all uploaded inventory items
+- Edit and update inventory data
+- Delete inventory lists and items
+
+### 3. Listing Integration
+- Link existing listings to inventory items
+- Pre-fill listing fields from inventory data
+- Quick data population for new listings
+- Maintain relationship between listings and inventory
+
+### 4. Admin Dashboard Integration
+- New inventory management section
+- Upload interface for CSV files
+- Inventory list overview and management
+- Search and filter inventory items
+
+## Technical Requirements
+
+### Database Models
+- InventoryList: Manages collections of inventory items
+- InventoryItem: Individual inventory items with product details
+- Enhanced Listing model with inventory relationships
+
+### API Endpoints
+- POST /api/admin/inventory-lists - Create inventory lists
+- GET /api/admin/inventory-lists - Fetch all inventory lists
+- GET /api/admin/inventory - Fetch inventory items for a list
+- POST /api/admin/inventory/upload - Handle CSV file uploads
+
+### CSV Format Support
+- Standard inventory fields (lot number, item number, department, description, etc.)
+- Flexible field mapping
+- Error handling for malformed data
+- Validation and data cleaning
+
+### UI Components
+- CSV upload form with drag-and-drop
+- Inventory list management interface
+- Inventory item selection in listing edit page
+- Data preview and validation
+
+## User Experience
+- Intuitive CSV upload process
+- Clear feedback on upload success/failure
+- Easy linking of listings to inventory items
+- Quick access to inventory data during listing creation
+
+## Data Migration
+- Export existing production data
+- Import to new branch with inventory models
+- Preserve all existing functionality
+- Maintain data integrity during migration

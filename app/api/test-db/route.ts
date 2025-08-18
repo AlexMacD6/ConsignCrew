@@ -1,30 +1,62 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    console.log("Testing database connection...");
+    // Test database connection
+    console.log('Testing database connection...');
     
-    // Test basic database connection
-    const listingCount = await prisma.listing.count();
-    console.log(`Database connection successful. Found ${listingCount} listings.`);
+    // Check if we can connect to the database
+    await prisma.$connect();
+    console.log('Database connection successful');
+    
+    // Count total listings
+    const totalListings = await prisma.listing.count();
+    console.log('Total listings in database:', totalListings);
+    
+    // Count active listings
+    const activeListings = await prisma.listing.count({
+      where: { status: 'active' }
+    });
+    console.log('Active listings:', activeListings);
+    
+    // Get a sample listing to check structure
+    const sampleListing = await prisma.listing.findFirst({
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            zipCode: true
+          }
+        },
+        photos: true
+      }
+    });
+    
+    console.log('Sample listing:', sampleListing);
     
     return NextResponse.json({
       success: true,
-      message: "Database connection working",
-      listingCount,
-      timestamp: new Date().toISOString()
+      message: 'Database connection test successful',
+      data: {
+        totalListings,
+        activeListings,
+        sampleListing,
+        databaseUrl: process.env.DATABASE_URL ? 'Set' : 'Not set'
+      }
     });
-
+    
   } catch (error) {
-    console.error("Database test error:", error);
-    return NextResponse.json(
-      { 
-        error: "Database test failed", 
-        details: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined
-      },
-      { status: 500 }
-    );
+    console.error('Database connection test failed:', error);
+    
+    return NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    }, { status: 500 });
+    
+  } finally {
+    await prisma.$disconnect();
   }
 } 

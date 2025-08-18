@@ -1,0 +1,117 @@
+Landing Page Hero Section Reconstruction
+
+**Objective:**
+Reconstruct the landing page hero section to immediately capture buyers with why they should shop here now, replacing the video with a rotating carousel of listing hero photos.
+
+**Requirements Implemented:**
+
+### 1. Above-the-Fold (Hero Section) Purpose
+- **Immediate Buyer Capture**: Focus on why buyers should shop here now
+- **Visual Appeal**: Replace YouTube embedded video with rotating image carousel
+- **Clear Value Proposition**: Emphasize curated goods, verified quality, and delivery
+
+### 2. Content Structure
+
+#### **Headline:**
+- "Houston's Treasure Chest" - Main attention-grabbing title
+- Kept the built-in Houston stamp in the same position (top-right)
+- Large, bold typography with treasure color accent
+
+#### **Subheadline:**
+- "Curated goods. Verified quality. Delivered to your door."
+- Clear, concise value proposition
+- Emphasizes three key benefits
+
+#### **Primary CTA:**
+- "Shop Early Access Deals" - Direct action for buyers
+- Large, prominent button with treasure color scheme
+- Links to listings page
+
+#### **Secondary CTA (Subtle Seller Hint):**
+- "Want to sell with us soon? Join our seller list"
+- Uses existing CTA email sign-up list functionality
+- Secondary button styling to not compete with primary CTA
+
+### 3. Visual Implementation
+
+#### **Image Carousel:**
+- **Replaced**: YouTube embedded video
+- **New**: Dynamic carousel of actual listings for sale
+- **Features**: Auto-play, navigation arrows, dots indicator, play/pause control
+- **Images**: Real listing photos from the database
+- **Content**: Shows actual item titles, prices, categories, and neighborhoods
+
+#### **Carousel Features:**
+- Auto-rotation every 5 seconds
+- Pause on hover for better user control
+- Navigation arrows and dots for manual control
+- Category labels overlay on each image
+- Smooth transitions between images
+- Responsive design for mobile and desktop
+
+### 4. Technical Implementation
+
+#### **New Components Created:**
+- `HeroImageCarousel.tsx` - Reusable carousel component
+- Responsive image handling
+- Accessibility features (ARIA labels, keyboard navigation)
+
+#### **Layout Changes:**
+- Maintained 5-column grid structure (3 for carousel, 2 for content)
+- Responsive design for mobile and desktop
+- Proper spacing and typography hierarchy
+
+#### **Integration:**
+- Replaced `IntegratedVideoPlayer` with `HeroImageCarousel`
+- Updated email form to focus on seller list signup
+- Maintained existing functionality for email submissions
+
+### 5. User Experience Improvements
+
+#### **Buyer-Focused:**
+- Clear value proposition above the fold
+- Direct path to shopping (Primary CTA)
+- Visual showcase of product categories
+
+#### **Seller Engagement:**
+- Subtle invitation to join seller list
+- Secondary CTA that doesn't compete with primary
+- Maintains early access tracker for transparency
+
+#### **Visual Hierarchy:**
+- Large, bold headline for immediate impact
+- Clear subheadline explaining benefits
+- Prominent primary CTA button
+- Secondary elements properly de-emphasized
+
+### 6. Files Modified
+- `app/page.tsx` - Updated hero section structure and content
+- `app/components/HeroImageCarousel.tsx` - New carousel component
+
+### 7. Design Principles Applied
+- **Above-the-Fold Focus**: Key content visible without scrolling
+- **Clear Hierarchy**: Headline → Subheadline → Primary CTA → Secondary CTA
+- **Visual Balance**: Carousel and text content properly proportioned
+- **Brand Consistency**: Maintained treasure color scheme and Houston branding
+- **Mobile Responsiveness**: Works well on all device sizes
+
+### 8. Expected Results
+- **Immediate Impact**: Clear value proposition visible above the fold
+- **Better Engagement**: Visual carousel more engaging than video
+- **Clearer CTAs**: Primary and secondary actions clearly defined
+- **Buyer Focus**: Emphasizes shopping experience over selling process
+- **Professional Appearance**: High-quality images showcase product categories
+
+### 9. Testing Considerations
+- Verify carousel auto-play functionality
+- Test navigation controls on mobile and desktop
+- Ensure responsive design works on all screen sizes
+- Validate email form submission for seller list
+- Check accessibility features (ARIA labels, keyboard navigation)
+
+### 10. Future Enhancements
+- Replace placeholder Unsplash images with actual listing photos
+- Add dynamic content based on available listings
+- Implement A/B testing for different headline variations
+- Add analytics tracking for carousel engagement
+- Consider adding video back as an optional feature

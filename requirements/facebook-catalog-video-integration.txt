@@ -1,0 +1,181 @@
+# Facebook Catalog Video Integration
+
+## Overview
+Added video upload support to Facebook catalog sync for listings to enhance product presentation and engagement.
+
+## What Was Implemented
+
+### 1. **Video URL Extraction**
+- **Video Field Support**: Added support for `videoUrl` field from database
+- **URL Validation**: Ensures only valid, public video URLs are sent to Facebook
+- **Localhost Protection**: Prevents development video URLs from being sent
+
+### 2. **Facebook API Integration**
+- **Video Field**: Added `video_url` field to Facebook API requests
+- **Create Function**: Automatically includes video when creating products in Facebook catalog
+- **Update Function**: Automatically includes video when updating products in Facebook catalog
+
+### 3. **Enhanced Debug Logging**
+- **Video Debug Info**: Added comprehensive logging for video extraction process
+- **URL Tracking**: Logs both original and processed video URLs
+- **Error Handling**: Provides clear feedback when video URLs are invalid or missing
+
+### 4. **Code Cleanup**
+- **Weight Field Removal**: Removed all references to non-existent `weight` field
+- **Linter Errors Resolved**: Fixed all TypeScript compilation errors
+- **Type Safety**: Used proper type assertions for video_url field
+
+## Technical Implementation
+
+### **Video URL Extraction Function**
+```typescript
+function getVideoUrl(listing: any): string | undefined {
+  if (!listing) return undefined;
+  
+  // Check for videoUrl field first
+  if (listing.videoUrl && typeof listing.videoUrl === 'string' && listing.videoUrl.trim()) {
+    const videoUrl = listing.videoUrl.trim();
+    
+    // Validate URL format and exclude localhost
+    if (videoUrl.startsWith('http://') || videoUrl.startsWith('https://')) {
+      if (!videoUrl.includes('localhost') && !videoUrl.includes('127.0.0.1')) {
+        console.log(`🎥 Video URL found: ${videoUrl}`);
+        return videoUrl;
+      } else {
+        console.log(`⚠️ Skipping localhost video URL: ${videoUrl}`);
+      }
+    } else {
+      console.log(`⚠️ Invalid video URL format: ${videoUrl}`);
+    }
+  }
+  
+  // Note: Only videoUrl field is supported in current Listing model
+  // Video object structure not available
+  
+  console.log(`📹 No valid video URL found for listing ${listing.itemId}`);
+  return undefined;
+}
+```
+
+### **Facebook API Integration**
+```typescript
+// In request body
+if (productData.videoUrl) {
+  (requestBody as any).video_url = productData.videoUrl;
+  console.log(`🎥 Adding video to Facebook product: ${productData.videoUrl}`);
+}
+```
+
+### **Enhanced Product Data Interface**
+```typescript
+export interface FacebookProductData {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  condition: string;
+  availability: string;
+  brand?: string;
+  category: string;
+  images: string[];
+  videoUrl?: string;  // New field
+  url?: string;
+}
+```
+
+## Video URL Sources
+
+### **Primary Source**
+- `listing.videoUrl` - Direct video URL field from database
+
+### **URL Validation Rules**
+- Must start with `http://` or `https://`
+- Must not contain `localhost` or `127.0.0.1`
+- Must be valid string format
+- Automatically trimmed of whitespace
+
+## Facebook API Support
+
+### **Video Field**
+- **Field Name**: `video_url`
+- **Format**: Direct URL to video file
+- **Requirements**: Must be publicly accessible
+- **Limitations**: Facebook supports various video formats (MP4, MOV, etc.)
+
+### **Integration Points**
+- **Product Creation**: Video included in initial product setup
+- **Product Updates**: Video updated when listing changes
+- **Batch Operations**: Video support in bulk sync operations
+
+## Debug Information
+
+### **Video Debug Logging**
+```typescript
+console.log('Video Debug:', {
+  videoUrl: listing.videoUrl,
+  extractedVideo: getVideoUrl(listing)
+});
+```
+
+### **Facebook API Logging**
+```typescript
+if (productData.videoUrl) {
+  console.log(`🎥 Adding video to Facebook product: ${productData.videoUrl}`);
+}
+```
+
+## Benefits
+
+✅ **Enhanced Product Presentation**: Videos provide better product visualization  
+✅ **Improved User Engagement**: Video content increases user interaction  
+✅ **Better Conversion Rates**: Video listings typically perform better  
+✅ **Professional Appearance**: Video content makes listings more appealing  
+✅ **Facebook Optimization**: Leverages Facebook's video capabilities  
+✅ **Clean Codebase**: Removed unused weight tracking references  
+
+## Testing
+
+### **Test Video Integration**
+1. **Create a listing** with a valid video URL
+2. **Enable Facebook Shop** for the listing
+3. **Check console logs** for video debug information
+4. **Verify Facebook sync** includes video URL
+5. **Check Facebook Commerce Manager** for video display
+
+### **Test Different Video Sources**
+1. **Direct videoUrl field** - Test with `listing.videoUrl`
+2. **Invalid URLs** - Test with localhost or malformed URLs
+3. **Missing videos** - Test listings without video content
+
+### **Expected Results**
+- **Valid videos**: Should appear in Facebook catalog with video support
+- **Invalid videos**: Should be skipped with console warnings
+- **No videos**: Should work normally without video field
+- **Console logs**: Should show detailed video processing information
+- **No linter errors**: All TypeScript compilation issues resolved
+
+## Required Environment Variables
+
+No additional environment variables required beyond existing Facebook configuration:
+```env
+META_ACCESS_TOKEN=your_meta_access_token_here
+META_CATALOG_ID=your_meta_catalog_id_here
+NEXT_PUBLIC_APP_URL=https://treasurehub.club
+```
+
+## Notes
+
+- **Video URLs must be publicly accessible** for Facebook to process them
+- **Localhost and development URLs are automatically filtered out**
+- **Video support is backward compatible** - existing listings work without changes
+- **Facebook video processing** may take time depending on video size and format
+- **Video quality** should be optimized for web delivery (reasonable file sizes)
+- **Weight tracking removed** - no longer attempting to sync non-existent weight data
+- **All linter errors resolved** - code compiles cleanly without TypeScript issues
+
+## Future Enhancements
+
+- **Video thumbnail generation** for better preview display
+- **Multiple video support** for comprehensive product showcases
+- **Video format validation** to ensure Facebook compatibility
+- **Video compression** for optimal delivery performance

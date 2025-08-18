@@ -1,0 +1,57 @@
+# AI Auto-Populate Facebook Categories Feature
+
+## Overview
+Enhance the AI service to automatically populate Facebook categories (Department, Category, Sub-category) from visual analysis, then automatically map them to Google Product Categories.
+
+## Current Flow
+1. User uploads photos/video
+2. AI analyzes visual content
+3. AI generates listing data
+4. Frontend displays AI-generated data
+
+## New Flow (AI Analysis → Facebook Categories → Google Categories)
+1. User uploads photos/video + provides user input
+2. AI analyzes visual content and generates:
+   - `facebookDepartment` (e.g., "Home & Garden")
+   - `facebookCategory` (e.g., "Furniture") 
+   - `facebookSubCategory` (e.g., "Bedroom Furniture")
+3. AI service validates Facebook categories against taxonomy
+4. AI service auto-maps Facebook categories to Google Product Categories:
+   - `googleProductCategoryPrimary`
+   - `googleProductCategorySecondary` 
+   - `googleProductCategoryTertiary`
+5. Frontend displays AI-generated Facebook categories in dropdowns
+6. Frontend shows auto-mapped Google categories as read-only fields
+
+## Technical Implementation
+
+### Backend Changes
+- Updated AI service prompt to request Facebook category fields
+- Modified data processing flow to prioritize AI-generated Facebook categories
+- Implemented automatic mapping from Facebook to Google categories
+- Added comprehensive debugging logs for category flow
+
+### Frontend Changes
+- Updated form population logic to use AI-generated Facebook categories as primary source
+- Maintained fallback to legacy fields if AI doesn't provide categories
+- Enhanced Google category mapping to use AI-generated Facebook categories
+- Added debugging logs for category population
+
+## Benefits
+- **Better User Experience**: Facebook categories are pre-populated from AI analysis
+- **Consistent Data**: Google categories are automatically mapped from validated Facebook categories
+- **Reduced Manual Work**: Users don't need to manually select categories
+- **Improved Accuracy**: AI can analyze visual content to determine appropriate categories
+- **Data Integrity**: Categories are validated against Facebook taxonomy before mapping
+
+## Testing
+- Test with various product types to ensure AI generates appropriate Facebook categories
+- Verify Google category mapping works correctly for all Facebook category combinations
+- Ensure fallback behavior works when AI doesn't provide complete category data
+- Test form population and manual category changes still work correctly
+
+## Future Enhancements
+- Add confidence scoring for AI-generated categories
+- Implement category suggestions based on visual analysis
+- Add category validation feedback in the UI
+- Support for custom category creation when AI can't determine appropriate categories

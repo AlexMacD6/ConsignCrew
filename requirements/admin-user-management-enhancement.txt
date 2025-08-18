@@ -1,0 +1,161 @@
+# Admin User Management Enhancement
+
+## Overview
+Enhanced user management functionality in the Admin Dashboard to allow administrators to manage user roles and organization memberships.
+
+## Features Implemented
+
+### 1. User Role Management
+- **Update User Roles**: Admins can change user roles within organizations
+- **Role Options**: MEMBER, ADMIN, OWNER
+- **Organization Selection**: Choose which organization to update the role for
+- **Validation**: Ensures only valid roles can be assigned
+
+### 2. Organization Membership Management
+- **Add Users to Organizations**: Admins can add users to organizations with specific roles
+- **Remove Users from Organizations**: Admins can remove users from organizations
+- **Role Assignment**: Set initial role when adding users to organizations
+
+### 3. Enhanced User Display
+- **Organization Information**: Shows all organizations a user belongs to
+- **Role Display**: Displays user roles in each organization
+- **Verification Status**: Shows email verification status
+- **Action Buttons**: Role management, organization management, and delete options
+
+## API Endpoints Created
+
+### 1. Update User Role
+- **Endpoint**: `PUT /api/admin/users/[id]/update-role`
+- **Purpose**: Update user role in a specific organization
+- **Body**: `{ organizationId: string, newRole: string }`
+- **Permissions**: Admin or Owner role required
+
+### 2. Add User to Organization
+- **Endpoint**: `POST /api/admin/users/[id]/add-to-org`
+- **Purpose**: Add user to an organization with a specific role
+- **Body**: `{ organizationId: string, role: string }`
+- **Permissions**: Admin or Owner role required
+
+### 3. Remove User from Organization
+- **Endpoint**: `DELETE /api/admin/users/[id]/remove-from-org`
+- **Purpose**: Remove user from a specific organization
+- **Body**: `{ organizationId: string }`
+- **Permissions**: Admin or Owner role required
+
+## UI Components
+
+### 1. Enhanced Users Table
+- **User Information**: Name, email, phone, verification status
+- **Organization Display**: Shows all organizations and roles
+- **Action Buttons**: 
+  - Shield icon: Manage roles
+  - Building icon: Manage organizations
+  - Trash icon: Delete user
+
+### 2. Role Management Modal
+- **Organization Selection**: Dropdown to select organization
+- **Role Selection**: Dropdown to select new role
+- **Actions**: Update role or cancel
+
+### 3. Organization Management Modal
+- **Organization Selection**: Dropdown to select organization
+- **Role Assignment**: Set initial role for the user
+- **Actions**: Add to organization or cancel
+
+## Security Features
+
+### 1. Permission Checks
+- **Admin Verification**: Only users with ADMIN or OWNER roles can access
+- **Organization Validation**: Ensures organizations exist before operations
+- **User Validation**: Verifies target users exist
+
+### 2. Role Validation
+- **Valid Roles**: Only MEMBER, ADMIN, OWNER are accepted
+- **Input Sanitization**: Validates all input parameters
+
+## Database Schema
+
+### 1. User Model
+- **Fields**: id, name, email, mobilePhone, emailVerified, etc.
+- **Relations**: members (organization memberships)
+
+### 2. Member Model
+- **Fields**: id, userId, organizationId, role, createdAt
+- **Relations**: user, organization
+
+### 3. Organization Model
+- **Fields**: id, name, slug, logo, metadata, etc.
+- **Relations**: members, invitations, teams
+
+## Usage Instructions
+
+### 1. Accessing User Management
+- Navigate to Admin Dashboard
+- Click on "Users" tab
+- View all users with their organization memberships
+
+### 2. Managing User Roles
+- Click the shield icon (🔒) next to a user
+- Select organization and new role
+- Click "Update Role"
+
+### 3. Adding Users to Organizations
+- Click the building icon (🏢) next to a user
+- Select organization and role
+- Click "Add to Organization"
+
+### 4. Removing Users from Organizations
+- Use the existing remove functionality in organization members view
+
+## Future Enhancements
+
+### 1. Bulk Operations
+- **Bulk Role Updates**: Update multiple users at once
+- **Bulk Organization Assignment**: Add multiple users to organizations
+
+### 2. Advanced Filtering
+- **Role-based Filtering**: Filter users by role
+- **Organization Filtering**: Filter users by organization
+- **Status Filtering**: Filter by verification status
+
+### 3. Audit Logging
+- **Role Change History**: Track all role changes
+- **Membership History**: Track organization membership changes
+- **Admin Actions**: Log all administrative actions
+
+## Testing
+
+### 1. Functional Testing
+- Test role updates for different user types
+- Test organization membership management
+- Test permission validation
+
+### 2. Security Testing
+- Verify admin-only access
+- Test role validation
+- Test organization validation
+
+### 3. UI Testing
+- Test modal functionality
+- Test form validation
+- Test responsive design
+
+## Dependencies
+
+### 1. Required Packages
+- Next.js (for API routes and components)
+- Prisma (for database operations)
+- BetterAuth (for authentication)
+
+### 2. Environment Variables
+- `DATABASE_URL`: Database connection string
+- Authentication configuration for BetterAuth
+
+## Notes
+
+- All operations require admin or owner permissions
+- Users can belong to multiple organizations with different roles
+- Role changes are immediate and affect the entire organization
+- Organization membership is managed through the Member model
+- The system prevents duplicate memberships in the same organization
+

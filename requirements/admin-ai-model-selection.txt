@@ -1,0 +1,78 @@
+# Admin AI Model Selection Feature
+
+## Overview
+Add a dropdown menu in the Admin Dashboard that allows administrators to select between GPT-4o and GPT-5 models for different AI services.
+
+## Requirements
+
+### 1. Admin Dashboard Integration
+- Add AI Model Configuration section to System Settings tab
+- Provide dropdown selection for AI Service Phase 1 (Comprehensive Listing Generation)
+- Provide dropdown selection for AI Service Phase 2 (Staged Photo Generation)
+- Set default for Phase 1 to GPT-4o for better visual analysis
+- Set default for Phase 2 to GPT-4o (current API)
+
+### 2. Model Options
+- **Phase 1 Models:**
+  - GPT-4o (Default - Better Visual Analysis)
+  - GPT-5 (Advanced Reasoning)
+- **Phase 2 Models:**
+  - GPT-4o (Current API)
+
+### 3. Configuration Management
+- Save configuration to database/API
+- Load configuration on admin dashboard startup
+- Display current model selection
+- Provide save button with loading state
+
+### 4. API Integration
+- Create `/api/admin/ai-model-config` endpoint
+- Support GET (retrieve) and POST (save) operations
+- Validate model selections
+- Store configuration in memory (can be upgraded to database later)
+
+### 5. AI Service Updates
+- Modify AI Service Phase 1 to use selected model
+- Automatically switch between Chat Completions API (GPT-4o) and Responses API (GPT-5)
+- Update logging and debugging to reflect selected model
+- Maintain backward compatibility
+
+### 6. User Experience
+- Clear labeling and descriptions for each service
+- Immediate feedback on configuration changes
+- Success/error messages for save operations
+- Loading states during configuration updates
+
+## Technical Implementation
+
+### Frontend Changes
+- Add AI Model Configuration section to `app/admin/page.tsx`
+- Add state variables for model configuration
+- Add save function with API call
+- Integrate with existing admin dashboard structure
+
+### Backend Changes
+- Create `app/api/admin/ai-model-config/route.ts`
+- Create `app/lib/ai-model-config.ts` utility
+- Update `app/api/ai/generate-comprehensive-listing/route.ts`
+- Support both Chat Completions and Responses APIs
+
+### Configuration Storage
+- In-memory storage for MVP
+- Can be upgraded to database storage later
+- Configuration persists during server runtime
+
+## Benefits
+1. **Flexibility**: Admins can choose the best model for each service
+2. **Performance**: GPT-4o for visual analysis, GPT-5 for reasoning tasks
+3. **Cost Control**: Choose appropriate model complexity for each use case
+4. **Testing**: Easy A/B testing between different models
+5. **Maintenance**: Centralized model configuration management
+
+## Future Enhancements
+- Database storage for configuration persistence
+- Model performance metrics and comparison
+- Automatic model selection based on task complexity
+- Cost tracking per model usage
+- Model availability status monitoring
+

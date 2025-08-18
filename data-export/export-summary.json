@@ -1,0 +1,30 @@
+{
+  "exportedAt": "2025-08-18T15:24:30.793Z",
+  "models": [
+    "user",
+    "Organization",
+    "Member",
+    "Invitation",
+    "Team",
+    "TeamMember",
+    "session",
+    "account",
+    "AiResponse",
+    "EarlyAccessSignup",
+    "Question",
+    "Listing",
+    "ListingHistory",
+    "PriceHistory",
+    "Contact",
+    "TreasureRedemption",
+    "TreasureDrop",
+    "Zipcode",
+    "Video",
+    "EbayNotification",
+    "EbayItem",
+    "EbayNotificationLog",
+    "verification",
+    "verificationToken"
+  ],
+  "note": "Data exported from production database for migration to new branch"
+}

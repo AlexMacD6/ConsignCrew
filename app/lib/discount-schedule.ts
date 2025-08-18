@@ -76,8 +76,9 @@ export function calculateCurrentPrice(
 }
 
 /**
- * Calculate the next drop price based on original price and discount schedule
- * This ensures consistent pricing: $1000 → $950 → $900 → $850 (not compound drops)
+ * Calculate the next drop price based on original list price and discount schedule
+ * This ensures consistent pricing: $120 → $108 → $96 → $90 (not compound drops)
+ * All percentages are based on the original list price, not retail price
  */
 export function calculateNextDropPriceFromOriginal(
   originalPrice: number,
@@ -95,7 +96,7 @@ export function calculateNextDropPriceFromOriginal(
   // Find the next drop interval
   for (let i = 0; i < discountSchedule.dropIntervals.length; i++) {
     if (discountSchedule.dropIntervals[i] > daysSinceCreation) {
-      // Use the percentage from the discount schedule (percentage of ORIGINAL price)
+      // Use the percentage from the discount schedule (percentage of ORIGINAL LIST PRICE)
       const nextDropPercentage = discountSchedule.dropPercentages[i];
       
       // If this percentage is 0, listing expires
@@ -103,7 +104,7 @@ export function calculateNextDropPriceFromOriginal(
         return null;
       }
       
-      // Calculate price as percentage of ORIGINAL price
+      // Calculate price as percentage of ORIGINAL LIST PRICE
       const nextPrice = Math.round(originalPrice * (nextDropPercentage / 100) * 100) / 100;
       
       // Don't go below reserve price
@@ -319,4 +320,120 @@ export function getNextDropPercentage(
   }
   
   return nextDropInfo.nextDropPercentage;
+} 
+
+/**
+ * Calculate the sale price for Facebook catalog integration
+ * This determines when to use Facebook's sale_price field vs the main price field
+ * Sale price is only active after the first discount interval (not at 100% original price)
+ */
+export function calculateFacebookSalePrice(
+  originalPrice: number,
+  createdAt: Date,
+  discountSchedule: DiscountSchedule,
+  reservePrice: number = 0
+): {
+  shouldUseSalePrice: boolean;
+  salePrice: number | null;
+  mainPrice: number;
+} {
+  const daysSinceCreation = calculateDaysSinceCreation(createdAt);
+  
+  // If listing has expired, keep at reserve price instead of 0%
+  if (daysSinceCreation >= discountSchedule.totalDuration) {
+    return {
+      shouldUseSalePrice: false,
+      salePrice: null,
+      mainPrice: Math.max(originalPrice, reservePrice) // Keep at reserve price, not 0%
+    };
+  }
+  
+  // Find the current drop index
+  const currentDropIndex = calculateCurrentDropIndex(createdAt, discountSchedule);
+  const currentPercentage = discountSchedule.dropPercentages[currentDropIndex];
+  
+  // If we're still at the first interval (100% original price), no sale price
+  if (currentDropIndex === 0) {
+    return {
+      shouldUseSalePrice: false,
+      salePrice: null,
+      mainPrice: originalPrice
+    };
+  }
+  
+  // Calculate the current discounted price
+  const currentDiscountedPrice = Math.round(originalPrice * (currentPercentage / 100) * 100) / 100;
+  
+  // Don't go below reserve price
+  const finalSalePrice = Math.max(currentDiscountedPrice, reservePrice);
+  
+  return {
+    shouldUseSalePrice: true,
+    salePrice: finalSalePrice,
+    mainPrice: originalPrice
+  };
+}
+
+/**
+ * Check if a listing should be considered "active" for Facebook sync
+ * This determines whether the listing should be pushed to Facebook catalog
+ */
+export function isListingActiveForFacebook(
+  createdAt: Date,
+  discountSchedule: DiscountSchedule,
+  currentStatus: string = 'active'
+): boolean {
+  // If listing status is not active, don't sync to Facebook
+  if (currentStatus !== 'active') {
+    return false;
+  }
+  
+  const daysSinceCreation = calculateDaysSinceCreation(createdAt);
+  
+  // If listing has expired (past total duration), don't sync to Facebook
+  if (daysSinceCreation >= discountSchedule.totalDuration) {
+    return false;
+  }
+  
+  // If listing is still within the active period, sync to Facebook
+  return true;
+}
+
+/**
+ * Get the effective price for Facebook sync (handles expiration gracefully)
+ * This ensures expired listings show reserve price instead of 0%
+ */
+export function getEffectiveFacebookPrice(
+  originalPrice: number,
+  createdAt: Date,
+  discountSchedule: DiscountSchedule,
+  reservePrice: number = 0
+): number {
+  const daysSinceCreation = calculateDaysSinceCreation(createdAt);
+  
+  // If listing has expired, return reserve price instead of 0%
+  if (daysSinceCreation >= discountSchedule.totalDuration) {
+    return Math.max(originalPrice, reservePrice); // Keep at reserve price, not 0%
+  }
+  
+  // If listing is still active, return original price
+  return originalPrice;
+}
+
+/**
+ * Check if a listing should be synced to Facebook based on its status and discount schedule
+ * This is a simpler helper function for individual listing checks
+ */
+export function shouldSyncListingToFacebook(
+  createdAt: Date,
+  discountSchedule: DiscountSchedule | null,
+  currentStatus: string = 'active'
+): boolean {
+  // If no discount schedule, don't sync
+  if (!discountSchedule) {
+    return false;
+  }
+  
+  // Use the existing function to check if active
+  return isListingActiveForFacebook(createdAt, discountSchedule, currentStatus);
 } 

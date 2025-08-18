@@ -8,8 +8,8 @@ export default function RefundPolicyPage() {
   return (
     <>
       <SEOHead
-        title="Refund Policy"
-        description="TreasureHub's refund and return policy for consignment services."
+        title="Refund & Return Policy"
+        description="TreasureHub's refund and return policy for consignment services and buyers."
         canonical="https://treasurehub.club/policies/refund-policy"
       />
 
@@ -21,7 +21,7 @@ export default function RefundPolicyPage() {
             className="text-center mb-12"
           >
             <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
-              Refund Policy
+              Refund & Return Policy
             </h1>
             <p className="text-xl text-gray-600">Last updated: July 13, 2025</p>
           </motion.div>
@@ -38,9 +38,10 @@ export default function RefundPolicyPage() {
               </h2>
               <p className="text-gray-700 leading-relaxed">
                 TreasureHub is committed to providing exceptional consignment
-                services. This refund policy outlines the circumstances under
-                which refunds may be provided and the process for requesting
-                them.
+                and buying services. This policy outlines the circumstances
+                under which refunds or returns may be provided, the process for
+                requesting them, and our commitment to a fair, transparent
+                experience for both buyers and sellers.
               </p>
             </section>
 
@@ -49,34 +50,75 @@ export default function RefundPolicyPage() {
                 2. Service Cancellation
               </h2>
               <p className="text-gray-700 leading-relaxed mb-4">
-                You may cancel our services at any time with written notice.
-                Upon cancellation:
+                You may cancel our consignment services at any time with written
+                notice. Upon cancellation:
               </p>
               <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
                 <li>
                   We will immediately stop all active listing and marketing
-                  efforts
+                  efforts.
                 </li>
                 <li>
                   Any unsold items will be returned to you within 7 business
-                  days
+                  days.
                 </li>
                 <li>
                   We will provide a final accounting of any sales and
-                  commissions
+                  commissions.
                 </li>
-                <li>No additional fees will be charged after cancellation</li>
+                <li>No additional fees will be charged after cancellation.</li>
               </ul>
             </section>
 
             <section>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                3. Refund Eligibility
+                3. Refund & Return Eligibility for Buyers
               </h2>
 
               <h3 className="text-xl font-semibold text-gray-800 mb-3">
-                3.1 Full Refund Scenarios
+                3.1 24-Hour Return Window
               </h3>
+              <p className="text-gray-700 leading-relaxed mb-4">
+                Buyers have 24 hours from the time of delivery or pickup to
+                request a return for any reason, provided the item is in the
+                same condition as received.
+              </p>
+              <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4 mb-6">
+                <li>
+                  Returns requested after 24 hours will only be accepted if
+                  covered under the "Not as Described Guarantee" (Section 3.2).
+                </li>
+                <li>
+                  Buyers are responsible for returning the item to TreasureHub
+                  in its original condition.
+                </li>
+              </ul>
+
+              <h3 className="text-xl font-semibold text-gray-800 mb-3">
+                3.2 Not as Described Guarantee
+              </h3>
+              <p className="text-gray-700 leading-relaxed mb-4">
+                If an item arrives damaged, inoperable, missing components, or
+                otherwise materially different from the listing description and
+                photos, the buyer is eligible for a full refund, including any
+                applicable delivery fees.
+              </p>
+              <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
+                <li>
+                  Buyers must submit photo or video evidence within 24 hours of
+                  delivery.
+                </li>
+                <li>
+                  If approved, TreasureHub will arrange pickup of the item at no
+                  additional cost to the buyer.
+                </li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                4. Refund Eligibility for Consignment Services
+              </h2>
               <p className="text-gray-700 leading-relaxed mb-4">
                 Full refunds may be provided in the following circumstances:
               </p>
@@ -101,10 +143,6 @@ export default function RefundPolicyPage() {
                   unforeseeable events
                 </li>
               </ul>
-
-              <h3 className="text-xl font-semibold text-gray-800 mb-3">
-                3.2 Partial Refund Scenarios
-              </h3>
               <p className="text-gray-700 leading-relaxed mb-4">
                 Partial refunds may be provided in the following circumstances:
               </p>
@@ -126,99 +164,121 @@ export default function RefundPolicyPage() {
 
             <section>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                4. Non-Refundable Items
+                5. Non-Refundable Items
               </h2>
               <p className="text-gray-700 leading-relaxed mb-4">
                 The following are generally non-refundable:
               </p>
               <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
-                <li>Commission fees for items that have already sold</li>
-                <li>Costs incurred for item transportation and handling</li>
+                <li>
+                  Commission fees for items that have already sold and cleared
+                  the 24-hour return period.
+                </li>
+                <li>Costs incurred for item transportation and handling.</li>
                 <li>
                   Professional photography and listing creation services already
-                  completed
+                  completed.
                 </li>
                 <li>
                   Authentication and quality assessment services already
-                  performed
+                  performed.
                 </li>
-                <li>Marketing and advertising costs already incurred</li>
+                <li>Marketing and advertising costs already incurred.</li>
               </ul>
             </section>
 
             <section>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                5. Refund Process
+                6. Refund & Return Process
               </h2>
 
               <h3 className="text-xl font-semibold text-gray-800 mb-3">
-                5.1 Requesting a Refund
+                6.1 For Buyers
               </h3>
               <p className="text-gray-700 leading-relaxed mb-4">
-                To request a refund:
+                To request a return or refund:
               </p>
               <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4 mb-6">
                 <li>
                   Contact us at support@treasurehub.club or call (713) 899-3656
+                  within 24 hours of delivery.
+                </li>
+                <li>Provide your order details and reason for the return.</li>
+                <li>
+                  Include photos or video evidence if claiming under the Not as
+                  Described Guarantee.
                 </li>
                 <li>
-                  Provide your account information and the reason for the refund
-                  request
+                  Allow 3–5 business days for review and instructions on next
+                  steps.
                 </li>
-                <li>Include any relevant documentation or evidence</li>
-                <li>Allow 3-5 business days for review and response</li>
               </ul>
 
               <h3 className="text-xl font-semibold text-gray-800 mb-3">
-                5.2 Refund Processing
+                6.2 For Consignment Clients
               </h3>
               <p className="text-gray-700 leading-relaxed mb-4">
-                Once approved, refunds will be processed as follows:
+                To request a service-related refund:
               </p>
               <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
-                <li>Refunds will be issued within 7-10 business days</li>
+                <li>
+                  Follow the same contact process as above, citing your
+                  consignment account details.
+                </li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                7. Refund Processing
+              </h2>
+              <p className="text-gray-700 leading-relaxed mb-4">
+                Once approved:
+              </p>
+              <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
+                <li>Refunds will be issued within 7–10 business days.</li>
                 <li>
                   Refunds will be made to the original payment method when
-                  possible
+                  possible.
                 </li>
                 <li>
                   You will receive confirmation via email when the refund is
-                  processed
+                  processed.
                 </li>
                 <li>
                   Bank processing times may vary depending on your financial
-                  institution
+                  institution.
                 </li>
               </ul>
             </section>
 
             <section>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                6. Dispute Resolution
+                8. Dispute Resolution
               </h2>
               <p className="text-gray-700 leading-relaxed mb-4">
-                If you disagree with our refund decision:
+                If you disagree with our decision:
               </p>
               <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
-                <li>You may request a review by our management team</li>
+                <li>You may request a review by our management team.</li>
                 <li>
                   Provide additional documentation or evidence to support your
-                  case
+                  case.
                 </li>
                 <li>
                   We will conduct a thorough review and provide a final decision
-                  within 10 business days
+                  within 10 business days.
                 </li>
                 <li>
                   If resolution cannot be reached, disputes will be settled
-                  through binding arbitration
+                  through binding arbitration.
                 </li>
               </ul>
             </section>
 
             <section>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                7. Item Returns
+                9. Item Returns for Consignment Clients
               </h2>
               <p className="text-gray-700 leading-relaxed mb-4">
                 For unsold items or items removed from consignment:
@@ -226,23 +286,23 @@ export default function RefundPolicyPage() {
               <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
                 <li>
                   Items will be returned within 7 business days of service
-                  termination
+                  termination.
                 </li>
                 <li>
                   You are responsible for pickup or shipping costs for returned
-                  items
+                  items.
                 </li>
                 <li>
                   Items must be picked up within 30 days or may be subject to
-                  storage fees
+                  storage fees.
                 </li>
-                <li>We will provide a detailed inventory of returned items</li>
+                <li>We will provide a detailed inventory of returned items.</li>
               </ul>
             </section>
 
             <section>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                8. Contact Information
+                10. Contact Information
               </h2>
               <p className="text-gray-700 leading-relaxed">
                 For questions about this refund policy or to request a refund,

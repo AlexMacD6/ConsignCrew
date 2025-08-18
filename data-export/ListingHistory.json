@@ -1,0 +1,20 @@
+[
+  {
+    "id": "cmebtxaw10006l504irhuxnzi",
+    "listingId": "cmebtxaqs0003l504thvhrmxi",
+    "eventType": "created",
+    "eventTitle": "Listing Created",
+    "description": "Listing \"IKEA Black Dresser With Drawer Crack\" was created and is now available for purchase.",
+    "metadata": null,
+    "createdAt": "2025-08-14T20:05:53.377Z"
+  },
+  {
+    "id": "cmeby4oui0008yp8on0rzjjdj",
+    "listingId": "cmeby4o8t0005yp8o30ih5qp0",
+    "eventType": "created",
+    "eventTitle": "Listing Created",
+    "description": "Listing \"IKEA Black Dresser with Minor Drawer Imperfection\" was created and is now available for purchase.",
+    "metadata": null,
+    "createdAt": "2025-08-14T22:03:36.522Z"
+  }
+]

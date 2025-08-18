@@ -18,8 +18,8 @@ interface PriceDropCounterProps {
   listingId: string;
   createdAt?: string; // Add creation date for client-side calculation
   discountSchedule?: any; // Add discount schedule
-  currentPrice?: number; // Current listing price for calculating actual drop amount
-  originalPrice?: number; // Original listing price
+  currentPrice?: number; // Current sales price (calculated from discount schedule)
+  originalPrice?: number; // Original list price (what seller originally asked for)
   reservePrice?: number; // Reserve price
 }
 
@@ -99,9 +99,51 @@ export default function PriceDropCounter({
     },
   };
 
+  // Calculate current sales price based on discount schedule and listing duration
+  const calculateCurrentSalesPrice = useCallback(() => {
+    if (!createdAt || !discountSchedule || !originalPrice) return null;
+
+    const scheduleType = discountSchedule?.type || "Classic-60";
+    const schedule = DISCOUNT_SCHEDULES[scheduleType];
+    if (!schedule) return null;
+
+    const now = new Date();
+    const created = new Date(createdAt);
+    const daysSinceCreation = Math.floor(
+      (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    // If listing has expired, return reserve price or 0
+    if (daysSinceCreation >= schedule.totalDuration) {
+      return reservePrice || 0;
+    }
+
+    // Find the current applicable discount percentage
+    let currentPercentage = 100; // Start at 100% (full price)
+
+    for (let i = 0; i < schedule.dropIntervals.length; i++) {
+      if (daysSinceCreation >= schedule.dropIntervals[i]) {
+        currentPercentage = schedule.dropPercentages[i];
+      } else {
+        break; // Found the current applicable percentage
+      }
+    }
+
+    // Calculate current sales price based on original list price and current percentage
+    const currentSalesPrice =
+      Math.round(originalPrice * (currentPercentage / 100) * 100) / 100;
+
+    // Don't go below reserve price
+    if (reservePrice && currentSalesPrice < reservePrice) {
+      return reservePrice;
+    }
+
+    return currentSalesPrice;
+  }, [createdAt, discountSchedule, originalPrice, reservePrice]);
+
   // Calculate next drop info client-side
   const calculateClientSideCountdown = useCallback(() => {
-    if (!createdAt || !discountSchedule) return null;
+    if (!createdAt || !discountSchedule || !originalPrice) return null;
 
     const scheduleType = discountSchedule?.type || "Classic-60";
     const schedule = DISCOUNT_SCHEDULES[scheduleType];
@@ -154,7 +196,7 @@ export default function PriceDropCounter({
     }
 
     return null;
-  }, [createdAt, discountSchedule]);
+  }, [createdAt, discountSchedule, originalPrice]);
 
   // Parse time string and convert to countdown (fallback for API mode)
   const parseTimeString = (timeString: string): number => {
@@ -345,9 +387,10 @@ export default function PriceDropCounter({
       return null;
     }
 
-    // Calculate next drop price for display
+    // Calculate current sales price and next drop price
+    const currentSalesPrice = calculateCurrentSalesPrice();
     const getNextDropPrice = () => {
-      if (!createdAt || !discountSchedule) return null;
+      if (!createdAt || !discountSchedule || !originalPrice) return null;
 
       const scheduleType = discountSchedule?.type || "Classic-60";
       const schedule = DISCOUNT_SCHEDULES[scheduleType];
@@ -364,28 +407,16 @@ export default function PriceDropCounter({
         if (schedule.dropIntervals[i] > daysSinceCreation) {
           const nextDropPercentage = schedule.dropPercentages[i];
 
-          // Calculate actual dollar amount based on ORIGINAL price and schedule percentage
-          if (originalPrice) {
-            const nextDropPrice =
-              Math.round(originalPrice * (nextDropPercentage / 100) * 100) /
-              100;
-            // Don't go below reserve price
-            const finalPrice = reservePrice
-              ? Math.max(nextDropPrice, reservePrice)
-              : nextDropPrice;
-            return `$${finalPrice.toFixed(2)}`;
-          } else if (currentPrice) {
-            // Fallback: estimate based on current price (assume it's the original price)
-            const nextDropPrice =
-              Math.round(currentPrice * (nextDropPercentage / 100) * 100) / 100;
-            const finalPrice = reservePrice
-              ? Math.max(nextDropPrice, reservePrice)
-              : nextDropPrice;
-            return `$${finalPrice.toFixed(2)}`;
-          } else {
-            // Fallback to percentage if no price data available
-            return `${nextDropPercentage}% of original`;
-          }
+          // Calculate actual dollar amount based on ORIGINAL LIST PRICE and schedule percentage
+          const nextDropDollarAmount =
+            Math.round(originalPrice * (nextDropPercentage / 100) * 100) / 100;
+
+          // Don't go below reserve price
+          const finalPrice = reservePrice
+            ? Math.max(nextDropDollarAmount, reservePrice)
+            : nextDropDollarAmount;
+
+          return finalPrice;
         }
       }
       return null;
@@ -412,17 +443,39 @@ export default function PriceDropCounter({
             </div>
           </div>
           <p className="text-sm text-gray-600 mt-1">
-            {nextDropPrice ? (
+            {nextDropPrice && currentSalesPrice ? (
               <>
-                Price will drop to{" "}
-                <span className="font-medium text-red-600">
-                  {nextDropPrice}
+                Next scheduled price:{" "}
+                <span className="font-medium text-blue-600">
+                  ${nextDropPrice.toFixed(2)}
+                </span>
+                <span className="text-gray-500 ml-1">
+                  (current sales price: ${currentSalesPrice.toFixed(2)})
                 </span>
               </>
             ) : (
               "Next price drop scheduled"
             )}
           </p>
+          {currentSalesPrice &&
+          originalPrice &&
+          currentSalesPrice < originalPrice ? (
+            <p className="text-xs text-gray-500 mt-1">
+              <span className="line-through">
+                List price: ${originalPrice.toFixed(2)}
+              </span>{" "}
+              |
+              <span className="font-medium text-green-600">
+                {" "}
+                Current sales price: ${currentSalesPrice.toFixed(2)}
+              </span>
+            </p>
+          ) : currentSalesPrice && originalPrice ? (
+            <p className="text-xs text-gray-500 mt-1">
+              List price: ${originalPrice.toFixed(2)} | Current sales price: $
+              {currentSalesPrice.toFixed(2)}
+            </p>
+          ) : null}
         </div>
       </div>
     );
@@ -450,10 +503,31 @@ export default function PriceDropCounter({
           </div>
         </div>
         <p className="text-sm text-gray-600 mt-1">
-          Price will drop to{" "}
-          <span className="font-medium text-red-600">
-            ${priceDropInfo.nextDropPrice?.toFixed(2)}
-          </span>
+          {priceDropInfo.nextDropPrice && priceDropInfo.currentPrice ? (
+            priceDropInfo.nextDropPrice < priceDropInfo.currentPrice ? (
+              <>
+                Price will drop to{" "}
+                <span className="font-medium text-red-600">
+                  ${priceDropInfo.nextDropPrice.toFixed(2)}
+                </span>
+                <span className="text-gray-500 ml-1">
+                  (from ${priceDropInfo.currentPrice.toFixed(2)})
+                </span>
+              </>
+            ) : (
+              <>
+                Next scheduled price:{" "}
+                <span className="font-medium text-blue-600">
+                  ${priceDropInfo.nextDropPrice.toFixed(2)}
+                </span>
+                <span className="text-gray-500 ml-1">
+                  (current: ${priceDropInfo.currentPrice.toFixed(2)})
+                </span>
+              </>
+            )
+          ) : (
+            "Next price drop scheduled"
+          )}
         </p>
       </div>
     </div>
