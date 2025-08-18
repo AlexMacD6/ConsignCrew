@@ -1,0 +1,335 @@
+[
+  {
+    "id": 5,
+    "category": "Pricing & Offers",
+    "triggerPhrases": [
+      "Why is this so expensive?",
+      "Is this the lowest price?"
+    ],
+    "response": "Our pricing reflects market value and seller expectations. You can always save the item to watch for markdowns.",
+    "tags": [
+      "pricing"
+    ],
+    "autoResponse": true,
+    "escalateIfUnclear": false,
+    "createdAt": "2025-07-25T22:57:04.791Z",
+    "updatedAt": "2025-07-25T22:57:04.791Z"
+  },
+  {
+    "id": 8,
+    "category": "Item Details",
+    "triggerPhrases": [
+      "Does this work?",
+      "Is it functional?",
+      "Is it tested?"
+    ],
+    "response": "Items are listed as functional unless otherwise noted. Electronics are sold as-is unless specified.",
+    "tags": [
+      "functionality",
+      "electronics"
+    ],
+    "autoResponse": true,
+    "escalateIfUnclear": false,
+    "createdAt": "2025-07-25T22:57:04.791Z",
+    "updatedAt": "2025-07-25T22:57:04.791Z"
+  },
+  {
+    "id": 11,
+    "category": "Availability",
+    "triggerPhrases": [
+      "Can I put it on hold?",
+      "Will you reserve this for me?"
+    ],
+    "response": "To be fair to all buyers, we don't offer holds. Checkout guarantees your item.",
+    "tags": [
+      "availability",
+      "hold"
+    ],
+    "autoResponse": true,
+    "escalateIfUnclear": false,
+    "createdAt": "2025-07-25T22:57:04.791Z",
+    "updatedAt": "2025-07-25T22:57:04.791Z"
+  },
+  {
+    "id": 12,
+    "category": "Returns & Refunds",
+    "triggerPhrases": [
+      "What if I don't like it?",
+      "Can I return it?",
+      "Do you offer refunds?"
+    ],
+    "response": "All sales are final, but let us know if something isn't as described and we'll make it right.",
+    "tags": [
+      "returns",
+      "refunds"
+    ],
+    "autoResponse": true,
+    "escalateIfUnclear": true,
+    "createdAt": "2025-07-25T22:57:04.791Z",
+    "updatedAt": "2025-07-25T22:57:04.791Z"
+  },
+  {
+    "id": 13,
+    "category": "Buyer Support",
+    "triggerPhrases": [
+      "I have a question",
+      "Can I talk to the seller?",
+      "How do I ask about this item?"
+    ],
+    "response": "We manage all communication to protect sellers. Ask us anything and we'll get the answer for you.",
+    "tags": [
+      "buyer",
+      "questions"
+    ],
+    "autoResponse": true,
+    "escalateIfUnclear": false,
+    "createdAt": "2025-07-25T22:57:04.791Z",
+    "updatedAt": "2025-07-25T22:57:04.791Z"
+  },
+  {
+    "id": 14,
+    "category": "Payment & Checkout",
+    "triggerPhrases": [
+      "What payment methods do you accept?",
+      "Can I pay with Venmo or cash?"
+    ],
+    "response": "We accept all major cards securely online. No cash or off-platform payments, please.",
+    "tags": [
+      "payment",
+      "checkout"
+    ],
+    "autoResponse": true,
+    "escalateIfUnclear": false,
+    "createdAt": "2025-07-25T22:57:04.791Z",
+    "updatedAt": "2025-07-25T22:57:04.791Z"
+  },
+  {
+    "id": 16,
+    "category": "Delivery Updates",
+    "triggerPhrases": [
+      "Where's my item?",
+      "Can I track my delivery?",
+      "Is the driver on the way?"
+    ],
+    "response": "Track your item in real-time using your ConsignCrew tracking link. We'll update you every step of the way.",
+    "tags": [
+      "delivery",
+      "tracking"
+    ],
+    "autoResponse": true,
+    "escalateIfUnclear": false,
+    "createdAt": "2025-07-25T22:57:04.791Z",
+    "updatedAt": "2025-07-25T22:57:04.791Z"
+  },
+  {
+    "id": 17,
+    "category": "General",
+    "triggerPhrases": [
+      "What is ConsignCrew?",
+      "How does this work?",
+      "What do you do?"
+    ],
+    "response": "ConsignCrew connects sellers with buyers through a trusted, local resale platform. We handle the hard parts.",
+    "tags": [
+      "about",
+      "platform"
+    ],
+    "autoResponse": true,
+    "escalateIfUnclear": false,
+    "createdAt": "2025-07-25T22:57:04.791Z",
+    "updatedAt": "2025-07-25T22:57:04.791Z"
+  },
+  {
+    "id": 19,
+    "category": "Trust & Safety",
+    "triggerPhrases": [
+      "Is this safe?",
+      "How do I know it's legit?",
+      "Can I trust this?"
+    ],
+    "response": "All sellers are verified and items are reviewed by our team. Buy with confidence.",
+    "tags": [
+      "trust",
+      "safe"
+    ],
+    "autoResponse": true,
+    "escalateIfUnclear": false,
+    "createdAt": "2025-07-25T22:57:04.791Z",
+    "updatedAt": "2025-07-25T22:57:04.791Z"
+  },
+  {
+    "id": 6,
+    "category": "Item Details",
+    "triggerPhrases": [
+      "What are the dimensions?",
+      "How big is it?",
+      "What size is this?"
+    ],
+    "response": "Dimensions are typically listed in the product description. If not, please specify the dimension you are requesting and we'll reach out to verify.",
+    "tags": [
+      "dimensions",
+      "size"
+    ],
+    "autoResponse": true,
+    "escalateIfUnclear": true,
+    "createdAt": "2025-07-25T22:57:04.791Z",
+    "updatedAt": "2025-07-25T22:57:04.791Z"
+  },
+  {
+    "id": 4,
+    "category": "Pricing & Offers",
+    "triggerPhrases": [
+      "Can I offer less?",
+      "Is the price negotiable?",
+      "Will you take less?"
+    ],
+    "response": "All ConsignCrew listings are fixed-price to protect both buyers and sellers. No haggling necessary! There is a prescribed discount schedule that is time based, but don't wait too long since it's first-come first-serve!",
+    "tags": [
+      "pricing",
+      "offers"
+    ],
+    "autoResponse": true,
+    "escalateIfUnclear": false,
+    "createdAt": "2025-07-25T22:57:04.791Z",
+    "updatedAt": "2025-07-25T22:57:04.791Z"
+  },
+  {
+    "id": 1,
+    "category": "Pickup & Delivery",
+    "triggerPhrases": [
+      "Do you deliver?",
+      "Can I get it delivered?",
+      "Is delivery available?"
+    ],
+    "response": "Yes, local delivery is apart of the ConsignCrew service, once you purchase the item we will deliver it to your door in your selected timeslot.",
+    "tags": [
+      "delivery",
+      "logistics"
+    ],
+    "autoResponse": true,
+    "escalateIfUnclear": false,
+    "createdAt": "2025-07-25T22:57:04.791Z",
+    "updatedAt": "2025-07-25T22:57:04.791Z"
+  },
+  {
+    "id": 10,
+    "category": "Availability",
+    "triggerPhrases": [
+      "Is this still available?",
+      "Can I buy it now?",
+      "Is this item taken?"
+    ],
+    "response": "If the listing is live, the item is still available! When someone clicks \"Buy It Now\", their money is automatically held in escrow until the buyer accepts delivery when the funds are transferred instantly.",
+    "tags": [
+      "availability"
+    ],
+    "autoResponse": true,
+    "escalateIfUnclear": false,
+    "createdAt": "2025-07-25T22:57:04.791Z",
+    "updatedAt": "2025-07-25T22:57:04.791Z"
+  },
+  {
+    "id": 3,
+    "category": "Pickup & Delivery",
+    "triggerPhrases": [
+      "Can I come today?",
+      "Do you offer same day?"
+    ],
+    "response": "We offer delivery in most cases within two business days of buying the item. Once purchased, the ConsignCrew team will pick up the item from the seller, quality control the listing, and then deliver it to you. You will see real-time updates on your profile for all of your purchases.",
+    "tags": [
+      "delivery",
+      "same-day"
+    ],
+    "autoResponse": true,
+    "escalateIfUnclear": false,
+    "createdAt": "2025-07-25T22:57:04.791Z",
+    "updatedAt": "2025-07-25T22:57:04.791Z"
+  },
+  {
+    "id": 7,
+    "category": "Item Details",
+    "triggerPhrases": [
+      "Is this damaged?",
+      "Any scratches?",
+      "What condition is it in?"
+    ],
+    "response": "Each item's condition is put on the listing and then visually reviewed for condition prior to the buyer accepting delivery. Funds are not transferred until the buyer accepts delivery of the item in the expected condition.",
+    "tags": [
+      "condition"
+    ],
+    "autoResponse": true,
+    "escalateIfUnclear": false,
+    "createdAt": "2025-07-25T22:57:04.791Z",
+    "updatedAt": "2025-07-25T22:57:04.791Z"
+  },
+  {
+    "id": 2,
+    "category": "Pickup & Delivery",
+    "triggerPhrases": [
+      "Can I pick this up?",
+      "Where do I go to pick up?",
+      "How do I get the item?"
+    ],
+    "response": "After checkout, we'll send you a link to schedule a delivery time. Our ConsignCrew team delivers straight to your door.",
+    "tags": [
+      "pickup",
+      "logistics"
+    ],
+    "autoResponse": true,
+    "escalateIfUnclear": false,
+    "createdAt": "2025-07-25T22:57:04.791Z",
+    "updatedAt": "2025-07-25T22:57:04.791Z"
+  },
+  {
+    "id": 9,
+    "category": "Item Details",
+    "triggerPhrases": [
+      "Can I see more pictures?",
+      "Do you have other angles?"
+    ],
+    "response": "What you see is what's currently available. We can request more specific photos from the seller if needed.",
+    "tags": [
+      "photos"
+    ],
+    "autoResponse": true,
+    "escalateIfUnclear": true,
+    "createdAt": "2025-07-25T22:57:04.791Z",
+    "updatedAt": "2025-07-25T22:57:04.791Z"
+  },
+  {
+    "id": 15,
+    "category": "Payment & Checkout",
+    "triggerPhrases": [
+      "How do I pay?",
+      "Where do I checkout?",
+      "I want to buy it now"
+    ],
+    "response": "Click \"Buy It Now\" on the listing page to complete your purchase. It's fast and secure.",
+    "tags": [
+      "payment",
+      "checkout"
+    ],
+    "autoResponse": true,
+    "escalateIfUnclear": false,
+    "createdAt": "2025-07-25T22:57:04.791Z",
+    "updatedAt": "2025-07-25T22:57:04.791Z"
+  },
+  {
+    "id": 18,
+    "category": "General",
+    "triggerPhrases": [
+      "How do I sell something?",
+      "Can I list my own item?",
+      "Do you take consignments?"
+    ],
+    "response": "Yes! Head to consigncrew.com/list-item to get started. We handle everything for you.",
+    "tags": [
+      "seller",
+      "intake"
+    ],
+    "autoResponse": true,
+    "escalateIfUnclear": false,
+    "createdAt": "2025-07-25T22:57:04.791Z",
+    "updatedAt": "2025-07-25T22:57:04.791Z"
+  }
+]

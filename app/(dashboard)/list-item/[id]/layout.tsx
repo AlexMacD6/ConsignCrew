@@ -3,6 +3,8 @@ import {
   generateProductMetadata,
   ProductForMeta,
 } from "../../../components/ProductMetaTags";
+import { getDisplayPrice } from "../../../lib/price-calculator";
+import { getStandardizedCondition } from "../../../lib/condition-utils";
 
 // Generate dynamic metadata for product pages
 export async function generateMetadata({
@@ -40,7 +42,7 @@ export async function generateMetadata({
       list_price: data.listing.price,
       status: data.listing.status,
       brand: data.listing.brand,
-      condition: data.listing.condition,
+      condition: getStandardizedCondition(data.listing),
       all_images: [
         { src: data.listing.photos.hero, type: "hero", label: null },
         {

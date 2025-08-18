@@ -8,12 +8,12 @@ datasource db {
 }
 
 model user {
-  id              String       @id @default(cuid())
-  email           String       @unique
+  id              String          @id @default(cuid())
+  email           String          @unique
   mobilePhone     String?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  emailVerified   Boolean      @default(false)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  emailVerified   Boolean         @default(false)
   name            String
   addressLine1    String?
   addressLine2    String?
@@ -22,16 +22,17 @@ model user {
   state           String?
   zipCode         String?
   country         String?
-  invitationsSent Invitation[] @relation("InvitationsSent")
+  invitationsSent Invitation[]    @relation("InvitationsSent")
   listings        Listing[]
   members         Member[]
-  answers         Question[]   @relation("QuestionAnsweredBy")
-  approvals       Question[]   @relation("QuestionApprovedBy")
-  questions       Question[]   @relation("QuestionCreatedBy")
+  answers         Question[]      @relation("QuestionAnsweredBy")
+  approvals       Question[]      @relation("QuestionApprovedBy")
+  questions       Question[]      @relation("QuestionCreatedBy")
   teamMemberships TeamMember[]
   videos          Video[]
   accounts        account[]
   sessions        session[]
+  inventoryLists  InventoryList[]
 
   @@index([email])
   @@index([zipCode])
@@ -249,6 +250,8 @@ model Listing {
   history                ListingHistory[]
   priceHistory           PriceHistory[]
   videos                 Video[]          @relation("ListingToVideo")
+  inventoryLists         InventoryList[]
+  inventoryItems         InventoryItem[]
 
   @@index([userId])
   @@index([status])
@@ -480,4 +483,48 @@ model EbayNotificationLog {
   @@index([level])
   @@index([createdAt])
   @@index([ebayNotificationId])
+}
+
+model InventoryList {
+  id                  String          @id @default(cuid())
+  name                String
+  createdBy           String?
+  winningBidAmount    Float? // New field for winning bid amount
+  serviceCharges      Float? // New field for service charges
+  shippingCharges     Float? // New field for shipping charges
+  totalPurchasePrice  Float? // Calculated field for total purchase price
+  totalExtRetailValue Float? // Calculated field for total extended retail value
+  msrpPercentage      Float? // Calculated field for % of MSRP
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  user                user?           @relation(fields: [createdBy], references: [id])
+  items               InventoryItem[]
+  listings            Listing[]
+
+  @@index([createdBy])
+}
+
+model InventoryItem {
+  id            String        @id @default(cuid())
+  listId        String
+  list          InventoryList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  lotNumber     String?
+  itemNumber    String?
+  deptCode      String?
+  department    String?
+  description   String?
+  quantity      Int?
+  unitRetail    Float?
+  extRetail     Float? // Extended retail value (unitRetail * quantity)
+  vendor        String?
+  categoryCode  String?
+  category      String?
+  purchasePrice Float? // Calculated field for individual item purchase price
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  listings      Listing[]
+
+  @@unique([listId, itemNumber])
+  @@index([listId])
+  @@index([itemNumber])
 }

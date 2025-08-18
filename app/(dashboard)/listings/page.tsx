@@ -31,6 +31,12 @@ import {
   Sparkles,
 } from "lucide-react";
 import { getNeighborhoodName } from "../../lib/zipcodes";
+import { getDisplayPrice } from "../../lib/price-calculator";
+import {
+  getStandardizedCondition,
+  getConditionColor,
+  isNewCondition,
+} from "../../lib/condition-utils";
 import QuestionsDisplay from "../../components/QuestionsDisplay";
 import ImageCarousel from "../../components/ImageCarousel";
 import CustomQRCode from "../../components/CustomQRCode";
@@ -371,21 +377,6 @@ export default function ListingsPage() {
 
   // Use Facebook Marketplace categories for consistent filtering
   const categories = ["All", ...getFacebookCategories()];
-
-  const getConditionColor = (condition: string) => {
-    switch (condition) {
-      case "NEW":
-        return "bg-blue-100 text-blue-800";
-      case "EXCELLENT":
-        return "bg-green-100 text-green-800";
-      case "GOOD":
-        return "bg-yellow-100 text-yellow-800";
-      case "FAIR":
-        return "bg-orange-100 text-orange-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
 
   const getStatusBadge = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -753,16 +744,40 @@ export default function ListingsPage() {
                     {listing.title}
                   </h3>
 
-                  {/* List Price */}
+                  {/* Display Price (Sales Price or List Price) */}
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-lg font-bold text-gray-900">
-                      ${listing.list_price.toFixed(2)}
-                    </span>
-                    {listing.list_price <= listing.reserve_price && (
-                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded font-medium">
-                        Reserve Met
-                      </span>
-                    )}
+                    {(() => {
+                      const displayPrice = getDisplayPrice(listing);
+
+                      if (displayPrice.isDiscounted) {
+                        return (
+                          <>
+                            <span className="text-lg font-bold text-green-600">
+                              ${displayPrice.price.toFixed(2)}
+                            </span>
+                            <span className="text-sm text-gray-500 line-through">
+                              ${displayPrice.originalPrice?.toFixed(2)}
+                            </span>
+                            <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded font-medium">
+                              Sale
+                            </span>
+                          </>
+                        );
+                      } else {
+                        return (
+                          <>
+                            <span className="text-lg font-bold text-gray-900">
+                              ${displayPrice.price.toFixed(2)}
+                            </span>
+                            {listing.list_price <= listing.reserve_price && (
+                              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded font-medium">
+                                Reserve Met
+                              </span>
+                            )}
+                          </>
+                        );
+                      }
+                    })()}
                   </div>
 
                   {/* Treasure Badge or Estimated Retail Price */}
@@ -776,7 +791,7 @@ export default function ListingsPage() {
                     </div>
                   ) : (
                     listing.estimated_retail_price &&
-                    listing.condition === "New" && (
+                    isNewCondition(getStandardizedCondition(listing)) && (
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-sm text-gray-500 line-through">
                           ${listing.estimated_retail_price.toFixed(2)}
@@ -814,10 +829,10 @@ export default function ListingsPage() {
                   <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
                     <span
                       className={`px-2 py-1 rounded ${getConditionColor(
-                        listing.condition
+                        getStandardizedCondition(listing)
                       )}`}
                     >
-                      {listing.condition}
+                      {getStandardizedCondition(listing)}
                     </span>
                     <div className="flex items-center gap-1">
                       <MapPin className="h-3 w-3" />
@@ -1061,7 +1076,9 @@ export default function ListingsPage() {
                     )}
                     {/* Estimated Retail Price - Only show if available and condition is New */}
                     {selectedListing.estimated_retail_price &&
-                      selectedListing.condition === "New" && (
+                      isNewCondition(
+                        getStandardizedCondition(selectedListing)
+                      ) && (
                         <div className="mt-3 flex items-center gap-3">
                           <span className="text-lg text-gray-500 line-through">
                             ${selectedListing.estimated_retail_price.toFixed(2)}
@@ -1148,10 +1165,10 @@ export default function ListingsPage() {
                           </span>
                           <span
                             className={`ml-2 px-2 py-1 rounded text-xs ${getConditionColor(
-                              selectedListing.condition
+                              getStandardizedCondition(selectedListing)
                             )}`}
                           >
-                            {selectedListing.condition}
+                            {getStandardizedCondition(selectedListing)}
                           </span>
                         </div>
                       </div>

@@ -37,6 +37,7 @@ import { authClient } from "../lib/auth-client";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import AddressModal from "../components/AddressModal";
+import { getDisplayPrice } from "../lib/price-calculator";
 
 // Remove server-side imports - we'll use API endpoints instead
 
@@ -92,10 +93,10 @@ const mockUsers = [
 ];
 
 export default function ProfilePage() {
-  const { data: session, isLoading: sessionLoading } = authClient.useSession();
-  const [tab, setTab] = useState<"overview" | "listings" | "purchases">(
-    "overview"
-  );
+  const { data: session } = authClient.useSession();
+  const [tab, setTab] = useState<
+    "overview" | "listings" | "purchases" | "settings"
+  >("overview");
   const [adminTab, setAdminTab] = useState("users");
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -145,7 +146,7 @@ export default function ProfilePage() {
   useEffect(() => {
     async function fetchUser() {
       // Wait for session to load
-      if (sessionLoading) {
+      if (!session) {
         return;
       }
 
@@ -224,7 +225,7 @@ export default function ProfilePage() {
       }
     }
     fetchUser();
-  }, [router, session, sessionLoading, editMode]);
+  }, [router, session, editMode]);
 
   // Separate useEffect to initialize form data when user data changes
   useEffect(() => {
@@ -984,7 +985,23 @@ export default function ProfilePage() {
                           {listing.title}
                         </h3>
                         <p className="text-2xl font-bold text-[#D4AF3D] mb-2">
-                          ${listing.price}
+                          {(() => {
+                            const displayPrice = getDisplayPrice(listing);
+                            if (displayPrice.isDiscounted) {
+                              return (
+                                <>
+                                  <span className="text-green-600">
+                                    ${displayPrice.price.toFixed(2)}
+                                  </span>
+                                  <span className="text-sm text-gray-500 line-through ml-2">
+                                    ${displayPrice.originalPrice?.toFixed(2)}
+                                  </span>
+                                </>
+                              );
+                            } else {
+                              return `$${displayPrice.price.toFixed(2)}`;
+                            }
+                          })()}
                         </p>
                         <p className="text-sm text-gray-500 mb-3 line-clamp-2">
                           {listing.description}
@@ -1250,7 +1267,7 @@ export default function ProfilePage() {
           )}
 
           <div className="flex justify-end mt-6">
-            {editMode && tab !== "admin" ? (
+            {editMode ? (
               <button className="btn btn-primary btn-md" onClick={handleUpdate}>
                 Update Profile
               </button>

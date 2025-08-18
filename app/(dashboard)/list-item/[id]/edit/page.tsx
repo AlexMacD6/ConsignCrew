@@ -37,6 +37,8 @@ import {
   type Gender,
   type AgeGroup,
 } from "../../../../lib/product-specifications";
+import { getDisplayPrice } from "../../../../lib/price-calculator";
+import { API_ENDPOINTS } from "../../../../lib/api";
 // ZIP code validation now handled via API endpoint
 
 const discountSchedules = ["Turbo-30", "Classic-60"] as const;
@@ -251,6 +253,9 @@ export default function EditListingPage() {
   const [discountSchedule, setDiscountSchedule] = useState<
     (typeof discountSchedules)[number] | ""
   >("");
+  const [calculatedSalesPrice, setCalculatedSalesPrice] = useState<
+    number | null
+  >(null);
 
   // Facebook Shop Integration Fields
   const [facebookShopEnabled, setFacebookShopEnabled] = useState(true);
@@ -260,8 +265,6 @@ export default function EditListingPage() {
 
   // Product Specifications (Facebook Shop Fields)
   const [quantity, setQuantity] = useState("1");
-  const [salePrice, setSalePrice] = useState("");
-  const [salePriceEffectiveDate, setSalePriceEffectiveDate] = useState("");
   const [itemGroupId, setItemGroupId] = useState("");
   const [gender, setGender] = useState<Gender | "">("");
   const [color, setColor] = useState("");
@@ -272,6 +275,14 @@ export default function EditListingPage() {
   const [style, setStyle] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
+
+  // Inventory linking state
+  const [inventoryLists, setInventoryLists] = useState<any[]>([]);
+  const [selectedInventoryList, setSelectedInventoryList] =
+    useState<string>("");
+  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+  const [selectedInventoryItem, setSelectedInventoryItem] =
+    useState<string>("");
 
   // Treasure detection state
   const [isTreasure, setIsTreasure] = useState(false);
@@ -393,8 +404,6 @@ export default function EditListingPage() {
 
           // Product Specifications (Facebook Shop Fields)
           setQuantity(listingData.quantity?.toString() || "1");
-          setSalePrice(listingData.salePrice?.toString() || "");
-          setSalePriceEffectiveDate(listingData.salePriceEffectiveDate || "");
           setItemGroupId(listingData.itemGroupId || "");
           setGender(listingData.gender || "");
           setColor(listingData.color || "");
@@ -476,6 +485,68 @@ export default function EditListingPage() {
       fetchListingAndUserData();
     }
   }, [params.id]);
+
+  // Load inventory lists for quick linking
+  useEffect(() => {
+    const loadLists = async () => {
+      try {
+        const resp = await fetch("/api/admin/inventory-lists");
+        if (resp.ok) {
+          const data = await resp.json();
+          setInventoryLists(data.lists || []);
+        }
+      } catch (e) {
+        console.error("Failed to load inventory lists", e);
+      }
+    };
+    loadLists();
+  }, []);
+
+  useEffect(() => {
+    const loadItems = async () => {
+      if (!selectedInventoryList) return setInventoryItems([]);
+      try {
+        const resp = await fetch(
+          `/api/admin/inventory?listId=${selectedInventoryList}`
+        );
+        if (resp.ok) {
+          const data = await resp.json();
+          setInventoryItems(data.items || []);
+        }
+      } catch (e) {
+        console.error("Failed to load inventory items", e);
+      }
+    };
+    loadItems();
+  }, [selectedInventoryList]);
+
+  // Calculate sales price when discount schedule or price changes
+  useEffect(() => {
+    if (
+      price &&
+      discountSchedule &&
+      (listing?.createdAt || listing?.created_at)
+    ) {
+      const mockListing = {
+        list_price: parseFloat(price),
+        discount_schedule: { type: discountSchedule },
+        created_at: listing.createdAt || listing.created_at,
+        reserve_price: reservePrice ? parseFloat(reservePrice) : undefined,
+      };
+      const displayPrice = getDisplayPrice(mockListing);
+      setCalculatedSalesPrice(
+        displayPrice.isDiscounted ? displayPrice.price : null
+      );
+    } else {
+      setCalculatedSalesPrice(null);
+    }
+  }, [
+    price,
+    discountSchedule,
+    listing?.createdAt,
+    listing?.created_at,
+    reservePrice,
+  ]);
 
   // Video upload handlers
   const handleVideoUploaded = async (data: {
@@ -682,8 +753,6 @@ export default function EditListingPage() {
           facebookGtin: facebookGtin || null,
           // Product Specifications (Facebook Shop Fields)
           quantity: parseInt(quantity) || 1,
-          salePrice: salePrice ? parseFloat(salePrice) : null,
-          salePriceEffectiveDate: salePriceEffectiveDate || null,
           itemGroupId: itemGroupId || null,
           ...processProductSpecs({
             gender,
@@ -912,7 +981,7 @@ export default function EditListingPage() {
               Pricing & Condition
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* Price */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -933,6 +1002,60 @@ export default function EditListingPage() {
                 </div>
               </div>
 
+              {/* Link to Inventory */}
+              <div className="lg:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  Link Inventory Item (optional)
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <select
+                    value={selectedInventoryList}
+                    onChange={(e) => {
+                      setSelectedInventoryList(e.target.value);
+                      setSelectedInventoryItem("");
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  >
+                    <option value="">Select Inventory List</option>
+                    {inventoryLists.map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.name} ({l._count?.items ?? 0})
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={selectedInventoryItem}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      setSelectedInventoryItem(id);
+                      const item = inventoryItems.find((i) => i.id === id);
+                      if (item) {
+                        // Prefill helpful fields
+                        if (!title) setTitle(item.description || title);
+                        if (!price && item.unitRetail)
+                          setPrice(String(item.unitRetail));
+                        if (!brand && item.vendor) setBrand(item.vendor);
+                        if (!estimatedRetailPrice && item.extRetail)
+                          setEstimatedRetailPrice(String(item.extRetail));
+                      }
+                    }}
+                    disabled={!selectedInventoryList}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  >
+                    <option value="">Select Item</option>
+                    {inventoryItems.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.itemNumber || "#"} — {item.description || "Item"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Selecting an inventory item will prefill title, price, brand,
+                  and retail when available.
+                </p>
+              </div>
+
               {/* Reserve Price */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -950,9 +1073,6 @@ export default function EditListingPage() {
                     placeholder="0.00"
                   />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Minimum acceptable price (auto-calculated as 70% of price)
-                </p>
               </div>
 
               {/* Estimated Retail Price */}
@@ -974,32 +1094,19 @@ export default function EditListingPage() {
                 </div>
               </div>
 
-              {/* Condition */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Condition *
-                </label>
-                <select
-                  value={condition}
-                  onChange={(e) =>
-                    setCondition(
-                      e.target.value as "new" | "used" | "refurbished"
-                    )
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                  required
-                >
-                  <option value="">Select Condition</option>
-                  <option value="new">New</option>
-                  <option value="used">Used</option>
-                  <option value="refurbished">Refurbished</option>
-                </select>
-              </div>
-
               {/* Discount Schedule */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                   Discount Schedule
+                  <div className="relative group">
+                    <Info className="h-4 w-4 text-gray-400 cursor-help" />
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
+                      Turbo-30: 30% off every 30 days
+                      <br />
+                      Classic-60: 10% off every 60 days
+                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                    </div>
+                  </div>
                 </label>
                 <select
                   value={discountSchedule}
@@ -1017,10 +1124,51 @@ export default function EditListingPage() {
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  Turbo-30: 30% off every 30 days | Classic-60: 10% off every 60
-                  days
-                </p>
+              </div>
+
+              {/* Discount Schedule Calculation Display */}
+              <div className="col-span-full">
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">
+                    Discount Schedule Calculation
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Days Since Listing:</span>
+                      <span className="ml-2 font-medium">
+                        {listing?.createdAt || listing?.created_at
+                          ? Math.floor(
+                              (new Date().getTime() -
+                                new Date(
+                                  listing.createdAt || listing.created_at
+                                ).getTime()) /
+                                (1000 * 60 * 60 * 24)
+                            )
+                          : "N/A"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Discount Schedule:</span>
+                      <span className="ml-2 font-medium">
+                        {discountSchedule || "None selected"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">List Price:</span>
+                      <span className="ml-2 font-medium">
+                        ${price || "0.00"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Sales Price:</span>
+                      <span className="ml-2 font-medium text-green-600">
+                        {calculatedSalesPrice
+                          ? `$${calculatedSalesPrice.toFixed(2)}`
+                          : "No discount"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1231,6 +1379,31 @@ export default function EditListingPage() {
                       visibility
                     </p>
                   </div>
+
+                  {/* Facebook Catalog Sync - Sales Price */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Facebook Catalog Sales Price
+                    </label>
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">
+                          Calculated Sales Price:
+                        </span>
+                        <span className="text-lg font-semibold text-green-600">
+                          {calculatedSalesPrice
+                            ? `$${calculatedSalesPrice.toFixed(2)}`
+                            : "No discount"}
+                        </span>
+                      </div>
+                      {calculatedSalesPrice && (
+                        <div className="mt-2 text-xs text-gray-500">
+                          This price will be synced to Facebook catalog based on
+                          your discount schedule
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1366,46 +1539,6 @@ export default function EditListingPage() {
                   min="1"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
                   placeholder="1"
-                />
-              </div>
-
-              {/* Sale Price */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                  Sale Price ($)
-                  {confidenceScores?.salePrice && (
-                    <ConfidenceBadge level={confidenceScores.salePrice.level} />
-                  )}
-                </label>
-                <input
-                  type="number"
-                  value={salePrice}
-                  onChange={(e) => setSalePrice(e.target.value)}
-                  min="0"
-                  step="0.01"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                  placeholder="0.00"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Special sale price (optional)
-                </p>
-              </div>
-
-              {/* Sale Price Effective Date */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                  Sale Price Effective Date
-                  {confidenceScores?.salePriceEffectiveDate && (
-                    <ConfidenceBadge
-                      level={confidenceScores.salePriceEffectiveDate.level}
-                    />
-                  )}
-                </label>
-                <input
-                  type="date"
-                  value={salePriceEffectiveDate}
-                  onChange={(e) => setSalePriceEffectiveDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
                 />
               </div>
 

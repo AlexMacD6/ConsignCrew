@@ -9,6 +9,8 @@ import {
   MapPin,
 } from "lucide-react";
 import Link from "next/link";
+import { getDisplayPrice } from "../lib/price-calculator";
+import { getStandardizedCondition } from "../lib/condition-utils";
 
 interface Listing {
   itemId: string;
@@ -22,7 +24,9 @@ interface Listing {
   category: string;
   subCategory: string;
   neighborhood: string;
-  condition: string;
+  discount_schedule?: any;
+  created_at?: string;
+  reserve_price?: number;
 }
 
 interface HeroListingsCarouselProps {
@@ -77,6 +81,16 @@ export default function HeroListingsCarousel({
         if (data.success && data.listings) {
           console.log("Total listings received:", data.listings.length);
 
+          // Debug: Log the first listing to see field names
+          if (data.listings.length > 0) {
+            console.log("First listing fields:", Object.keys(data.listings[0]));
+            console.log("First listing price field:", data.listings[0].price);
+            console.log(
+              "First listing discountSchedule:",
+              data.listings[0].discountSchedule
+            );
+          }
+
           // Filter listings that have hero photos and transform data
           const validListings = data.listings
             .filter((listing: any) => {
@@ -94,16 +108,18 @@ export default function HeroListingsCarousel({
             .map((listing: any) => ({
               itemId: listing.itemId,
               title: listing.title,
-              price: listing.price,
+              price: listing.price, // Keep original field name
               photos: {
-                hero: listing.photos.hero,
-                staged: listing.photos.staged,
+                hero: listing.photos.hero || undefined,
+                staged: listing.photos.staged || undefined,
               },
+              discount_schedule: listing.discountSchedule, // Keep original field name
+              created_at: listing.createdAt, // Keep original field name
+              reserve_price: listing.reservePrice, // Keep original field name
               department: listing.department,
               category: listing.category,
               subCategory: listing.subCategory,
               neighborhood: listing.neighborhood,
-              condition: listing.condition,
             }));
 
           console.log("Valid listings with hero photos:", validListings.length);
@@ -228,7 +244,7 @@ export default function HeroListingsCarousel({
       {/* Main Image */}
       <div className="relative w-full h-full">
         <img
-          src={currentListing.photos.hero || currentListing.photos.staged}
+          src={currentListing.photos.hero || currentListing.photos.staged || ""}
           alt={currentListing.title}
           className="w-full h-full object-cover"
         />
@@ -245,7 +261,7 @@ export default function HeroListingsCarousel({
               </div>
               <div className="bg-treasure-500 text-white px-3 py-2 rounded-lg">
                 <p className="text-sm font-medium">
-                  {currentListing.condition}
+                  {getStandardizedCondition(currentListing)}
                 </p>
               </div>
             </div>
@@ -260,9 +276,50 @@ export default function HeroListingsCarousel({
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-1">
-                    <span className="font-bold text-xl">
-                      ${currentListing.price.toFixed(2)}
-                    </span>
+                    {(() => {
+                      // Add null checks and debugging
+                      if (!currentListing.price) {
+                        console.warn("Listing missing price:", currentListing);
+                        return (
+                          <span className="font-bold text-xl">Price N/A</span>
+                        );
+                      }
+
+                      const displayPrice = getDisplayPrice(currentListing);
+
+                      // Add additional safety check
+                      if (
+                        !displayPrice ||
+                        typeof displayPrice.price !== "number"
+                      ) {
+                        console.warn(
+                          "Invalid display price result:",
+                          displayPrice
+                        );
+                        return (
+                          <span className="font-bold text-xl">Price Error</span>
+                        );
+                      }
+
+                      if (displayPrice.isDiscounted) {
+                        return (
+                          <>
+                            <span className="font-bold text-xl text-green-400">
+                              ${displayPrice.price.toFixed(2)}
+                            </span>
+                            <span className="text-sm text-gray-300 line-through ml-2">
+                              ${displayPrice.originalPrice?.toFixed(2) || "N/A"}
+                            </span>
+                          </>
+                        );
+                      } else {
+                        return (
+                          <span className="font-bold text-xl">
+                            ${displayPrice.price.toFixed(2)}
+                          </span>
+                        );
+                      }
+                    })()}
                   </div>
                   <div className="flex items-center space-x-1">
                     <MapPin className="h-4 w-4 text-gray-300" />

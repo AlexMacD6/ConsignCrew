@@ -7,25 +7,29 @@ import {
   ArrowLeft,
   MapPin,
   Star,
-  Tag,
-  Calendar,
-  User,
-  Package,
   Bookmark,
   CheckCircle,
   AlertCircle,
   ExternalLink,
   Edit,
   TrendingDown,
-  Shield,
-  Clock,
   Sparkles,
+  Shield,
+  Package,
+  User,
+  Building,
+  Eye,
 } from "lucide-react";
 import QuestionsDisplay from "../../../components/QuestionsDisplay";
 import ImageCarousel from "../../../components/ImageCarousel";
 import ListingHistory from "../../../components/ListingHistory";
 import CustomQRCode from "../../../components/CustomQRCode";
 import TreasureBadge from "../../../components/TreasureBadge";
+import { getDisplayPrice } from "../../../lib/price-calculator";
+import {
+  getStandardizedCondition,
+  isNewCondition,
+} from "../../../lib/condition-utils";
 import {
   trackMetaPixelEvent,
   trackViewContent,
@@ -34,62 +38,7 @@ import {
 } from "../../../lib/meta-pixel-client";
 import ProductStructuredData from "../../../components/ProductStructuredData";
 
-// Calculate current sales price based on discount schedule and listing duration
-const calculateCurrentSalesPrice = (listing: any) => {
-  if (!listing.discount_schedule || !listing.created_at) {
-    return null;
-  }
-
-  const scheduleType = listing.discount_schedule?.type || "Classic-60";
-  const DISCOUNT_SCHEDULES: Record<string, any> = {
-    "Turbo-30": {
-      dropIntervals: [0, 3, 6, 9, 12, 15, 18, 21, 24, 30],
-      dropPercentages: [100, 95, 90, 85, 80, 75, 70, 65, 60, 0],
-      totalDuration: 30,
-    },
-    "Classic-60": {
-      dropIntervals: [0, 7, 14, 21, 28, 35, 42, 49, 56, 60],
-      dropPercentages: [100, 90, 80, 75, 70, 65, 60, 55, 50, 0],
-      totalDuration: 60,
-    },
-  };
-
-  const schedule = DISCOUNT_SCHEDULES[scheduleType];
-  if (!schedule) return null;
-
-  const now = new Date();
-  const created = new Date(listing.created_at);
-  const daysSinceCreation = Math.floor(
-    (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)
-  );
-
-  // If listing has expired, return reserve price or list price
-  if (daysSinceCreation >= schedule.totalDuration) {
-    return listing.reserve_price || listing.list_price;
-  }
-
-  // Find the current applicable discount percentage
-  let currentPercentage = 100; // Start at 100% (full price)
-
-  for (let i = 0; i < schedule.dropIntervals.length; i++) {
-    if (daysSinceCreation >= schedule.dropIntervals[i]) {
-      currentPercentage = schedule.dropPercentages[i];
-    } else {
-      break; // Found the current applicable percentage
-    }
-  }
-
-  // Calculate current sales price based on list price and current percentage
-  const currentSalesPrice =
-    Math.round(listing.list_price * (currentPercentage / 100) * 100) / 100;
-
-  // Don't go below reserve price
-  if (listing.reserve_price && currentSalesPrice < listing.reserve_price) {
-    return listing.reserve_price;
-  }
-
-  return currentSalesPrice;
-};
+// Use the utility function from price-calculator.ts instead of local function
 
 // Mock data for transportation history
 const transportationHistory = [
@@ -968,26 +917,23 @@ export default function ListingDetailPage() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   {(() => {
-                    const currentSalesPrice =
-                      calculateCurrentSalesPrice(listing);
-                    if (
-                      currentSalesPrice &&
-                      currentSalesPrice < listing.list_price
-                    ) {
+                    const displayPrice = getDisplayPrice(listing);
+
+                    if (displayPrice.isDiscounted) {
                       return (
                         <>
                           <span className="text-4xl font-bold text-gray-900">
-                            ${currentSalesPrice.toFixed(2)}
+                            ${displayPrice.price.toFixed(2)}
                           </span>
                           <span className="text-2xl font-bold text-gray-400 line-through">
-                            ${listing.list_price.toFixed(2)}
+                            ${displayPrice.originalPrice?.toFixed(2)}
                           </span>
                         </>
                       );
                     } else {
                       return (
                         <span className="text-4xl font-bold text-gray-900">
-                          ${listing.list_price.toFixed(2)}
+                          ${displayPrice.price.toFixed(2)}
                         </span>
                       );
                     }
@@ -1030,7 +976,7 @@ export default function ListingDetailPage() {
                 </div>
               ) : (
                 listing.estimated_retail_price &&
-                listing.condition === "New" && (
+                isNewCondition(getStandardizedCondition(listing)) && (
                   <div className="flex items-center gap-3 mb-4">
                     <span className="text-lg text-gray-500 line-through">
                       ${listing.estimated_retail_price.toFixed(2)}
@@ -1136,7 +1082,6 @@ export default function ListingDetailPage() {
               {/* Basic Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div className="flex items-center gap-3">
-                  <Package className="h-5 w-5 text-gray-400" />
                   <div>
                     <span className="text-sm font-medium text-gray-700">
                       Condition:
@@ -1146,13 +1091,12 @@ export default function ListingDetailPage() {
                         listing.condition
                       )}`}
                     >
-                      {listing.condition.toUpperCase()}
+                      {getStandardizedCondition(listing)}
                     </span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <Calendar className="h-5 w-5 text-gray-400" />
                   <div>
                     <span className="text-sm font-medium text-gray-700">
                       Listed:
@@ -1168,7 +1112,6 @@ export default function ListingDetailPage() {
                   return (
                     timeLeft && (
                       <div className="flex items-center gap-3">
-                        <Clock className="h-5 w-5 text-gray-400" />
                         <div>
                           <span className="text-sm font-medium text-gray-700">
                             Next Price Drop:
@@ -1184,7 +1127,6 @@ export default function ListingDetailPage() {
 
                 {listing.brand && (
                   <div className="flex items-center gap-3">
-                    <Tag className="h-5 w-5 text-gray-400" />
                     <div>
                       <span className="text-sm font-medium text-gray-700">
                         Brand:
@@ -1198,7 +1140,6 @@ export default function ListingDetailPage() {
 
                 {listing.qualityChecked && (
                   <div className="flex items-center gap-3">
-                    <Shield className="h-5 w-5 text-green-500" />
                     <div>
                       <span className="text-sm font-medium text-gray-700">
                         Quality:
@@ -1218,7 +1159,6 @@ export default function ListingDetailPage() {
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="flex items-center gap-3">
-                    <Tag className="h-5 w-5 text-gray-400" />
                     <div>
                       <span className="text-sm font-medium text-gray-700">
                         Department:
@@ -1229,7 +1169,6 @@ export default function ListingDetailPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Tag className="h-5 w-5 text-gray-400" />
                     <div>
                       <span className="text-sm font-medium text-gray-700">
                         Category:
@@ -1240,7 +1179,6 @@ export default function ListingDetailPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Tag className="h-5 w-5 text-gray-400" />
                     <div>
                       <span className="text-sm font-medium text-gray-700">
                         Sub-category:
@@ -1266,7 +1204,6 @@ export default function ListingDetailPage() {
                     {/* Height */}
                     {listing.height && (
                       <div className="flex items-center gap-3">
-                        <Package className="h-5 w-5 text-gray-400" />
                         <div>
                           <span className="text-sm font-medium text-gray-700">
                             Height:
@@ -1280,7 +1217,6 @@ export default function ListingDetailPage() {
                     {/* Width */}
                     {listing.width && (
                       <div className="flex items-center gap-3">
-                        <Package className="h-5 w-5 text-gray-400" />
                         <div>
                           <span className="text-sm font-medium text-gray-700">
                             Width:
@@ -1294,7 +1230,6 @@ export default function ListingDetailPage() {
                     {/* Depth */}
                     {listing.depth && (
                       <div className="flex items-center gap-3">
-                        <Package className="h-5 w-5 text-gray-400" />
                         <div>
                           <span className="text-sm font-medium text-gray-700">
                             Depth:
@@ -1311,7 +1246,6 @@ export default function ListingDetailPage() {
                       !listing.depth &&
                       listing.dimensions && (
                         <div className="flex items-center gap-3">
-                          <Package className="h-5 w-5 text-gray-400" />
                           <div>
                             <span className="text-sm font-medium text-gray-700">
                               Dimensions:
@@ -1338,7 +1272,6 @@ export default function ListingDetailPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {listing.serial_number && (
                       <div className="flex items-center gap-3">
-                        <Tag className="h-5 w-5 text-gray-400" />
                         <div>
                           <span className="text-sm font-medium text-gray-700">
                             Serial Number:
@@ -1351,7 +1284,6 @@ export default function ListingDetailPage() {
                     )}
                     {listing.model_number && (
                       <div className="flex items-center gap-3">
-                        <Tag className="h-5 w-5 text-gray-400" />
                         <div>
                           <span className="text-sm font-medium text-gray-700">
                             Model Number:
@@ -1364,7 +1296,6 @@ export default function ListingDetailPage() {
                     )}
                     {listing.gtin && (
                       <div className="flex items-center gap-3">
-                        <Tag className="h-5 w-5 text-gray-400" />
                         <div>
                           <span className="text-sm font-medium text-gray-700">
                             GTIN:
@@ -1377,7 +1308,6 @@ export default function ListingDetailPage() {
                     )}
                     {listing.facebookShopEnabled && listing.facebookGtin && (
                       <div className="flex items-center gap-3">
-                        <Tag className="h-5 w-5 text-gray-400" />
                         <div>
                           <span className="text-sm font-medium text-gray-700">
                             Facebook GTIN:
@@ -1410,9 +1340,6 @@ export default function ListingDetailPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {listing.color && (
                       <div className="flex items-center gap-3">
-                        <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
-                          <span className="text-xs">🎨</span>
-                        </div>
                         <div>
                           <span className="text-sm font-medium text-gray-700">
                             Color:
@@ -1425,9 +1352,6 @@ export default function ListingDetailPage() {
                     )}
                     {listing.size && (
                       <div className="flex items-center gap-3">
-                        <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
-                          <span className="text-xs">📏</span>
-                        </div>
                         <div>
                           <span className="text-sm font-medium text-gray-700">
                             Size:
@@ -1440,9 +1364,6 @@ export default function ListingDetailPage() {
                     )}
                     {listing.gender && (
                       <div className="flex items-center gap-3">
-                        <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
-                          <span className="text-xs">👤</span>
-                        </div>
                         <div>
                           <span className="text-sm font-medium text-gray-700">
                             Gender:
@@ -1455,9 +1376,6 @@ export default function ListingDetailPage() {
                     )}
                     {listing.ageGroup && (
                       <div className="flex items-center gap-3">
-                        <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
-                          <span className="text-xs">👶</span>
-                        </div>
                         <div>
                           <span className="text-sm font-medium text-gray-700">
                             Age Group:
@@ -1470,9 +1388,6 @@ export default function ListingDetailPage() {
                     )}
                     {listing.material && (
                       <div className="flex items-center gap-3">
-                        <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
-                          <span className="text-xs">🧵</span>
-                        </div>
                         <div>
                           <span className="text-sm font-medium text-gray-700">
                             Material:
@@ -1485,9 +1400,6 @@ export default function ListingDetailPage() {
                     )}
                     {listing.pattern && (
                       <div className="flex items-center gap-3">
-                        <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
-                          <span className="text-xs">🔲</span>
-                        </div>
                         <div>
                           <span className="text-sm font-medium text-gray-700">
                             Pattern:
@@ -1500,9 +1412,6 @@ export default function ListingDetailPage() {
                     )}
                     {listing.style && (
                       <div className="flex items-center gap-3">
-                        <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
-                          <span className="text-xs">🎭</span>
-                        </div>
                         <div>
                           <span className="text-sm font-medium text-gray-700">
                             Style:
@@ -1516,9 +1425,6 @@ export default function ListingDetailPage() {
 
                     {listing.quantity > 1 && (
                       <div className="flex items-center gap-3">
-                        <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
-                          <span className="text-xs">📦</span>
-                        </div>
                         <div>
                           <span className="text-sm font-medium text-gray-700">
                             Quantity Available:
@@ -1531,9 +1437,6 @@ export default function ListingDetailPage() {
                     )}
                     {listing.salePrice && (
                       <div className="flex items-center gap-3">
-                        <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
-                          <span className="text-xs">💰</span>
-                        </div>
                         <div>
                           <span className="text-sm font-medium text-gray-700">
                             Sale Price:
@@ -1547,7 +1450,6 @@ export default function ListingDetailPage() {
                     {listing.tags && listing.tags.length > 0 && (
                       <div className="md:col-span-2">
                         <div className="flex items-center gap-3">
-                          <Tag className="h-5 w-5 text-gray-400" />
                           <div>
                             <span className="text-sm font-medium text-gray-700">
                               Tags:
@@ -1630,9 +1532,7 @@ export default function ListingDetailPage() {
                 </div>
                 {listing.user?.organization && (
                   <div className="flex items-center gap-3">
-                    <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
-                      <span className="text-xs font-bold">🏢</span>
-                    </div>
+                    <Building className="h-5 w-5 text-gray-400" />
                     <div>
                       <span className="text-sm font-medium text-gray-700">
                         Organization:
@@ -1656,7 +1556,7 @@ export default function ListingDetailPage() {
                 </div>
                 {listing.rating && listing.reviews > 0 && (
                   <div className="flex items-center gap-3">
-                    <Star className="h-5 w-5 text-yellow-400" />
+                    <Star className="h-5 w-5 text-gray-400" />
                     <div>
                       <span className="text-sm font-medium text-gray-700">
                         Rating:
@@ -1669,9 +1569,7 @@ export default function ListingDetailPage() {
                 )}
                 {listing.views > 0 && (
                   <div className="flex items-center gap-3">
-                    <div className="h-5 w-5 text-gray-400 flex items-center justify-center">
-                      <span className="text-xs">👁️</span>
-                    </div>
+                    <Eye className="h-5 w-5 text-gray-400" />
                     <div>
                       <span className="text-sm font-medium text-gray-700">
                         Views:
@@ -1704,9 +1602,7 @@ export default function ListingDetailPage() {
               listingId={listing.item_id}
               createdAt={listing.created_at}
               discountSchedule={listing.discount_schedule}
-              currentPrice={
-                calculateCurrentSalesPrice(listing) || listing.list_price
-              }
+              currentPrice={getDisplayPrice(listing).price}
               originalPrice={listing.list_price}
               reservePrice={listing.reserve_price}
             />

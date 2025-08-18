@@ -27,6 +27,7 @@ import {
   ExternalLink,
   RefreshCw,
   Loader2,
+  Info,
 } from "lucide-react";
 import QuestionManagement from "../components/QuestionManagement";
 
@@ -89,6 +90,41 @@ interface ZipCode {
   code: string;
   area: string;
   type: string;
+}
+
+interface InventoryList {
+  id: string;
+  name: string;
+  createdAt: string;
+  winningBidAmount?: number;
+  serviceCharges?: number;
+  shippingCharges?: number;
+  totalPurchasePrice?: number;
+  totalExtRetailValue?: number;
+  msrpPercentage?: number;
+  _count?: { items: number };
+}
+
+interface InventoryItem {
+  id: string;
+  lotNumber?: string;
+  itemNumber?: string;
+  deptCode?: string;
+  department?: string;
+  description?: string;
+  quantity?: number;
+  unitRetail?: number;
+  extRetail?: number;
+  vendor?: string;
+  categoryCode?: string;
+  category?: string;
+  purchasePrice?: number;
+}
+
+interface InventoryFinancials {
+  totalExtRetailValue: number;
+  totalPurchasePrice: number;
+  msrpPercentage: number;
 }
 
 export default function AdminDashboard() {
@@ -198,6 +234,35 @@ export default function AdminDashboard() {
   });
 
   const [savingAiConfig, setSavingAiConfig] = useState(false);
+
+  // Inventory Management states
+  const [inventoryLists, setInventoryLists] = useState<InventoryList[]>([]);
+  const [selectedInventoryList, setSelectedInventoryList] =
+    useState<InventoryList | null>(null);
+  const [showCreateInventoryListModal, setShowCreateInventoryListModal] =
+    useState(false);
+  const [newInventoryList, setNewInventoryList] = useState({
+    name: "",
+  });
+  // New state variables for editing and viewing items
+  const [editingListId, setEditingListId] = useState<string | null>(null);
+  const [editingListName, setEditingListName] = useState("");
+  const [showViewItemsModal, setShowViewItemsModal] = useState(false);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [loadingItems, setLoadingItems] = useState(false);
+  // New state variables for financial fields
+  const [editingFinancials, setEditingFinancials] = useState<{
+    winningBidAmount: string;
+    serviceCharges: string;
+    shippingCharges: string;
+  }>({
+    winningBidAmount: "",
+    serviceCharges: "",
+    shippingCharges: "",
+  });
+  const [showEditFinancialsModal, setShowEditFinancialsModal] = useState(false);
+  const [selectedListForFinancials, setSelectedListForFinancials] =
+    useState<InventoryList | null>(null);
 
   // Members modal state
   const [showMembersModal, setShowMembersModal] = useState(false);
@@ -345,6 +410,9 @@ export default function AdminDashboard() {
           setAiModelConfig(aiConfigData.config);
         }
       }
+
+      // Load inventory lists
+      await loadInventoryLists();
     } catch (err) {
       setError("Failed to load admin data");
       console.error("Error loading admin data:", err);
@@ -447,6 +515,110 @@ export default function AdminDashboard() {
       }
     } catch (err) {
       setError("Failed to send invitation");
+    }
+  };
+
+  // Inventory Management functions
+  const loadInventoryLists = async () => {
+    try {
+      const response = await fetch("/api/admin/inventory-lists");
+      if (response.ok) {
+        const data = await response.json();
+        // The API returns { success: true, lists: [...] }
+        const lists = data.lists || [];
+        setInventoryLists(Array.isArray(lists) ? lists : []);
+      } else {
+        console.error("Failed to load inventory lists:", response.status);
+        setInventoryLists([]);
+      }
+    } catch (error) {
+      console.error("Error loading inventory lists:", error);
+      setInventoryLists([]);
+    }
+  };
+
+  const handleCreateInventoryList = async () => {
+    try {
+      const response = await fetch("/api/admin/inventory-lists", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newInventoryList),
+      });
+
+      if (response.ok) {
+        setSuccess("Inventory list created successfully!");
+        setNewInventoryList({ name: "" });
+        setShowCreateInventoryListModal(false);
+        loadInventoryLists();
+      } else {
+        const error = await response.json();
+        setError(error.error || "Failed to create inventory list");
+      }
+    } catch (err) {
+      setError("Failed to create inventory list");
+    }
+  };
+
+  const handleDeleteInventoryList = async (listId: string) => {
+    if (!confirm("Are you sure you want to delete this inventory list?"))
+      return;
+
+    try {
+      const response = await fetch(`/api/admin/inventory-lists/${listId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        setSuccess("Inventory list deleted successfully!");
+        loadInventoryLists();
+      } else {
+        const error = await response.json();
+        setError(error.error || "Failed to delete inventory list");
+      }
+    } catch (err) {
+      setError("Failed to delete inventory list");
+    }
+  };
+
+  const handleCSVUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      // Ensure we have a valid list ID
+      const listId =
+        Array.isArray(inventoryLists) && inventoryLists.length > 0
+          ? inventoryLists[0].id
+          : "";
+
+      if (!listId) {
+        setError(
+          "Please create an inventory list first before uploading CSV files"
+        );
+        return;
+      }
+
+      formData.append("listId", listId);
+
+      const response = await fetch("/api/admin/inventory/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (response.ok) {
+        setSuccess("CSV uploaded successfully!");
+        loadInventoryLists();
+      } else {
+        const error = await response.json();
+        setError(error.error || "Failed to upload CSV");
+      }
+    } catch (err) {
+      setError("Failed to upload CSV");
     }
   };
 
@@ -798,6 +970,233 @@ export default function AdminDashboard() {
     }
   };
 
+  // New functions for editing and viewing items
+  const handleEditInventoryList = async () => {
+    if (!editingListId || !editingListName.trim()) return;
+
+    try {
+      const response = await fetch(
+        `/api/admin/inventory-lists/${editingListId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: editingListName.trim() }),
+        }
+      );
+
+      if (response.ok) {
+        setSuccess("Inventory list name updated successfully!");
+        setEditingListId(null);
+        setEditingListName("");
+        loadInventoryLists();
+      } else {
+        const error = await response.json();
+        setError(error.error || "Failed to update inventory list name");
+      }
+    } catch (err) {
+      setError("Failed to update inventory list name");
+    }
+  };
+
+  const handleViewInventoryItems = async (listId: string) => {
+    setSelectedInventoryList(
+      inventoryLists.find((list) => list.id === listId) || null
+    );
+    setShowViewItemsModal(true);
+    setLoadingItems(true);
+
+    try {
+      const response = await fetch(`/api/admin/inventory?listId=${listId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setInventoryItems(data.items || []);
+      } else {
+        setError("Failed to load inventory items");
+        setInventoryItems([]);
+      }
+    } catch (err) {
+      setError("Failed to load inventory items");
+      setInventoryItems([]);
+    } finally {
+      setLoadingItems(false);
+    }
+  };
+
+  const startEditInventoryList = (list: InventoryList) => {
+    setEditingListId(list.id);
+    setEditingListName(list.name);
+  };
+
+  const cancelEditInventoryList = () => {
+    setEditingListId(null);
+    setEditingListName("");
+  };
+
+  // Financial calculation functions
+  const calculateFinancials = (
+    items: InventoryItem[],
+    winningBid: number,
+    serviceCharges: number,
+    shippingCharges: number
+  ): InventoryFinancials => {
+    const totalExtRetailValue = items.reduce((sum, item) => {
+      const extRetail = (item.unitRetail || 0) * (item.quantity || 0);
+      return sum + extRetail;
+    }, 0);
+
+    const totalPurchasePrice = winningBid + serviceCharges + shippingCharges;
+    const msrpPercentage =
+      totalExtRetailValue > 0
+        ? (totalPurchasePrice / totalExtRetailValue) * 100
+        : 0;
+
+    return {
+      totalExtRetailValue,
+      totalPurchasePrice,
+      msrpPercentage,
+    };
+  };
+
+  const calculateItemPurchasePrices = (
+    items: InventoryItem[],
+    msrpPercentage: number
+  ): InventoryItem[] => {
+    return items.map((item) => ({
+      ...item,
+      purchasePrice:
+        ((item.unitRetail || 0) * (item.quantity || 0) * msrpPercentage) / 100,
+    }));
+  };
+
+  const handleEditFinancials = async (list: InventoryList) => {
+    setSelectedListForFinancials(list);
+    setEditingFinancials({
+      winningBidAmount: list.winningBidAmount?.toString() || "",
+      serviceCharges: list.serviceCharges?.toString() || "",
+      shippingCharges: list.shippingCharges?.toString() || "",
+    });
+    setShowEditFinancialsModal(true);
+
+    // Load inventory items for this list to calculate financials
+    try {
+      const response = await fetch(`/api/admin/inventory?listId=${list.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setInventoryItems(data.items || []);
+      } else {
+        setError("Failed to load inventory items for financial calculations");
+        setInventoryItems([]);
+      }
+    } catch (err) {
+      setError("Failed to load inventory items for financial calculations");
+      setInventoryItems([]);
+    }
+  };
+
+  const handleSaveFinancials = async () => {
+    if (!selectedListForFinancials) return;
+
+    try {
+      const winningBid = parseFloat(editingFinancials.winningBidAmount) || 0;
+      const serviceCharges = parseFloat(editingFinancials.serviceCharges) || 0;
+      const shippingCharges =
+        parseFloat(editingFinancials.shippingCharges) || 0;
+
+      // Calculate financials
+      const financials = calculateFinancials(
+        inventoryItems,
+        winningBid,
+        serviceCharges,
+        shippingCharges
+      );
+
+      // Update inventory list with financial data
+      const response = await fetch(
+        `/api/admin/inventory-lists/${selectedListForFinancials.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            winningBidAmount: winningBid,
+            serviceCharges: serviceCharges,
+            shippingCharges: shippingCharges,
+            totalPurchasePrice: financials.totalPurchasePrice,
+            totalExtRetailValue: financials.totalExtRetailValue,
+            msrpPercentage: financials.msrpPercentage,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        // Update inventory items with calculated purchase prices
+        const updatedItems = calculateItemPurchasePrices(
+          inventoryItems,
+          financials.msrpPercentage
+        );
+
+        // Batch update all items at once instead of individual requests
+        try {
+          const batchResponse = await fetch(
+            "/api/admin/inventory/batch-update",
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                listId: selectedInventoryList?.id,
+                items: updatedItems.map((item) => ({
+                  id: item.id,
+                  purchasePrice: item.purchasePrice,
+                  extRetail: item.extRetail,
+                })),
+              }),
+            }
+          );
+
+          if (batchResponse.ok) {
+            const batchResult = await batchResponse.json();
+            console.log(`Batch updated ${batchResult.updatedCount} items`);
+          } else {
+            console.error("Batch update failed:", batchResponse.status);
+          }
+        } catch (batchError) {
+          console.error("Batch update error:", batchError);
+        }
+
+        setSuccess("Financial data updated successfully!");
+        setShowEditFinancialsModal(false);
+        setSelectedListForFinancials(null);
+        loadInventoryLists();
+      } else {
+        const error = await response.json();
+        setError(error.error || "Failed to update financial data");
+      }
+    } catch (err) {
+      setError("Failed to update financial data");
+    }
+  };
+
+  const formatCurrency = (amount: number | undefined): string => {
+    if (amount === undefined || amount === null) return "$0.00";
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount);
+  };
+
+  const formatPercentage = (percentage: number | undefined): string => {
+    if (percentage === undefined || percentage === null) return "0%";
+    return `${percentage.toFixed(2)}%`;
+  };
+
+  const calculateUnitPurchasePrice = (
+    purchasePrice: number | undefined,
+    quantity: number | undefined
+  ): string => {
+    if (!purchasePrice || !quantity || quantity === 0) return "N/A";
+    const unitPrice = purchasePrice / quantity;
+    return formatCurrency(unitPrice);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -891,6 +1290,16 @@ export default function AdminDashboard() {
               }`}
             >
               Facebook Catalog
+            </button>
+            <button
+              onClick={() => setActiveTab("inventory")}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "inventory"
+                  ? "border-[#D4AF3D] text-[#D4AF3D]"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              Inventory
             </button>
           </div>
         </div>
@@ -1750,6 +2159,203 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* Inventory Management Tab */}
+        {activeTab === "inventory" && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-gray-900">
+              Inventory Management
+            </h2>
+
+            {/* Inventory Lists Overview */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Inventory Lists
+                  </h3>
+                  <p className="text-gray-600 mt-1">
+                    Manage your inventory lists and upload CSV files to populate
+                    them
+                  </p>
+                </div>
+                <Button
+                  onClick={() => setShowCreateInventoryListModal(true)}
+                  className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create List
+                </Button>
+              </div>
+
+              {/* Inventory Lists Display */}
+              <div className="space-y-4">
+                {Array.isArray(inventoryLists) &&
+                  inventoryLists.map((list) => (
+                    <div
+                      key={list.id}
+                      className="border border-gray-200 rounded-lg p-4"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          {editingListId === list.id ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={editingListName}
+                                onChange={(e) =>
+                                  setEditingListName(e.target.value)
+                                }
+                                className="px-2 py-1 border border-gray-300 rounded text-sm font-semibold"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter")
+                                    handleEditInventoryList();
+                                  if (e.key === "Escape")
+                                    cancelEditInventoryList();
+                                }}
+                              />
+                              <button
+                                onClick={handleEditInventoryList}
+                                className="text-green-600 hover:text-green-700 text-sm"
+                              >
+                                ✓
+                              </button>
+                              <button
+                                onClick={cancelEditInventoryList}
+                                className="text-red-600 hover:text-red-700 text-sm"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <h4 className="font-semibold text-gray-900">
+                              {list.name}
+                            </h4>
+                          )}
+                          <p className="text-sm text-gray-600">
+                            {list._count?.items || 0} items • Created{" "}
+                            {new Date(list.createdAt).toLocaleDateString()}
+                          </p>
+                          {/* Financial Summary */}
+                          <div className="mt-2 space-y-1">
+                            <div className="flex items-center gap-4 text-xs">
+                              <span className="text-gray-500">
+                                Total Purchase:
+                              </span>
+                              <span className="font-medium">
+                                {formatCurrency(list.totalPurchasePrice)}
+                              </span>
+                              <span className="text-gray-500">MSRP Value:</span>
+                              <span className="font-medium">
+                                {formatCurrency(list.totalExtRetailValue)}
+                              </span>
+                              <span className="text-gray-500">% of MSRP:</span>
+                              <span className="font-medium">
+                                {formatPercentage(list.msrpPercentage)}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-4 text-xs">
+                              <span className="text-gray-500">
+                                Avg Unit Purchase:
+                              </span>
+                              <span className="font-medium text-purple-600">
+                                {list.totalPurchasePrice &&
+                                list.totalExtRetailValue
+                                  ? `${(
+                                      (list.totalPurchasePrice /
+                                        list.totalExtRetailValue) *
+                                      100
+                                    ).toFixed(1)}% of retail per unit`
+                                  : "N/A"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button
+                            onClick={() => handleViewInventoryItems(list.id)}
+                            variant="outline"
+                            size="sm"
+                          >
+                            View Items
+                          </Button>
+                          <Button
+                            onClick={() => handleEditFinancials(list)}
+                            variant="outline"
+                            size="sm"
+                            className="text-green-600 hover:text-green-700"
+                          >
+                            Financials
+                          </Button>
+                          <Button
+                            onClick={() => startEditInventoryList(list)}
+                            variant="outline"
+                            size="sm"
+                            className="text-blue-600 hover:text-blue-700"
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            onClick={() => handleDeleteInventoryList(list.id)}
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                {(!Array.isArray(inventoryLists) ||
+                  inventoryLists.length === 0) && (
+                  <div className="text-center py-8 text-gray-500">
+                    <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <p>No inventory lists created yet</p>
+                    <p className="text-sm">
+                      Create your first list to get started
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* CSV Upload Section */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Upload CSV Inventory
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Upload a CSV file to populate your inventory lists. The CSV
+                should include columns for: lot number, item number, department,
+                description, quantity, unit retail, vendor, category, etc.
+              </p>
+
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleCSVUpload}
+                  className="hidden"
+                  id="csv-upload"
+                />
+                <label
+                  htmlFor="csv-upload"
+                  className="cursor-pointer flex flex-col items-center"
+                >
+                  <FileText className="h-8 w-8 text-gray-400 mb-2" />
+                  <span className="text-sm font-medium text-gray-600">
+                    Click to upload CSV file
+                  </span>
+                  <span className="text-xs text-gray-500 mt-1">
+                    or drag and drop
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Create Organization Modal */}
         {showCreateOrgModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -1899,6 +2505,164 @@ export default function AdminDashboard() {
                   Cancel
                 </Button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Create Inventory List Modal */}
+        {showCreateInventoryListModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h3 className="text-lg font-semibold mb-4">
+                Create Inventory List
+              </h3>
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  placeholder="List Name"
+                  value={newInventoryList.name}
+                  onChange={(e) =>
+                    setNewInventoryList({
+                      ...newInventoryList,
+                      name: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                />
+              </div>
+              <div className="flex space-x-3 mt-6">
+                <Button
+                  onClick={handleCreateInventoryList}
+                  className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                >
+                  Create
+                </Button>
+                <Button
+                  onClick={() => setShowCreateInventoryListModal(false)}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* View Inventory Items Modal */}
+        {showViewItemsModal && selectedInventoryList && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">
+                  Inventory Items - {selectedInventoryList.name}
+                </h3>
+                <Button
+                  onClick={() => setShowViewItemsModal(false)}
+                  variant="outline"
+                  size="sm"
+                >
+                  Close
+                </Button>
+              </div>
+
+              {loadingItems ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D4AF3D]"></div>
+                </div>
+              ) : (
+                <div className="flex-1 overflow-auto">
+                  {inventoryItems.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50 sticky top-0">
+                          <tr className="bg-gray-50">
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Category
+                            </th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Quantity
+                            </th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Unit Retail
+                            </th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Ext. Retail
+                            </th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Unit Purchase Price
+                              <div className="relative group inline-block ml-1">
+                                <Info className="h-3 w-3 text-gray-400 cursor-help" />
+                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
+                                  Total Purchase Price ÷ Quantity
+                                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                                </div>
+                              </div>
+                            </th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Total Purchase Price
+                              <div className="relative group inline-block ml-1">
+                                <Info className="h-3 w-3 text-gray-400 cursor-help" />
+                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
+                                  Total cost for all units
+                                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                                </div>
+                              </div>
+                            </th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Vendor
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {inventoryItems.map((item) => (
+                            <tr key={item.id} className="hover:bg-gray-50">
+                              <td className="px-4 py-2 text-sm text-gray-900">
+                                {item.category || "N/A"}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-900">
+                                {item.quantity || 0}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-900">
+                                {item.unitRetail
+                                  ? `$${item.unitRetail.toFixed(2)}`
+                                  : "N/A"}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-900">
+                                {item.extRetail
+                                  ? `$${item.extRetail.toFixed(2)}`
+                                  : "N/A"}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-900">
+                                {calculateUnitPurchasePrice(
+                                  item.purchasePrice,
+                                  item.quantity
+                                )}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-900">
+                                {item.purchasePrice
+                                  ? `$${item.purchasePrice.toFixed(2)}`
+                                  : "N/A"}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-900">
+                                {item.vendor || "N/A"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <p>No inventory items found</p>
+                      <p className="text-sm">
+                        Upload a CSV file to populate this inventory list
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -2319,6 +3083,180 @@ export default function AdminDashboard() {
                     Close
                   </Button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Financials Modal */}
+        {showEditFinancialsModal && selectedListForFinancials && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h3 className="text-lg font-semibold mb-4">
+                Edit Financial Data - {selectedListForFinancials.name}
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Winning Bid Amount
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={editingFinancials.winningBidAmount}
+                    onChange={(e) =>
+                      setEditingFinancials({
+                        ...editingFinancials,
+                        winningBidAmount: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Service Charges
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={editingFinancials.serviceCharges}
+                    onChange={(e) =>
+                      setEditingFinancials({
+                        ...editingFinancials,
+                        serviceCharges: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Shipping Charges
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={editingFinancials.shippingCharges}
+                    onChange={(e) =>
+                      setEditingFinancials({
+                        ...editingFinancials,
+                        shippingCharges: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  />
+                </div>
+
+                {/* Calculated Values Preview */}
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                    Calculated Values:
+                  </h4>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">
+                        Total Purchase Price:
+                      </span>
+                      <span className="font-medium">
+                        {formatCurrency(
+                          (parseFloat(editingFinancials.winningBidAmount) ||
+                            0) +
+                            (parseFloat(editingFinancials.serviceCharges) ||
+                              0) +
+                            (parseFloat(editingFinancials.shippingCharges) || 0)
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Total MSRP Value:</span>
+                      <span className="font-medium">
+                        {formatCurrency(
+                          inventoryItems.reduce(
+                            (sum, item) =>
+                              sum +
+                              (item.unitRetail || 0) * (item.quantity || 0),
+                            0
+                          )
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">% of MSRP:</span>
+                      <span className="font-medium">
+                        {(() => {
+                          const totalPurchase =
+                            (parseFloat(editingFinancials.winningBidAmount) ||
+                              0) +
+                            (parseFloat(editingFinancials.serviceCharges) ||
+                              0) +
+                            (parseFloat(editingFinancials.shippingCharges) ||
+                              0);
+                          const totalMSRP = inventoryItems.reduce(
+                            (sum, item) =>
+                              sum +
+                              (item.unitRetail || 0) * (item.quantity || 0),
+                            0
+                          );
+                          return totalMSRP > 0
+                            ? `${((totalPurchase / totalMSRP) * 100).toFixed(
+                                2
+                              )}%`
+                            : "-";
+                        })()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Avg Unit Purchase:</span>
+                      <span className="font-medium text-purple-600">
+                        {(() => {
+                          const totalPurchase =
+                            (parseFloat(editingFinancials.winningBidAmount) ||
+                              0) +
+                            (parseFloat(editingFinancials.serviceCharges) ||
+                              0) +
+                            (parseFloat(editingFinancials.shippingCharges) ||
+                              0);
+                          const totalMSRP = inventoryItems.reduce(
+                            (sum, item) =>
+                              sum +
+                              (item.unitRetail || 0) * (item.quantity || 0),
+                            0
+                          );
+                          return totalMSRP > 0
+                            ? `${((totalPurchase / totalMSRP) * 100).toFixed(
+                                1
+                              )}% of retail per unit`
+                            : "-";
+                        })()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex space-x-3 mt-6">
+                <Button
+                  onClick={handleSaveFinancials}
+                  className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                >
+                  Save Financials
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowEditFinancialsModal(false);
+                    setSelectedListForFinancials(null);
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
               </div>
             </div>
           </div>
