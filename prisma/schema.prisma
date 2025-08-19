@@ -22,6 +22,7 @@ model user {
   state           String?
   zipCode         String?
   country         String?
+  inventoryLists  InventoryList[]
   invitationsSent Invitation[]    @relation("InvitationsSent")
   listings        Listing[]
   members         Member[]
@@ -31,10 +32,9 @@ model user {
   teamMemberships TeamMember[]
   videos          Video[]
   accounts        account[]
+  buyerOrders     Order[]         @relation("BuyerOrders")
+  sellerOrders    Order[]         @relation("SellerOrders")
   sessions        session[]
-  inventoryLists  InventoryList[]
-  buyerOrders     Order[]         @relation("BuyerOrders") // Buyer orders
-  sellerOrders    Order[]         @relation("SellerOrders") // Seller orders
 
   @@index([email])
   @@index([zipCode])
@@ -199,7 +199,6 @@ model Listing {
   category               String
   subCategory            String
   title                  String
-  condition              String
   price                  Float
   description            String
   brand                  String?
@@ -208,8 +207,6 @@ model Listing {
   estimatedRetailPrice   Float?
   discountSchedule       Json?
   status                 String           @default("active")
-  isHeld                 Boolean          @default(false) // Item is held during checkout
-  heldUntil              DateTime? // When the hold expires
   createdAt              DateTime         @default(now())
   updatedAt              DateTime         @updatedAt
   views                  Int              @default(0)
@@ -250,13 +247,15 @@ model Listing {
   treasureReason         String?
   flawData               Json?
   googleProductCategory  String?
+  heldUntil              DateTime?
+  isHeld                 Boolean          @default(false)
   user                   user             @relation(fields: [userId], references: [id])
   history                ListingHistory[]
+  orders                 Order[]
   priceHistory           PriceHistory[]
+  inventoryItems         InventoryItem[]  @relation("InventoryItemToListing")
+  inventoryLists         InventoryList[]  @relation("InventoryListToListing")
   videos                 Video[]          @relation("ListingToVideo")
-  inventoryLists         InventoryList[]
-  inventoryItems         InventoryItem[]
-  orders                 Order[] // New relation to orders
 
   @@index([userId])
   @@index([status])
@@ -493,18 +492,21 @@ model EbayNotificationLog {
 model InventoryList {
   id                  String          @id @default(cuid())
   name                String
+  lotNumber           String?
+  datePurchased       DateTime?
+  briefDescription    String?
   createdBy           String?
-  winningBidAmount    Float? // New field for winning bid amount
-  serviceCharges      Float? // New field for service charges
-  shippingCharges     Float? // New field for shipping charges
-  totalPurchasePrice  Float? // Calculated field for total purchase price
-  totalExtRetailValue Float? // Calculated field for total extended retail value
-  msrpPercentage      Float? // Calculated field for % of MSRP
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
-  user                user?           @relation(fields: [createdBy], references: [id])
+  msrpPercentage      Float?
+  serviceCharges      Float?
+  shippingCharges     Float?
+  totalExtRetailValue Float?
+  totalPurchasePrice  Float?
+  winningBidAmount    Float?
   items               InventoryItem[]
-  listings            Listing[]
+  user                user?           @relation(fields: [createdBy], references: [id])
+  listings            Listing[]       @relation("InventoryListToListing")
 
   @@index([createdBy])
 }
@@ -512,7 +514,6 @@ model InventoryList {
 model InventoryItem {
   id            String        @id @default(cuid())
   listId        String
-  list          InventoryList @relation(fields: [listId], references: [id], onDelete: Cascade)
   lotNumber     String?
   itemNumber    String?
   deptCode      String?
@@ -520,14 +521,15 @@ model InventoryItem {
   description   String?
   quantity      Int?
   unitRetail    Float?
-  extRetail     Float? // Extended retail value (unitRetail * quantity)
+  extRetail     Float?
   vendor        String?
   categoryCode  String?
   category      String?
-  purchasePrice Float? // Calculated field for individual item purchase price
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
-  listings      Listing[]
+  purchasePrice Float?
+  list          InventoryList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  listings      Listing[]     @relation("InventoryItemToListing")
 
   @@unique([listId, itemNumber])
   @@index([listId])
@@ -535,46 +537,29 @@ model InventoryItem {
 }
 
 model Order {
-  id        String  @id @default(cuid())
-  listingId String
-  listing   Listing @relation(fields: [listingId], references: [id])
-  buyerId   String
-  buyer     user    @relation("BuyerOrders", fields: [buyerId], references: [id])
-  sellerId  String
-  seller    user    @relation("SellerOrders", fields: [sellerId], references: [id])
-
-  // Stripe fields
-  stripePaymentIntentId   String? @unique
-  stripeCheckoutSessionId String? @unique
+  id                      String      @id @default(cuid())
+  listingId               String
+  buyerId                 String
+  sellerId                String
+  stripePaymentIntentId   String?     @unique
+  stripeCheckoutSessionId String?     @unique
   stripeChargeId          String?
-
-  // Order details
-  amount   Float
-  currency String      @default("usd")
-  status   OrderStatus @default(PENDING)
-
-  // Checkout timer fields
-  checkoutExpiresAt DateTime? // When the checkout session expires
-  isHeld            Boolean   @default(false) // Whether the item is temporarily held
-
-  // Shipping and delivery
-  shippingAddress Json?
-  trackingNumber  String?
-  deliveredAt     DateTime?
-  finalizedAt     DateTime?
-
-  // Timestamps
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Dispute handling
-  disputeReason    String?
-  disputeCreatedAt DateTime?
-
-  // Future: Stripe Connect transfer fields
-  // transferId        String?
-  // transferAmount    Float?
-  // transferStatus    String?
+  amount                  Float
+  currency                String      @default("usd")
+  status                  OrderStatus @default(PENDING)
+  shippingAddress         Json?
+  trackingNumber          String?
+  deliveredAt             DateTime?
+  finalizedAt             DateTime?
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+  disputeReason           String?
+  disputeCreatedAt        DateTime?
+  checkoutExpiresAt       DateTime?
+  isHeld                  Boolean     @default(false)
+  buyer                   user        @relation("BuyerOrders", fields: [buyerId], references: [id])
+  listing                 Listing     @relation(fields: [listingId], references: [id])
+  seller                  user        @relation("SellerOrders", fields: [sellerId], references: [id])
 
   @@index([listingId])
   @@index([buyerId])
@@ -585,13 +570,13 @@ model Order {
 }
 
 enum OrderStatus {
-  PENDING // Order created, payment pending
-  PAID // Payment received, order confirmed
-  PROCESSING // Order being prepared
-  SHIPPED // Order shipped
-  DELIVERED // Order delivered
-  FINALIZED // Order finalized (delivered + 24h return window)
-  DISPUTED // Payment dispute created
-  CANCELLED // Order cancelled
-  REFUNDED // Order refunded
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  FINALIZED
+  DISPUTED
+  CANCELLED
+  REFUNDED
 }

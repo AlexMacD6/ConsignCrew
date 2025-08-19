@@ -27,6 +27,7 @@ interface Listing {
   discount_schedule?: any;
   created_at?: string;
   reserve_price?: number;
+  facebookCondition?: string;
 }
 
 interface HeroListingsCarouselProps {
@@ -120,6 +121,7 @@ export default function HeroListingsCarousel({
               category: listing.category,
               subCategory: listing.subCategory,
               neighborhood: listing.neighborhood,
+              facebookCondition: listing.facebookCondition,
             }));
 
           console.log("Valid listings with hero photos:", validListings.length);

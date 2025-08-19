@@ -369,7 +369,7 @@ export default function EditListingPage() {
           setSubCategory(listingData.subCategory || "");
           setTitle(listingData.title || "");
           setDescription(listingData.description || "");
-          setCondition(listingData.condition || "");
+          setCondition(listingData.facebookCondition || "");
           setPrice(listingData.price ? listingData.price.toString() : "");
           setReservePrice(
             listingData.reservePrice ? listingData.reservePrice.toString() : ""

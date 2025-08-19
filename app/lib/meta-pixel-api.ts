@@ -69,7 +69,7 @@ class MetaPixelAPI {
         price: listing.price,
         currency: 'USD',
         availability: listing.status === 'active' ? 'in stock' : 'out of stock',
-        condition: this.mapCondition(listing.condition),
+        condition: this.mapCondition(listing.facebookCondition),
         brand: listing.facebookBrand || listing.brand || 'TreasureHub',
         category: listing.googleProductCategory || `${listing.department} > ${listing.category}`,
         image_url: this.getFirstImageUrl(listing.photos),

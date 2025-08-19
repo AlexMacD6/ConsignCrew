@@ -95,6 +95,9 @@ interface ZipCode {
 interface InventoryList {
   id: string;
   name: string;
+  lotNumber?: string;
+  datePurchased?: string;
+  briefDescription?: string;
   createdAt: string;
   winningBidAmount?: number;
   serviceCharges?: number;
@@ -248,6 +251,13 @@ export default function AdminDashboard() {
   const [editingListId, setEditingListId] = useState<string | null>(null);
   const [editingListName, setEditingListName] = useState("");
   const [showViewItemsModal, setShowViewItemsModal] = useState(false);
+  const [showEditListModal, setShowEditListModal] = useState(false);
+  const [editingListData, setEditingListData] = useState({
+    lotNumber: "",
+    datePurchased: "",
+    briefDescription: "",
+    name: "",
+  });
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
   // New state variables for financial fields
@@ -970,9 +980,52 @@ export default function AdminDashboard() {
     }
   };
 
+  // Function to auto-generate title from lot number, date, and description
+  const generateTitle = (
+    lotNumber: string,
+    datePurchased: string,
+    briefDescription: string
+  ) => {
+    const parts = [];
+
+    // Format date as MMDDYYYY if provided
+    if (datePurchased) {
+      // Parse date string directly to avoid timezone issues
+      const [year, month, day] = datePurchased.split("-");
+      const formattedMonth = String(month).padStart(2, "0");
+      const formattedDay = String(day).padStart(2, "0");
+      parts.push(`${formattedMonth}${formattedDay}${year}`);
+    }
+
+    // Add lot number if provided
+    if (lotNumber.trim()) {
+      parts.push(lotNumber.trim());
+    }
+
+    // Add brief description if provided
+    if (briefDescription.trim()) {
+      parts.push(briefDescription.trim());
+    }
+
+    return parts.join(" - ");
+  };
+
+  // Update editing data and auto-generate title
+  const updateEditingData = (field: string, value: string) => {
+    const newData = { ...editingListData, [field]: value };
+    setEditingListData({
+      ...newData,
+      name: generateTitle(
+        newData.lotNumber,
+        newData.datePurchased,
+        newData.briefDescription
+      ),
+    });
+  };
+
   // New functions for editing and viewing items
   const handleEditInventoryList = async () => {
-    if (!editingListId || !editingListName.trim()) return;
+    if (!editingListId || !editingListData.name.trim()) return;
 
     try {
       const response = await fetch(
@@ -980,21 +1033,34 @@ export default function AdminDashboard() {
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: editingListName.trim() }),
+          body: JSON.stringify({
+            name: editingListData.name.trim(),
+            lotNumber: editingListData.lotNumber.trim() || null,
+            datePurchased: editingListData.datePurchased
+              ? new Date(editingListData.datePurchased).toISOString()
+              : null,
+            briefDescription: editingListData.briefDescription.trim() || null,
+          }),
         }
       );
 
       if (response.ok) {
-        setSuccess("Inventory list name updated successfully!");
+        setSuccess("Inventory list updated successfully!");
+        setShowEditListModal(false);
         setEditingListId(null);
-        setEditingListName("");
+        setEditingListData({
+          lotNumber: "",
+          datePurchased: "",
+          briefDescription: "",
+          name: "",
+        });
         loadInventoryLists();
       } else {
         const error = await response.json();
-        setError(error.error || "Failed to update inventory list name");
+        setError(error.error || "Failed to update inventory list");
       }
     } catch (err) {
-      setError("Failed to update inventory list name");
+      setError("Failed to update inventory list");
     }
   };
 
@@ -1024,7 +1090,13 @@ export default function AdminDashboard() {
 
   const startEditInventoryList = (list: InventoryList) => {
     setEditingListId(list.id);
-    setEditingListName(list.name);
+    setEditingListData({
+      lotNumber: list.lotNumber || "",
+      datePurchased: list.datePurchased ? list.datePurchased.split("T")[0] : "", // Format for date input
+      briefDescription: list.briefDescription || "",
+      name: list.name,
+    });
+    setShowEditListModal(true);
   };
 
   const cancelEditInventoryList = () => {
@@ -1142,7 +1214,7 @@ export default function AdminDashboard() {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                listId: selectedInventoryList?.id,
+                listId: selectedListForFinancials.id,
                 items: updatedItems.map((item) => ({
                   id: item.id,
                   purchasePrice: item.purchasePrice,
@@ -2197,44 +2269,43 @@ export default function AdminDashboard() {
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          {editingListId === list.id ? (
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="text"
-                                value={editingListName}
-                                onChange={(e) =>
-                                  setEditingListName(e.target.value)
-                                }
-                                className="px-2 py-1 border border-gray-300 rounded text-sm font-semibold"
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter")
-                                    handleEditInventoryList();
-                                  if (e.key === "Escape")
-                                    cancelEditInventoryList();
-                                }}
-                              />
-                              <button
-                                onClick={handleEditInventoryList}
-                                className="text-green-600 hover:text-green-700 text-sm"
-                              >
-                                ✓
-                              </button>
-                              <button
-                                onClick={cancelEditInventoryList}
-                                className="text-red-600 hover:text-red-700 text-sm"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          ) : (
-                            <h4 className="font-semibold text-gray-900">
-                              {list.name}
-                            </h4>
-                          )}
+                          <h4 className="font-semibold text-gray-900">
+                            {list.name}
+                          </h4>
                           <p className="text-sm text-gray-600">
                             {list._count?.items || 0} items • Created{" "}
                             {new Date(list.createdAt).toLocaleDateString()}
                           </p>
+                          {(list.lotNumber ||
+                            list.datePurchased ||
+                            list.briefDescription) && (
+                            <div className="mt-1 space-y-1">
+                              {list.lotNumber && (
+                                <p className="text-xs text-gray-500">
+                                  <span className="font-medium">Lot:</span>{" "}
+                                  {list.lotNumber}
+                                </p>
+                              )}
+                              {list.datePurchased && (
+                                <p className="text-xs text-gray-500">
+                                  <span className="font-medium">
+                                    Purchased:
+                                  </span>{" "}
+                                  {new Date(
+                                    list.datePurchased
+                                  ).toLocaleDateString()}
+                                </p>
+                              )}
+                              {list.briefDescription && (
+                                <p className="text-xs text-gray-500">
+                                  <span className="font-medium">
+                                    Description:
+                                  </span>{" "}
+                                  {list.briefDescription}
+                                </p>
+                              )}
+                            </div>
+                          )}
                           {/* Financial Summary */}
                           <div className="mt-2 space-y-1">
                             <div className="flex items-center gap-4 text-xs">
@@ -2552,7 +2623,7 @@ export default function AdminDashboard() {
         {/* View Inventory Items Modal */}
         {showViewItemsModal && selectedInventoryList && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="bg-white rounded-lg p-6 w-full max-w-7xl max-h-[80vh] overflow-hidden flex flex-col">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">
                   Inventory Items - {selectedInventoryList.name}
@@ -2577,19 +2648,40 @@ export default function AdminDashboard() {
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50 sticky top-0">
                           <tr className="bg-gray-50">
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Category
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]">
+                              Lot #
                             </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]">
+                              Item #
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]">
+                              Dept Code
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
+                              Department
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">
+                              Description
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]">
                               Quantity
                             </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
                               Unit Retail
                             </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
                               Ext. Retail
                             </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                              Vendor
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]">
+                              Cat Code
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
+                              Category
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
                               Unit Purchase Price
                               <div className="relative group inline-block ml-1">
                                 <Info className="h-3 w-3 text-gray-400 cursor-help" />
@@ -2599,7 +2691,7 @@ export default function AdminDashboard() {
                                 </div>
                               </div>
                             </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
                               Total Purchase Price
                               <div className="relative group inline-block ml-1">
                                 <Info className="h-3 w-3 text-gray-400 cursor-help" />
@@ -2609,43 +2701,61 @@ export default function AdminDashboard() {
                                 </div>
                               </div>
                             </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Vendor
-                            </th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                           {inventoryItems.map((item) => (
                             <tr key={item.id} className="hover:bg-gray-50">
-                              <td className="px-4 py-2 text-sm text-gray-900">
-                                {item.category || "N/A"}
+                              <td className="px-3 py-2 text-sm text-gray-900 whitespace-nowrap">
+                                {item.lotNumber || "N/A"}
                               </td>
-                              <td className="px-4 py-2 text-sm text-gray-900">
+                              <td className="px-3 py-2 text-sm text-gray-900 whitespace-nowrap">
+                                {item.itemNumber || "N/A"}
+                              </td>
+                              <td className="px-3 py-2 text-sm text-gray-900 whitespace-nowrap">
+                                {item.deptCode || "N/A"}
+                              </td>
+                              <td className="px-3 py-2 text-sm text-gray-900 whitespace-nowrap">
+                                {item.department || "N/A"}
+                              </td>
+                              <td
+                                className="px-3 py-2 text-sm text-gray-900 max-w-[200px] truncate"
+                                title={item.description || "N/A"}
+                              >
+                                {item.description || "N/A"}
+                              </td>
+                              <td className="px-3 py-2 text-sm text-gray-900 whitespace-nowrap">
                                 {item.quantity || 0}
                               </td>
-                              <td className="px-4 py-2 text-sm text-gray-900">
+                              <td className="px-3 py-2 text-sm text-gray-900 whitespace-nowrap">
                                 {item.unitRetail
                                   ? `$${item.unitRetail.toFixed(2)}`
                                   : "N/A"}
                               </td>
-                              <td className="px-4 py-2 text-sm text-gray-900">
+                              <td className="px-3 py-2 text-sm text-gray-900 whitespace-nowrap">
                                 {item.extRetail
                                   ? `$${item.extRetail.toFixed(2)}`
                                   : "N/A"}
                               </td>
-                              <td className="px-4 py-2 text-sm text-gray-900">
+                              <td className="px-3 py-2 text-sm text-gray-900 whitespace-nowrap">
+                                {item.vendor || "N/A"}
+                              </td>
+                              <td className="px-3 py-2 text-sm text-gray-900 whitespace-nowrap">
+                                {item.categoryCode || "N/A"}
+                              </td>
+                              <td className="px-3 py-2 text-sm text-gray-900 whitespace-nowrap">
+                                {item.category || "N/A"}
+                              </td>
+                              <td className="px-3 py-2 text-sm text-gray-900 whitespace-nowrap">
                                 {calculateUnitPurchasePrice(
                                   item.purchasePrice,
                                   item.quantity
                                 )}
                               </td>
-                              <td className="px-4 py-2 text-sm text-gray-900">
+                              <td className="px-3 py-2 text-sm text-gray-900 whitespace-nowrap">
                                 {item.purchasePrice
                                   ? `$${item.purchasePrice.toFixed(2)}`
                                   : "N/A"}
-                              </td>
-                              <td className="px-4 py-2 text-sm text-gray-900">
-                                {item.vendor || "N/A"}
                               </td>
                             </tr>
                           ))}
@@ -3251,6 +3361,105 @@ export default function AdminDashboard() {
                   onClick={() => {
                     setShowEditFinancialsModal(false);
                     setSelectedListForFinancials(null);
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Enhanced Edit Inventory List Modal */}
+        {showEditListModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-lg">
+              <h3 className="text-lg font-semibold mb-4">
+                Edit Inventory List
+              </h3>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Lot Number
+                  </label>
+                  <input
+                    type="text"
+                    value={editingListData.lotNumber}
+                    onChange={(e) =>
+                      updateEditingData("lotNumber", e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#D4AF3D]"
+                    placeholder="e.g., 6098887"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Date Purchased
+                  </label>
+                  <input
+                    type="date"
+                    value={editingListData.datePurchased}
+                    onChange={(e) =>
+                      updateEditingData("datePurchased", e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#D4AF3D]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Brief Description
+                  </label>
+                  <input
+                    type="text"
+                    value={editingListData.briefDescription}
+                    onChange={(e) =>
+                      updateEditingData("briefDescription", e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#D4AF3D]"
+                    placeholder="e.g., 6 Pallets of Patio Furniture"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Generated Title
+                  </label>
+                  <input
+                    type="text"
+                    value={editingListData.name}
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-700"
+                    placeholder="Title will be auto-generated"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Format: MMDDYYYY - Lot Number - Description
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex space-x-3 mt-6">
+                <Button
+                  onClick={handleEditInventoryList}
+                  className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                  disabled={!editingListData.name.trim()}
+                >
+                  Update List
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowEditListModal(false);
+                    setEditingListId(null);
+                    setEditingListData({
+                      lotNumber: "",
+                      datePurchased: "",
+                      briefDescription: "",
+                      name: "",
+                    });
                   }}
                   variant="outline"
                   className="flex-1"

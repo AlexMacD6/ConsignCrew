@@ -1102,7 +1102,7 @@ export async function generateStagedPhotoPhase2(request: {
       department: request.listingJSON.department,
       category: request.listingJSON.category,
       subCategory: request.listingJSON.subCategory,
-      condition: request.listingJSON.condition,
+      facebookCondition: request.listingJSON.facebookCondition,
       brand: request.listingJSON.brand,
       color: request.listingJSON.color,
       material: request.listingJSON.material,

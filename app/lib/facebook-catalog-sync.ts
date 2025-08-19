@@ -213,8 +213,8 @@ async function createProductInFacebook(listingId: string): Promise<{ success: bo
         department: listing.department,
         category: listing.category,
         condition: {
-          original: listing.condition,
-          mapped: mapConditionToFacebook(listing.condition)
+          original: listing.facebookCondition,
+          mapped: mapConditionToFacebook(listing.facebookCondition || 'used')
         },
         status: listing.status,
         material: listing.material,
@@ -277,7 +277,7 @@ async function createProductInFacebook(listingId: string): Promise<{ success: bo
         title: listing.title,
         description: listing.description,
         price: facebookPrice,
-        condition: mapConditionToFacebook(listing.condition),
+        condition: mapConditionToFacebook(listing.facebookCondition || 'used'),
         availability: listing.status === 'active' ? 'in stock' : 'out of stock',
         brand: listing.brand || undefined,
         category: `${listing.department} > ${listing.category}`,
@@ -300,7 +300,7 @@ async function createProductInFacebook(listingId: string): Promise<{ success: bo
         description: productData.description,
         price: Number(productData.price),
         currency: 'USD',
-        condition: mapConditionToFacebook(listing.condition),
+        condition: mapConditionToFacebook(listing.facebookCondition || 'used'),
         availability: productData.availability,
         brand: productData.brand,
         category: productData.category,
@@ -527,7 +527,7 @@ async function updateProductInFacebook(listingId: string): Promise<{ success: bo
         title: listing.title,
         description: listing.description,
         price: facebookPrice,
-        condition: mapConditionToFacebook(listing.condition),
+        condition: mapConditionToFacebook(listing.facebookCondition || 'used'),
         availability: listing.status === 'active' ? 'in stock' : 'out of stock',
         brand: listing.brand || undefined,
         category: `${listing.department} > ${listing.category}`,
@@ -561,8 +561,8 @@ async function updateProductInFacebook(listingId: string): Promise<{ success: bo
         department: listing.department,
         category: listing.category,
         condition: {
-          original: listing.condition,
-          mapped: mapConditionToFacebook(listing.condition)
+          original: listing.facebookCondition,
+          mapped: mapConditionToFacebook(listing.facebookCondition || 'used')
         },
         status: listing.status
       });
@@ -580,7 +580,7 @@ async function updateProductInFacebook(listingId: string): Promise<{ success: bo
           description: productData.description,
           price: productData.price,
           currency: 'USD',
-          condition: mapConditionToFacebook(listing.condition),
+          condition: mapConditionToFacebook(listing.facebookCondition || 'used'),
           availability: productData.availability,
           brand: productData.brand,
           category: productData.category,

@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       department,
       category,
       subCategory,
-      condition,
+      facebookCondition,
       price,
       brand,
       photos,
@@ -210,7 +210,7 @@ PRODUCT INFORMATION:
 - Department: ${department}
 - Category: ${category}
 - Sub-Category: ${subCategory}
-- Condition: ${condition}
+- Condition: ${facebookCondition}
 - Price: $${price}
 - Brand: ${brand || 'Unknown'}
 - Additional Info: ${additionalInfo || 'None provided'}
@@ -591,7 +591,6 @@ IMPORTANT: Return ONLY valid JSON. No additional text, comments, or explanations
       category: facebookCategories.category,
       subCategory: facebookCategories.subCategory,
       
-      condition: listingData.condition || condition,
       estimatedRetailPrice: parseFloat(listingData.estimatedRetailPrice) || price * 1.5,
       listPrice: parseFloat(listingData.listPrice) || price,
       priceReasoning: listingData.priceReasoning || 'AI-generated pricing based on market analysis',
@@ -608,14 +607,14 @@ IMPORTANT: Return ONLY valid JSON. No additional text, comments, or explanations
       // Facebook-specific fields (using AI-generated values)
       facebookBrand: listingData.facebookBrand || listingData.brand || brand,
       facebookCategory: facebookCategories.category, // Use validated Facebook category
-      facebookCondition: listingData.facebookCondition || (condition ? mapConditionToFacebook(condition) : 'used'),
+      facebookCondition: listingData.facebookCondition || (facebookCondition ? mapConditionToFacebook(facebookCondition) : 'used'),
       facebookGtin: listingData.facebookGtin || null,
       
       ebayQuery: listingData.ebayQuery || listingData.gtin || `${listingData.brand || brand} ${listingData.modelNumber || ''} ${listingData.features?.[0] || ''}`.trim(),
       detailedDescription: listingData.detailedDescription || listingData.description || description,
       marketingCopy: listingData.marketingCopy || listingData.description || description,
       technicalSpecs: listingData.technicalSpecs || 'Technical specifications not available',
-      conditionDetails: listingData.conditionDetails || (condition ? `Item is in ${condition.toLowerCase()} condition` : 'Item condition not specified'),
+      conditionDetails: listingData.conditionDetails || (facebookCondition ? `Item is in ${facebookCondition.toLowerCase()} condition` : 'Item condition not specified'),
       valueProposition: listingData.valueProposition || 'Great value for this quality item',
       
       // Product Specifications (Facebook Shop Fields)
@@ -686,7 +685,7 @@ IMPORTANT: Return ONLY valid JSON. No additional text, comments, or explanations
     console.log('🔍 Key Fields Generated:', {
       title: validatedData.title?.substring(0, 50) + '...',
       description: validatedData.description?.substring(0, 100) + '...',
-      condition: validatedData.condition,
+      facebookCondition: validatedData.facebookCondition,
       brand: validatedData.brand
     });
 
@@ -701,7 +700,7 @@ IMPORTANT: Return ONLY valid JSON. No additional text, comments, or explanations
         title,
         description,
         brand,
-        condition,
+        facebookCondition,
         price,
         ...additionalInfo
       },

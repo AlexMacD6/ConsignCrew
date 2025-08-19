@@ -5,6 +5,9 @@ export async function GET() {
   try {
     // Test database connection
     console.log('Testing database connection...');
+    console.log('DATABASE_URL length:', process.env.DATABASE_URL?.length);
+    console.log('DATABASE_URL starts with:', process.env.DATABASE_URL?.substring(0, 60));
+    console.log('DATABASE_URL contains channel_binding:', process.env.DATABASE_URL?.includes('channel_binding'));
     
     // Check if we can connect to the database
     await prisma.$connect();
@@ -29,8 +32,7 @@ export async function GET() {
             name: true,
             zipCode: true
           }
-        },
-        photos: true
+        }
       }
     });
     
@@ -49,11 +51,22 @@ export async function GET() {
     
   } catch (error) {
     console.error('Database connection test failed:', error);
+    console.error('Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      cause: error instanceof Error ? error.cause : undefined,
+    });
     
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
+      errorName: error instanceof Error ? error.name : 'Unknown',
+      stack: error instanceof Error ? error.stack : undefined,
+      databaseInfo: {
+        urlLength: process.env.DATABASE_URL?.length,
+        urlStart: process.env.DATABASE_URL?.substring(0, 60),
+        hasChannelBinding: process.env.DATABASE_URL?.includes('channel_binding'),
+      }
     }, { status: 500 });
     
   } finally {

@@ -77,6 +77,16 @@ export async function GET(
       );
     }
 
+    // For checkout page requests, add expiration check
+    if (request.nextUrl.searchParams.get('checkout') === 'true') {
+      if (new Date() > new Date(order.checkoutExpiresAt)) {
+        return NextResponse.json({ 
+          error: 'Checkout session has expired',
+          code: 'EXPIRED'
+        }, { status: 410 });
+      }
+    }
+
     return NextResponse.json({
       success: true,
       order,

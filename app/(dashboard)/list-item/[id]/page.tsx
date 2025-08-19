@@ -31,6 +31,7 @@ import {
   isNewCondition,
   getConditionColor,
 } from "../../../lib/condition-utils";
+import { usePurchaseService } from "../../../lib/purchase-service";
 import {
   trackMetaPixelEvent,
   trackViewContent,
@@ -164,6 +165,8 @@ export default function ListingDetailPage() {
   const { data: session } = authClient.useSession();
   const isAuthenticated = !!session?.user;
   const currentUserId = session?.user?.id || null;
+  const { handleBuyNow: purchaseServiceBuyNow, confirmOwnPurchase } =
+    usePurchaseService(currentUserId);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loadingPurchase, setLoadingPurchase] = useState(false); // New state for purchase loading
   const [ownListingConfirmOpen, setOwnListingConfirmOpen] = useState(false);
@@ -320,8 +323,7 @@ export default function ListingDetailPage() {
             value: listing.price,
             currency: "USD",
             brand: listing.brand || undefined,
-            condition:
-              listing.facebookCondition || listing.condition || undefined,
+            condition: listing.facebookCondition,
             availability:
               listing.status === "active" ? "in stock" : "out of stock",
             price: listing.price,
@@ -436,78 +438,36 @@ export default function ListingDetailPage() {
       return;
     }
 
-    // Debug: Log the listing object to see its structure
-    console.log("Listing object in handleBuyNow:", listing);
-    console.log("Listing ID field:", listing.itemId);
-    console.log("Listing ID from params:", params.id);
-
-    // Use the ID from params if itemId is not available
-    const listingId = listing.itemId || params.id;
-
-    if (!listingId) {
-      console.error("No listing ID available:", { listing, params });
-      alert(
-        "Unable to identify listing. Please refresh the page and try again."
-      );
-      return;
-    }
-
-    // If owner, open confirmation modal first
-    if (listing?.user?.id === currentUserId) {
-      setOwnListingConfirmOpen(true);
-      return;
-    }
     setLoadingPurchase(true);
-    try {
-      const response = await fetch("/api/checkout/sessions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          listingId: listingId,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        // Redirect to Stripe Checkout
-        window.location.href = data.url;
-      } else {
-        throw new Error(data.error || "Failed to create checkout session");
+    await purchaseServiceBuyNow(
+      listing,
+      () => setOwnListingConfirmOpen(true), // onOwnerConfirmationRequired
+      (error) => {
+        alert(error);
+        setLoadingPurchase(false);
+      }, // onError
+      () => {
+        // onSuccess - loading will continue until redirect
       }
-    } catch (error) {
-      console.error("Error creating checkout session:", error);
-      alert("Failed to create checkout session. Please try again.");
-    } finally {
-      setLoadingPurchase(false);
-    }
+    );
   };
 
   const confirmBuyOwnListing = async () => {
     if (!listing) return;
-    const listingId = listing.itemId || params.id;
+
     setOwnListingConfirmOpen(false);
     setLoadingPurchase(true);
-    try {
-      const response = await fetch("/api/checkout/sessions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ listingId, overrideOwnPurchase: true }),
-      });
-      const data = await response.json();
-      if (response.ok && data.success) {
-        window.location.href = data.url;
-      } else {
-        throw new Error(data.error || "Failed to create checkout session");
+
+    await confirmOwnPurchase(
+      listing,
+      (error) => {
+        alert(error);
+        setLoadingPurchase(false);
+      }, // onError
+      () => {
+        // onSuccess - loading will continue until redirect
       }
-    } catch (error) {
-      console.error("Error creating checkout session:", error);
-      alert("Failed to create checkout session. Please try again.");
-    } finally {
-      setLoadingPurchase(false);
-    }
+    );
   };
 
   if (loading) {
@@ -729,7 +689,7 @@ export default function ListingDetailPage() {
           price: listing.price,
           status: listing.status,
           brand: listing.brand,
-          condition: listing.condition,
+          facebookCondition: listing.facebookCondition,
           department: listing.department,
           category: listing.category,
           subCategory: listing.subCategory,

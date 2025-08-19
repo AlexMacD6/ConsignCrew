@@ -87,7 +87,7 @@ export async function PATCH(
           value: currentListing.price,
           currency: 'USD',
           brand: currentListing.brand || 'TreasureHub',
-          condition: currentListing.condition,
+          condition: currentListing.facebookCondition,
           availability: status === 'active' ? 'in stock' : 'out of stock',
           price: currentListing.price,
           sale_price: currentListing.reservePrice || currentListing.price,

@@ -181,7 +181,8 @@ export default function VideoUploadTest() {
                 <strong>Brand:</strong> {aiAnalysis.listingData?.brand}
               </p>
               <p>
-                <strong>Condition:</strong> {aiAnalysis.listingData?.condition}
+                <strong>Condition:</strong>{" "}
+                {aiAnalysis.listingData?.facebookCondition}
               </p>
               <p>
                 <strong>Estimated Retail Price:</strong> $

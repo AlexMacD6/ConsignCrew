@@ -9,10 +9,11 @@
  * @returns The properly formatted condition string
  */
 export function getStandardizedCondition(listing: any): string {
-  // Prefer facebookCondition over the old condition field
-  const condition = listing.facebookCondition || listing.condition;
+  // Use facebookCondition as the primary source
+  const condition = listing.facebookCondition;
   
   if (!condition) {
+    console.warn('Listing missing facebookCondition field:', listing.itemId || 'unknown');
     return "Unknown";
   }
   

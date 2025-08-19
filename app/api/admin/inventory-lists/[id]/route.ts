@@ -7,20 +7,27 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const { name, winningBidAmount, serviceCharges, shippingCharges, totalPurchasePrice, totalExtRetailValue, msrpPercentage } = await request.json();
+    const { name, lotNumber, datePurchased, briefDescription, winningBidAmount, serviceCharges, shippingCharges, totalPurchasePrice, totalExtRetailValue, msrpPercentage } = await request.json();
 
-    // Handle name update (existing functionality)
-    if (name !== undefined) {
-      if (!name || typeof name !== "string" || name.trim().length === 0) {
+    // Handle enhanced list update (name and new fields)
+    if (name !== undefined || lotNumber !== undefined || datePurchased !== undefined || briefDescription !== undefined) {
+      if (name !== undefined && (!name || typeof name !== "string" || name.trim().length === 0)) {
         return NextResponse.json(
           { error: "Name is required and must be a non-empty string" },
           { status: 400 }
         );
       }
 
+      const updateData: any = {};
+      
+      if (name !== undefined) updateData.name = name.trim();
+      if (lotNumber !== undefined) updateData.lotNumber = lotNumber;
+      if (datePurchased !== undefined) updateData.datePurchased = datePurchased;
+      if (briefDescription !== undefined) updateData.briefDescription = briefDescription;
+
       const updatedList = await prisma.inventoryList.update({
         where: { id },
-        data: { name: name.trim() },
+        data: updateData,
       });
 
       return NextResponse.json({

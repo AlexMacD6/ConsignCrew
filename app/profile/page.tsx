@@ -214,8 +214,9 @@ export default function ProfilePage() {
             // Don't fail the whole profile load for admin check
           }
 
-          // Load user's listings
+          // Load user's listings and purchases
           await loadUserListings();
+          await loadUserPurchases();
         }
       } catch (err) {
         console.error("Profile page: Error fetching user profile:", err);
@@ -274,6 +275,26 @@ export default function ProfilePage() {
     }
   };
 
+  const loadUserPurchases = async () => {
+    try {
+      setPurchasesLoading(true);
+      const response = await fetch("/api/profile/purchases", {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPurchases(data.purchases || []);
+      } else {
+        console.error("Failed to load user purchases");
+      }
+    } catch (error) {
+      console.error("Error loading user purchases:", error);
+    } finally {
+      setPurchasesLoading(false);
+    }
+  };
+
   const handleListingAction = async (listingId: string, action: string) => {
     try {
       let response;
@@ -308,7 +329,8 @@ export default function ProfilePage() {
     // Apply status filter
     if (listingsFilter !== "all") {
       filtered = filtered.filter(
-        (listing) => listing.status === listingsFilter.toUpperCase()
+        (listing) =>
+          listing.status.toLowerCase() === listingsFilter.toLowerCase()
       );
     }
 
@@ -872,11 +894,16 @@ export default function ProfilePage() {
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <div className="flex items-center">
-                    <Calendar className="h-8 w-8 text-gray-600" />
+                    <Clock className="h-8 w-8 text-gray-600" />
                     <div className="ml-3">
-                      <p className="text-sm font-medium text-gray-600">Draft</p>
+                      <p className="text-sm font-medium text-gray-600">
+                        Processing
+                      </p>
                       <p className="text-2xl font-bold text-gray-900">
-                        {listings.filter((l) => l.status === "DRAFT").length}
+                        {
+                          listings.filter((l) => l.status === "PROCESSING")
+                            .length
+                        }
                       </p>
                     </div>
                   </div>
@@ -904,7 +931,7 @@ export default function ProfilePage() {
                     <option value="all">All Listings</option>
                     <option value="active">Active</option>
                     <option value="sold">Sold</option>
-                    <option value="draft">Draft</option>
+                    <option value="processing">Processing</option>
                   </select>
                   <Button
                     onClick={() => router.push("/list-item")}
@@ -967,14 +994,19 @@ export default function ProfilePage() {
                         <div className="absolute top-2 right-2">
                           <span
                             className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              listing.status === "active" ||
                               listing.status === "ACTIVE"
                                 ? "bg-green-100 text-green-800"
-                                : listing.status === "SOLD"
+                                : listing.status === "sold" ||
+                                  listing.status === "SOLD"
                                 ? "bg-yellow-100 text-yellow-800"
+                                : listing.status === "processing" ||
+                                  listing.status === "PROCESSING"
+                                ? "bg-blue-100 text-blue-800"
                                 : "bg-gray-100 text-gray-800"
                             }`}
                           >
-                            {listing.status}
+                            {listing.status.toUpperCase()}
                           </span>
                         </div>
                       </div>
@@ -1195,69 +1227,106 @@ export default function ProfilePage() {
                     .map((purchase) => (
                       <div
                         key={purchase.id}
-                        className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+                        className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                       >
-                        <div className="flex items-start justify-between mb-4">
-                          <div>
-                            <h3 className="font-semibold text-lg mb-1">
-                              {purchase.title}
-                            </h3>
-                            <p className="text-sm text-gray-500">
-                              Seller: {purchase.sellerName}
-                            </p>
+                        {/* Purchase Image */}
+                        <div className="relative h-48 bg-gray-100">
+                          {purchase.photos?.hero ? (
+                            <img
+                              src={purchase.photos.hero}
+                              alt={purchase.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <ShoppingCart className="h-12 w-12 text-gray-400" />
+                            </div>
+                          )}
+                          {/* Status Badge */}
+                          <div className="absolute top-2 right-2">
+                            <span
+                              className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                purchase.status === "completed"
+                                  ? "bg-green-100 text-green-800"
+                                  : purchase.status === "pending"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {purchase.status.toUpperCase()}
+                            </span>
                           </div>
-                          <span
-                            className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              purchase.status === "completed"
-                                ? "bg-green-100 text-green-800"
-                                : purchase.status === "pending"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            {purchase.status}
-                          </span>
                         </div>
 
-                        <div className="space-y-2 mb-4">
-                          <p className="text-lg font-bold text-[#D4AF3D]">
-                            ${purchase.total}
+                        {/* Purchase Info */}
+                        <div className="p-4">
+                          <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
+                            {purchase.title}
+                          </h3>
+                          <p className="text-sm text-gray-500 mb-2">
+                            Seller: {purchase.sellerName}
                           </p>
-                          <p className="text-sm text-gray-500">
-                            Purchased:{" "}
-                            {new Date(
-                              purchase.purchaseDate
-                            ).toLocaleDateString()}
+                          <p className="text-2xl font-bold text-[#D4AF3D] mb-2">
+                            ${purchase.total?.toFixed(2)}
                           </p>
-                        </div>
 
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={() =>
-                              router.push(`/list-item/${purchase.listingId}`)
-                            }
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                          >
-                            <EyeIcon className="h-4 w-4 mr-1" />
-                            View Item
-                          </Button>
-                          <Button
-                            onClick={() => {
-                              // TODO: Implement purchase details view
-                              console.log(
-                                "View purchase details:",
-                                purchase.id
-                              );
-                            }}
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                          >
-                            <FileText className="h-4 w-4 mr-1" />
-                            Details
-                          </Button>
+                          {/* Purchase Details */}
+                          <div className="space-y-1 mb-4">
+                            <div className="flex items-center justify-between text-sm text-gray-500">
+                              <div className="flex items-center">
+                                <Calendar className="h-4 w-4 mr-1" />
+                                <span>
+                                  {new Date(
+                                    purchase.purchaseDate
+                                  ).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                            {purchase.trackingNumber && (
+                              <div className="text-sm text-gray-500">
+                                <span className="font-medium">Tracking:</span>{" "}
+                                {purchase.trackingNumber}
+                              </div>
+                            )}
+                            {purchase.deliveredAt && (
+                              <div className="text-sm text-green-600">
+                                <span className="font-medium">Delivered:</span>{" "}
+                                {new Date(
+                                  purchase.deliveredAt
+                                ).toLocaleDateString()}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() =>
+                                router.push(`/list-item/${purchase.listingId}`)
+                              }
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                            >
+                              <EyeIcon className="h-4 w-4 mr-1" />
+                              View Item
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                // TODO: Implement purchase details view
+                                console.log(
+                                  "View purchase details:",
+                                  purchase.id
+                                );
+                              }}
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                            >
+                              <FileText className="h-4 w-4 mr-1" />
+                              Details
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}

@@ -91,8 +91,8 @@ export function generateProductMetadata(product: ProductForMeta): Metadata {
       "product:price:amount": product.list_price.toString(),
       "product:price:currency": "USD",
       "product:availability": availability,
-      ...(product.condition && {
-        "product:condition": product.condition.toLowerCase(),
+      ...(product.facebookCondition && {
+        "product:condition": product.facebookCondition.toLowerCase(),
       }),
       ...(product.brand && { "product:brand": product.brand }),
 
@@ -103,7 +103,9 @@ export function generateProductMetadata(product: ProductForMeta): Metadata {
       "itemProp:price": product.list_price.toString(),
       "itemProp:priceCurrency": "USD",
       "itemProp:availability": availability,
-      ...(product.condition && { "itemProp:itemCondition": product.condition }),
+      ...(product.facebookCondition && {
+        "itemProp:itemCondition": product.facebookCondition,
+      }),
       ...(product.brand && { "itemProp:brand": product.brand }),
     },
     robots: {
