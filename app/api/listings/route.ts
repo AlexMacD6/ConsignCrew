@@ -399,16 +399,18 @@ export async function GET(request: NextRequest) {
     if (userOnly) {
       whereClause.userId = session!.user.id;
     } else {
-      // For public listings, show ACTIVE and SOLD, but hide PROCESSING
+      // For public listings, show ACTIVE, PROCESSING, and SOLD
       if (status === 'active') {
         whereClause.status = {
-          in: ['active', 'sold']
+          in: ['active', 'processing', 'sold']
         };
       } else {
         whereClause.status = status;
       }
     }
 
+    console.log('Listings API: Where clause:', JSON.stringify(whereClause, null, 2));
+    
     const listings = await prisma.listing.findMany({
       where: whereClause,
       include: {
@@ -444,6 +446,9 @@ export async function GET(request: NextRequest) {
       take: limit,
       skip: offset,
     });
+
+    console.log('Listings API: Found', listings.length, 'listings');
+    console.log('Listings API: Statuses:', listings.map(l => ({ id: l.itemId, status: l.status })));
 
     // Fetch zip code data for all unique zip codes
     const uniqueZipCodes = [...new Set(listings.map(listing => listing.user.zipCode).filter((zipCode): zipCode is string => zipCode !== null))];

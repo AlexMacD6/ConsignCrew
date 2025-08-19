@@ -33,6 +33,10 @@ import {
 } from "../../../lib/condition-utils";
 import { usePurchaseService } from "../../../lib/purchase-service";
 import {
+  getBuyNowButtonState,
+  getStatusOverlay,
+} from "../../../lib/listing-button-utils";
+import {
   trackMetaPixelEvent,
   trackViewContent,
   trackAddToWishlist,
@@ -749,7 +753,7 @@ export default function ListingDetailPage() {
           {/* Left Column - Images and Basic Info */}
           <div className="lg:col-span-2">
             {/* Main Image Carousel */}
-            <div className="mb-6">
+            <div className="mb-6 relative">
               <ImageCarousel
                 images={allImages}
                 video={
@@ -767,6 +771,18 @@ export default function ListingDetailPage() {
                 showDots={true}
                 autoPlay={false}
               />
+
+              {/* Status Overlay */}
+              {(() => {
+                const overlay = getStatusOverlay(listing?.status);
+                if (!overlay.show) return null;
+
+                return (
+                  <div className={overlay.className}>
+                    <div className={overlay.badgeClassName}>{overlay.text}</div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Price Information */}
@@ -855,20 +871,30 @@ export default function ListingDetailPage() {
               )}
               <div className="flex gap-3">
                 {isAuthenticated ? (
-                  <Button
-                    className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
-                    onClick={handleBuyNow}
-                    disabled={loadingPurchase}
-                  >
-                    {loadingPurchase ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Processing...
-                      </>
-                    ) : (
-                      "Buy it Now"
-                    )}
-                  </Button>
+                  (() => {
+                    const buttonState = getBuyNowButtonState({
+                      status: listing?.status,
+                      isOwner: listing?.user?.id === currentUserId,
+                      loadingPurchase,
+                    });
+
+                    return (
+                      <Button
+                        className={buttonState.className}
+                        onClick={handleBuyNow}
+                        disabled={buttonState.disabled}
+                      >
+                        {buttonState.loading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            {buttonState.text}
+                          </>
+                        ) : (
+                          buttonState.text
+                        )}
+                      </Button>
+                    );
+                  })()
                 ) : (
                   <div className="flex gap-2 w-full">
                     <Button

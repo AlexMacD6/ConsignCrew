@@ -51,17 +51,33 @@ export default function CheckoutPage() {
       }
 
       try {
+        console.log("Checkout Page: Fetching order:", params.orderId);
         const response = await fetch(
-          `/api/orders/${params.orderId}?checkout=true`
+          `/api/orders/${params.orderId}?checkout=true`,
+          {
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
         );
+
+        console.log("Checkout Page: Response status:", response.status);
+
         if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Checkout Page: API error:", errorText);
           throw new Error("Order not found");
         }
 
         const data = await response.json();
+        console.log("Checkout Page: API response:", data);
+
         if (data.success) {
+          console.log("Checkout Page: Order loaded successfully:", data.order);
           setOrder(data.order);
         } else {
+          console.error("Checkout Page: API returned error:", data.error);
           throw new Error(data.error || "Failed to fetch order");
         }
       } catch (err) {
@@ -81,14 +97,28 @@ export default function CheckoutPage() {
     setRedirecting(true);
 
     try {
+      console.log("Checkout Page: Getting Stripe URL for order:", order.id);
       // Get the Stripe checkout URL
-      const response = await fetch(`/api/checkout/stripe-url/${order.id}`);
+      const response = await fetch(`/api/checkout/stripe-url/${order.id}`, {
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      console.log(
+        "Checkout Page: Stripe URL response status:",
+        response.status
+      );
       const data = await response.json();
+      console.log("Checkout Page: Stripe URL response:", data);
 
       if (data.success && data.checkoutUrl) {
+        console.log("Checkout Page: Redirecting to Stripe:", data.checkoutUrl);
         // Redirect to Stripe Checkout
         window.location.href = data.checkoutUrl;
       } else {
+        console.error("Checkout Page: Failed to get Stripe URL:", data.error);
         throw new Error(data.error || "Failed to get checkout URL");
       }
     } catch (err) {

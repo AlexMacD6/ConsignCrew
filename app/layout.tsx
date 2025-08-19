@@ -13,7 +13,7 @@ import "../app/lib/console-filter"; // Import console filter
 export const metadata: Metadata = {
   title: {
     default:
-      "TreasureHub | Sell Stress-Free - Professional Consignment Service",
+      "TreasureHub | Houston's Treasure Chest - Professional Consignment Service",
     template: "%s | TreasureHub",
   },
   description:
@@ -47,7 +47,8 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://treasurehub.club",
     siteName: "TreasureHub",
-    title: "TreasureHub | Find Local Treasures",
+    title:
+      "TreasureHub | Houston's Treasure Chest - Professional Consignment Service",
     description:
       "Professional consignment service that handles everything from pickup to sale. Get the most value for your belongings.",
     images: [
@@ -61,7 +62,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "TreasureHub | Find Local Treasures",
+    title:
+      "TreasureHub | Houston's Treasure Chest - Professional Consignment Service",
     description:
       "Professional consignment service that handles everything from pickup to sale.",
     images: ["/TreasureHub - Banner Black.png"],
@@ -84,7 +86,11 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
-      { url: "/TreasureHub - Favicon Black.png", sizes: "32x32", type: "image/png" },
+      {
+        url: "/TreasureHub - Favicon Black.png",
+        sizes: "32x32",
+        type: "image/png",
+      },
     ],
     shortcut: "/favicon.ico",
     apple: "/TreasureHub - Favicon Black.png",
@@ -97,8 +103,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         {/* Favicon to prevent 404 errors */}
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/TreasureHub - Favicon Black.png" />
-        
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="32x32"
+          href="/TreasureHub - Favicon Black.png"
+        />
+
         {/* Google Tag Manager */}
         <Script id="google-tag-manager" strategy="beforeInteractive">
           {`

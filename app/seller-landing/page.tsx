@@ -5,7 +5,6 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import PriceSlider from "../components/PriceSlider";
 import ScrollSection from "../components/ScrollSection";
-import TreasureMapCards from "../components/TreasureMapCards";
 import Roadmap from "../components/Roadmap";
 
 import EarlyAccessTracker from "../components/EarlyAccessTracker";
@@ -35,11 +34,17 @@ const PainPointsSection = dynamic(
 
 export default function SellerLandingPage() {
   const [email, setEmail] = useState("");
+  const [bottomEmail, setBottomEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isBottomSubmitting, setIsBottomSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [bottomSubmitSuccess, setBottomSubmitSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [bottomError, setBottomError] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [showBottomSuccessMessage, setShowBottomSuccessMessage] =
+    useState(false);
 
   // Ensure page starts at the top when loaded
   useEffect(() => {
@@ -86,6 +91,18 @@ export default function SellerLandingPage() {
     }
   }, [submitSuccess]);
 
+  // Handle bottom success message fade-out
+  useEffect(() => {
+    if (bottomSubmitSuccess) {
+      setShowBottomSuccessMessage(true);
+      const timer = setTimeout(() => {
+        setShowBottomSuccessMessage(false);
+        setBottomSubmitSuccess(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [bottomSubmitSuccess]);
+
   const handleEmailSubmit = async (
     e: React.FormEvent,
     source: string = "hero"
@@ -124,6 +141,44 @@ export default function SellerLandingPage() {
       setError("Network error. Please try again.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleBottomEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bottomEmail) return;
+
+    setIsBottomSubmitting(true);
+    setBottomError("");
+    setBottomSubmitSuccess(false);
+
+    try {
+      const response = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: bottomEmail,
+          source: "bottom-cta",
+        }),
+      });
+
+      if (response.ok) {
+        setBottomSubmitSuccess(true);
+        setBottomEmail("");
+        setRefreshTrigger((prev) => prev + 1);
+
+        // Track registration completion
+        trackCompleteRegistration();
+      } else {
+        const errorData = await response.json();
+        setBottomError(errorData.error || "Failed to subscribe");
+      }
+    } catch (err) {
+      setBottomError("Network error. Please try again.");
+    } finally {
+      setIsBottomSubmitting(false);
     }
   };
 
@@ -564,27 +619,6 @@ export default function SellerLandingPage() {
           </section>
         </ScrollSection>
 
-        {/* Treasure Map Section */}
-        <ScrollSection animationType="fadeInUp" threshold={0.2}>
-          <section className="py-12 lg:py-20 px-4">
-            <div className="max-w-6xl mx-auto">
-              <ScrollSection animationType="fadeInUp" delay={200}>
-                <div className="text-center mb-12 lg:mb-16">
-                  <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 lg:mb-6">
-                    Your Treasure Map
-                  </h2>
-                  <p className="text-lg sm:text-xl text-gray-700 max-w-3xl mx-auto px-4">
-                    Navigate your selling journey with our comprehensive tools
-                    and insights.
-                  </p>
-                </div>
-              </ScrollSection>
-
-              <TreasureMapCards />
-            </div>
-          </section>
-        </ScrollSection>
-
         {/* Pricing Section */}
         <ScrollSection animationType="fadeInUp" threshold={0.2}>
           <section className="py-12 lg:py-20 px-4 bg-white/80 backdrop-blur-sm">
@@ -608,23 +642,7 @@ export default function SellerLandingPage() {
 
         {/* Roadmap Section */}
         <ScrollSection animationType="fadeInUp" threshold={0.2}>
-          <section className="py-12 lg:py-20 px-4">
-            <div className="max-w-6xl mx-auto">
-              <ScrollSection animationType="fadeInUp" delay={200}>
-                <div className="text-center mb-12 lg:mb-16">
-                  <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 lg:mb-6">
-                    Our Roadmap
-                  </h2>
-                  <p className="text-lg sm:text-xl text-gray-700 max-w-3xl mx-auto px-4">
-                    See what's coming next and how we're building the future of
-                    hassle-free selling.
-                  </p>
-                </div>
-              </ScrollSection>
-
-              <Roadmap />
-            </div>
-          </section>
+          <Roadmap />
         </ScrollSection>
 
         {/* Final CTA Section */}
@@ -639,19 +657,50 @@ export default function SellerLandingPage() {
                   Join thousands of sellers who are already making money without
                   the hassle. Start your stress-free selling journey today.
                 </p>
+
+                {/* Email Form */}
+                <form
+                  onSubmit={handleBottomEmailSubmit}
+                  className="w-full max-w-lg mx-auto mb-8"
+                >
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <input
+                      type="email"
+                      value={bottomEmail}
+                      onChange={(e) => setBottomEmail(e.target.value)}
+                      placeholder="Enter your email"
+                      className="flex-1 px-4 sm:px-6 py-3 sm:py-4 bg-white/90 backdrop-blur-md border-2 border-white/50 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-white focus:bg-white transition-all text-base sm:text-lg font-medium shadow-lg"
+                      required
+                    />
+                    <button
+                      type="submit"
+                      disabled={isBottomSubmitting}
+                      className="bg-white text-treasure-600 hover:bg-gray-100 font-bold text-lg px-6 py-3 sm:py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 whitespace-nowrap"
+                    >
+                      {isBottomSubmitting ? "Joining..." : "Get Early Access"}
+                    </button>
+                  </div>
+                  {showBottomSuccessMessage && (
+                    <p
+                      className={`text-white text-sm mt-2 transition-opacity duration-500 ${
+                        showBottomSuccessMessage ? "opacity-100" : "opacity-0"
+                      }`}
+                    >
+                      ✅ You're on the list! We'll notify you when we launch.
+                    </p>
+                  )}
+                  {bottomError && (
+                    <p className="text-red-200 text-sm mt-2">{bottomError}</p>
+                  )}
+                </form>
+
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Link
-                    href="/list-item"
+                    href="/listings"
                     className="bg-white text-treasure-600 hover:bg-gray-100 font-bold text-lg px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
                   >
-                    Start Selling Now
+                    See Listings
                   </Link>
-                  <button
-                    onClick={(e) => handleEmailSubmit(e, "final-cta")}
-                    className="border-2 border-white text-white hover:bg-white hover:text-treasure-600 font-bold text-lg px-8 py-4 rounded-xl transition-all duration-200"
-                  >
-                    Get Early Access
-                  </button>
                 </div>
               </ScrollSection>
             </div>
@@ -661,6 +710,3 @@ export default function SellerLandingPage() {
     </div>
   );
 }
-
-
-
