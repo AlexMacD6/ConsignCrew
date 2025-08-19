@@ -1030,7 +1030,7 @@ export default function ListItemPage() {
           categories.map((cat) => cat.googleProductCategory)
         );
       }
-      setCondition(mapConditionToFacebook(listingData.condition));
+      setCondition(mapConditionToFacebook(listingData.facebookCondition));
       setPrice(listingData.listPrice.toString());
       setBrand(listingData.brand);
       setHeight(listingData.height || "");
@@ -3711,9 +3711,9 @@ export default function ListItemPage() {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                           Condition *
-                          {confidenceScores?.condition && (
+                          {confidenceScores?.facebookCondition && (
                             <ConfidenceBadge
-                              level={confidenceScores.condition.level}
+                              level={confidenceScores.facebookCondition.level}
                             />
                           )}
                         </label>

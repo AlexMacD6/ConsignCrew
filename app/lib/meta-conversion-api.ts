@@ -246,8 +246,8 @@ export class MetaConversionAPI {
     if (data.brand) {
       customData.brand = data.brand;
     }
-    if (data.condition) {
-      customData.condition = data.condition;
+    if (data.facebookCondition) {
+      customData.condition = data.facebookCondition;
     }
     if (data.availability) {
       customData.availability = data.availability;

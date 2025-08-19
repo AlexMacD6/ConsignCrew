@@ -184,7 +184,6 @@ export async function PUT(
       category,
       subCategory,
       title,
-      condition,
       price,
       description,
       brand,
@@ -223,7 +222,7 @@ export async function PUT(
     } = body;
 
     // Validate required fields
-    if (!title || !price || !condition || !description) {
+    if (!title || !price || !facebookCondition || !description) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -257,7 +256,6 @@ export async function PUT(
         category,
         subCategory,
         title,
-        condition,
         price: parseFloat(price),
         description,
         brand: brand || null,

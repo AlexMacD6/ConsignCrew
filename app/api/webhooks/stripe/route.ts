@@ -118,8 +118,7 @@ async function handleCheckoutSessionCompleted(session: any) {
     await prisma.listing.update({
       where: { id: order.listingId },
       data: {
-        status: 'SOLD',
-        quantity: Math.max(0, order.listing.quantity - 1), // Decrease quantity
+        status: 'sold',
         isHeld: false, // Release the hold
         heldUntil: null, // Clear hold expiry
       },

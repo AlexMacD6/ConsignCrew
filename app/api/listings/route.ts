@@ -68,7 +68,6 @@ export async function POST(request: NextRequest) {
       category,
       subCategory,
       title,
-      condition,
       price,
       description,
       brand,
@@ -178,7 +177,6 @@ export async function POST(request: NextRequest) {
           category,
           subCategory,
           title,
-          condition,
           price: parseFloat(price),
           reservePrice: reservePrice ? parseFloat(reservePrice) : parseFloat(price) * 0.6,
           description,
@@ -248,7 +246,6 @@ export async function POST(request: NextRequest) {
               category,
               subCategory,
               title,
-              condition,
               price: parseFloat(price),
               reservePrice: reservePrice ? parseFloat(reservePrice) : parseFloat(price) * 0.6,
               description,
@@ -402,7 +399,14 @@ export async function GET(request: NextRequest) {
     if (userOnly) {
       whereClause.userId = session!.user.id;
     } else {
-      whereClause.status = status;
+      // For public listings, show ACTIVE and SOLD, but hide PROCESSING
+      if (status === 'active') {
+        whereClause.status = {
+          in: ['active', 'sold']
+        };
+      } else {
+        whereClause.status = status;
+      }
     }
 
     const listings = await prisma.listing.findMany({
@@ -568,9 +572,9 @@ export async function PATCH(request: NextRequest) {
       }
     }
     
-    if (body.condition && body.condition !== listing.condition) {
+    if (body.facebookCondition && body.facebookCondition !== listing.facebookCondition) {
       changes.push('condition');
-      await createHistoryEvent(listingId, HistoryEvents.CONDITION_CHANGED(listing.condition, body.condition));
+      await createHistoryEvent(listingId, HistoryEvents.CONDITION_CHANGED(listing.facebookCondition || 'unknown', body.facebookCondition));
     }
     
 

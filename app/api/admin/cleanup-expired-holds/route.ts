@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
         data: {
           isHeld: false,
           heldUntil: null,
+        status: 'active', // Reset status back to active when hold expires
         },
       });
       releasedCount++;

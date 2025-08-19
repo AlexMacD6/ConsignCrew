@@ -13,7 +13,7 @@ interface ProductStructuredDataProps {
     price?: number;
     status?: string;
     brand?: string;
-    condition?: string;
+    facebookCondition?: string;
     department?: string;
     category?: string;
     subCategory?: string;
@@ -110,7 +110,7 @@ export default function ProductStructuredData({
       price: getPrice(),
       priceCurrency: "USD",
       availability: getAvailability(product.status || ""),
-      itemCondition: getCondition(product.condition),
+      itemCondition: getCondition(product.facebookCondition),
       url: product.url,
       seller: {
         "@type": "Organization",

@@ -137,12 +137,13 @@ export async function POST(request: NextRequest) {
     const holdDuration = 10 * 60 * 1000; // 10 minutes in milliseconds
     const holdExpiry = new Date(Date.now() + holdDuration);
 
-    // Update listing to hold it during checkout
+    // Update listing to hold it during checkout and set to processing
     await prisma.listing.update({
       where: { id: listing.id },
       data: {
         isHeld: true,
         heldUntil: holdExpiry,
+        status: 'processing',
       },
     });
 

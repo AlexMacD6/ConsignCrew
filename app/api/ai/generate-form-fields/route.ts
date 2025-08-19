@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       department,
       category,
       subCategory,
-      condition,
+      facebookCondition,
       price,
       brand,
       additionalInfo,
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       department,
       category,
       subCategory,
-      condition,
+      facebookCondition,
       price,
       brand,
       additionalInfo,
@@ -66,7 +66,7 @@ USER INPUT:
 - Department: ${department}
 - Category: ${category}
 - Sub-Category: ${subCategory}
-- Condition: ${condition}
+- Condition: ${facebookCondition}
 - Price: $${price}
 - Brand: ${brand || 'Unknown'}
 - Additional Info: ${additionalInfo || 'None provided'}
@@ -203,7 +203,7 @@ Provide deep reasoning for each field to maximize value, appeal, and competitive
       department: formData.department || department,
       category: formData.category || category,
       subCategory: formData.subCategory || subCategory,
-      condition: formData.condition || condition,
+      facebookCondition: formData.facebookCondition || facebookCondition,
       estimatedRetailPrice: parseFloat(formData.estimatedRetailPrice) || price * 1.5,
       listPrice: parseFloat(formData.listPrice) || price,
       priceReasoning: formData.priceReasoning || 'Comprehensive pricing analysis with market research and competitive factors',
@@ -218,12 +218,11 @@ Provide deep reasoning for each field to maximize value, appeal, and competitive
       keywords: Array.isArray(formData.keywords) ? formData.keywords : [],
       facebookBrand: formData.facebookBrand || formData.brand || brand,
       facebookCategory: formData.facebookCategory || category,
-      facebookCondition: formData.facebookCondition || mapConditionToFacebook(condition),
       facebookGtin: formData.facebookGtin || null,
       detailedDescription: formData.detailedDescription || formData.description || description,
       marketingCopy: formData.marketingCopy || formData.description || description,
       technicalSpecs: formData.technicalSpecs || 'Technical specifications not available',
-      conditionDetails: formData.conditionDetails || `Item is in ${condition.toLowerCase()} condition`,
+      conditionDetails: formData.conditionDetails || `Item is in ${facebookCondition.toLowerCase()} condition`,
       valueProposition: formData.valueProposition || 'Great value for this quality item',
       // Enhanced fields from deep reasoning analysis
       marketAnalysis: formData.marketAnalysis || 'Market analysis not available',
