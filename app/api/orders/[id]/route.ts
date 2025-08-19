@@ -16,22 +16,34 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    console.log('Orders API: Fetching order with ID:', id);
+    
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user?.id) {
+      console.log('Orders API: No session found');
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
       );
     }
 
+    console.log('Orders API: Session found for user:', session.user.id);
+
     // Fetch order with related data
-    const order = await prisma.order.findUnique({
-      where: { id },
+    console.log('Orders API: Attempting to find order...');
+    const order = await prisma.order.findFirst({
+      where: { 
+        id,
+        // Only allow access to orders where user is buyer or seller
+        OR: [
+          { buyerId: session.user.id },
+          { listing: { userId: session.user.id } }
+        ]
+      },
       include: {
         listing: {
           include: {
-            photos: true,
             user: {
               select: {
                 id: true,
@@ -58,12 +70,17 @@ export async function GET(
       },
     });
 
+    console.log('Orders API: Order query completed. Found order:', !!order);
+    
     if (!order) {
+      console.log('Orders API: Order not found for ID:', id);
       return NextResponse.json(
         { error: 'Order not found' },
         { status: 404 }
       );
     }
+
+    console.log('Orders API: Order found. Buyer ID:', order.buyerId, 'Current User:', session.user.id);
 
     // Check if user has access to this order
     const isAdmin = session.user.role === 'admin';

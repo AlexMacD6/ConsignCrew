@@ -10,8 +10,6 @@ export default function MetaPixelScript() {
     return null;
   }
 
-  console.log("Meta Pixel: Initializing with ID:", pixelId);
-
   return (
     <>
       {/* Meta Pixel Base Code */}
