@@ -133,10 +133,10 @@ export async function POST(request: NextRequest) {
         listingId: order.listingId,
         eventType: 'PURCHASE',
         eventTitle: 'Item Purchased',
-        description: `Item purchased by user ${buyerId} (manual webhook simulation)`,
+        description: 'Item purchased by a buyer (manual webhook simulation)',
         metadata: {
           orderId: order.id,
-          buyerId,
+          // Remove buyerId from metadata to protect privacy
           amount: stripeSession.amount_total / 100,
         },
       },

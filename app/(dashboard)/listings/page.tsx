@@ -110,6 +110,8 @@ export default function ListingsPage() {
   const [signupError, setSignupError] = useState(""); // Signup error message
   const [loadingPurchase, setLoadingPurchase] = useState(false); // Purchase loading state
   const [ownListingConfirmOpen, setOwnListingConfirmOpen] = useState(false); // Own listing confirmation modal
+  const [showAddressRequiredModal, setShowAddressRequiredModal] = useState(false);
+  const [userAddress, setUserAddress] = useState<any>(null);
 
   // Authentication state
   const { data: session } = authClient.useSession();
@@ -117,6 +119,30 @@ export default function ListingsPage() {
   const currentUserId = session?.user?.id || null;
   const { handleBuyNow: purchaseServiceBuyNow, confirmOwnPurchase } =
     usePurchaseService(currentUserId);
+
+  // Function to check if user has complete address
+  const isAddressComplete = (address: any) => {
+    if (!address) return false;
+    return !!(address.addressLine1 && address.city && address.state && address.zipCode);
+  };
+
+  // Function to fetch user profile data
+  const fetchUserProfile = async () => {
+    if (!isAuthenticated) return;
+    
+    try {
+      const res = await fetch("/api/profile", {
+        credentials: "include",
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setUserAddress(data.user);
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+    }
+  };
 
   // Set client-side rendering flag after hydration
   useEffect(() => {

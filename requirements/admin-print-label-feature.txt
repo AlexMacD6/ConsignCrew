@@ -1,0 +1,135 @@
+# Admin Print Label Feature
+
+## Problem
+Admins need the ability to generate physical labels for inventory management and tracking. These labels should include the QR code, SKU, and TreasureHub branding in a standardized 2" x 2" format suitable for printing.
+
+## Requirements
+
+### 1. Label Specifications
+- **Size**: 2" x 2" at 300 DPI (600px x 600px)
+- **Format**: PNG image for crisp printing
+- **Quality**: High-resolution suitable for physical labels
+
+### 2. Label Content
+- **QR Code**: Same format as displayed on listing page with TreasureHub logo in center
+- **SKU**: Item ID displayed prominently below QR code
+- **Branding**: "TreasureHub" text at top in signature gold color (#D4AF3D)
+- **Border**: Clean black border around entire label
+
+### 3. Access Control
+- **Admin Only**: Button only visible to authenticated admin users
+- **Secure**: Verify admin status before allowing label generation
+- **Clean UI**: Integrated seamlessly into existing QR code section
+
+## Implementation Details
+
+### Files Modified
+1. **`app/components/CustomQRCode.tsx`** - Added print label functionality
+2. **`app/(dashboard)/list-item/[id]/page.tsx`** - Enabled admin print button
+
+### Key Features Added
+
+#### **Client-Side Generation**
+- **No Server Load**: Label generation happens in browser
+- **Instant Download**: No S3 upload needed - direct download
+- **High Quality**: Canvas-based rendering at 300 DPI
+
+#### **Admin Controls**
+```typescript
+// Component props
+showPrintButton={true}
+isAdmin={isAdmin}
+```
+
+#### **Label Design**
+- **Top Branding**: "TreasureHub" in gold (#D4AF3D)
+- **Centered QR Code**: 400px QR code with 100px logo overlay
+- **Bottom SKU**: Item ID in monospace font
+- **Professional Border**: 4px black border
+
+#### **User Experience**
+- **Loading State**: Shows spinner while generating
+- **Error Handling**: Clear error messages for failures
+- **Auto Download**: Triggers browser download automatically
+- **File Naming**: `TreasureHub-Label-{SKU}.png`
+
+### Technical Implementation
+
+#### **Canvas Rendering**
+```typescript
+// 2" x 2" at 300 DPI
+const labelSize = 600;
+canvas.width = labelSize;
+canvas.height = labelSize;
+```
+
+#### **QR Code Integration**
+- Uses same `qrcode` library as existing display
+- Maintains error correction level 'H'
+- Preserves logo overlay positioning
+- Consistent quality and format
+
+#### **Admin Verification**
+- Checks `isAdmin` prop from parent component
+- Only renders button for authenticated admins
+- Graceful degradation for non-admin users
+
+## User Flow
+
+### **For Admins:**
+1. **Navigate** to any listing detail page
+2. **Scroll** to QR Code section
+3. **See** "Print Label" button below QR code
+4. **Click** button to generate label
+5. **Download** starts automatically
+6. **Print** the 600px x 600px PNG at actual size for 2" x 2" label
+
+### **For Non-Admins:**
+1. **Navigate** to listing detail page
+2. **See** QR code section normally
+3. **No print button** visible (clean interface)
+
+## Benefits
+
+### **🎯 Inventory Management**
+- **Physical Tracking**: Attach labels to physical items
+- **Quick Scanning**: QR codes link directly to listings
+- **Professional Appearance**: Branded labels for credibility
+
+### **⚡ Admin Efficiency**
+- **Instant Generation**: No waiting for server processing
+- **Bulk Capability**: Generate multiple labels quickly
+- **Offline Ready**: Download once, print anytime
+
+### **🔧 Technical Advantages**
+- **No Server Load**: Client-side generation
+- **No Storage Costs**: No S3 uploads needed
+- **High Quality**: 300 DPI ensures crisp printing
+- **Consistent Format**: Matches existing QR code design
+
+## Testing Instructions
+
+### Admin Testing
+1. **Login** as admin user
+2. **Navigate** to any listing detail page
+3. **Verify** "Print Label" button appears in QR Code section
+4. **Click** button and confirm download starts
+5. **Open** downloaded PNG and verify:
+   - 600px x 600px dimensions
+   - Clear QR code with TreasureHub logo
+   - Correct SKU displayed
+   - Professional formatting
+
+### Non-Admin Testing
+1. **Login** as regular user (or stay logged out)
+2. **Navigate** to listing detail page
+3. **Verify** no "Print Label" button visible
+4. **Confirm** QR code section displays normally
+
+### Print Testing
+1. **Download** label PNG
+2. **Print** at actual size (should be 2" x 2")
+3. **Test** QR code scans correctly with phone
+4. **Verify** professional appearance and readability
+
+This feature provides admins with a powerful tool for physical inventory management while maintaining the clean, branded appearance of TreasureHub labels.

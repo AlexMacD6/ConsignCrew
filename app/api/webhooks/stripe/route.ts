@@ -130,10 +130,10 @@ async function handleCheckoutSessionCompleted(session: any) {
         listingId: order.listingId,
         eventType: 'PURCHASE',
         eventTitle: 'Item Purchased',
-        description: `Item purchased by user ${buyerId}`,
+        description: 'Item purchased by a buyer',
         metadata: {
           orderId: order.id,
-          buyerId,
+          // Remove buyerId from metadata to protect privacy
           amount: session.amount_total / 100,
         },
       },

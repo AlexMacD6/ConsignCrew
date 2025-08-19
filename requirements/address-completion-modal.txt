@@ -1,0 +1,67 @@
+# Address Completion Modal for Profile Page
+
+## Problem
+Users navigating to their profile page without a complete address cannot complete purchases on TreasureHub. We need to prompt them to add their address information to enable smooth checkout experiences.
+
+## Requirements
+
+### 1. Address Completion Detection
+- Check if user has incomplete address information when they navigate to their profile
+- Required address fields: addressLine1, city, state, zipCode
+- Modal should only appear if any of these required fields are missing
+
+### 2. Modal Design and UX
+- Professional modal design with TreasureHub branding (#D4AF3D)
+- Clear messaging about why address is needed for purchases
+- MapPin icon to visually represent address completion
+- Two action buttons: "Add Address Now" and "Skip for Now"
+- Modal appears 1 second after profile page loads to ensure smooth UX
+
+### 3. User Actions
+- **Add Address Now**: Closes completion modal and opens existing AddressModal
+- **Skip for Now**: Dismisses modal and allows user to continue
+- **Address Addition**: When user successfully adds address, completion modal is dismissed
+- User can still access address editing through existing "Edit Address" button
+
+### 4. Integration with Existing Address System
+- Leverages existing AddressModal component for address input
+- Uses existing address validation and saving logic
+- Maintains current address display and editing functionality
+- No disruption to existing address management workflow
+
+## Implementation Details
+
+### Files Modified
+- `app/profile/page.tsx` - Added address completion modal functionality
+
+### Key Features Added
+1. **Address Validation Function**: `isAddressIncomplete()` checks required fields
+2. **Modal State Management**: `showAddressCompletionModal` state variable
+3. **Automatic Modal Trigger**: Shows modal when user has incomplete address
+4. **Seamless Integration**: Connects to existing AddressModal workflow
+5. **Success Handling**: Auto-dismisses completion modal when address is saved
+
+### User Flow
+1. User navigates to profile page
+2. System checks if address is incomplete
+3. If incomplete, modal appears after 1-second delay
+4. User can choose to add address now or skip
+5. If "Add Address Now" is clicked, existing address modal opens
+6. When address is successfully saved, completion modal is dismissed
+7. User can continue using profile page normally
+
+## Benefits
+- **Improved Conversion**: Guides users to complete necessary purchase information
+- **Better UX**: Clear explanation of why address is needed
+- **Non-Intrusive**: Can be skipped if user isn't ready
+- **Seamless Integration**: Uses existing address management system
+- **Purchase Readiness**: Ensures users can complete checkout when they find items
+
+## Testing Instructions
+1. Create a user account without complete address information
+2. Navigate to profile page
+3. Verify completion modal appears after brief delay
+4. Test "Add Address Now" button opens address modal
+5. Test "Skip for Now" dismisses modal
+6. Add a complete address and verify completion modal doesn't appear again
+7. Verify existing address editing functionality still works normally
