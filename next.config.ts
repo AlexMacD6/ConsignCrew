@@ -18,6 +18,16 @@ const nextConfig: NextConfig = {
 	compress: true,
 	poweredByHeader: false,
 	generateEtags: true,
+	// Redirect favicon.ico requests to the actual favicon
+	async redirects() {
+		return [
+			{
+				source: '/favicon.ico',
+				destination: '/TreasureHub - Favicon Black.png',
+				permanent: false,
+			},
+		];
+	},
 	experimental: {
 		serverActions: {
 			allowedOrigins: ['localhost:3000'],

@@ -37,6 +37,7 @@ interface ListingHistoryProps {
   currentPrice?: number;
   originalPrice?: number;
   reservePrice?: number;
+  status?: string;
 }
 
 const getEventIcon = (eventType: string) => {
@@ -151,6 +152,7 @@ export default function ListingHistory({
   currentPrice,
   originalPrice,
   reservePrice,
+  status,
 }: ListingHistoryProps) {
   const [history, setHistory] = useState<HistoryEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -219,15 +221,17 @@ export default function ListingHistory({
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Price Drop Counter - shown at the top if there's an active price drop */}
-          <PriceDropCounter
-            listingId={listingId}
-            createdAt={createdAt}
-            discountSchedule={discountSchedule}
-            currentPrice={currentPrice}
-            originalPrice={originalPrice}
-            reservePrice={reservePrice}
-          />
+          {/* Price Drop Counter - shown at the top if there's an active price drop and item is not sold */}
+          {status !== "sold" && (
+            <PriceDropCounter
+              listingId={listingId}
+              createdAt={createdAt}
+              discountSchedule={discountSchedule}
+              currentPrice={currentPrice}
+              originalPrice={originalPrice}
+              reservePrice={reservePrice}
+            />
+          )}
 
           {history.map((event, index) => (
             <div key={event.id} className="flex items-start space-x-3">

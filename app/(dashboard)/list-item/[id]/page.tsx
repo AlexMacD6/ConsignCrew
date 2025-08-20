@@ -163,9 +163,7 @@ export default function ListingDetailPage() {
   const [email, setEmail] = useState(""); // Early access signup email
   const [isSubmitting, setIsSubmitting] = useState(false); // Signup form submission state
   const [submitSuccess, setSubmitSuccess] = useState(false); // Signup success state
-  const [signupError, setSignupError] = useState(""); // Signup error message
-  const [similarityScore, setSimilarityScore] = useState<number | null>(null); // AI-Hero image similarity score
-  const [loadingSimilarity, setLoadingSimilarity] = useState(false); // Loading state for similarity calculation
+  const [signupError, setSubmitError] = useState(""); // Signup error message
   const { data: session } = authClient.useSession();
   const isAuthenticated = !!session?.user;
   const currentUserId = session?.user?.id || null;
@@ -270,6 +268,19 @@ export default function ListingDetailPage() {
           console.log("Setting listing:", data.listing); // Debug log
           console.log("Listing itemId:", data.listing.itemId); // Debug log
           setListing(data.listing);
+
+          // Track view count increment
+          try {
+            await fetch(`/api/listings/${params.id}/view`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            });
+          } catch (error) {
+            console.error("Error tracking view:", error);
+            // Don't fail the page load if view tracking fails
+          }
         } else {
           console.error("API response missing listing:", data); // Debug log
           throw new Error(data.error || "Failed to fetch listing");
@@ -372,18 +383,42 @@ export default function ListingDetailPage() {
     return false;
   };
 
-  const toggleSaved = (id: string) => {
-    setSavedListings((prev) => {
-      const newSet = new Set(prev);
-      const isCurrentlySaved = newSet.has(id);
+  const toggleSaved = async (id: string) => {
+    if (!listing) return;
 
-      if (isCurrentlySaved) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
+    const isCurrentlySaved = savedListings.has(id);
+    const action = isCurrentlySaved ? "unsave" : "save";
+
+    try {
+      const response = await fetch(`/api/listings/${id}/save`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Update the listing's saves count
+        setListing((prev: any) =>
+          prev ? { ...prev, saves: data.saves } : null
+        );
+
+        // Update saved listings state
+        setSavedListings((prev) => {
+          const newSet = new Set(prev);
+          if (isCurrentlySaved) {
+            newSet.delete(id);
+          } else {
+            newSet.add(id);
+          }
+          return newSet;
+        });
 
         // Track AddToWishlist event when item is saved
-        if (listing) {
+        if (action === "save") {
           trackAddToWishlist({
             content_name: listing.title,
             content_category: `${listing.department}/${listing.category}/${listing.subCategory}`,
@@ -404,10 +439,12 @@ export default function ListingDetailPage() {
             // Don't fail the save functionality if tracking fails
           });
         }
+      } else {
+        console.error("Failed to update saves count");
       }
-
-      return newSet;
-    });
+    } catch (error) {
+      console.error("Error updating saves count:", error);
+    }
   };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -415,7 +452,7 @@ export default function ListingDetailPage() {
     if (!email) return;
 
     setIsSubmitting(true);
-    setSignupError("");
+    setSubmitError("");
     setSubmitSuccess(false);
 
     try {
@@ -431,7 +468,7 @@ export default function ListingDetailPage() {
 
       if (response.ok) {
         if (data.message === "Email already subscribed") {
-          setSignupError(
+          setSubmitError(
             "You're already signed up! We'll notify you when we launch."
           );
         } else {
@@ -457,46 +494,13 @@ export default function ListingDetailPage() {
           }
         }
       } else {
-        setSignupError(data.error || "Failed to subscribe. Please try again.");
+        setSubmitError(data.error || "Failed to subscribe. Please try again.");
       }
     } catch (error) {
       console.error("Network error:", error);
-      setSignupError("Network error. Please try again.");
+      setSubmitError("Network error. Please try again.");
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const calculateSimilarity = async (
-    heroImageUrl: string,
-    aiImageUrl: string
-  ) => {
-    if (!isTreasureHubMember) return; // Only calculate for TreasureHub members
-
-    setLoadingSimilarity(true);
-    try {
-      const response = await fetch("/api/admin/image-similarity", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          imageUrl1: heroImageUrl,
-          imageUrl2: aiImageUrl,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setSimilarityScore(data.similarity);
-      } else {
-        console.error("Error calculating similarity:", data.error);
-      }
-    } catch (error) {
-      console.error("Network error calculating similarity:", error);
-    } finally {
-      setLoadingSimilarity(false);
     }
   };
 
@@ -798,19 +802,19 @@ export default function ListingDetailPage() {
               {isAuthenticated && (
                 <Button
                   variant="outline"
-                  onClick={() => toggleSaved(listing.item_id)}
+                  onClick={() => toggleSaved(listing.itemId)}
                   className={`${
-                    savedListings.has(listing.item_id)
+                    savedListings.has(listing.itemId)
                       ? "bg-[#D4AF3D] text-white border-[#D4AF3D]"
                       : ""
                   }`}
                 >
                   <Bookmark
                     className={`h-4 w-4 mr-2 ${
-                      savedListings.has(listing.item_id) ? "fill-current" : ""
+                      savedListings.has(listing.itemId) ? "fill-current" : ""
                     }`}
                   />
-                  {savedListings.has(listing.item_id) ? "Saved" : "Save"}
+                  {savedListings.has(listing.itemId) ? "Saved" : "Save"}
                 </Button>
               )}
             </div>
@@ -1053,58 +1057,6 @@ export default function ListingDetailPage() {
                     <p className="text-sm text-gray-500 mt-4">
                       You can add your address from your profile page.
                     </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TreasureHub Organization AI Similarity Score */}
-            {isTreasureHubMember && (
-              <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                      AI Image Quality Score
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Cosine similarity between AI-generated and hero images
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    {loadingSimilarity ? (
-                      <div className="flex items-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#D4AF3D]"></div>
-                        <span className="text-sm text-gray-500">
-                          Calculating...
-                        </span>
-                      </div>
-                    ) : similarityScore !== null ? (
-                      <div>
-                        <div className="text-2xl font-bold text-gray-900">
-                          {Math.round(similarityScore * 100)}%
-                        </div>
-                        <div
-                          className={`text-sm font-medium ${
-                            similarityScore >= 0.8
-                              ? "text-green-600"
-                              : similarityScore >= 0.6
-                              ? "text-yellow-600"
-                              : "text-red-600"
-                          }`}
-                        >
-                          {similarityScore >= 0.8
-                            ? "High"
-                            : similarityScore >= 0.6
-                            ? "Medium"
-                            : "Low"}{" "}
-                          similarity
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-sm text-gray-400">
-                        No AI image available
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -1617,6 +1569,19 @@ export default function ListingDetailPage() {
                     </div>
                   </div>
                 )}
+                {listing.saves > 0 && (
+                  <div className="flex items-center gap-3">
+                    <Bookmark className="h-5 w-5 text-gray-400" />
+                    <div>
+                      <span className="text-sm font-medium text-gray-700">
+                        Saves:
+                      </span>
+                      <span className="ml-2 text-sm text-gray-600">
+                        {listing.saves}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1646,6 +1611,7 @@ export default function ListingDetailPage() {
               currentPrice={getDisplayPrice(listing).price}
               originalPrice={listing.price}
               reservePrice={listing.reservePrice || listing.reserve_price}
+              status={listing.status}
             />
           </div>
         </div>

@@ -2,51 +2,46 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
+/**
+ * Get user's organization memberships
+ * GET /api/profile/organizations
+ */
 export async function GET(request: NextRequest) {
   try {
-    // Get session from Better Auth
     const session = await auth.api.getSession({ headers: request.headers });
-
+    
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    // Fetch user with organization memberships
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+    // Get user's organization memberships
+    const memberships = await prisma.member.findMany({
+      where: { userId: session.user.id },
       include: {
-        members: {
-          include: {
-            organization: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-                logo: true,
-              },
-            },
-          },
-        },
-      },
+        organization: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          }
+        }
+      }
     });
 
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
-
-    // Extract organizations from user memberships
-    const organizations = user.members.map(member => member.organization);
-
-    return NextResponse.json({
-      success: true,
-      organizations,
+    const response = NextResponse.json({
+      organizations: memberships.map(m => ({
+        organizationId: m.organization.id,
+        organizationName: m.organization.name,
+        organizationSlug: m.organization.slug,
+        role: m.role,
+        joinedAt: m.createdAt,
+      }))
     });
+
+    // Add caching headers for better performance (longer cache for permissions)
+    response.headers.set('Cache-Control', 'private, max-age=300, stale-while-revalidate=600');
+    
+    return response;
 
   } catch (error) {
     console.error('Error fetching user organizations:', error);

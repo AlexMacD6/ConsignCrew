@@ -20,6 +20,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const { orderId } = await params;
     
+    console.log('Stripe URL endpoint: Looking for order:', orderId, 'for user:', session.user.id);
+    
     const order = await prisma.order.findUnique({
       where: { 
         id: orderId,
@@ -31,8 +33,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     });
 
     if (!order) {
+      console.log('Stripe URL endpoint: Order not found');
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
+
+    console.log('Stripe URL endpoint: Order found:', {
+      id: order.id,
+      stripeCheckoutSessionId: order.stripeCheckoutSessionId,
+      checkoutExpiresAt: order.checkoutExpiresAt
+    });
 
     // Check if still within checkout window
     if (new Date() > new Date(order.checkoutExpiresAt)) {
@@ -44,9 +53,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     // Get the existing Stripe checkout session
     try {
+      console.log('Stripe URL endpoint: Retrieving Stripe session:', order.stripeCheckoutSessionId);
       const checkoutSession = await stripe.checkout.sessions.retrieve(order.stripeCheckoutSessionId);
       
+      console.log('Stripe URL endpoint: Stripe session retrieved:', {
+        id: checkoutSession.id,
+        status: checkoutSession.status,
+        url: checkoutSession.url
+      });
+      
       if (checkoutSession.status === 'expired') {
+        console.log('Stripe URL endpoint: Stripe session expired');
         return NextResponse.json({ 
           error: 'Stripe session has expired',
           code: 'STRIPE_EXPIRED'
@@ -59,7 +76,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         sessionId: checkoutSession.id
       });
     } catch (stripeError) {
-      console.error('Error retrieving Stripe session:', stripeError);
+      console.error('Stripe URL endpoint: Error retrieving Stripe session:', stripeError);
       return NextResponse.json({ 
         error: 'Failed to retrieve payment session',
         code: 'STRIPE_ERROR'

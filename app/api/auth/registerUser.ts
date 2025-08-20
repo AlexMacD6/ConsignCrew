@@ -49,7 +49,7 @@ export async function registerUser(data: RegistrationData) {
     
     console.log('registerUser - BetterAuth signUpEmail result received');
     
-    // 4. Create Stripe customer for buyers
+    // 4. Create Stripe customer for buyers and add to buyer organization
     if (result?.user && data.userType === 'buyer') {
       console.log('registerUser - Creating Stripe customer for buyer...');
       
@@ -69,32 +69,57 @@ export async function registerUser(data: RegistrationData) {
           where: { id: result.user.id },
           data: { 
             stripeCustomerId: stripeCustomer.id,
-            userType: data.userType // Ensure userType is saved
           },
         });
         
-        console.log('registerUser - User updated with Stripe customer ID and user type');
+        console.log('registerUser - User updated with Stripe customer ID');
         
       } catch (stripeError) {
         console.error('registerUser - Error creating Stripe customer:', stripeError);
         // Don't fail registration if Stripe customer creation fails
         // We can create the customer later when they make their first purchase
       }
-    } else if (result?.user && data.userType) {
-      // For sellers or if Stripe customer creation is not needed, just update user type
-      console.log('registerUser - Updating user type for non-buyer user...');
+    }
+    
+    // 5. Add user to appropriate organization based on userType
+    if (result?.user && data.userType) {
+      console.log('registerUser - Adding user to organization:', data.userType);
       
       try {
         const { prisma } = await import('../../lib/prisma');
-        await prisma.user.update({
-          where: { id: result.user.id },
-          data: { userType: data.userType },
-        });
         
-        console.log('registerUser - User type updated');
+        // Get the organization ID based on userType
+        let organizationSlug = '';
+        if (data.userType === 'buyer') {
+          organizationSlug = 'buyers';
+        } else if (data.userType === 'seller') {
+          organizationSlug = 'sellers';
+        }
         
-      } catch (updateError) {
-        console.error('registerUser - Error updating user type:', updateError);
+        if (organizationSlug) {
+          const organization = await prisma.organization.findUnique({
+            where: { slug: organizationSlug }
+          });
+          
+          if (organization) {
+            // Add user to organization
+            await prisma.member.create({
+              data: {
+                userId: result.user.id,
+                organizationId: organization.id,
+                role: 'member',
+              }
+            });
+            
+            console.log('registerUser - User added to organization:', organizationSlug);
+          } else {
+            console.error('registerUser - Organization not found:', organizationSlug);
+          }
+        }
+        
+      } catch (orgError) {
+        console.error('registerUser - Error adding user to organization:', orgError);
+        // Don't fail registration if organization assignment fails
       }
     }
     

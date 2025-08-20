@@ -30,13 +30,16 @@ import {
   XCircle,
   ShoppingCart,
   Clock,
+  Bookmark,
 } from "lucide-react";
 import { SELLER_ZIP_CODES, BUYER_ZIP_CODES } from "../lib/zipcodes";
 
 import { authClient } from "../lib/auth-client";
+import { useUserPermissions } from "../hooks/useUserPermissions";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import AddressModal from "../components/AddressModal";
+import HoustonMetroMap from "../components/HoustonMetroMap";
 import { getDisplayPrice } from "../lib/price-calculator";
 
 // Remove server-side imports - we'll use API endpoints instead
@@ -94,6 +97,7 @@ const mockUsers = [
 
 export default function ProfilePage() {
   const { data: session } = authClient.useSession();
+  const { canListItems } = useUserPermissions();
   const [tab, setTab] = useState<
     "overview" | "listings" | "purchases" | "settings"
   >("overview");
@@ -158,7 +162,7 @@ export default function ProfilePage() {
   };
 
   useEffect(() => {
-    async function fetchUser() {
+    async function fetchCompleteProfile() {
       // Wait for session to load
       if (!session) {
         return;
@@ -173,9 +177,11 @@ export default function ProfilePage() {
       setLoading(true);
       setUpdateError("");
       setUpdateSuccess("");
+
       try {
-        const res = await fetch("/api/profile", {
-          credentials: "include", // Ensure cookies are sent
+        console.log("Profile page: Fetching complete profile data...");
+        const res = await fetch("/api/profile/complete", {
+          credentials: "include",
         });
 
         if (res.status === 401) {
@@ -203,51 +209,34 @@ export default function ProfilePage() {
         }
 
         const data = await res.json();
+        console.log("Profile page: Received complete profile data");
+
+        // Set all data from the combined response
         setUser(data.user);
+        setListings(data.listings || []);
+        setPurchases(data.purchases || []);
+        setIsAdminUser(data.permissions?.isAdmin || false);
 
         // Check if address is incomplete and show completion modal
         if (isAddressIncomplete(data.user)) {
-          // Small delay to ensure the page has loaded before showing modal
           setTimeout(() => {
             setShowAddressCompletionModal(true);
           }, 1000);
         }
 
-        // Check if user is admin
-        if (data.user?.id) {
-          try {
-            const adminRes = await fetch("/api/admin/check-status", {
-              credentials: "include",
-            });
-            if (adminRes.ok) {
-              const adminData = await adminRes.json();
-              setIsAdminUser(adminData.isAdmin);
-
-              if (adminData.isAdmin) {
-                // Load admin data
-                await loadAdminData();
-              }
-            }
-          } catch (adminErr) {
-            console.error(
-              "Profile page: Error checking admin status:",
-              adminErr
-            );
-            // Don't fail the whole profile load for admin check
-          }
-
-          // Load user's listings and purchases
-          await loadUserListings();
-          await loadUserPurchases();
+        // Only load admin data if user is admin (avoiding additional API calls)
+        if (data.permissions?.isAdmin) {
+          await loadAdminData();
         }
       } catch (err) {
-        console.error("Profile page: Error fetching user profile:", err);
+        console.error("Profile page: Error fetching complete profile:", err);
         setUpdateError("Failed to load profile. Please try again.");
       } finally {
         setLoading(false);
       }
     }
-    fetchUser();
+
+    fetchCompleteProfile();
   }, [router, session, editMode]);
 
   // Separate useEffect to initialize form data when user data changes
@@ -277,7 +266,8 @@ export default function ProfilePage() {
     }
   };
 
-  const loadUserListings = async () => {
+  // Optimized: Listings and purchases are now loaded via the combined /api/profile/complete endpoint
+  const refreshListings = async () => {
     try {
       setListingsLoading(true);
       const response = await fetch("/api/listings?userOnly=true", {
@@ -288,32 +278,12 @@ export default function ProfilePage() {
         const data = await response.json();
         setListings(data.listings || []);
       } else {
-        console.error("Failed to load user listings");
+        console.error("Failed to refresh user listings");
       }
     } catch (error) {
-      console.error("Error loading user listings:", error);
+      console.error("Error refreshing user listings:", error);
     } finally {
       setListingsLoading(false);
-    }
-  };
-
-  const loadUserPurchases = async () => {
-    try {
-      setPurchasesLoading(true);
-      const response = await fetch("/api/profile/purchases", {
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setPurchases(data.purchases || []);
-      } else {
-        console.error("Failed to load user purchases");
-      }
-    } catch (error) {
-      console.error("Error loading user purchases:", error);
-    } finally {
-      setPurchasesLoading(false);
     }
   };
 
@@ -334,7 +304,7 @@ export default function ProfilePage() {
       }
 
       if (response.ok) {
-        await loadUserListings(); // Reload listings
+        await refreshListings(); // Reload listings
         setUpdateSuccess(`Listing ${action}ed successfully!`);
       } else {
         const error = await response.json();
@@ -825,7 +795,7 @@ export default function ProfilePage() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Postal Code
+                      Zip Code
                     </label>
                     <p className="text-base text-gray-900">
                       {user.zipCode || "Not provided"}
@@ -869,6 +839,11 @@ export default function ProfilePage() {
                     </p>
                   </div>
                 )}
+              </div>
+
+              {/* Houston Metro Service Area Map */}
+              <div className="mt-8">
+                <HoustonMetroMap userZipCode={user?.zipCode} />
               </div>
             </div>
           )}
@@ -957,13 +932,15 @@ export default function ProfilePage() {
                     <option value="sold">Sold</option>
                     <option value="processing">Processing</option>
                   </select>
-                  <Button
-                    onClick={() => router.push("/list-item")}
-                    className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Listing
-                  </Button>
+                  {canListItems && (
+                    <Button
+                      onClick={() => router.push("/list-item")}
+                      className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Listing
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -1068,6 +1045,10 @@ export default function ProfilePage() {
                           <div className="flex items-center">
                             <EyeIcon className="h-4 w-4 mr-1" />
                             <span>{listing.views || 0} views</span>
+                          </div>
+                          <div className="flex items-center">
+                            <Bookmark className="h-4 w-4 mr-1" />
+                            <span>{listing.saves || 0} saves</span>
                           </div>
                           <div className="flex items-center">
                             <Calendar className="h-4 w-4 mr-1" />
