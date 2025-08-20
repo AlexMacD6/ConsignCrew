@@ -119,3 +119,4 @@
 - The UI is responsive and follows accessibility best practices
 - Role management is organization-specific, allowing users to have different roles in different organizations
 
+

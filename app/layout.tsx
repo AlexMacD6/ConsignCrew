@@ -19,16 +19,32 @@ export const metadata: Metadata = {
   description:
     "TreasureHub is a professional consignment service that handles everything from pickup to sale. We clean, photograph, authenticate, and sell your items with transparent pricing. Get the most value for your belongings with our expert team.",
   keywords: [
+    // Brand variations
+    "TreasureHub",
+    "Treasure Hub",
+    "TreasureHub.Club",
+    "Treasure Hub Club",
+    "TreasureHub Club",
+    "treasurehub",
+    "treasure hub",
+    "treasurehub.club",
+    "treasure hub club",
+
+    // Services
     "consignment service",
     "sell items online",
     "professional selling",
     "item authentication",
     "stress-free selling",
     "online marketplace",
-    "treasure hub",
     "sell belongings",
     "professional photography",
     "item cleaning",
+
+    // Location-specific
+    "Houston consignment",
+    "Texas consignment service",
+    "Houston marketplace",
   ],
   authors: [{ name: "TreasureHub Team" }],
   creator: "TreasureHub",

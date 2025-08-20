@@ -28,6 +28,7 @@ import {
   RefreshCw,
   Loader2,
   Info,
+  Star,
 } from "lucide-react";
 import QuestionManagement from "../components/QuestionManagement";
 
@@ -296,6 +297,15 @@ export default function AdminDashboard() {
       href: "/admin/treasure-redemptions",
       color: "bg-green-500",
       stats: "12 Pending",
+    },
+    {
+      title: "Review-to-Tip System",
+      description:
+        "Manage driver QR codes, track customer feedback, and recognize exceptional service",
+      icon: Star,
+      href: "/admin/review-to-tip",
+      color: "bg-treasure-500",
+      stats: "Active System",
     },
     {
       title: "User Management",

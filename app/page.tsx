@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+
 import dynamic from "next/dynamic";
 import PriceSlider from "./components/PriceSlider";
 import ScrollSection from "./components/ScrollSection";
@@ -147,7 +148,101 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-[#f9fafb]">
+    <div className="min-h-screen bg-[#f9fafb]">
+      {/* SEO Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "LocalBusiness",
+            "@id": "https://treasurehub.club/#organization",
+            name: "TreasureHub",
+            alternateName: [
+              "Treasure Hub",
+              "TreasureHub.Club",
+              "Treasure Hub Club",
+            ],
+            url: "https://treasurehub.club",
+            logo: "https://treasurehub.club/TreasureHub - Logo.png",
+            image: "https://treasurehub.club/TreasureHub - Banner Black.png",
+            description:
+              "Houston's premier consignment service. We handle everything from pickup to sale - cleaning, photographing, authenticating, and selling your items with transparent pricing.",
+            address: {
+              "@type": "PostalAddress",
+              addressLocality: "Houston",
+              addressRegion: "TX",
+              addressCountry: "US",
+            },
+            geo: {
+              "@type": "GeoCoordinates",
+              latitude: 29.7604,
+              longitude: -95.3698,
+            },
+            areaServed: [
+              {
+                "@type": "City",
+                name: "Houston",
+                containedInPlace: {
+                  "@type": "State",
+                  name: "Texas",
+                },
+              },
+              {
+                "@type": "State",
+                name: "Texas",
+              },
+            ],
+            serviceType: [
+              "Consignment Service",
+              "Professional Selling",
+              "Item Authentication",
+              "Professional Photography",
+              "Pickup Service",
+            ],
+            hasOfferCatalog: {
+              "@type": "OfferCatalog",
+              name: "Consignment Services",
+              itemListElement: [
+                {
+                  "@type": "Offer",
+                  itemOffered: {
+                    "@type": "Service",
+                    name: "Item Pickup Service",
+                    description: "Free pickup of items for consignment",
+                  },
+                },
+                {
+                  "@type": "Offer",
+                  itemOffered: {
+                    "@type": "Service",
+                    name: "Professional Photography",
+                    description: "High-quality photography for item listings",
+                  },
+                },
+                {
+                  "@type": "Offer",
+                  itemOffered: {
+                    "@type": "Service",
+                    name: "Item Authentication",
+                    description: "Professional authentication of luxury items",
+                  },
+                },
+                {
+                  "@type": "Offer",
+                  itemOffered: {
+                    "@type": "Service",
+                    name: "Online Marketplace Listing",
+                    description:
+                      "Listing items across multiple online platforms",
+                  },
+                },
+              ],
+            },
+          }),
+        }}
+      />
+
       {/* 3D Background */}
       <div className="absolute inset-0 z-0">
         <ThreeScene />
@@ -683,6 +778,42 @@ export default function HomePage() {
             </div>
           </section>
         </ScrollSection>
+
+        {/* Hidden SEO Content for Search Engines */}
+        <div className="sr-only" aria-hidden="true">
+          <h2>TreasureHub - Houston Consignment Service</h2>
+          <p>
+            TreasureHub, also known as Treasure Hub, operating at
+            TreasureHub.Club and Treasure Hub Club, is Houston's leading
+            professional consignment service. We serve all of Texas with
+            authentic, verified luxury goods and professional selling services.
+            Our Houston-based team provides pickup, cleaning, authentication,
+            professional photography, and online marketplace listing for your
+            valuable items. Whether you're looking to sell designer items,
+            luxury consignment, authenticated resale pieces, or simply declutter
+            your home, TreasureHub (Treasure Hub) offers transparent pricing and
+            professional service throughout Houston and Texas.
+          </p>
+          <h3>Houston Consignment Services</h3>
+          <p>
+            Our professional consignment services in Houston include item
+            pickup, professional cleaning, authentication of luxury goods,
+            high-quality photography, and listing across multiple online
+            marketplaces. We specialize in designer items, luxury consignment,
+            vintage pieces, electronics, jewelry, collectibles, and more.
+            TreasureHub.Club serves as Houston's premier destination for
+            professional selling services with transparent pricing and no hidden
+            fees.
+          </p>
+          <h3>Areas Served in Texas</h3>
+          <p>
+            TreasureHub (Treasure Hub) proudly serves Houston, Harris County,
+            and the greater Texas area with professional consignment and
+            authenticated resale services. Our Houston marketplace connects
+            buyers and sellers throughout Texas with verified, quality goods and
+            fast local delivery.
+          </p>
+        </div>
       </div>
     </div>
   );

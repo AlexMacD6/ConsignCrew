@@ -118,3 +118,4 @@ DEBUG=stripe:*
 - Use HTTPS in production
 - Implement proper authentication for order updates
 - Validate all input data before processing
+

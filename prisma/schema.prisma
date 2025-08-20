@@ -582,3 +582,69 @@ enum OrderStatus {
   CANCELLED
   REFUNDED
 }
+
+model Driver {
+  id               String        @id @default(cuid())
+  initials         String        @unique // e.g., "ARM" for Alexander Raymond MacDonald
+  fullName         String
+  email            String?       @unique
+  phone            String?
+  isActive         Boolean       @default(true)
+  totalReviews     Int           @default(0)
+  totalBonusEarned Float         @default(0)
+  googleReviewsUrl String? // Direct link to TreasureHub Google Reviews
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  reviewScans      ReviewScan[]
+  reviewBonuses    ReviewBonus[]
+
+  @@index([initials])
+  @@index([isActive])
+}
+
+model ReviewScan {
+  id           String        @id @default(cuid())
+  driverId     String
+  ipAddress    String?
+  userAgent    String?
+  scannedAt    DateTime      @default(now())
+  googleReview GoogleReview?
+  driver       Driver        @relation(fields: [driverId], references: [id])
+
+  @@index([driverId])
+  @@index([scannedAt])
+}
+
+model GoogleReview {
+  id             String        @id @default(cuid())
+  reviewScanId   String        @unique
+  googleReviewId String?       @unique // If we can track the actual Google review ID
+  rating         Int // 1-5 stars
+  reviewText     String?
+  reviewerName   String?
+  confirmedAt    DateTime      @default(now())
+  bonusAwarded   Boolean       @default(false)
+  reviewScan     ReviewScan    @relation(fields: [reviewScanId], references: [id])
+  reviewBonuses  ReviewBonus[]
+
+  @@index([rating])
+  @@index([confirmedAt])
+  @@index([bonusAwarded])
+}
+
+model ReviewBonus {
+  id             String       @id @default(cuid())
+  driverId       String
+  googleReviewId String
+  bonusAmount    Float        @default(5.00) // Default $5 bonus for 5-star reviews
+  awardedAt      DateTime     @default(now())
+  paymentStatus  String       @default("pending") // pending, paid, cancelled
+  paymentMethod  String? // venmo, cashapp, check, etc.
+  paymentDetails Json? // Flexible field for payment tracking
+  driver         Driver       @relation(fields: [driverId], references: [id])
+  googleReview   GoogleReview @relation(fields: [googleReviewId], references: [id])
+
+  @@index([driverId])
+  @@index([paymentStatus])
+  @@index([awardedAt])
+}
