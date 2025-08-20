@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { CheckoutTimer } from "@/components/CheckoutTimer";
+import CheckoutAddressModal from "@/components/CheckoutAddressModal";
 import { authClient } from "@/lib/auth-client";
 import {
   Loader2,
@@ -65,8 +66,10 @@ export default function CheckoutPage() {
   const [zipCodeValid, setZipCodeValid] = useState<boolean | null>(null);
   const [validatingZip, setValidatingZip] = useState(false);
   const [showZipCodeModal, setShowZipCodeModal] = useState(false);
+  const [showAddressModal, setShowAddressModal] = useState(false);
   const [timeExtensionUsed, setTimeExtensionUsed] = useState(false);
   const [extendingTime, setExtendingTime] = useState(false);
+  const [addressConfirmed, setAddressConfirmed] = useState(false);
 
   // Fetch order details and user profile
   useEffect(() => {
@@ -125,7 +128,20 @@ export default function CheckoutPage() {
         if (!orderResponse.ok) {
           const errorText = await orderResponse.text();
           console.error("Checkout Page: Order API error:", errorText);
-          throw new Error("Order not found");
+
+          // Handle specific error cases
+          if (orderResponse.status === 410) {
+            // Checkout session expired - handle gracefully
+            console.log(
+              "Checkout Page: Detected expired checkout session, handling cleanup"
+            );
+            await handleExpiredCheckout();
+            return; // Don't throw error, let the cleanup function handle it
+          } else if (orderResponse.status === 404) {
+            throw new Error("Order not found");
+          } else {
+            throw new Error(`Failed to load order (${orderResponse.status})`);
+          }
         }
 
         const orderData = await orderResponse.json();
@@ -146,15 +162,27 @@ export default function CheckoutPage() {
           setOrder(orderData.order);
 
           // Check if time extension has already been used
+          // Compare the expiration time with what it should be (10 min from creation)
           const orderCreatedAt = new Date(orderData.order.createdAt);
-          const currentTime = new Date();
-          const timeSinceCreation =
-            currentTime.getTime() - orderCreatedAt.getTime();
-          const maxAllowedTime = 15 * 60 * 1000; // 15 minutes in milliseconds
+          const expectedExpirationWithoutExtension = new Date(
+            orderCreatedAt.getTime() + 10 * 60 * 1000
+          ); // 10 minutes
+          const actualExpiration = new Date(orderData.order.checkoutExpiresAt);
 
-          if (timeSinceCreation >= maxAllowedTime) {
-            setTimeExtensionUsed(true);
-          }
+          // If actual expiration is more than 10 minutes from creation, extension was used
+          const extensionUsed =
+            actualExpiration.getTime() >
+            expectedExpirationWithoutExtension.getTime();
+
+          console.log("Checkout Page: Extension check:", {
+            orderCreatedAt: orderCreatedAt.toISOString(),
+            expectedExpiration:
+              expectedExpirationWithoutExtension.toISOString(),
+            actualExpiration: actualExpiration.toISOString(),
+            extensionUsed,
+          });
+
+          setTimeExtensionUsed(extensionUsed);
         } else {
           console.error(
             "Checkout Page: Order API returned error:",
@@ -392,6 +420,60 @@ export default function CheckoutPage() {
     }
   };
 
+  // Handle expired checkout session from API
+  const handleExpiredCheckout = async () => {
+    if (!params.orderId) return;
+
+    try {
+      console.log("Checkout Page: Handling expired checkout session from API");
+
+      // Cleanup the expired session
+      const response = await fetch("/api/checkout/cleanup-expired", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ orderId: params.orderId }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(
+          "Checkout Page: Expired session cleaned up from API:",
+          data
+        );
+
+        // Show success message and redirect back to listings
+        setSuccess(
+          "Checkout session expired. The item has been released and is available for purchase again."
+        );
+
+        // Redirect back to listings after a short delay
+        setTimeout(() => {
+          router.push("/listings");
+        }, 3000);
+      } else {
+        console.error(
+          "Checkout Page: Failed to cleanup expired session from API"
+        );
+        // Still redirect even if cleanup fails
+        setTimeout(() => {
+          router.push("/listings");
+        }, 2000);
+      }
+    } catch (error) {
+      console.error(
+        "Checkout Page: Error cleaning up expired session from API:",
+        error
+      );
+      // Still redirect even if cleanup fails
+      setTimeout(() => {
+        router.push("/listings");
+      }, 2000);
+    }
+  };
+
   // Handle timer expiration
   const handleTimerExpired = async () => {
     if (!order) return;
@@ -438,6 +520,42 @@ export default function CheckoutPage() {
         router.push(`/list-item/${order.listing.itemId}`);
       }, 3000);
     }
+  };
+
+  // Handle address change from modal
+  const handleAddressChange = async (addressData: any) => {
+    // Update the user state with the new address for this checkout session
+    setUser((prev) =>
+      prev
+        ? {
+            ...prev,
+            addressLine1: addressData.streetAddress,
+            addressLine2: addressData.apartment,
+            city: addressData.city,
+            state: addressData.state,
+            zipCode: addressData.postalCode,
+          }
+        : null
+    );
+
+    // Reset validation and confirmation state
+    setZipCodeValid(null);
+    setAddressConfirmed(false);
+
+    // Validate the new zip code
+    if (addressData.postalCode) {
+      setValidatingZip(true);
+      const isValid = await validateZipCode(addressData.postalCode);
+      setZipCodeValid(isValid);
+      setValidatingZip(false);
+    }
+  };
+
+  // Handle address confirmation
+  const handleAddressConfirmation = () => {
+    setAddressConfirmed(true);
+    setSuccess("Shipping address confirmed!");
+    setTimeout(() => setSuccess(null), 3000);
   };
 
   // Handle cancel
@@ -591,6 +709,16 @@ export default function CheckoutPage() {
               <AlertTriangle className="w-6 h-6 mx-auto mb-2" />
               <h2 className="font-semibold mb-2">Checkout Error</h2>
               <p>{error || "Order not found"}</p>
+
+              {/* Special handling for expired checkout sessions */}
+              {error && error.includes("expired") && (
+                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-yellow-800">
+                  <p className="text-sm mt-2">
+                    <strong>Next steps:</strong> Return to the listings to
+                    purchase the item again.
+                  </p>
+                </div>
+              )}
             </div>
             <Button className="mt-4" onClick={() => router.push("/listings")}>
               Back to Listings
@@ -610,8 +738,17 @@ export default function CheckoutPage() {
             Complete Your Purchase
           </h1>
           <p className="text-gray-600 mb-4">
-            Your item is reserved. Complete payment within the time limit.
+            Your item is reserved. Complete payment within the time limit to
+            secure your purchase.
           </p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+            <p className="text-sm text-blue-800">
+              <strong>⏱️ Timer Info:</strong> If the timer expires, your
+              reservation will be automatically released and the item will
+              become available for other buyers. You can extend your time once
+              for up to 15 minutes total.
+            </p>
+          </div>
         </div>
 
         {/* Checkout Timer with Extension */}
@@ -662,20 +799,24 @@ export default function CheckoutPage() {
                 minutes total)
               </p>
               {(() => {
+                if (timeExtensionUsed) {
+                  return null; // No extension info if already used
+                }
+
                 const now = new Date();
                 const orderCreatedAt = new Date(order.createdAt);
                 const timeSinceCreation =
                   now.getTime() - orderCreatedAt.getTime();
-                const maxAllowedTime = 15 * 60 * 1000;
-                const remainingExtensionTime = Math.max(
+                const maxAllowedTime = 15 * 60 * 1000; // 15 minutes max total
+                const remainingTimeForExtension = Math.max(
                   0,
                   maxAllowedTime - timeSinceCreation
                 );
                 const remainingMinutes = Math.ceil(
-                  remainingExtensionTime / 1000 / 60
+                  remainingTimeForExtension / 1000 / 60
                 );
 
-                if (remainingExtensionTime > 0) {
+                if (remainingTimeForExtension > 0) {
                   return (
                     <p className="text-blue-600 font-medium mt-1">
                       Extension available for {remainingMinutes} more minutes
@@ -796,68 +937,59 @@ export default function CheckoutPage() {
             Confirm Your Shipping Address
           </h2>
           <p className="text-gray-600 mb-4">
-            <strong>New:</strong> We'll use your profile shipping address.
-            Please confirm it's correct before proceeding to payment.
+            We'll use your profile shipping address. Please confirm it's correct
+            before proceeding to payment.
           </p>
-
-          {/* Debug: Show user data */}
-          {process.env.NODE_ENV === "development" && (
-            <div className="bg-gray-100 p-3 rounded mb-4 text-xs">
-              <p>
-                <strong>Debug Info:</strong>
-              </p>
-              <p>User: {user ? "Loaded" : "Not loaded"}</p>
-              <p>Zip Code: {user?.zipCode || "Missing"}</p>
-              <p>Address Line 1: {user?.addressLine1 || "Missing"}</p>
-              <p>City: {user?.city || "Missing"}</p>
-              <p>State: {user?.state || "Missing"}</p>
-            </div>
-          )}
 
           {user?.zipCode && user?.addressLine1 ? (
             <div className="space-y-4">
               <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-sm text-gray-600 mb-2">
-                  Your current shipping address:
-                </p>
-                <div className="font-medium text-gray-900">
-                  <p>{user.addressLine1}</p>
-                  {user.addressLine2 && <p>{user.addressLine2}</p>}
-                  <p>
-                    {user.city}, {user.state} {user.zipCode}
-                  </p>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-600 mb-2">
+                      Your current shipping address:
+                    </p>
+                    <div className="font-medium text-gray-900">
+                      <p>{user.addressLine1}</p>
+                      {user.addressLine2 && <p>{user.addressLine2}</p>}
+                      <p>
+                        {user.city}, {user.state} {user.zipCode}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Validation status moved to the right */}
+                  <div className="ml-4 flex-shrink-0">
+                    {zipCodeValid === null && (
+                      <div className="text-gray-500 text-sm flex items-center gap-2">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                        Address not yet validated
+                      </div>
+                    )}
+                    {zipCodeValid === true && (
+                      <div className="flex items-center gap-2 text-green-600">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span className="text-sm font-medium">
+                          ✓ Valid for delivery
+                        </span>
+                      </div>
+                    )}
+                    {zipCodeValid === false && (
+                      <div className="flex items-center gap-2 text-red-600">
+                        <AlertCircle className="w-4 h-4" />
+                        <span className="text-sm font-medium">
+                          Not in service area
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {zipCodeValid === null && (
-                    <div className="text-gray-500 text-sm flex items-center gap-2">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                      Address not yet validated
-                    </div>
-                  )}
-                  {zipCodeValid === true && (
-                    <div className="flex items-center gap-2 text-green-600">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-sm font-medium">
-                        ✓ Valid for delivery
-                      </span>
-                    </div>
-                  )}
-                  {zipCodeValid === false && (
-                    <div className="flex items-center gap-2 text-red-600">
-                      <AlertCircle className="w-4 h-4" />
-                      <span className="text-sm font-medium">
-                        Not in service area
-                      </span>
-                    </div>
-                  )}
-                </div>
-
                 <div className="flex gap-2">
                   <Button
-                    onClick={handleUpdateAddress}
+                    onClick={() => setShowAddressModal(true)}
                     variant="outline"
                     size="sm"
                     className="text-[#D4AF3D] border-[#D4AF3D] hover:bg-[#D4AF3D] hover:text-white"
@@ -874,6 +1006,20 @@ export default function CheckoutPage() {
                     Cancel Purchase
                   </Button>
                 </div>
+              </div>
+
+              {/* Confirm Address Button */}
+              <div className="flex justify-center">
+                <Button
+                  onClick={handleAddressConfirmation}
+                  disabled={zipCodeValid !== true || addressConfirmed}
+                  className="bg-[#D4AF3D] hover:bg-[#D4AF3D]/90 text-white font-semibold py-3 px-8"
+                >
+                  <CheckCircle className="w-5 h-5 mr-2" />
+                  {addressConfirmed
+                    ? "Address Confirmed ✓"
+                    : "Confirm Shipping Address"}
+                </Button>
               </div>
 
               {zipCodeValid === false && (
@@ -934,21 +1080,6 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        {/* Timer Warning */}
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-8">
-          <div className="flex items-start gap-3">
-            <Clock className="w-5 h-5 text-amber-600 mt-0.5" />
-            <div className="text-amber-800">
-              <p className="font-medium mb-1">Time-Limited Reservation</p>
-              <p className="text-sm">
-                Your reservation will expire when the timer reaches zero. If the
-                timer expires, we'll automatically create a fresh checkout
-                session when you continue to payment.
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* Action Buttons */}
         <div className="flex gap-4">
           <Button
@@ -968,7 +1099,8 @@ export default function CheckoutPage() {
               validatingZip ||
               !user?.zipCode ||
               !user?.addressLine1 ||
-              zipCodeValid === false
+              zipCodeValid === false ||
+              !addressConfirmed
             }
           >
             {redirecting ? (
@@ -995,6 +1127,11 @@ export default function CheckoutPage() {
               <>
                 <MapPin className="w-4 h-4 mr-2" />
                 Confirm Address & Continue
+              </>
+            ) : !addressConfirmed ? (
+              <>
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Confirm Address First
               </>
             ) : (
               (() => {
@@ -1071,6 +1208,32 @@ export default function CheckoutPage() {
             </div>
           </div>
         )}
+
+        {/* Checkout Address Modal */}
+        <CheckoutAddressModal
+          isOpen={showAddressModal}
+          onClose={() => setShowAddressModal(false)}
+          onAddressSelect={handleAddressChange}
+          currentAddress={
+            user
+              ? `${user.addressLine1}${
+                  user.addressLine2 ? ", " + user.addressLine2 : ""
+                }, ${user.city}, ${user.state} ${user.zipCode}`
+              : ""
+          }
+          currentAddressData={
+            user
+              ? {
+                  streetAddress: user.addressLine1 || "",
+                  apartment: user.addressLine2 || "",
+                  city: user.city || "",
+                  state: user.state || "",
+                  postalCode: user.zipCode || "",
+                  country: "United States",
+                }
+              : undefined
+          }
+        />
       </div>
     </div>
   );

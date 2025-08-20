@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { stripe } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
+import { sendOrderConfirmationEmail } from '@/lib/order-confirmation-email';
 
 /**
  * Stripe Webhook Handler
@@ -95,7 +96,22 @@ async function handleCheckoutSessionCompleted(session: any) {
     // Find the order by checkout session ID
     const order = await prisma.order.findUnique({
       where: { stripeCheckoutSessionId: session.id },
-      include: { listing: true },
+      include: { 
+        listing: true,
+        buyer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          }
+        },
+        seller: {
+          select: {
+            id: true,
+            name: true,
+          }
+        }
+      },
     });
 
     if (!order) {
@@ -104,13 +120,29 @@ async function handleCheckoutSessionCompleted(session: any) {
     }
 
     // Update order with payment details
-    await prisma.order.update({
+    const updatedOrder = await prisma.order.update({
       where: { id: order.id },
       data: {
         status: 'PAID',
         stripePaymentIntentId: session.payment_intent,
         stripeChargeId: session.payment_intent ? undefined : undefined, // Will be set when payment intent succeeds
         amount: session.amount_total / 100, // Convert from cents
+      },
+      include: {
+        listing: true,
+        buyer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          }
+        },
+        seller: {
+          select: {
+            id: true,
+            name: true,
+          }
+        }
       },
     });
 
@@ -140,6 +172,37 @@ async function handleCheckoutSessionCompleted(session: any) {
     });
 
     console.log('Order completed successfully:', order.id);
+
+    // Send order confirmation email to buyer
+    try {
+      if (updatedOrder.buyer?.email) {
+        console.log('Sending order confirmation email to:', updatedOrder.buyer.email);
+        await sendOrderConfirmationEmail({
+          id: updatedOrder.id,
+          amount: updatedOrder.amount,
+          createdAt: updatedOrder.createdAt.toISOString(),
+          status: updatedOrder.status,
+          listing: {
+            title: updatedOrder.listing.title,
+            itemId: updatedOrder.listing.itemId,
+            photos: updatedOrder.listing.photos,
+          },
+          buyer: {
+            name: updatedOrder.buyer.name || 'Customer',
+            email: updatedOrder.buyer.email,
+          },
+          seller: updatedOrder.seller ? {
+            name: updatedOrder.seller.name || 'Seller',
+          } : undefined,
+        });
+        console.log('Order confirmation email sent successfully for order:', updatedOrder.id);
+      } else {
+        console.warn('No buyer email found for order:', updatedOrder.id);
+      }
+    } catch (emailError) {
+      // Don't fail the webhook if email fails - just log the error
+      console.error('Failed to send order confirmation email for order:', updatedOrder.id, emailError);
+    }
 
   } catch (error) {
     console.error('Error handling checkout session completed:', error);

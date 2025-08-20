@@ -235,7 +235,7 @@ function OrderThanksContent() {
                 </h3>
                 <p className="text-gray-600">
                   Once shipped, you'll receive tracking information. Delivery
-                  typically takes 3-7 business days.
+                  typically takes 1-3 business days.
                 </p>
               </div>
             </div>

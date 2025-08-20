@@ -87,7 +87,9 @@ export default function ListingsPage() {
   const router = useRouter();
   const [listings, setListings] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedCategory, setSelectedCategory] = useState("All"); // Department
+  const [selectedSubCategory, setSelectedSubCategory] = useState("All"); // Category  
+  const [selectedSubSubCategory, setSelectedSubSubCategory] = useState("All"); // Subcategory
   const [sortBy, setSortBy] = useState("newest");
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const [showSold, setShowSold] = useState(true); // Default to showing sold items
@@ -215,6 +217,7 @@ export default function ListingsPage() {
               },
               zip_code: listing.zipCode,
               list_price: listing.price,
+              salePrice: listing.salePrice, // Add missing salePrice for discount sorting
               estimated_retail_price: listing.estimatedRetailPrice,
               seller_name: listing.user.name || "Unknown Seller",
               seller_organization:
@@ -228,6 +231,7 @@ export default function ListingsPage() {
               treasureReason: listing.treasureReason || null,
             };
           });
+
           setListings(transformedListings);
         }
       } catch (error) {
@@ -251,36 +255,47 @@ export default function ListingsPage() {
     return () => clearInterval(interval);
   }, [isClient]);
 
-  // Debug: Log current filter states
-  console.log("Filter states:", {
-    showSold,
-    showProcessing,
-    showSaved,
-    showHidden,
-    showTreasures,
-  });
+  // Debug: Log current filter states (commented out to prevent excessive re-renders)
+  // console.log("Filter states:", {
+  //   showSold,
+  //   showProcessing,
+  //   showSaved,
+  //   showHidden,
+  //   showTreasures,
+  // });
 
   // Filter and sort listings
   const filteredListings = listings
     .filter((listing) => {
-      // Map the listing's categories to Facebook category for filtering
-      const listingFacebookCategory = mapToFacebookCategory(
-        listing.department || listing.category_id?.split("_")[0] || "general",
-        listing.category || listing.category_id?.split("_")[1] || "general",
-        listing.subCategory || listing.category_id?.split("_")[2]
-      );
+      // Extract department, category, and subcategory from listing
+      const listingDepartment =
+        listing.department || listing.category_id?.split("_")[0] || "";
+      const listingCategory =
+        listing.category || listing.category_id?.split("_")[1] || "";
+      const listingSubCategory =
+        listing.subCategory || listing.category_id?.split("_")[2] || "";
 
       const matchesSearch =
         listing.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        listing.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        listing.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        listingDepartment?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        listingCategory?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         listing.seller_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         listing.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
         listing.location.toLowerCase().includes(searchTerm.toLowerCase());
 
+      const matchesDepartment =
+        selectedCategory === "All" || listingDepartment === selectedCategory;
+
       const matchesCategory =
+        selectedSubCategory === "All" ||
         selectedCategory === "All" ||
-        listingFacebookCategory === selectedCategory;
+        listingCategory === selectedSubCategory;
+
+      const matchesSubCategory =
+        selectedSubSubCategory === "All" ||
+        selectedSubCategory === "All" ||
+        selectedCategory === "All" ||
+        listingSubCategory === selectedSubSubCategory;
 
       const isHidden = hiddenListings.has(listing.itemId);
       const isSaved = savedListings.has(listing.itemId);
@@ -294,7 +309,9 @@ export default function ListingsPage() {
 
       const result =
         matchesSearch &&
+        matchesDepartment &&
         matchesCategory &&
+        matchesSubCategory &&
         shouldShowHidden &&
         shouldShowSaved &&
         shouldShowTreasures &&
@@ -322,19 +339,44 @@ export default function ListingsPage() {
       return result;
     })
     .sort((a, b) => {
+      // Use the same price calculation as the UI display
+      const getActualDisplayPrice = (listing: any) => {
+        return getDisplayPrice(listing).price;
+      };
+
       switch (sortBy) {
         case "price-low":
-          return a.list_price - b.list_price;
+          return getActualDisplayPrice(a) - getActualDisplayPrice(b);
         case "price-high":
-          return b.list_price - a.list_price;
+          return getActualDisplayPrice(b) - getActualDisplayPrice(a);
         case "newest":
-          return (
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          );
+          const aDate = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const bDate = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return bDate - aDate;
         case "largest-discount":
-          // Calculate discount as the difference between list price and sales price
-          const aDiscount = a.salePrice ? a.list_price - a.salePrice : 0;
-          const bDiscount = b.salePrice ? b.list_price - b.salePrice : 0;
+          // Calculate discount using the same logic as UI display
+          const getActualDiscount = (listing: any) => {
+            const displayPrice = getDisplayPrice(listing);
+            const listPrice = listing.list_price || listing.price || 0;
+
+            if (displayPrice.isDiscounted && displayPrice.originalPrice) {
+              // For discounted items, use the actual discount amount
+              return displayPrice.originalPrice - displayPrice.price;
+            }
+
+            // For "New" items, calculate discount off estimated retail price if available
+            if (
+              getStandardizedCondition(listing) === "New" &&
+              listing.estimated_retail_price
+            ) {
+              return listing.estimated_retail_price - displayPrice.price;
+            }
+
+            return 0; // No discount
+          };
+
+          const aDiscount = getActualDiscount(a);
+          const bDiscount = getActualDiscount(b);
           return bDiscount - aDiscount; // Largest discount first
         case "percent-off-retail":
           // Calculate % off retail for "New" condition items
@@ -360,6 +402,41 @@ export default function ListingsPage() {
           return 0;
       }
     });
+
+  console.log(
+    "🔄 Final sorted order:",
+    filteredListings.map((l) => {
+      const displayPrice = getDisplayPrice(l);
+      const discount =
+        displayPrice.isDiscounted && displayPrice.originalPrice
+          ? displayPrice.originalPrice - displayPrice.price
+          : getStandardizedCondition(l) === "New" && l.estimated_retail_price
+          ? l.estimated_retail_price - displayPrice.price
+          : 0;
+
+      return {
+        id: l.itemId,
+        title: l.title,
+        listPrice: l.list_price,
+        calculatedDisplayPrice: displayPrice.price,
+        isDiscounted: displayPrice.isDiscounted,
+        discountAmount: discount,
+        condition: getStandardizedCondition(l),
+        estimatedRetail: l.estimated_retail_price,
+        status: l.status,
+      };
+    })
+  );
+
+  console.log("📊 Filter states:", {
+    showSold,
+    showProcessing,
+    showSaved,
+    showHidden,
+    showTreasures,
+    totalListings: listings.length,
+    filteredCount: filteredListings.length,
+  });
 
   const toggleSaved = (id: string) => {
     setSavedListings((prev) => {
@@ -527,8 +604,193 @@ export default function ListingsPage() {
     }
   };
 
-  // Use Facebook Marketplace categories for consistent filtering
-  const categories = ["All", ...getFacebookCategories()];
+  // Real taxonomy structure from list-item page
+  const taxonomy = {
+    Furniture: {
+      "Living Room": [
+        "Sofas",
+        "Loveseats",
+        "Sectionals",
+        "Coffee Tables",
+        "Side Tables",
+        "Console Tables",
+      ],
+      "Dining Room": [
+        "Dining Tables",
+        "Dining Chairs",
+        "Buffets",
+        "China Cabinets",
+      ],
+      Bedroom: ["Beds", "Dressers", "Nightstands", "Wardrobes", "Vanities"],
+      Office: ["Desks", "Office Chairs", "Filing Cabinets", "Bookshelves"],
+      Storage: ["Wardrobes", "Chests", "Shelving Units", "Storage Bins"],
+      Outdoor: ["Patio Sets", "Garden Chairs", "Outdoor Tables"],
+      Kids: ["Children's Beds", "Kids' Desks", "Toy Storage"],
+    },
+    Electronics: {
+      "Computers & Tablets": [
+        "Laptops",
+        "Desktops",
+        "Tablets",
+        "Monitors",
+        "Keyboards",
+        "Mice",
+      ],
+      "Mobile Phones": [
+        "Smartphones",
+        "Phone Cases",
+        "Chargers",
+        "Screen Protectors",
+      ],
+      "Audio Equipment": [
+        "Speakers",
+        "Headphones",
+        "Microphones",
+        "Amplifiers",
+      ],
+      "Cameras & Photo": [
+        "Digital Cameras",
+        "Lenses",
+        "Tripods",
+        "Camera Bags",
+      ],
+      "TVs & Video": [
+        "Televisions",
+        "Projectors",
+        "DVD Players",
+        "Streaming Devices",
+      ],
+      "Smart Home": ["Smart Speakers", "Security Cameras", "Smart Thermostats"],
+      Gaming: [
+        "Gaming Consoles",
+        "Gaming PCs",
+        "Controllers",
+        "Gaming Headsets",
+      ],
+    },
+    "Home & Garden": {
+      "Home Décor": ["Wall Art", "Mirrors", "Vases", "Candles"],
+      Lighting: ["Lamps", "Chandeliers", "Sconces", "Light Bulbs"],
+      "Kitchen & Dining": [
+        "Cookware",
+        "Dinnerware",
+        "Kitchen Utensils",
+        "Small Appliances",
+      ],
+      Bathroom: ["Towels", "Shower Curtains", "Bathroom Accessories"],
+      "Storage & Organization": [
+        "Closet Organizers",
+        "Storage Bins",
+        "Hooks",
+        "Shelving",
+      ],
+      "Rugs & Textiles": ["Area Rugs", "Carpets", "Blankets", "Throws"],
+      "Garden & Outdoor": [
+        "Garden Tools",
+        "Planters",
+        "Outdoor Decor",
+        "Patio Furniture",
+        "BBQ & Grilling",
+      ],
+    },
+    "Clothing & Accessories": {
+      "Men's Clothing": ["Shirts", "Pants", "Jackets", "Shoes", "Accessories"],
+      "Women's Clothing": [
+        "Dresses",
+        "Tops",
+        "Bottoms",
+        "Shoes",
+        "Accessories",
+      ],
+      "Kids' Clothing": [
+        "Boys' Clothing",
+        "Girls' Clothing",
+        "Baby Clothes",
+        "Shoes",
+      ],
+      "Jewelry & Watches": ["Necklaces", "Rings", "Watches", "Bracelets"],
+      "Bags & Purses": ["Handbags", "Backpacks", "Wallets", "Luggage"],
+      Shoes: ["Sneakers", "Boots", "Sandals", "Formal Shoes"],
+    },
+    "Sporting Goods": {
+      "Fitness Equipment": [
+        "Treadmills",
+        "Weights",
+        "Yoga Mats",
+        "Exercise Bikes",
+      ],
+      "Team Sports": [
+        "Basketballs",
+        "Soccer Balls",
+        "Baseball Equipment",
+        "Tennis Rackets",
+      ],
+      "Outdoor Sports": [
+        "Bicycles",
+        "Camping Gear",
+        "Hiking Equipment",
+        "Fishing Gear",
+      ],
+      "Water Sports": ["Swimming Gear", "Surfboards", "Kayaks", "Life Jackets"],
+      "Winter Sports": ["Skis", "Snowboards", "Winter Clothing", "Boots"],
+    },
+    Appliances: {
+      "Kitchen Appliances": [
+        "Refrigerators",
+        "Dishwashers",
+        "Ovens",
+        "Microwaves",
+      ],
+      Laundry: ["Washers", "Dryers", "Ironing Boards"],
+      Cleaning: ["Vacuum Cleaners", "Steam Cleaners", "Air Purifiers"],
+      "Small Appliances": ["Blenders", "Coffee Makers", "Toasters", "Mixers"],
+    },
+    "Baby & Kids": {
+      "Baby Gear": ["Strollers", "Car Seats", "High Chairs", "Cribs"],
+      Toys: ["Educational Toys", "Building Blocks", "Dolls", "Action Figures"],
+      Clothing: ["Onesies", "Sleepers", "Outfits", "Shoes"],
+      Feeding: ["Bottles", "Formula", "Baby Food", "Bibs"],
+    },
+  } as const;
+
+  // Get departments (top level categories)
+  const departments = ["All", ...Object.keys(taxonomy)];
+
+  // Function to get categories for a selected department
+  const getCategoriesForDepartment = (department: string): string[] => {
+    if (department === "All" || !taxonomy[department as keyof typeof taxonomy])
+      return [];
+    return Object.keys(taxonomy[department as keyof typeof taxonomy]);
+  };
+
+  // Function to get subcategories for a selected department and category
+  const getSubCategoriesForDepartmentAndCategory = (department: string, category: string): string[] => {
+    if (department === "All" || category === "All" || !taxonomy[department as keyof typeof taxonomy])
+      return [];
+    
+    const departmentData = taxonomy[department as keyof typeof taxonomy];
+    if (!departmentData || !departmentData[category as keyof typeof departmentData])
+      return [];
+    
+    const subcategories = departmentData[category as keyof typeof departmentData];
+    return Array.isArray(subcategories) ? subcategories : [];
+  };
+
+  const availableCategories = getCategoriesForDepartment(selectedCategory);
+  const availableSubCategories = getSubCategoriesForDepartmentAndCategory(selectedCategory, selectedSubCategory);
+
+  // Reset subcategory when department changes
+  const handleCategoryChange = (newDepartment: string) => {
+    setSelectedCategory(newDepartment);
+    setSelectedSubCategory("All");
+    setSelectedSubSubCategory("All");
+  };
+
+  // Reset subcategory when category changes
+  const handleSubCategoryChange = (newCategory: string) => {
+    setSelectedSubCategory(newCategory);
+    setSelectedSubSubCategory("All");
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -678,41 +940,43 @@ export default function ListingsPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">
+            <div className="flex-1"></div>
+            <h1 className="text-2xl font-bold text-gray-900 text-center">
               Active Listings
             </h1>
+            <div className="flex-1 flex justify-end items-center gap-4">
+              {/* Search Bar */}
+              <div className="relative max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <input
+                  type="text"
+                  placeholder="Search listings..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                />
+              </div>
 
-            {/* Search Bar */}
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <input
-                type="text"
-                placeholder="Search listings..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-              />
-            </div>
-
-            {/* Filter Controls */}
-            <div className="flex gap-2">
-              {/* Filter Panel Toggle Button */}
-              <Button
-                onClick={() => setFilterPanelOpen(!filterPanelOpen)}
-                className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white px-4 py-2 flex items-center gap-2"
-              >
-                <Filter className="h-4 w-4" />
-                Filters
-              </Button>
+              {/* Filter Controls */}
+              <div className="flex gap-2">
+                {/* Filter Panel Toggle Button */}
+                <Button
+                  onClick={() => setFilterPanelOpen(!filterPanelOpen)}
+                  className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white px-4 py-2 flex items-center gap-2"
+                >
+                  <Filter className="h-4 w-4" />
+                  Filters
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Results Count */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div className="px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex items-center justify-between">
           <p className="text-gray-600">
             Showing {filteredListings.length} of {listings.length} listings
@@ -736,9 +1000,9 @@ export default function ListingsPage() {
         <div
           className={`flex-1 transition-all duration-300 ${
             filterPanelOpen ? "mr-80" : "mr-0"
-          } max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8`}
+          } px-4 sm:px-6 lg:px-8 pb-8`}
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {filteredListings.map((listing) => {
               const isSaved = savedListings.has(listing.itemId);
               const isHidden = hiddenListings.has(listing.itemId);
@@ -807,7 +1071,7 @@ export default function ListingsPage() {
                       </div>
                     )}
 
-                    {/* Next Price Drop Badge - Only show if within 24 hours */}
+                    {/* Next Price Drop Badge - Only show if within 24 hours and not sold */}
                     {(() => {
                       const isWithin24Hours = isPriceDropWithin24Hours(
                         listing.discount_schedule,
@@ -818,6 +1082,7 @@ export default function ListingsPage() {
                         listing.created_at
                       );
                       return (
+                        listing.status !== "sold" &&
                         isWithin24Hours &&
                         nextDrop && (
                           <div
@@ -863,17 +1128,17 @@ export default function ListingsPage() {
                   </div>
 
                   {/* Content */}
-                  <div className="p-4">
+                  <div className="p-3">
                     {/* Title */}
                     <h3
-                      className="font-semibold text-gray-900 text-sm line-clamp-2 mb-2 hover:text-[#D4AF3D] cursor-pointer"
+                      className="font-semibold text-gray-900 text-sm line-clamp-2 mb-1 hover:text-[#D4AF3D] cursor-pointer"
                       onClick={() => navigateToListingDetail(listing.itemId)}
                     >
                       {listing.title}
                     </h3>
 
                     {/* Display Price (Sales Price or List Price) */}
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-1">
                       {(() => {
                         const displayPrice = getDisplayPrice(listing);
 
@@ -1181,8 +1446,11 @@ export default function ListingsPage() {
                   { value: "newest", label: "Newest First" },
                   { value: "price-low", label: "Price: Low to High" },
                   { value: "price-high", label: "Price: High to Low" },
-                  { value: "largest-discount", label: "Largest Discount" },
-                  { value: "percent-off-retail", label: "% Off Retail" },
+                  { value: "largest-discount", label: "Largest Discount ($)" },
+                  {
+                    value: "percent-off-retail",
+                    label: "Largest Discount (%)",
+                  },
                 ].map((option) => (
                   <label key={option.value} className="flex items-center">
                     <input
@@ -1190,7 +1458,15 @@ export default function ListingsPage() {
                       name="sortBy"
                       value={option.value}
                       checked={sortBy === option.value}
-                      onChange={(e) => setSortBy(e.target.value)}
+                      onChange={(e) => {
+                        console.log(
+                          "🎯 Sort changed from",
+                          sortBy,
+                          "to",
+                          e.target.value
+                        );
+                        setSortBy(e.target.value);
+                      }}
                       className="h-4 w-4 text-[#D4AF3D] border-gray-300 focus:ring-[#D4AF3D]"
                     />
                     <span className="ml-2 text-sm text-gray-700">
@@ -1201,23 +1477,67 @@ export default function ListingsPage() {
               </div>
             </div>
 
-            {/* Category Filter */}
+            {/* Department Filter */}
             <div>
               <h4 className="text-sm font-medium text-gray-900 mb-3">
-                Category
+                Department
               </h4>
               <select
                 value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
+                onChange={(e) => handleCategoryChange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
               >
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
+                {departments.map((department) => (
+                  <option key={department} value={department}>
+                    {department}
                   </option>
                 ))}
               </select>
             </div>
+
+            {/* Category Filter - Only show when a specific department is selected */}
+            {selectedCategory !== "All" && availableCategories.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-gray-900 mb-3">
+                  Category
+                </h4>
+                <select
+                  value={selectedSubCategory}
+                  onChange={(e) => handleSubCategoryChange(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                >
+                  <option value="All">All {selectedCategory}</option>
+                  {availableCategories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Sub-Category Filter - Only show when both department and category are selected */}
+            {selectedCategory !== "All" && 
+             selectedSubCategory !== "All" && 
+             availableSubCategories.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-gray-900 mb-3">
+                  Sub-Category
+                </h4>
+                <select
+                  value={selectedSubSubCategory}
+                  onChange={(e) => setSelectedSubSubCategory(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                >
+                  <option value="All">All {selectedSubCategory}</option>
+                  {availableSubCategories.map((subCategory) => (
+                    <option key={subCategory} value={subCategory}>
+                      {subCategory}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* View Options */}
             <div>

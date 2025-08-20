@@ -1611,6 +1611,7 @@ export default function ListingDetailPage() {
               currentPrice={getDisplayPrice(listing).price}
               originalPrice={listing.price}
               reservePrice={listing.reservePrice || listing.reserve_price}
+              status={listing.status}
             />
           </div>
         </div>
