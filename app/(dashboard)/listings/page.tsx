@@ -39,6 +39,10 @@ import {
   isNewCondition,
 } from "../../lib/condition-utils";
 import { usePurchaseService } from "../../lib/purchase-service";
+import {
+  getBuyNowButtonState,
+  getStatusOverlay,
+} from "../../lib/listing-button-utils";
 import QuestionsDisplay from "../../components/QuestionsDisplay";
 import ImageCarousel from "../../components/ImageCarousel";
 import CustomQRCode from "../../components/CustomQRCode";
@@ -87,6 +91,7 @@ export default function ListingsPage() {
   const [sortBy, setSortBy] = useState("newest");
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const [showSold, setShowSold] = useState(true); // Default to showing sold items
+  const [showProcessing, setShowProcessing] = useState(true); // Default to showing processing items
   const [showHidden, setShowHidden] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const [showTreasures, setShowTreasures] = useState(false);
@@ -105,6 +110,9 @@ export default function ListingsPage() {
   const [signupError, setSignupError] = useState(""); // Signup error message
   const [loadingPurchase, setLoadingPurchase] = useState(false); // Purchase loading state
   const [ownListingConfirmOpen, setOwnListingConfirmOpen] = useState(false); // Own listing confirmation modal
+  const [showAddressRequiredModal, setShowAddressRequiredModal] =
+    useState(false);
+  const [userAddress, setUserAddress] = useState<any>(null);
 
   // Authentication state
   const { data: session } = authClient.useSession();
@@ -112,6 +120,35 @@ export default function ListingsPage() {
   const currentUserId = session?.user?.id || null;
   const { handleBuyNow: purchaseServiceBuyNow, confirmOwnPurchase } =
     usePurchaseService(currentUserId);
+
+  // Function to check if user has complete address
+  const isAddressComplete = (address: any) => {
+    if (!address) return false;
+    return !!(
+      address.addressLine1 &&
+      address.city &&
+      address.state &&
+      address.zipCode
+    );
+  };
+
+  // Function to fetch user profile data
+  const fetchUserProfile = async () => {
+    if (!isAuthenticated) return;
+
+    try {
+      const res = await fetch("/api/profile", {
+        credentials: "include",
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setUserAddress(data.user);
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+    }
+  };
 
   // Set client-side rendering flag after hydration
   useEffect(() => {
@@ -217,6 +254,7 @@ export default function ListingsPage() {
   // Debug: Log current filter states
   console.log("Filter states:", {
     showSold,
+    showProcessing,
     showSaved,
     showHidden,
     showTreasures,
@@ -247,10 +285,12 @@ export default function ListingsPage() {
       const isHidden = hiddenListings.has(listing.item_id);
       const isSaved = savedListings.has(listing.item_id);
       const isSoldItem = listing.status === "sold";
+      const isProcessingItem = listing.status === "processing";
       const shouldShowHidden = showHidden || !isHidden;
       const shouldShowSaved = !showSaved || isSaved;
       const shouldShowTreasures = !showTreasures || listing.isTreasure;
       const shouldShowSoldItems = showSold || !isSoldItem;
+      const shouldShowProcessingItems = showProcessing || !isProcessingItem;
 
       const result =
         matchesSearch &&
@@ -258,13 +298,22 @@ export default function ListingsPage() {
         shouldShowHidden &&
         shouldShowSaved &&
         shouldShowTreasures &&
-        shouldShowSoldItems;
+        shouldShowSoldItems &&
+        shouldShowProcessingItems;
 
-      // Debug: Log filtering decisions for sold items
+      // Debug: Log filtering decisions for sold and processing items
       if (isSoldItem) {
         console.log(`Sold item ${listing.item_id}:`, {
           showSold,
           shouldShowSoldItems,
+          result,
+          status: listing.status,
+        });
+      }
+
+      if (isProcessingItem) {
+        console.log(`Processing item ${listing.item_id}:`, {
+          shouldShowProcessingItems,
           result,
           status: listing.status,
         });
@@ -802,6 +851,15 @@ export default function ListingsPage() {
                         </div>
                       </div>
                     )}
+
+                    {/* PROCESSING Overlay */}
+                    {listing.status === "processing" && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <div className="bg-gradient-to-r from-[#D4AF3D] to-[#b8932f] text-white px-6 py-3 rounded-lg text-xl font-bold transform rotate-12 shadow-lg">
+                          PROCESSING
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Content */}
@@ -1230,6 +1288,24 @@ export default function ListingsPage() {
                   />
                   {showSold ? "Hide Sold" : "Show Sold"}
                 </Button>
+
+                <Button
+                  variant={showProcessing ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowProcessing(!showProcessing)}
+                  className={`w-full flex items-center justify-start gap-2 transition-colors ${
+                    showProcessing
+                      ? "bg-[#D4AF3D] text-white border-[#D4AF3D] hover:bg-[#b8932f]"
+                      : "hover:bg-[#D4AF3D] hover:text-white hover:border-[#D4AF3D]"
+                  }`}
+                >
+                  <CheckCircle
+                    className={`h-4 w-4 ${
+                      showProcessing ? "fill-current" : ""
+                    }`}
+                  />
+                  {showProcessing ? "Hide Processing" : "Show Processing"}
+                </Button>
               </div>
             </div>
 
@@ -1243,6 +1319,7 @@ export default function ListingsPage() {
                   setShowHidden(false);
                   setShowTreasures(false);
                   setShowSold(true); // Reset to default (showing sold items)
+                  setShowProcessing(true); // Reset to default (showing processing items)
                 }}
                 className="w-full px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
@@ -1378,21 +1455,31 @@ export default function ListingsPage() {
                   {/* Action Buttons */}
                   <div className="flex gap-3 mb-6">
                     {isAuthenticated ? (
-                      <Button
-                        variant="default"
-                        className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
-                        onClick={handleBuyNow}
-                        disabled={loadingPurchase}
-                      >
-                        {loadingPurchase ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            Processing...
-                          </>
-                        ) : (
-                          "Buy it Now"
-                        )}
-                      </Button>
+                      (() => {
+                        const buttonState = getBuyNowButtonState({
+                          status: selectedListing?.status,
+                          isOwner: selectedListing?.user?.id === currentUserId,
+                          loadingPurchase,
+                        });
+
+                        return (
+                          <Button
+                            variant="default"
+                            className={buttonState.className}
+                            onClick={handleBuyNow}
+                            disabled={buttonState.disabled}
+                          >
+                            {buttonState.loading ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                {buttonState.text}
+                              </>
+                            ) : (
+                              buttonState.text
+                            )}
+                          </Button>
+                        );
+                      })()
                     ) : (
                       <div className="flex gap-2 flex-1">
                         <Button

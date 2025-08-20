@@ -1,0 +1,79 @@
+Review-to-Tip Feature Requirements for TreasureHub Deliveries
+
+CONCEPT:
+Each driver carries small cards with QR codes. When customers scan them, they're redirected to TreasureHub's Google Reviews page. We track which driver's QR was scanned and award bonuses for verified 5-star reviews.
+
+DRIVER MESSAGE:
+"If you feel that we have exceeded your expectations, we don't take tips. That's part of the concierge delivery service. However, for every ⭐⭐⭐⭐⭐ Google review that I get, TreasureHub will tip me."
+
+QR CODE URL FORMAT:
+treasurehub.club/review/[DRIVER_INITIALS]
+Example: treasurehub.club/review/arm (for Alexander Raymond MacDonald)
+
+FEATURE COMPONENTS:
+
+1. DATABASE SCHEMA:
+   - Driver table: Store driver info, initials, Google Reviews URL, stats
+   - ReviewScan table: Log each QR code scan with IP, timestamp, user agent
+   - GoogleReview table: Store confirmed review details (rating, text, reviewer)
+   - ReviewBonus table: Track bonus payments ($5 for 5-star reviews)
+
+2. QR CODE REDIRECT SYSTEM:
+   - Dynamic route: /review/[initials]
+   - Logs scan details for tracking
+   - Redirects to Google Reviews page
+   - 404 page for invalid driver codes
+   - Branded confirmation page option
+
+3. ADMIN DASHBOARD:
+   - Driver management (add/edit/deactivate drivers)
+   - Review confirmation (manually link Google reviews to scans)
+   - Bonus tracking and payment status management
+   - Analytics and reporting
+   - QR code generator for printing cards
+
+4. QR CODE GENERATOR:
+   - Generate printable QR codes for each driver
+   - Business card format (3.5" x 2") with TreasureHub branding
+   - Download PNG files or print directly
+   - Preview of physical card design
+
+5. API ENDPOINTS:
+   - /api/admin/drivers (CRUD operations for drivers)
+   - /api/admin/reviews (confirm reviews, link to scans)
+   - /api/admin/bonuses (manage bonus payments)
+   - /api/admin/drivers/seed (initialize driver data)
+
+6. SECURITY & TRACKING:
+   - IP address and user agent logging
+   - Prevent duplicate scans from same IP
+   - Admin authentication for management functions
+   - Audit trail for all bonus awards
+
+7. BONUS SYSTEM:
+   - $5 default bonus for each verified 5-star review
+   - Payment status tracking (pending, paid, cancelled)
+   - Bulk payment operations
+   - Payment method tracking (Venmo, CashApp, etc.)
+
+IMPLEMENTATION STATUS: ✅ COMPLETED
+- Database schema created and migrated
+- QR redirect system implemented  
+- Admin dashboard built with full CRUD operations
+- Review confirmation system working
+- Bonus tracking and payment management
+- QR code generator with printable cards
+- Sample data seeded for testing
+
+TESTING URLS:
+- Admin Dashboard: /admin/review-to-tip
+- QR Generator: /admin/review-to-tip/qr-generator  
+- Test QR Code: /review/arm (redirects to Google Reviews)
+- Driver Management API: /api/admin/drivers
+
+NEXT STEPS:
+1. Set up actual Google Reviews URL for TreasureHub business
+2. Design and print physical QR code cards
+3. Train drivers on the review-to-tip system
+4. Monitor analytics and adjust bonus amounts as needed
+5. Set up payment integration for automated bonus distribution

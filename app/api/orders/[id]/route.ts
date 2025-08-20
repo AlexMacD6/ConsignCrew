@@ -18,7 +18,18 @@ export async function GET(
     const { id } = await params;
     console.log('Orders API: Fetching order with ID:', id);
     
-    const session = await auth.api.getSession({ headers: request.headers });
+    let session;
+    try {
+      console.log('Orders API: Attempting to get session...');
+      session = await auth.api.getSession({ headers: request.headers });
+      console.log('Orders API: Session retrieved successfully:', !!session);
+    } catch (authError) {
+      console.error('Orders API: Auth error:', authError);
+      return NextResponse.json(
+        { error: 'Authentication failed' },
+        { status: 500 }
+      );
+    }
 
     if (!session?.user?.id) {
       console.log('Orders API: No session found');

@@ -1,0 +1,90 @@
+# Location Display Consistency Fix
+
+## Problem
+There was an inconsistency between location display on the listings page and the individual listing detail page:
+- **Listings page**: Shows location correctly (e.g., "The Heights")
+- **Listing detail page**: Shows blank/empty location
+
+## Root Cause Analysis
+
+### Data Flow
+1. **Listings API** (`/api/listings`) fetches user zip codes and maps them to neighborhoods
+2. **Individual Listing API** (`/api/listings/[id]`) also fetches neighborhood data
+3. **Both APIs** add neighborhood information as `listing.neighborhood`
+
+### The Issue
+- **Listings page**: Correctly accessed `listing.neighborhood` via `listing.location` mapping
+- **Listing detail page**: Incorrectly tried to access `listing.location` (which doesn't exist)
+
+## Solution Implemented
+
+### Files Modified
+- **`app/(dashboard)/list-item/[id]/page.tsx`**
+
+### Specific Change
+```typescript
+// BEFORE (Incorrect)
+{listing.location}
+
+// AFTER (Fixed)
+{listing.neighborhood}
+```
+
+### Code Location
+- **Line 1559**: Changed property access from `listing.location` to `listing.neighborhood`
+- **Display section**: Seller Information > Location field
+
+## Technical Details
+
+### API Data Structure
+Both listing APIs (`/api/listings` and `/api/listings/[id]`) provide:
+
+```typescript
+{
+  // ... other listing properties
+  neighborhood: string, // e.g., "The Heights", "River Oaks"
+  user: {
+    zipCode: string,
+    // ... other user properties
+  }
+}
+```
+
+### Neighborhood Resolution Process
+1. **Fetch user's zip code** from listing.user.zipCode
+2. **Look up neighborhood** in zipCode table by code
+3. **Map zip code to area name** (e.g., "77008" → "The Heights")
+4. **Add as neighborhood property** to listing object
+
+## Verification Steps
+
+### Testing Instructions
+1. Navigate to listings page (`/listings`)
+2. Note the location shown for any item (e.g., "The Heights")
+3. Click on that item to view detail page
+4. Verify the same location is now displayed in the Seller Information section
+5. Confirm location consistency between both pages
+
+### Expected Behavior
+- **✅ Listings page**: Shows neighborhood name (e.g., "The Heights")
+- **✅ Listing detail page**: Shows same neighborhood name
+- **✅ Consistency**: Both pages display identical location information
+
+## Benefits
+
+### **🎯 User Experience**
+- **Consistent information** across the platform
+- **Reliable location data** for buyer decision-making
+- **Professional presentation** with no missing information
+
+### **🔧 Code Quality**
+- **Correct property access** in components
+- **Aligned with API structure** and data flow
+- **Eliminated display bugs** and inconsistencies
+
+### **📍 Location Accuracy**
+- **Proper zip code mapping** to neighborhood names
+- **Standardized location display** across all pages
+- **Clear geographic context** for item location
+
+This fix ensures users see consistent, accurate location information whether browsing multiple listings or viewing individual item details.

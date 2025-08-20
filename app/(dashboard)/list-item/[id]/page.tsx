@@ -33,6 +33,10 @@ import {
 } from "../../../lib/condition-utils";
 import { usePurchaseService } from "../../../lib/purchase-service";
 import {
+  getBuyNowButtonState,
+  getStatusOverlay,
+} from "../../../lib/listing-button-utils";
+import {
   trackMetaPixelEvent,
   trackViewContent,
   trackAddToWishlist,
@@ -165,11 +169,43 @@ export default function ListingDetailPage() {
   const { data: session } = authClient.useSession();
   const isAuthenticated = !!session?.user;
   const currentUserId = session?.user?.id || null;
+  const [userOrganizations, setUserOrganizations] = useState<any[]>([]);
   const { handleBuyNow: purchaseServiceBuyNow, confirmOwnPurchase } =
     usePurchaseService(currentUserId);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [loadingPurchase, setLoadingPurchase] = useState(false); // New state for purchase loading
   const [ownListingConfirmOpen, setOwnListingConfirmOpen] = useState(false);
+  const [showAddressRequiredModal, setShowAddressRequiredModal] =
+    useState(false);
+  const [userAddress, setUserAddress] = useState<any>(null);
+
+  // Function to check if user has complete address
+  const isAddressComplete = (address: any) => {
+    if (!address) return false;
+    return !!(
+      address.addressLine1 &&
+      address.city &&
+      address.state &&
+      address.zipCode
+    );
+  };
+
+  // Function to fetch user profile data
+  const fetchUserProfile = async () => {
+    if (!isAuthenticated) return;
+
+    try {
+      const res = await fetch("/api/profile", {
+        credentials: "include",
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setUserAddress(data.user);
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+    }
+  };
 
   // Function to generate video URL from video record
   const generateVideoUrl = (videoRecord: any) => {
@@ -263,6 +299,38 @@ export default function ListingDetailPage() {
       }
     }
   }, [listing]);
+
+  // Fetch user profile when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchUserProfile();
+      fetchUserOrganizations();
+    }
+  }, [isAuthenticated]);
+
+  // Function to fetch user organizations
+  const fetchUserOrganizations = async () => {
+    if (!isAuthenticated || !currentUserId) return;
+
+    try {
+      const res = await fetch("/api/profile/organizations", {
+        credentials: "include",
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setUserOrganizations(data.organizations || []);
+      }
+    } catch (error) {
+      console.error("Error fetching user organizations:", error);
+    }
+  };
+
+  // Check if user belongs to TreasureHub organization
+  const isTreasureHubMember = userOrganizations.some(
+    (org) =>
+      org.slug === "treasurehub" || org.name?.toLowerCase() === "treasurehub"
+  );
 
   const getConditionColor = (condition: string) => {
     switch (condition) {
@@ -403,7 +471,7 @@ export default function ListingDetailPage() {
     heroImageUrl: string,
     aiImageUrl: string
   ) => {
-    if (!isAdmin) return; // Only calculate for admin users
+    if (!isTreasureHubMember) return; // Only calculate for TreasureHub members
 
     setLoadingSimilarity(true);
     try {
@@ -435,6 +503,12 @@ export default function ListingDetailPage() {
   const handleBuyNow = async () => {
     if (!listing || !isAuthenticated) {
       setAuthError(true);
+      return;
+    }
+
+    // Check if user has complete address before proceeding
+    if (!isAddressComplete(userAddress)) {
+      setShowAddressRequiredModal(true);
       return;
     }
 
@@ -749,7 +823,7 @@ export default function ListingDetailPage() {
           {/* Left Column - Images and Basic Info */}
           <div className="lg:col-span-2">
             {/* Main Image Carousel */}
-            <div className="mb-6">
+            <div className="mb-6 relative">
               <ImageCarousel
                 images={allImages}
                 video={
@@ -767,6 +841,18 @@ export default function ListingDetailPage() {
                 showDots={true}
                 autoPlay={false}
               />
+
+              {/* Status Overlay */}
+              {(() => {
+                const overlay = getStatusOverlay(listing?.status);
+                if (!overlay.show) return null;
+
+                return (
+                  <div className={overlay.className}>
+                    <div className={overlay.badgeClassName}>{overlay.text}</div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Price Information */}
@@ -855,20 +941,30 @@ export default function ListingDetailPage() {
               )}
               <div className="flex gap-3">
                 {isAuthenticated ? (
-                  <Button
-                    className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
-                    onClick={handleBuyNow}
-                    disabled={loadingPurchase}
-                  >
-                    {loadingPurchase ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Processing...
-                      </>
-                    ) : (
-                      "Buy it Now"
-                    )}
-                  </Button>
+                  (() => {
+                    const buttonState = getBuyNowButtonState({
+                      status: listing?.status,
+                      isOwner: listing?.user?.id === currentUserId,
+                      loadingPurchase,
+                    });
+
+                    return (
+                      <Button
+                        className={buttonState.className}
+                        onClick={handleBuyNow}
+                        disabled={buttonState.disabled}
+                      >
+                        {buttonState.loading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            {buttonState.text}
+                          </>
+                        ) : (
+                          buttonState.text
+                        )}
+                      </Button>
+                    );
+                  })()
                 ) : (
                   <div className="flex gap-2 w-full">
                     <Button
@@ -918,8 +1014,52 @@ export default function ListingDetailPage() {
               </div>
             )}
 
-            {/* Admin-only AI Similarity Score */}
-            {isAdmin && (
+            {/* Address Required Modal */}
+            {showAddressRequiredModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+                  <div className="text-center">
+                    <div className="mb-6">
+                      <div className="w-16 h-16 bg-[#D4AF3D] rounded-full flex items-center justify-center mx-auto mb-4">
+                        <MapPin className="w-8 h-8 text-white" />
+                      </div>
+                      <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                        Shipping Address Required
+                      </h2>
+                      <p className="text-gray-600 mb-6">
+                        To complete your purchase, please add your shipping
+                        address. This helps us ensure smooth delivery.
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <button
+                        onClick={() => {
+                          setShowAddressRequiredModal(false);
+                          router.push("/profile");
+                        }}
+                        className="w-full bg-[#D4AF3D] text-white font-semibold py-3 px-6 rounded-lg hover:bg-[#c4a235] transition-colors"
+                      >
+                        Add Address Now
+                      </button>
+                      <button
+                        onClick={() => setShowAddressRequiredModal(false)}
+                        className="w-full bg-gray-100 text-gray-700 font-semibold py-3 px-6 rounded-lg hover:bg-gray-200 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+
+                    <p className="text-sm text-gray-500 mt-4">
+                      You can add your address from your profile page.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TreasureHub Organization AI Similarity Score */}
+            {isTreasureHubMember && (
               <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1403,7 +1543,7 @@ export default function ListingDetailPage() {
                 listingId={listing.item_id}
                 listingTitle={listing.title}
                 userId={listing.seller_id}
-                isAdmin={isAdmin}
+                isAdmin={isTreasureHubMember}
               />
             </div>
           </div>
@@ -1447,7 +1587,7 @@ export default function ListingDetailPage() {
                       Location:
                     </span>
                     <span className="ml-2 text-sm text-gray-600">
-                      {listing.location}
+                      {listing.neighborhood}
                     </span>
                   </div>
                 </div>
@@ -1490,6 +1630,8 @@ export default function ListingDetailPage() {
                   itemId={listing.itemId}
                   size={150}
                   className="mx-auto"
+                  showPrintButton={true}
+                  userOrganizations={userOrganizations}
                 />
               </div>
             </div>

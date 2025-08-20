@@ -25,7 +25,7 @@ export default function SEOHead({
 }: SEOHeadProps) {
   const fullTitle = title
     ? `${title} | TreasureHub`
-    : "TreasureHub | Sell Stress-Free";
+    : "TreasureHub | Houston's Treasure Chest - Professional Consignment Service";
   const fullDescription =
     description ||
     "TreasureHub is a professional consignment service that handles everything from pickup to sale. We clean, photograph, authenticate, and sell your items with transparent pricing.";
@@ -52,7 +52,7 @@ export default function SEOHead({
         property="og:url"
         content={canonical || "https://treasurehub.club"}
       />
-      <meta property="og:site_name" content="TreasureHub" />
+      <meta property="og:site_name" content="Houston's Treasure Chest" />
 
       {/* Twitter Card */}
       <meta name="twitter:card" content="summary_large_image" />

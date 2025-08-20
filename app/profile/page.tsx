@@ -134,6 +134,8 @@ export default function ProfilePage() {
   const [selectedListing, setSelectedListing] = useState<any>(null);
   const [showListingModal, setShowListingModal] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
+  const [showAddressCompletionModal, setShowAddressCompletionModal] =
+    useState(false);
 
   // Purchase management state
   const [purchases, setPurchases] = useState<any[]>([]);
@@ -142,6 +144,18 @@ export default function ProfilePage() {
   const [purchasesSearch, setPurchasesSearch] = useState("");
 
   const router = useRouter();
+
+  // Function to check if address is incomplete
+  const isAddressIncomplete = (user: User | null) => {
+    if (!user) return false;
+    return !user.addressLine1 || !user.city || !user.state || !user.zipCode;
+  };
+
+  // Function to handle opening address completion modal
+  const handleCompleteAddress = () => {
+    setShowAddressCompletionModal(false);
+    setShowAddressModal(true);
+  };
 
   useEffect(() => {
     async function fetchUser() {
@@ -190,6 +204,14 @@ export default function ProfilePage() {
 
         const data = await res.json();
         setUser(data.user);
+
+        // Check if address is incomplete and show completion modal
+        if (isAddressIncomplete(data.user)) {
+          // Small delay to ensure the page has loaded before showing modal
+          setTimeout(() => {
+            setShowAddressCompletionModal(true);
+          }, 1000);
+        }
 
         // Check if user is admin
         if (data.user?.id) {
@@ -427,6 +449,8 @@ export default function ProfilePage() {
         setUpdateSuccess("Address updated successfully!");
         // Update user state with the response from server
         setUser(data.user);
+        // Close the address completion modal if it was open
+        setShowAddressCompletionModal(false);
       } else {
         setUpdateError(data.error || "Failed to update address");
       }
@@ -737,7 +761,7 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                     <MapPin className="w-5 h-5 mr-2 text-[#D4AF3D]" />
-                    Address Information
+                    Shipping Address Information
                   </h3>
                   <button
                     onClick={() => {
@@ -1362,6 +1386,47 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+
+      {/* Address Completion Modal */}
+      {showAddressCompletionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+            <div className="text-center">
+              <div className="mb-6">
+                <div className="w-16 h-16 bg-[#D4AF3D] rounded-full flex items-center justify-center mx-auto mb-4">
+                  <MapPin className="w-8 h-8 text-white" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  Complete Your Address
+                </h2>
+                <p className="text-gray-600 mb-6">
+                  To complete purchases on TreasureHub, please add your shipping
+                  address. This helps us ensure smooth delivery.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  onClick={handleCompleteAddress}
+                  className="w-full bg-[#D4AF3D] text-white font-semibold py-3 px-6 rounded-lg hover:bg-[#c4a235] transition-colors"
+                >
+                  Add Address Now
+                </button>
+                <button
+                  onClick={() => setShowAddressCompletionModal(false)}
+                  className="w-full bg-gray-100 text-gray-700 font-semibold py-3 px-6 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Skip for Now
+                </button>
+              </div>
+
+              <p className="text-sm text-gray-500 mt-4">
+                You can add your address later from your profile settings.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Address Modal */}
       <AddressModal

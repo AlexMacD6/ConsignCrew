@@ -1,13 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Package,
-  DollarSign,
-  MapPin,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, DollarSign, MapPin } from "lucide-react";
 import Link from "next/link";
 import { getDisplayPrice } from "../lib/price-calculator";
 import { getStandardizedCondition } from "../lib/condition-utils";
@@ -92,10 +86,18 @@ export default function HeroListingsCarousel({
             );
           }
 
-          // Filter listings that have hero photos and transform data
+          // Filter listings that have hero photos and are truly active (not sold or processing)
           const validListings = data.listings
             .filter((listing: any) => {
               const hasHeroPhoto = listing.photos?.hero;
+              const isActiveStatus =
+                listing.status === "active" ||
+                listing.status === "listed" ||
+                listing.status === "available";
+              const isNotSold =
+                listing.status !== "sold" && listing.status !== "completed";
+              const isNotProcessing = listing.status !== "processing";
+
               if (!hasHeroPhoto) {
                 console.log(
                   "Listing without hero photo:",
@@ -103,7 +105,20 @@ export default function HeroListingsCarousel({
                   listing.title
                 );
               }
-              return hasHeroPhoto;
+
+              if (!isActiveStatus || !isNotSold || !isNotProcessing) {
+                console.log(
+                  "Filtering out non-active listing:",
+                  listing.itemId,
+                  listing.title,
+                  "Status:",
+                  listing.status
+                );
+              }
+
+              return (
+                hasHeroPhoto && isActiveStatus && isNotSold && isNotProcessing
+              );
             })
             .slice(0, maxListings)
             .map((listing: any) => ({
@@ -203,33 +218,27 @@ export default function HeroListingsCarousel({
     );
   }
 
-  // Error state
+  // Error state or no listings - show TreasureHub logo
   if (error || listings.length === 0) {
     return (
-      <div className="w-full h-full bg-gray-100 rounded-2xl flex items-center justify-center">
+      <div className="w-full h-full bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl flex items-center justify-center">
         <div className="text-center p-8">
-          <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">
-            {error || "No listings available"}
+          {/* TreasureHub Logo */}
+          <div className="mb-6">
+            <img
+              src="/Logo.png"
+              alt="TreasureHub Logo"
+              className="h-24 w-auto mx-auto opacity-80"
+            />
+          </div>
+          <h3 className="text-xl font-bold text-gray-800 mb-3">
+            Houston's Treasure Chest
           </h3>
-          <p className="text-gray-500 mb-4">
+          <p className="text-gray-600 max-w-md mx-auto">
             {listings.length === 0
-              ? "Be the first to list an item!"
+              ? "New treasures coming soon! Be the first to discover amazing deals."
               : "Check back soon for new treasures"}
           </p>
-          <div className="space-y-3">
-            <Link
-              href="/list-item"
-              className="inline-block bg-treasure-500 hover:bg-treasure-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
-            >
-              List Your First Item
-            </Link>
-            <div className="text-sm text-gray-400">
-              <p>Debug Info:</p>
-              <p>Error: {error || "None"}</p>
-              <p>Listings: {listings.length}</p>
-            </div>
-          </div>
         </div>
       </div>
     );

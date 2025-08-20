@@ -99,6 +99,36 @@ export async function createSellerConnectAccount(sellerId: string, email: string
 }
 
 /**
+ * Create a Stripe customer for a buyer
+ * 
+ * @param email - The buyer's email address
+ * @param name - The buyer's full name
+ * @param mobilePhone - Optional mobile phone number
+ * @returns Stripe Customer object
+ */
+export async function createStripeCustomer(
+  email: string,
+  name: string,
+  mobilePhone?: string
+) {
+  try {
+    const customer = await stripe.customers.create({
+      email,
+      name,
+      phone: mobilePhone,
+      metadata: {
+        source: 'treasurehub_registration'
+      },
+    });
+
+    return customer;
+  } catch (error) {
+    console.error('Error creating Stripe customer:', error);
+    throw error;
+  }
+}
+
+/**
  * Future: Transfer funds to seller after order finalization
  * This will be used when implementing seller payouts
  */

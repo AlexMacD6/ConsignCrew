@@ -269,11 +269,7 @@ export default function ListingHistory({
                         </span>
                       </span>
                     )}
-                    {event.metadata.user && (
-                      <span className="block mt-1">
-                        by {event.metadata.user}
-                      </span>
-                    )}
+                    {/* Removed user display for privacy - do not show who purchased */}
                   </div>
                 )}
               </div>
