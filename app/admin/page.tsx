@@ -107,6 +107,7 @@ interface InventoryList {
   totalExtRetailValue?: number;
   msrpPercentage?: number;
   _count?: { items: number };
+  totalUnits?: number;
 }
 
 interface InventoryItem {
@@ -239,6 +240,16 @@ export default function AdminDashboard() {
 
   const [savingAiConfig, setSavingAiConfig] = useState(false);
 
+  // System Cleanup
+  const [cleaningUp, setCleaningUp] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState<{
+    success: boolean;
+    message: string;
+    releasedHolds?: number;
+    cancelledOrders?: number;
+    resetProcessingListings?: number;
+  } | null>(null);
+
   // Inventory Management states
   const [inventoryLists, setInventoryLists] = useState<InventoryList[]>([]);
   const [selectedInventoryList, setSelectedInventoryList] =
@@ -246,8 +257,13 @@ export default function AdminDashboard() {
   const [showCreateInventoryListModal, setShowCreateInventoryListModal] =
     useState(false);
   const [newInventoryList, setNewInventoryList] = useState({
+    lotNumber: "",
+    datePurchased: "",
+    briefDescription: "",
     name: "",
   });
+  const [selectedCsvFile, setSelectedCsvFile] = useState<File | null>(null);
+  const [isCreatingList, setIsCreatingList] = useState(false);
   // New state variables for editing and viewing items
   const [editingListId, setEditingListId] = useState<string | null>(null);
   const [editingListName, setEditingListName] = useState("");
@@ -558,25 +574,101 @@ export default function AdminDashboard() {
   };
 
   const handleCreateInventoryList = async () => {
+    // Generate title if not already set
+    const generatedTitle = generateTitle(
+      newInventoryList.lotNumber,
+      newInventoryList.datePurchased,
+      newInventoryList.briefDescription
+    );
+
+    if (!generatedTitle.trim()) {
+      setError(
+        "Please provide at least one of: Lot Number, Date Purchased, or Brief Description"
+      );
+      return;
+    }
+
     try {
-      const response = await fetch("/api/admin/inventory-lists", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newInventoryList),
-      });
+      setIsCreatingList(true);
+      setError("");
+      setSuccess("");
+
+      // Create FormData for the combined endpoint
+      const formData = new FormData();
+      formData.append("name", generatedTitle.trim());
+      formData.append("lotNumber", newInventoryList.lotNumber);
+      formData.append("datePurchased", newInventoryList.datePurchased);
+      formData.append("briefDescription", newInventoryList.briefDescription);
+
+      // Add CSV file if selected
+      if (selectedCsvFile) {
+        formData.append("file", selectedCsvFile);
+      }
+
+      const response = await fetch(
+        "/api/admin/inventory-lists/create-with-csv",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
 
       if (response.ok) {
-        setSuccess("Inventory list created successfully!");
-        setNewInventoryList({ name: "" });
-        setShowCreateInventoryListModal(false);
+        if (data.warning) {
+          setError(data.warning); // Show warning if CSV failed but list was created
+        } else {
+          setSuccess(data.message || "Inventory list created successfully!");
+        }
+
+        // Reset form state
+        resetCreateModal();
         loadInventoryLists();
       } else {
-        const error = await response.json();
-        setError(error.error || "Failed to create inventory list");
+        setError(data.error || "Failed to create inventory list");
       }
     } catch (err) {
       setError("Failed to create inventory list");
+    } finally {
+      setIsCreatingList(false);
     }
+  };
+
+  const handleCsvFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type === "text/csv") {
+      setSelectedCsvFile(file);
+    } else if (file) {
+      setError("Please select a valid CSV file");
+      event.target.value = ""; // Reset file input
+    }
+  };
+
+  // Update new inventory list data and auto-generate title
+  const updateNewInventoryListData = (field: string, value: string) => {
+    const newData = { ...newInventoryList, [field]: value };
+    setNewInventoryList({
+      ...newData,
+      name: generateTitle(
+        newData.lotNumber,
+        newData.datePurchased,
+        newData.briefDescription
+      ),
+    });
+  };
+
+  const resetCreateModal = () => {
+    setNewInventoryList({
+      lotNumber: "",
+      datePurchased: "",
+      briefDescription: "",
+      name: "",
+    });
+    setSelectedCsvFile(null);
+    setShowCreateInventoryListModal(false);
+    setError("");
+    setSuccess("");
   };
 
   const handleDeleteInventoryList = async (listId: string) => {
@@ -716,7 +808,10 @@ export default function AdminDashboard() {
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newUserRole),
+          body: JSON.stringify({
+            organizationId: newUserRole.organizationId,
+            newRole: newUserRole.role,
+          }),
         }
       );
 
@@ -940,6 +1035,48 @@ export default function AdminDashboard() {
       setError("Failed to save AI Model configuration");
     } finally {
       setSavingAiConfig(false);
+    }
+  };
+
+  // System Cleanup function
+  const handleManualCleanup = async () => {
+    try {
+      setCleaningUp(true);
+      setCleanupResult(null);
+      setError("");
+      setSuccess("");
+
+      const response = await fetch("/api/admin/cleanup-expired-holds", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setCleanupResult({
+          success: true,
+          message: data.message,
+          releasedHolds: data.releasedHolds,
+          cancelledOrders: data.cancelledOrders,
+          resetProcessingListings: data.resetProcessingListings,
+        });
+        setSuccess("System cleanup completed successfully!");
+      } else {
+        setCleanupResult({
+          success: false,
+          message: data.error || "Cleanup failed",
+        });
+        setError(data.error || "Failed to perform system cleanup");
+      }
+    } catch (error) {
+      setCleanupResult({
+        success: false,
+        message: "Network error occurred during cleanup",
+      });
+      setError("Network error occurred during cleanup");
+    } finally {
+      setCleaningUp(false);
     }
   };
 
@@ -1626,7 +1763,7 @@ export default function AdminDashboard() {
                               user.organizations.length > 0 ? (
                                 user.organizations.map((org, index) => (
                                   <div
-                                    key={org.id}
+                                    key={`${user.id}-${org.id}-${index}`} // Using user-member-index combination for unique key
                                     className="flex items-center space-x-2"
                                   >
                                     <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
@@ -1704,9 +1841,9 @@ export default function AdminDashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {organizations.map((org) => (
+              {organizations.map((org, index) => (
                 <div
-                  key={org.id}
+                  key={`${org.id}-${index}`}
                   className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
                 >
                   <div className="flex items-start justify-between mb-4">
@@ -1832,41 +1969,149 @@ export default function AdminDashboard() {
                 Add Zip Code
               </Button>
 
-              <div className="mt-6">
-                <h4 className="text-md font-medium text-gray-900 mb-3">
-                  Current Zip Codes
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {zipCodes.map((zip) => (
-                    <div
-                      key={zip.id}
-                      className="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
-                    >
-                      <div>
-                        <p className="font-medium">{zip.code}</p>
-                        <p className="text-sm text-gray-500">
-                          {zip.area} ({zip.type})
-                        </p>
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setEditingZipCode(zip)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeleteZipCode(zip.id)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+              <div className="mt-6 space-y-8">
+                {/* Buyer Zip Codes Table */}
+                <div>
+                  <h4 className="text-md font-medium text-gray-900 mb-4">
+                    Buyer Zip Codes (
+                    {zipCodes.filter((zip) => zip.type === "buyer").length})
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Zip Code
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Area
+                          </th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {zipCodes.filter((zip) => zip.type === "buyer").length >
+                        0 ? (
+                          zipCodes
+                            .filter((zip) => zip.type === "buyer")
+                            .map((zip) => (
+                              <tr key={zip.id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                  {zip.code}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {zip.area || "No area specified"}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                  <div className="flex justify-end space-x-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setEditingZipCode(zip)}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() =>
+                                        handleDeleteZipCode(zip.id)
+                                      }
+                                      className="text-red-600 hover:text-red-700"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                        ) : (
+                          <tr>
+                            <td
+                              colSpan={3}
+                              className="px-6 py-4 text-center text-sm text-gray-500"
+                            >
+                              No buyer zip codes configured
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Seller Zip Codes Table */}
+                <div>
+                  <h4 className="text-md font-medium text-gray-900 mb-4">
+                    Seller Zip Codes (
+                    {zipCodes.filter((zip) => zip.type === "seller").length})
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Zip Code
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Area
+                          </th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {zipCodes.filter((zip) => zip.type === "seller")
+                          .length > 0 ? (
+                          zipCodes
+                            .filter((zip) => zip.type === "seller")
+                            .map((zip) => (
+                              <tr key={zip.id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                  {zip.code}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {zip.area || "No area specified"}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                  <div className="flex justify-end space-x-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setEditingZipCode(zip)}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() =>
+                                        handleDeleteZipCode(zip.id)
+                                      }
+                                      className="text-red-600 hover:text-red-700"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                        ) : (
+                          <tr>
+                            <td
+                              colSpan={3}
+                              className="px-6 py-4 text-center text-sm text-gray-500"
+                            >
+                              No seller zip codes configured
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2000,6 +2245,54 @@ export default function AdminDashboard() {
                     </>
                   )}
                 </Button>
+              </div>
+            </div>
+
+            {/* System Cleanup */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                System Cleanup
+              </h3>
+              <div className="space-y-4">
+                <div className="text-sm text-gray-600">
+                  <p className="mb-2">
+                    <strong>Automatic Cleanup:</strong> The system automatically
+                    cleans up expired holds and stuck processing listings every
+                    5 minutes.
+                  </p>
+                  <p className="mb-4">
+                    <strong>Manual Cleanup:</strong> Use this button to
+                    immediately clean up any stuck listings or expired holds.
+                  </p>
+                </div>
+                <Button
+                  onClick={handleManualCleanup}
+                  disabled={cleaningUp}
+                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                >
+                  {cleaningUp ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Cleaning Up...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Clean Up Stuck Listings
+                    </>
+                  )}
+                </Button>
+                {cleanupResult && (
+                  <div
+                    className={`p-3 rounded-lg text-sm ${
+                      cleanupResult.success
+                        ? "bg-green-100 text-green-800 border border-green-200"
+                        : "bg-red-100 text-red-800 border border-red-200"
+                    }`}
+                  >
+                    {cleanupResult.message}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -2256,8 +2549,8 @@ export default function AdminDashboard() {
                     Inventory Lists
                   </h3>
                   <p className="text-gray-600 mt-1">
-                    Manage your inventory lists and upload CSV files to populate
-                    them
+                    Create and manage your inventory lists. You can create a
+                    list and upload CSV data in one step.
                   </p>
                 </div>
                 <Button
@@ -2265,7 +2558,7 @@ export default function AdminDashboard() {
                   className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white flex items-center gap-2"
                 >
                   <Plus className="h-4 w-4" />
-                  Create List
+                  Create List & Upload CSV
                 </Button>
               </div>
 
@@ -2283,7 +2576,8 @@ export default function AdminDashboard() {
                             {list.name}
                           </h4>
                           <p className="text-sm text-gray-600">
-                            {list._count?.items || 0} items • Created{" "}
+                            {list._count?.items || 0} items •{" "}
+                            {list.totalUnits || 0} total units • Created{" "}
                             {new Date(list.createdAt).toLocaleDateString()}
                           </p>
                           {(list.lotNumber ||
@@ -2590,38 +2884,181 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Create Inventory List Modal */}
+        {/* Create Inventory List Modal with CSV Upload */}
         {showCreateInventoryListModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="bg-white rounded-lg p-6 w-full max-w-lg">
               <h3 className="text-lg font-semibold mb-4">
                 Create Inventory List
               </h3>
-              <div className="space-y-4">
-                <input
-                  type="text"
-                  placeholder="List Name"
-                  value={newInventoryList.name}
-                  onChange={(e) =>
-                    setNewInventoryList({
-                      ...newInventoryList,
-                      name: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                />
+
+              <div className="space-y-6">
+                {/* List Information Fields */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Lot Number
+                    </label>
+                    <input
+                      type="text"
+                      value={newInventoryList.lotNumber}
+                      onChange={(e) =>
+                        updateNewInventoryListData("lotNumber", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#D4AF3D]"
+                      placeholder="e.g., 6098887"
+                      disabled={isCreatingList}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Date Purchased
+                    </label>
+                    <input
+                      type="date"
+                      value={newInventoryList.datePurchased}
+                      onChange={(e) =>
+                        updateNewInventoryListData(
+                          "datePurchased",
+                          e.target.value
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#D4AF3D]"
+                      disabled={isCreatingList}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Brief Description
+                    </label>
+                    <input
+                      type="text"
+                      value={newInventoryList.briefDescription}
+                      onChange={(e) =>
+                        updateNewInventoryListData(
+                          "briefDescription",
+                          e.target.value
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#D4AF3D]"
+                      placeholder="e.g., 6 Pallets of Patio Furniture"
+                      disabled={isCreatingList}
+                    />
+                  </div>
+
+                  {/* Generated Title Preview */}
+                  {newInventoryList.name && (
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Generated List Name:
+                      </label>
+                      <p className="text-sm text-gray-900 font-medium">
+                        {newInventoryList.name}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* CSV File Upload (Optional) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    CSV File (Optional)
+                  </label>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Upload a CSV file to populate the list immediately. You can
+                    also add items later.
+                  </p>
+
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={handleCsvFileSelect}
+                      className="hidden"
+                      id="csv-upload-modal"
+                      disabled={isCreatingList}
+                    />
+                    <label
+                      htmlFor="csv-upload-modal"
+                      className="cursor-pointer flex flex-col items-center"
+                    >
+                      <FileText className="h-6 w-6 text-gray-400 mb-2" />
+                      <span className="text-sm font-medium text-gray-600">
+                        {selectedCsvFile
+                          ? selectedCsvFile.name
+                          : "Click to upload CSV file"}
+                      </span>
+                      <span className="text-xs text-gray-500 mt-1">
+                        or drag and drop
+                      </span>
+                    </label>
+                  </div>
+
+                  {selectedCsvFile && (
+                    <div className="mt-2 flex items-center justify-between p-2 bg-gray-50 rounded">
+                      <span className="text-sm text-gray-600">
+                        {selectedCsvFile.name} (
+                        {(selectedCsvFile.size / 1024).toFixed(1)} KB)
+                      </span>
+                      <Button
+                        onClick={() => {
+                          setSelectedCsvFile(null);
+                          const input = document.getElementById(
+                            "csv-upload-modal"
+                          ) as HTMLInputElement;
+                          if (input) input.value = "";
+                        }}
+                        variant="ghost"
+                        size="sm"
+                        disabled={isCreatingList}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* CSV Format Info */}
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <p className="text-sm text-blue-700 font-medium mb-1">
+                    CSV Format Requirements:
+                  </p>
+                  <p className="text-xs text-blue-600">
+                    Include columns: Lot Number, Item Number, Department, Item
+                    Description, Qty, Unit Retail, Vendor, Category
+                  </p>
+                </div>
               </div>
+
               <div className="flex space-x-3 mt-6">
                 <Button
                   onClick={handleCreateInventoryList}
-                  className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                  disabled={
+                    isCreatingList ||
+                    (!newInventoryList.lotNumber.trim() &&
+                      !newInventoryList.datePurchased.trim() &&
+                      !newInventoryList.briefDescription.trim())
+                  }
+                  className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white disabled:opacity-50"
                 >
-                  Create
+                  {isCreatingList ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Creating...
+                    </>
+                  ) : selectedCsvFile ? (
+                    "Create List & Upload CSV"
+                  ) : (
+                    "Create List"
+                  )}
                 </Button>
                 <Button
-                  onClick={() => setShowCreateInventoryListModal(false)}
+                  onClick={resetCreateModal}
                   variant="outline"
                   className="flex-1"
+                  disabled={isCreatingList}
                 >
                   Cancel
                 </Button>
@@ -2635,9 +3072,15 @@ export default function AdminDashboard() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-7xl max-h-[80vh] overflow-hidden flex flex-col">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">
-                  Inventory Items - {selectedInventoryList.name}
-                </h3>
+                <div>
+                  <h3 className="text-lg font-semibold">
+                    Inventory Items - {selectedInventoryList.name}
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {selectedInventoryList._count?.items || 0} unique items •{" "}
+                    {selectedInventoryList.totalUnits || 0} total units
+                  </p>
+                </div>
                 <Button
                   onClick={() => setShowViewItemsModal(false)}
                   variant="outline"
@@ -3471,6 +3914,88 @@ export default function AdminDashboard() {
                       name: "",
                     });
                   }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Zip Code Modal */}
+        {editingZipCode && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h3 className="text-lg font-semibold mb-4">Edit Zip Code</h3>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Zip Code
+                  </label>
+                  <input
+                    type="text"
+                    value={editingZipCode.code}
+                    onChange={(e) =>
+                      setEditingZipCode({
+                        ...editingZipCode,
+                        code: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                    placeholder="e.g., 77001"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Area
+                  </label>
+                  <input
+                    type="text"
+                    value={editingZipCode.area}
+                    onChange={(e) =>
+                      setEditingZipCode({
+                        ...editingZipCode,
+                        area: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                    placeholder="e.g., Downtown Houston"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Type
+                  </label>
+                  <select
+                    value={editingZipCode.type}
+                    onChange={(e) =>
+                      setEditingZipCode({
+                        ...editingZipCode,
+                        type: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  >
+                    <option value="buyer">Buyer</option>
+                    <option value="seller">Seller</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex space-x-3 mt-6">
+                <Button
+                  onClick={handleUpdateZipCode}
+                  className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                >
+                  Update Zip Code
+                </Button>
+                <Button
+                  onClick={() => setEditingZipCode(null)}
                   variant="outline"
                   className="flex-1"
                 >

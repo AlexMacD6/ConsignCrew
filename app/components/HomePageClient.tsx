@@ -10,6 +10,8 @@ import Roadmap from "./Roadmap";
 import EarlyAccessTracker from "./EarlyAccessTracker";
 import HeroListingsCarousel from "./HeroListingsCarousel";
 import { trackCompleteRegistration } from "../lib/meta-pixel-client";
+import { useUserPermissions } from "../hooks/useUserPermissions";
+import { authClient } from "../lib/auth-client";
 
 // Dynamically import the 3D background to prevent SSR issues
 const ThreeScene = dynamic(() => import("./ThreeScene"), {
@@ -33,13 +35,16 @@ const BuyerPainPointsSection = dynamic(
 );
 
 export default function HomePageClient() {
+  const { data: session } = authClient.useSession();
+  const { canListItems } = useUserPermissions();
+
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [error, setError] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  
+
   // Ensure page starts at the top when loaded
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -200,25 +205,27 @@ export default function HomePageClient() {
 
           {/* CTA Links */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link
-              href="/list-item"
-              className="inline-flex items-center px-8 py-4 bg-gray-900 hover:bg-gray-800 text-white font-semibold rounded-full transition-colors duration-200 text-lg"
-            >
-              List Your Item
-              <svg
-                className="w-5 h-5 ml-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            {session?.user && canListItems && (
+              <Link
+                href="/list-item"
+                className="inline-flex items-center px-8 py-4 bg-gray-900 hover:bg-gray-800 text-white font-semibold rounded-full transition-colors duration-200 text-lg"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 8l4 4m0 0l-4 4m4-4H3"
-                />
-              </svg>
-            </Link>
+                List Your Item
+                <svg
+                  className="w-5 h-5 ml-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 8l4 4m0 0l-4 4m4-4H3"
+                  />
+                </svg>
+              </Link>
+            )}
             <Link
               href="/listings"
               className="inline-flex items-center px-8 py-4 border-2 border-gray-900 hover:bg-gray-900 hover:text-white text-gray-900 font-semibold rounded-full transition-colors duration-200 text-lg"
@@ -387,25 +394,27 @@ export default function HomePageClient() {
           )}
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link
-              href="/list-item"
-              className="inline-flex items-center px-8 py-4 bg-white hover:bg-gray-100 text-gray-900 font-semibold rounded-full transition-colors duration-200 text-lg"
-            >
-              List Your Item
-              <svg
-                className="w-5 h-5 ml-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            {session?.user && canListItems && (
+              <Link
+                href="/list-item"
+                className="inline-flex items-center px-8 py-4 bg-white hover:bg-gray-100 text-gray-900 font-semibold rounded-full transition-colors duration-200 text-lg"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 8l4 4m0 0l-4 4m4-4H3"
-                />
-              </svg>
-            </Link>
+                List Your Item
+                <svg
+                  className="w-5 h-5 ml-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 8l4 4m0 0l-4 4m4-4H3"
+                  />
+                </svg>
+              </Link>
+            )}
             <Link
               href="/listings"
               className="inline-flex items-center px-8 py-4 border-2 border-white hover:bg-white hover:text-gray-900 text-white font-semibold rounded-full transition-colors duration-200 text-lg"

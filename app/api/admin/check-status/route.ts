@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
       .filter(member => member.role === 'ADMIN' || member.role === 'OWNER')
       .map(member => member.organization);
 
-    return NextResponse.json({ 
+    const response = NextResponse.json({ 
       isAdmin, 
       adminOrganizations,
       user: {
@@ -54,6 +54,11 @@ export async function GET(request: NextRequest) {
         email: user.email,
       }
     });
+
+    // Add caching headers for admin status (longer cache since roles don't change often)
+    response.headers.set('Cache-Control', 'private, max-age=300, stale-while-revalidate=600');
+    
+    return response;
   } catch (error) {
     console.error('Error checking admin status:', error);
     

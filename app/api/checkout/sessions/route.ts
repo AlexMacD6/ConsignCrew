@@ -148,14 +148,21 @@ export async function POST(request: NextRequest) {
     });
 
     // Create Stripe Checkout Session
+    console.log('Creating Stripe checkout session for listing:', listing.itemId);
     const checkoutSession = await createCheckoutSession(
       listing,
       session.user.id,
       successUrl,
       cancelUrl
     );
+    console.log('Stripe checkout session created:', {
+      id: checkoutSession.id,
+      url: checkoutSession.url,
+      status: checkoutSession.status
+    });
 
     // Create pending order in database
+    console.log('Creating order with Stripe session ID:', checkoutSession.id);
     const order = await prisma.order.create({
       data: {
         listingId: listing.id,
@@ -167,6 +174,10 @@ export async function POST(request: NextRequest) {
         checkoutExpiresAt: holdExpiry,
         isHeld: true,
       },
+    });
+    console.log('Order created successfully:', {
+      id: order.id,
+      stripeCheckoutSessionId: order.stripeCheckoutSessionId
     });
 
     // Return the checkout session URL

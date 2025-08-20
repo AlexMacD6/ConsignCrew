@@ -180,7 +180,7 @@ export default function ListingsPage() {
           // Transform API data to match the expected format
           const transformedListings = data.listings.map((listing: any) => {
             return {
-              item_id: listing.itemId,
+              itemId: listing.itemId,
               seller_id: listing.userId,
               created_at: listing.createdAt,
               status: listing.status,
@@ -282,8 +282,8 @@ export default function ListingsPage() {
         selectedCategory === "All" ||
         listingFacebookCategory === selectedCategory;
 
-      const isHidden = hiddenListings.has(listing.item_id);
-      const isSaved = savedListings.has(listing.item_id);
+      const isHidden = hiddenListings.has(listing.itemId);
+      const isSaved = savedListings.has(listing.itemId);
       const isSoldItem = listing.status === "sold";
       const isProcessingItem = listing.status === "processing";
       const shouldShowHidden = showHidden || !isHidden;
@@ -303,7 +303,7 @@ export default function ListingsPage() {
 
       // Debug: Log filtering decisions for sold and processing items
       if (isSoldItem) {
-        console.log(`Sold item ${listing.item_id}:`, {
+        console.log(`Sold item ${listing.itemId}:`, {
           showSold,
           shouldShowSoldItems,
           result,
@@ -312,7 +312,7 @@ export default function ListingsPage() {
       }
 
       if (isProcessingItem) {
-        console.log(`Processing item ${listing.item_id}:`, {
+        console.log(`Processing item ${listing.itemId}:`, {
           shouldShowProcessingItems,
           result,
           status: listing.status,
@@ -372,12 +372,12 @@ export default function ListingsPage() {
         newSet.add(id);
 
         // Track AddToWishlist event when item is saved
-        const listing = listings.find((l) => l.item_id === id);
+        const listing = listings.find((l) => l.itemId === id);
         if (listing) {
           trackAddToWishlist({
             content_name: listing.title,
             content_category: `${listing.department}/${listing.category}/${listing.subCategory}`,
-            content_ids: [listing.item_id],
+            content_ids: [listing.itemId],
             value: listing.list_price,
             currency: "USD",
             brand: listing.brand || undefined,
@@ -740,12 +740,12 @@ export default function ListingsPage() {
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredListings.map((listing) => {
-              const isSaved = savedListings.has(listing.item_id);
-              const isHidden = hiddenListings.has(listing.item_id);
+              const isSaved = savedListings.has(listing.itemId);
+              const isHidden = hiddenListings.has(listing.itemId);
 
               return (
                 <div
-                  key={listing.item_id}
+                  key={listing.itemId}
                   className={`bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden ${
                     isHidden ? "opacity-60" : ""
                   } ${listing.status === "sold" ? "opacity-75" : ""}`}
@@ -821,7 +821,7 @@ export default function ListingsPage() {
                         isWithin24Hours &&
                         nextDrop && (
                           <div
-                            key={`${listing.item_id}-${timeKey}`}
+                            key={`${listing.itemId}-${timeKey}`}
                             className="absolute bottom-2 left-20 bg-red-600 text-white px-2 py-1 rounded text-xs flex items-center gap-1"
                           >
                             <TrendingDown className="h-3 w-3" />
@@ -867,7 +867,7 @@ export default function ListingsPage() {
                     {/* Title */}
                     <h3
                       className="font-semibold text-gray-900 text-sm line-clamp-2 mb-2 hover:text-[#D4AF3D] cursor-pointer"
-                      onClick={() => navigateToListingDetail(listing.item_id)}
+                      onClick={() => navigateToListingDetail(listing.itemId)}
                     >
                       {listing.title}
                     </h3>
@@ -1000,7 +1000,7 @@ export default function ListingsPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => toggleSaved(listing.item_id)}
+                        onClick={() => toggleSaved(listing.itemId)}
                         className={`px-3 transition-colors ${
                           isSaved
                             ? "bg-[#D4AF3D] text-white border-[#D4AF3D]"
@@ -1016,7 +1016,7 @@ export default function ListingsPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => toggleHidden(listing.item_id)}
+                        onClick={() => toggleHidden(listing.itemId)}
                         className={`px-3 transition-colors ${
                           isHidden
                             ? "bg-gray-600 text-white border-gray-600"
@@ -1499,21 +1499,21 @@ export default function ListingsPage() {
                     )}
                     <Button
                       variant="outline"
-                      onClick={() => toggleSaved(selectedListing.item_id)}
+                      onClick={() => toggleSaved(selectedListing.itemId)}
                       className={`${
-                        savedListings.has(selectedListing.item_id)
+                        savedListings.has(selectedListing.itemId)
                           ? "bg-[#D4AF3D] text-white border-[#D4AF3D]"
                           : ""
                       }`}
                     >
                       <Bookmark
                         className={`h-4 w-4 mr-2 ${
-                          savedListings.has(selectedListing.item_id)
+                          savedListings.has(selectedListing.itemId)
                             ? "fill-current"
                             : ""
                         }`}
                       />
-                      {savedListings.has(selectedListing.item_id)
+                      {savedListings.has(selectedListing.itemId)
                         ? "Saved"
                         : "Save"}
                     </Button>
@@ -1528,7 +1528,7 @@ export default function ListingsPage() {
                     <Button
                       variant="outline"
                       onClick={() =>
-                        navigateToListingDetail(selectedListing.item_id)
+                        navigateToListingDetail(selectedListing.itemId)
                       }
                       className="flex items-center gap-2 hover:bg-gray-100"
                       title="View Full Details"
@@ -1763,7 +1763,7 @@ export default function ListingsPage() {
                     </h3>
                     <div className="text-center">
                       <CustomQRCode
-                        itemId={selectedListing.item_id}
+                        itemId={selectedListing.itemId}
                         size={120}
                         className="mx-auto"
                       />
@@ -1783,7 +1783,7 @@ export default function ListingsPage() {
                   {/* Questions Section */}
                   <div className="mb-6">
                     <QuestionsDisplay
-                      listingId={selectedListing.item_id}
+                      listingId={selectedListing.itemId}
                       listingTitle={selectedListing.title}
                       userId={selectedListing.seller_id}
                       isAdmin={isAdmin}

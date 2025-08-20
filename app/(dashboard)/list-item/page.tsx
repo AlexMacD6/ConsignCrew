@@ -20,6 +20,8 @@ import {
   Play,
 } from "lucide-react";
 import { getApprovedZipCodesFromDB } from "../../lib/zipcodes";
+import { authClient } from "../../lib/auth-client";
+import { useUserPermissions } from "../../hooks/useUserPermissions";
 import {
   // generateStagedPhoto, // TODO: Re-enable in Phase 2
   ComprehensiveListingData,
@@ -296,6 +298,36 @@ const conditions = ["new", "used", "refurbished"] as const;
 const discountSchedules = ["Turbo-30", "Classic-60"] as const;
 
 export default function ListItemPage() {
+  const { data: session } = authClient.useSession();
+  const {
+    canListItems,
+    isSeller,
+    isBuyer,
+    isLoading: permissionsLoading,
+  } = useUserPermissions();
+  const routerNavigation = useRouter();
+
+  // Debug logging
+  console.log("ListItemPage: Session:", session);
+  console.log("ListItemPage: canListItems:", canListItems);
+  console.log("ListItemPage: isSeller:", isSeller);
+  console.log("ListItemPage: isBuyer:", isBuyer);
+  console.log("ListItemPage: permissionsLoading:", permissionsLoading);
+
+  // Redirect buyers away from this page
+  useEffect(() => {
+    console.log(
+      "ListItemPage: useEffect triggered - canListItems:",
+      canListItems,
+      "permissionsLoading:",
+      permissionsLoading
+    );
+    if (!permissionsLoading && !canListItems) {
+      console.log("ListItemPage: Redirecting user - not allowed to list items");
+      routerNavigation.push("/listings"); // Redirect to browse instead
+    }
+  }, [canListItems, permissionsLoading, routerNavigation]);
+
   // Photo management with S3 integration
   const [photos, setPhotos] = useState<{
     hero: { file: File | null; key: string | null; url: string | null };
@@ -491,6 +523,100 @@ export default function ListItemPage() {
   const removeTag = (tagToRemove: string) => {
     setTags(tags.filter((tag) => tag !== tagToRemove));
   };
+
+  // Conditional logic - must come after all hooks
+  // Show loading while checking permissions
+  if (permissionsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // TEMPORARY: Debug override - allow access if user is logged in
+  const debugOverride = session?.user;
+
+  // Show access denied if user is a buyer (and not using debug override)
+  if (!canListItems && !debugOverride) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Access Restricted
+          </h1>
+          <p className="text-gray-600 mb-4">
+            This feature is only available to sellers. You can browse and
+            purchase items instead.
+          </p>
+
+          {/* Debug Information */}
+          <div className="bg-gray-100 p-4 rounded-lg mb-4 text-left text-sm">
+            <h3 className="font-semibold mb-2">Debug Information:</h3>
+            <p>
+              <strong>Session User ID:</strong> {session?.user?.id || "None"}
+            </p>
+            <p>
+              <strong>Seller Status:</strong> {isSeller ? "Yes" : "No"}
+            </p>
+            <p>
+              <strong>Buyer Status:</strong> {isBuyer ? "Yes" : "No"}
+            </p>
+            <p>
+              <strong>Can List Items:</strong> {canListItems.toString()}
+            </p>
+            <p>
+              <strong>Permissions Loading:</strong>{" "}
+              {permissionsLoading.toString()}
+            </p>
+
+            <div className="mt-3 pt-3 border-t border-gray-300">
+              <p className="text-xs text-gray-600 mb-2">
+                Need more info? Check your user data:
+              </p>
+              <a
+                href="/api/debug/user-info"
+                target="_blank"
+                className="text-blue-600 hover:text-blue-800 underline text-xs"
+              >
+                View User Data
+              </a>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <Button onClick={() => routerNavigation.push("/listings")}>
+              Browse Items
+            </Button>
+
+            {/* Temporary Debug Override */}
+            <Button
+              onClick={() => {
+                console.log("Debug: Manual override clicked");
+                // Force refresh the page to test if it's a state issue
+                window.location.reload();
+              }}
+              variant="outline"
+              className="ml-2"
+            >
+              Debug: Force Refresh
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Debug message if using override
+  if (debugOverride && !canListItems) {
+    console.log(
+      "ListItemPage: Using debug override - user logged in but no permission"
+    );
+  }
 
   const handleTagKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {

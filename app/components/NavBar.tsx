@@ -12,6 +12,7 @@ import {
 import { ChevronDown, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { useModal } from "../contexts/ModalContext";
+import { useUserPermissions } from "../hooks/useUserPermissions";
 
 export default function NavBar() {
   const pathname = usePathname();
@@ -20,6 +21,7 @@ export default function NavBar() {
   const inactiveClass = "text-gray-600 hover:text-blue-600";
 
   const { data: session } = authClient.useSession();
+  const { canListItems } = useUserPermissions();
 
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -140,9 +142,11 @@ export default function NavBar() {
 
         {session?.user ? (
           <>
-            <Link href="/list-item" className="btn btn-primary btn-md">
-              List an Item
-            </Link>
+            {canListItems && (
+              <Link href="/list-item" className="btn btn-primary btn-md">
+                List an Item
+              </Link>
+            )}
             <Link href="/listings" className="btn btn-primary btn-md">
               Listings
             </Link>

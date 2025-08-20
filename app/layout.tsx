@@ -101,15 +101,19 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "any" },
       {
         url: "/TreasureHub - Favicon Black.png",
         sizes: "32x32",
         type: "image/png",
       },
+      {
+        url: "/TreasureHub - Favicon Black.png",
+        sizes: "16x16",
+        type: "image/png",
+      },
     ],
-    shortcut: "/favicon.ico",
     apple: "/TreasureHub - Favicon Black.png",
+    shortcut: "/TreasureHub - Favicon Black.png",
   },
 };
 
@@ -118,11 +122,21 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         {/* Favicon to prevent 404 errors */}
-        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
         <link
           rel="icon"
           type="image/png"
           sizes="32x32"
+          href="/TreasureHub - Favicon Black.png"
+        />
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="16x16"
+          href="/TreasureHub - Favicon Black.png"
+        />
+        <link
+          rel="shortcut icon"
+          type="image/png"
           href="/TreasureHub - Favicon Black.png"
         />
 

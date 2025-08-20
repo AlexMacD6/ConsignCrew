@@ -16,10 +16,30 @@ export async function GET() {
         totalPurchasePrice: true,
         totalExtRetailValue: true,
         msrpPercentage: true,
-        _count: { select: { items: true } } 
+        _count: { select: { items: true } },
+        items: {
+          select: {
+            quantity: true
+          }
+        }
       },
     });
-    return NextResponse.json({ success: true, lists });
+
+    // Calculate total units for each list and add it to the response
+    const listsWithTotalUnits = lists.map(list => {
+      const totalUnits = list.items.reduce((sum, item) => {
+        return sum + (item.quantity || 0);
+      }, 0);
+
+      // Remove the items array from the response and add totalUnits
+      const { items, ...listWithoutItems } = list;
+      return {
+        ...listWithoutItems,
+        totalUnits
+      };
+    });
+
+    return NextResponse.json({ success: true, lists: listsWithTotalUnits });
   } catch (error) {
     return NextResponse.json({ success: false, error: "Failed to fetch lists" }, { status: 500 });
   }

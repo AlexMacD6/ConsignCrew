@@ -4,9 +4,22 @@ import { prisma } from '@/lib/prisma';
 // GET: List all zip codes (seller and buyer)
 export async function GET() {
   try {
-    const sellerZipCodes = await prisma.zipCode.findMany({ where: { type: 'seller' } });
-    const buyerZipCodes = await prisma.zipCode.findMany({ where: { type: 'buyer' } });
-    return NextResponse.json({ sellerZipCodes, buyerZipCodes });
+    const zipCodes = await prisma.zipCode.findMany({
+      orderBy: [
+        { type: 'asc' },
+        { code: 'asc' }
+      ]
+    });
+    
+    // Also provide the legacy format for any other parts of the app that might need it
+    const sellerZipCodes = zipCodes.filter(zip => zip.type === 'seller');
+    const buyerZipCodes = zipCodes.filter(zip => zip.type === 'buyer');
+    
+    return NextResponse.json({ 
+      zipCodes, 
+      sellerZipCodes, 
+      buyerZipCodes 
+    });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch zip codes' }, { status: 500 });
   }

@@ -67,7 +67,8 @@ export async function GET(request: NextRequest) {
       emailVerified: user.emailVerified,
       primaryRole: user.members.length > 0 ? user.members[0].role : 'NO_ROLE',
       organizations: user.members.map(member => ({
-        id: member.organization.id,
+        id: member.id, // Use member ID instead of organization ID to ensure uniqueness
+        organizationId: member.organization.id,
         name: member.organization.name,
         role: member.role,
       })),

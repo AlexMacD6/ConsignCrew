@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
     if (!session?.user?.id) {
       console.log('Profile API: No valid session found');
       return NextResponse.json({ 
+        success: false,
         error: "Not authenticated",
         message: "Please log in to access your profile"
       }, { status: 401 });
@@ -37,6 +38,7 @@ export async function GET(req: NextRequest) {
         state: true,
         zipCode: true,
         country: true,
+        // userType field removed - using organization-based permissions instead
         createdAt: true,
         updatedAt: true,
       }
@@ -47,16 +49,21 @@ export async function GET(req: NextRequest) {
     if (!user) {
       console.log('Profile API: User not found in database');
       return NextResponse.json({ 
+        success: false,
         error: "User not found",
         message: "User account not found in database"
       }, { status: 404 });
     }
 
     console.log('Profile API: Successfully fetched user profile');
-    return NextResponse.json({ user });
+    return NextResponse.json({ 
+      success: true,
+      user 
+    });
   } catch (error) {
     console.error('Profile API: Error fetching user profile:', error);
     return NextResponse.json({ 
+      success: false,
       error: "Internal server error",
       message: error instanceof Error ? error.message : "Failed to fetch user profile",
       details: error instanceof Error ? error.stack : undefined
@@ -72,6 +79,7 @@ export async function PUT(req: NextRequest) {
     if (!session?.user?.id) {
       console.log('Profile API: No valid session found for update');
       return NextResponse.json({ 
+        success: false,
         error: "Not authenticated",
         message: "Please log in to update your profile"
       }, { status: 401 });
@@ -105,6 +113,7 @@ export async function PUT(req: NextRequest) {
         state: true,
         zipCode: true,
         country: true,
+
         createdAt: true,
         updatedAt: true,
       }
@@ -115,6 +124,7 @@ export async function PUT(req: NextRequest) {
   } catch (error) {
     console.error('Profile API: Error updating user profile:', error);
     return NextResponse.json({ 
+      success: false,
       error: "Internal server error",
       message: error instanceof Error ? error.message : "Failed to update user profile",
       details: error instanceof Error ? error.stack : undefined

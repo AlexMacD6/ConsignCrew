@@ -1,26 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 /**
- * Cleanup expired holds and failed checkout sessions
+ * Admin endpoint to manually cleanup expired holds and stuck processing listings
  * 
- * This endpoint should be called periodically (e.g., via cron job) to:
- * - Release holds on listings where checkout has expired
- * - Cancel pending orders that weren't completed
+ * This endpoint will:
+ * 1. Release expired holds on listings
+ * 2. Reset stuck PROCESSING listings back to ACTIVE
+ * 3. Cancel expired pending orders
  * 
  * GET /api/admin/cleanup-expired-holds
  */
 export async function GET(request: NextRequest) {
   try {
-    const now = new Date();
+    // Check if user is admin
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    // Find all listings with expired holds
+    // Check if user is admin (you can customize this logic)
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      include: {
+        members: {
+          include: {
+            organization: {
+              select: { slug: true }
+            }
+          }
+        }
+      }
+    });
+
+    const isAdmin = user?.members?.some(member => 
+      member.organization.slug === 'treasurehub-admin' || 
+      member.role === 'ADMIN' || 
+      member.role === 'OWNER'
+    );
+
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    }
+
+    const now = new Date();
+    let releasedCount = 0;
+    let cancelledOrdersCount = 0;
+    let resetProcessingCount = 0;
+
+    // Find and release expired listing holds
     const expiredHolds = await prisma.listing.findMany({
       where: {
-        isHeld: true,
-        heldUntil: {
-          lt: now, // Hold expired
-        },
+        OR: [
+          {
+            isHeld: true,
+            heldUntil: {
+              lt: now,
+            },
+          },
+          {
+            status: 'processing',
+            heldUntil: {
+              lt: now,
+            },
+          }
+        ]
       },
       include: {
         Order: {
@@ -34,20 +79,22 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    let releasedCount = 0;
-    let cancelledOrdersCount = 0;
-
     for (const listing of expiredHolds) {
-      // Release the hold on the listing
+      // Release the hold on the listing and reset status
       await prisma.listing.update({
         where: { id: listing.id },
         data: {
           isHeld: false,
           heldUntil: null,
-        status: 'active', // Reset status back to active when hold expires
+          status: 'active', // Reset status back to active when hold expires
         },
       });
       releasedCount++;
+
+      // If it was stuck in processing, count it
+      if (listing.status === 'processing') {
+        resetProcessingCount++;
+      }
 
       // Cancel any pending orders for this listing that have expired
       const expiredOrders = listing.Order.filter(order => 
@@ -82,13 +129,51 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log(`Cleanup completed: ${releasedCount} holds released, ${cancelledOrdersCount} orders cancelled`);
+    // Also find any listings stuck in PROCESSING status without holds (fallback cleanup)
+    const stuckProcessingListings = await prisma.listing.findMany({
+      where: {
+        status: 'processing',
+        OR: [
+          { isHeld: false },
+          { heldUntil: null }
+        ]
+      }
+    });
+
+    for (const listing of stuckProcessingListings) {
+      await prisma.listing.update({
+        where: { id: listing.id },
+        data: {
+          status: 'active',
+          isHeld: false,
+          heldUntil: null,
+        },
+      });
+      resetProcessingCount++;
+
+      // Create listing history event
+      await prisma.listingHistory.create({
+        data: {
+          listingId: listing.id,
+          eventType: 'STATUS_RESET',
+          eventTitle: 'Processing Status Reset',
+          description: 'Listing was stuck in processing status and has been reset to active',
+          metadata: {
+            resetAt: now.toISOString(),
+            reason: 'Manual cleanup of stuck processing status',
+          },
+        },
+      });
+    }
+
+    console.log(`Cleanup completed: ${releasedCount} holds released, ${cancelledOrdersCount} orders cancelled, ${resetProcessingCount} processing listings reset`);
 
     return NextResponse.json({
       success: true,
       releasedHolds: releasedCount,
       cancelledOrders: cancelledOrdersCount,
-      message: `Cleanup completed: ${releasedCount} holds released, ${cancelledOrdersCount} orders cancelled`,
+      resetProcessingListings: resetProcessingCount,
+      message: `Cleanup completed: ${releasedCount} holds released, ${cancelledOrdersCount} orders cancelled, ${resetProcessingCount} processing listings reset`,
     });
 
   } catch (error) {
@@ -105,7 +190,4 @@ export async function GET(request: NextRequest) {
  * 
  * POST /api/admin/cleanup-expired-holds
  */
-export async function POST(request: NextRequest) {
-  // Same logic as GET, but can include additional admin verification
-  return GET(request);
-}
+export const POST = GET;
