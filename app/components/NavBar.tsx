@@ -13,12 +13,16 @@ import { ChevronDown, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { useModal } from "../contexts/ModalContext";
 import { useUserPermissions } from "../hooks/useUserPermissions";
+import { useEarlyAuth } from "../hooks/useEarlyAuth";
 
 export default function NavBar() {
   const pathname = usePathname();
   const router = useRouter();
   const activeClass = "font-bold text-blue-600";
   const inactiveClass = "text-gray-600 hover:text-blue-600";
+
+  // Start early authentication process
+  useEarlyAuth();
 
   const { data: session } = authClient.useSession();
   const { canListItems } = useUserPermissions();

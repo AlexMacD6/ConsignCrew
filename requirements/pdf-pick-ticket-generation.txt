@@ -1,0 +1,23 @@
+PDF Pick Ticket Generation Feature
+
+• Replace browser window.print() with programmatic PDF generation
+• Install jsPDF library for PDF document creation
+• Generate professional warehouse pick tickets with:
+  - TreasureHub logo at the top
+  - QR code for item identification
+  - Warehouse instructions checklist
+  - Item details (SKU, title, condition, image)
+  - Customer contact information
+  - Delivery address
+  - Clean professional formatting
+
+• PDF should be downloadable as a file rather than browser print
+• Maintain existing modal interface but generate actual PDF documents
+• Use order data from the pick ticket modal to populate PDF content
+• Ensure proper formatting for 8.5" x 11" page size
+• Include all necessary information for warehouse operations
+
+Dependencies:
+- jsPDF (added to package.json)
+- qrcode (added to package.json)
+- @types/qrcode (added to package.json)

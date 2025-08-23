@@ -58,21 +58,26 @@ export function calculateCurrentDropIndex(
 
 /**
  * Calculate what the current price should be based on discount schedule
+ * Reserve price is the absolute minimum - no discount can go below it
  */
 export function calculateCurrentPrice(
   originalPrice: number,
   createdAt: Date,
-  discountSchedule: DiscountSchedule
+  discountSchedule: DiscountSchedule,
+  reservePrice: number = 0
 ): number {
   const currentDropIndex = calculateCurrentDropIndex(createdAt, discountSchedule);
   const currentPercentage = discountSchedule.dropPercentages[currentDropIndex];
   
-  // If expired (0%), return 0
+  // If expired (0%), return reserve price instead of 0
   if (currentPercentage === 0) {
-    return 0;
+    return reservePrice > 0 ? reservePrice : 0;
   }
   
-  return Math.round(originalPrice * (currentPercentage / 100) * 100) / 100; // Round to 2 decimal places
+  const discountedPrice = Math.round(originalPrice * (currentPercentage / 100) * 100) / 100;
+  
+  // ENFORCE RESERVE PRICE - never go below it regardless of discount schedule
+  return reservePrice > 0 ? Math.max(discountedPrice, reservePrice) : discountedPrice;
 }
 
 /**
@@ -184,7 +189,7 @@ export async function processPriceDrop(listingId: string): Promise<boolean> {
     // Get the original price (first price in history or current price)
     const originalPrice = listing.priceHistory[0]?.price || listing.price;
     const currentPrice = listing.price;
-    const expectedPrice = calculateCurrentPrice(originalPrice, listing.createdAt, discountSchedule);
+    const expectedPrice = calculateCurrentPrice(originalPrice, listing.createdAt, discountSchedule, listing.reservePrice || 0);
 
     // Use the original-price-based drop calculation for consistent drops
     const newDropPrice = calculateNextDropPriceFromOriginal(

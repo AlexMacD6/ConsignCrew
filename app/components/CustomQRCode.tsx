@@ -22,10 +22,14 @@ export default function CustomQRCode({
   const [isGeneratingLabel, setIsGeneratingLabel] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
 
-  // Check if user belongs to TreasureHub organization
+  // Check if user belongs to TreasureHub organization or is an admin
   const isTreasureHubMember = userOrganizations.some(
     (org) =>
-      org.slug === "treasurehub" || org.name?.toLowerCase() === "treasurehub"
+      org.organizationSlug === "treasurehub" ||
+      org.organizationSlug === "treasurehub-admin" ||
+      org.role === "ADMIN" ||
+      org.role === "OWNER" ||
+      org.name?.toLowerCase() === "treasurehub"
   );
 
   // Debug logging for button visibility
@@ -79,14 +83,15 @@ export default function CustomQRCode({
   const generatePrintableLabel = async (itemId: string, qrData: string) => {
     console.log("Starting label generation", { itemId, qrData });
 
-    // Create a canvas for the 2" x 2" label at 300 DPI
+    // Create a canvas for the 2" x 3" label at 300 DPI (600x900 pixels)
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
 
-    // 2" x 2" at 300 DPI = 600px x 600px
-    const labelSize = 600;
-    canvas.width = labelSize;
-    canvas.height = labelSize;
+    // 2" wide x 3" tall at 300 DPI = 600px x 900px
+    const labelWidth = 600; // 2 inches at 300 DPI
+    const labelHeight = 900; // 3 inches at 300 DPI
+    canvas.width = labelWidth;
+    canvas.height = labelHeight;
 
     if (!ctx) {
       console.error("Could not get canvas context");
@@ -95,9 +100,9 @@ export default function CustomQRCode({
 
     console.log("Canvas created, starting generation...");
 
-    // Set white background
+    // Set white background instead of transparent
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, labelSize, labelSize);
+    ctx.fillRect(0, 0, labelWidth, labelHeight);
 
     // Generate QR code with the same settings as the component
 
@@ -170,10 +175,10 @@ export default function CustomQRCode({
       centerLogo.src = "/TreasureHub - Logo Black.png";
     });
 
-    // Calculate spacing: smaller margins to maximize QR code size
-    const margin = 30; // Reduced from 45px
-    const availableWidth = labelSize - margin * 2;
-    const availableHeight = labelSize - margin * 2;
+    // Calculate spacing: minimal margins to maximize QR code size
+    const margin = 20; // Further reduced to maximize QR code space
+    const availableWidth = labelWidth - margin * 2;
+    const availableHeight = labelHeight - margin * 2;
 
     // Draw TreasureHub banner at the top
     const bannerY = margin;
@@ -185,7 +190,7 @@ export default function CustomQRCode({
         availableWidth,
         bannerLogo.width * (bannerHeight / bannerLogo.height)
       );
-      const bannerX = (labelSize - bannerWidth) / 2;
+      const bannerX = (labelWidth - bannerWidth) / 2;
       ctx.drawImage(bannerLogo, bannerX, bannerY, bannerWidth, bannerHeight);
     } else {
       // Fallback to black text (scaled up for larger banner)
@@ -193,29 +198,35 @@ export default function CustomQRCode({
       ctx.font = "bold 64px Arial"; // Much larger font to match banner size
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("TreasureHub", labelSize / 2, bannerY + bannerHeight / 2);
+      ctx.fillText("TreasureHub", labelWidth / 2, bannerY + bannerHeight / 2);
     }
 
-    // Calculate maximum QR code size with smaller spacing
-    const spacingBetweenElements = 10; // Reduced from 15px
+    // Calculate maximum QR code size with minimal spacing to maximize QR size
+    const spacingBetweenElements = 5; // Minimal spacing to maximize QR code size
 
-    // Item ID box at bottom (larger and matches QR code width)
-    const skuBoxHeight = 80; // Even bigger for better readability
-    const skuY = labelSize - margin - skuBoxHeight;
+    // Calculate Item ID text dimensions first to size box appropriately
+    const itemIdFontSize = 90; // Bigger than previous 77px
+    ctx.font = `bold ${itemIdFontSize}px monospace`;
+    const textMetrics = ctx.measureText(itemId);
+    const textWidth = textMetrics.width;
+    const textHeight = itemIdFontSize; // Approximate height based on font size
+
+    // Create a snug-fitting black box around the text with padding
+    const textPadding = 15; // Padding around text
+    const skuBoxWidth = textWidth + textPadding * 2;
+    const skuBoxHeight = textHeight + textPadding * 2;
+    const skuY = labelHeight - margin - skuBoxHeight;
+    const skuBoxX = (labelWidth - skuBoxWidth) / 2; // Center the text-fitting black box
 
     const qrStartY = bannerY + bannerHeight + spacingBetweenElements;
     const qrEndY = skuY - spacingBetweenElements;
     const maxQRHeight = qrEndY - qrStartY;
     const maxQRWidth = availableWidth;
 
-    // Use the smaller dimension to keep QR code square and as large as possible
-    const qrSize = Math.min(maxQRHeight, maxQRWidth);
-    const qrX = (labelSize - qrSize) / 2;
+    // Maximize QR code size to use all available space while keeping logo and Item ID perfect
+    const qrSize = Math.min(maxQRHeight, maxQRWidth); // Use 100% of available space for maximum QR size
+    const qrX = (labelWidth - qrSize) / 2;
     const qrY = qrStartY + (maxQRHeight - qrSize) / 2; // Center vertically in available space
-
-    // Make Item ID box same width as QR code
-    const skuBoxWidth = qrSize; // Same width as QR code
-    const skuBoxX = qrX; // Same X position as QR code
 
     // Draw QR code
     ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
@@ -223,7 +234,7 @@ export default function CustomQRCode({
     // Draw high-resolution logo in center of QR code (properly scaled for chest positioning)
     // Scale logo appropriately for high resolution - larger than before since it's higher quality
     const logoSize = Math.min(120, qrSize * 0.25); // Increased size for high-res logo, up to 25% of QR code
-    const logoX = (labelSize - logoSize) / 2;
+    const logoX = (labelWidth - logoSize) / 2;
     const logoY = qrY + (qrSize - logoSize) / 2;
 
     // Add white background circle for logo (like the component excavation)
@@ -248,37 +259,193 @@ export default function CustomQRCode({
     ctx.fillStyle = "#000000";
     ctx.fillRect(skuBoxX, skuY, skuBoxWidth, skuBoxHeight);
 
-    // Draw white text inside black box (even larger for maximum readability)
+    // Draw white text inside black box (bigger and centered in the snug box)
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 48px monospace"; // Increased to 48px for the bigger box
+    ctx.font = `bold ${itemIdFontSize}px monospace`; // Use the calculated font size (90px)
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(itemId, labelSize / 2, skuY + skuBoxHeight / 2);
+    ctx.fillText(itemId, labelWidth / 2, skuY + skuBoxHeight / 2);
 
     // Add very bold black border around entire label
     ctx.strokeStyle = "#000000";
     ctx.lineWidth = 12; // Even much bolder border (2x previous)
-    ctx.strokeRect(6, 6, labelSize - 12, labelSize - 12);
+    ctx.strokeRect(6, 6, labelWidth - 12, labelHeight - 12);
 
-    // Convert canvas to blob and trigger download
-    console.log("Converting canvas to blob and triggering download...");
-    canvas.toBlob((blob) => {
-      if (blob) {
-        console.log("Blob created, size:", blob.size);
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `TreasureHub-Label-${itemId}.png`;
-        document.body.appendChild(link);
-        console.log("Clicking download link...");
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        console.log("Download completed");
-      } else {
-        console.error("Failed to create blob from canvas");
+    // Convert canvas to PNG with embedded 300 DPI metadata
+    console.log("Converting canvas to 300 DPI PNG with proper metadata...");
+
+    // Get image data from canvas
+    const dataUrl = canvas.toDataURL("image/png", 1.0);
+
+    // Debug: Log the original PNG data
+    console.log("Original PNG dataUrl length:", dataUrl.length);
+
+    // Simpler, more reliable approach to add DPI metadata
+    const addDpiToPng = (dataUrl: string) => {
+      try {
+        // Convert data URL to Uint8Array
+        const base64 = dataUrl.split(",")[1];
+        const binaryString = atob(base64);
+        const bytes = new Uint8Array(binaryString.length);
+
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        console.log(
+          "PNG signature check:",
+          Array.from(bytes.slice(0, 8)).map((b) => b.toString(16))
+        );
+
+        // Verify PNG signature
+        const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+        for (let i = 0; i < 8; i++) {
+          if (bytes[i] !== pngSignature[i]) {
+            console.error("Invalid PNG signature");
+            return dataUrl;
+          }
+        }
+
+        // Find IHDR chunk (always at position 8 in valid PNG)
+        let pos = 8;
+        const ihdrLength =
+          (bytes[pos] << 24) |
+          (bytes[pos + 1] << 16) |
+          (bytes[pos + 2] << 8) |
+          bytes[pos + 3];
+        console.log("IHDR length:", ihdrLength);
+
+        if (ihdrLength !== 13) {
+          console.error("Invalid IHDR length");
+          return dataUrl;
+        }
+
+        // Skip IHDR: length(4) + type(4) + data(13) + crc(4) = 25 bytes
+        pos += 4 + 4 + 13 + 4; // Now pointing to next chunk
+
+        console.log("Position after IHDR:", pos);
+
+        // Create pHYs chunk
+        const pixelsPerMeter = 11811; // 300 DPI = 11811 pixels/meter
+        console.log("Pixels per meter:", pixelsPerMeter);
+
+        const physData = new Uint8Array(9);
+        // X pixels per meter (4 bytes, big endian)
+        physData[0] = (pixelsPerMeter >>> 24) & 0xff;
+        physData[1] = (pixelsPerMeter >>> 16) & 0xff;
+        physData[2] = (pixelsPerMeter >>> 8) & 0xff;
+        physData[3] = pixelsPerMeter & 0xff;
+        // Y pixels per meter (4 bytes, big endian)
+        physData[4] = (pixelsPerMeter >>> 24) & 0xff;
+        physData[5] = (pixelsPerMeter >>> 16) & 0xff;
+        physData[6] = (pixelsPerMeter >>> 8) & 0xff;
+        physData[7] = pixelsPerMeter & 0xff;
+        // Unit (1 byte: 1 = meters)
+        physData[8] = 1;
+
+        // Calculate CRC32 for pHYs chunk
+        const physType = new Uint8Array([0x70, 0x48, 0x59, 0x73]); // 'pHYs'
+        const crcData = new Uint8Array(physType.length + physData.length);
+        crcData.set(physType, 0);
+        crcData.set(physData, physType.length);
+
+        const crc32 = calculateCRC32(crcData);
+        console.log("Calculated CRC32:", crc32.toString(16));
+
+        // Create complete pHYs chunk
+        const physChunk = new Uint8Array(4 + 4 + 9 + 4); // length + type + data + crc
+
+        // Length (9 bytes, big endian)
+        physChunk[0] = 0;
+        physChunk[1] = 0;
+        physChunk[2] = 0;
+        physChunk[3] = 9;
+
+        // Type 'pHYs'
+        physChunk[4] = 0x70; // 'p'
+        physChunk[5] = 0x48; // 'H'
+        physChunk[6] = 0x59; // 'Y'
+        physChunk[7] = 0x73; // 's'
+
+        // Data
+        physChunk.set(physData, 8);
+
+        // CRC
+        physChunk[17] = (crc32 >>> 24) & 0xff;
+        physChunk[18] = (crc32 >>> 16) & 0xff;
+        physChunk[19] = (crc32 >>> 8) & 0xff;
+        physChunk[20] = crc32 & 0xff;
+
+        console.log("pHYs chunk created, length:", physChunk.length);
+
+        // Insert pHYs chunk right after IHDR
+        const newBytes = new Uint8Array(bytes.length + physChunk.length);
+        newBytes.set(bytes.slice(0, pos), 0); // Copy up to after IHDR
+        newBytes.set(physChunk, pos); // Insert pHYs chunk
+        newBytes.set(bytes.slice(pos), pos + physChunk.length); // Copy rest
+
+        console.log(
+          "New PNG size:",
+          newBytes.length,
+          "original:",
+          bytes.length
+        );
+
+        // Convert back to base64
+        let binaryStr = "";
+        const chunkSize = 8192;
+        for (let i = 0; i < newBytes.length; i += chunkSize) {
+          const chunk = newBytes.slice(i, i + chunkSize);
+          binaryStr += String.fromCharCode.apply(null, Array.from(chunk));
+        }
+
+        const newBase64 = btoa(binaryStr);
+        console.log("New base64 length:", newBase64.length);
+
+        return `data:image/png;base64,${newBase64}`;
+      } catch (error) {
+        console.error("Error adding DPI metadata:", error);
+        return dataUrl;
       }
-    }, "image/png");
+    };
+
+    // CRC32 calculation (standard PNG CRC)
+    const calculateCRC32 = (data: Uint8Array) => {
+      const crcTable = new Uint32Array(256);
+
+      // Build CRC table
+      for (let i = 0; i < 256; i++) {
+        let c = i;
+        for (let j = 0; j < 8; j++) {
+          c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+        }
+        crcTable[i] = c;
+      }
+
+      let crc = 0xffffffff;
+      for (let i = 0; i < data.length; i++) {
+        crc = crcTable[(crc ^ data[i]) & 0xff] ^ (crc >>> 8);
+      }
+      return (crc ^ 0xffffffff) >>> 0;
+    };
+
+    // Add 300 DPI metadata to the PNG
+    const pngWith300Dpi = addDpiToPng(dataUrl);
+
+    // Create download link
+    const link = document.createElement("a");
+    link.href = pngWith300Dpi;
+    link.download = `TreasureHub-Label-${itemId}-300dpi.png`;
+
+    console.log(
+      'Creating 300 DPI PNG: 600x900 pixels = 2"x3" at 300 DPI with embedded metadata'
+    );
+
+    document.body.appendChild(link);
+    console.log("Clicking download link for 300 DPI PNG with metadata...");
+    link.click();
+    document.body.removeChild(link);
+    console.log("300 DPI PNG with metadata download completed");
   };
 
   return (
@@ -321,8 +488,8 @@ export default function CustomQRCode({
 
       {/* Item ID Display Below QR Code */}
       <div className="mt-3 text-center">
-        <div className="bg-gray-100 rounded-lg px-3 py-2 inline-block">
-          <span className="font-mono font-bold text-lg tracking-wider text-gray-800">
+        <div className="bg-gray-100 rounded-lg px-4 py-3 inline-block">
+          <span className="font-mono font-bold text-3xl tracking-wider text-gray-800">
             {itemId}
           </span>
         </div>

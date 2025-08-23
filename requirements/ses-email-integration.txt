@@ -1,0 +1,42 @@
+SES Email Integration for Delivery Scheduler
+
+REQUIREMENTS:
+- Send professional HTML emails to customers with delivery time slot options
+- Integrate AWS SES for reliable email delivery
+- Include order details and available time windows in email
+- Provide customer selection URL for time slot choice
+- Handle email sending errors gracefully
+- Support both HTML and plain text email formats
+- Include TreasureHub branding in email template
+
+DEPENDENCIES ADDED:
+- @aws-sdk/client-ses: ^3.x (AWS SES client for sending emails)
+
+ENVIRONMENT VARIABLES REQUIRED:
+- AWS_REGION: AWS region for SES (e.g., us-east-1)
+- AWS_ACCESS_KEY_ID: AWS access key for SES permissions
+- AWS_SECRET_ACCESS_KEY: AWS secret key for SES permissions
+- SES_FROM_EMAIL: Verified sender email address in SES
+- NEXT_PUBLIC_SITE_URL: Base URL for customer selection links
+
+API ENDPOINT CREATED:
+- POST /api/admin/delivery-scheduler/send-timeslots
+  - Accepts email data with time slots
+  - Sends formatted email via SES
+  - Returns success/error response
+
+EMAIL FEATURES:
+- Professional HTML template with TreasureHub branding
+- Order details section with item information
+- Visual time slot cards for easy selection
+- Call-to-action button for customer response
+- Mobile-responsive design
+- Fallback plain text version
+- 24-hour response reminder
+- Contact information for support
+
+INTEGRATION POINTS:
+- Delivery scheduler assign slot modal
+- Real-time email sending on slot assignment
+- Error handling with user feedback
+- Success confirmation messages

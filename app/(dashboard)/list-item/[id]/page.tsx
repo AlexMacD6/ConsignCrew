@@ -130,7 +130,6 @@ const mockListing = {
   price_range_high: 1100,
   list_price: 899.99,
   reserve_price: 650.0,
-  fee_pct: 8.5,
   estimated_retail_price: 1299.99,
   title: "Modern Leather Sofa",
   description:
@@ -337,10 +336,14 @@ export default function ListingDetailPage() {
     }
   };
 
-  // Check if user belongs to TreasureHub organization
+  // Check if user belongs to TreasureHub organization or is an admin
   const isTreasureHubMember = userOrganizations.some(
     (org) =>
-      org.slug === "treasurehub" || org.name?.toLowerCase() === "treasurehub"
+      org.organizationSlug === "treasurehub" ||
+      org.organizationSlug === "treasurehub-admin" ||
+      org.role === "ADMIN" ||
+      org.role === "OWNER" ||
+      org.name?.toLowerCase() === "treasurehub"
   );
 
   const getConditionColor = (condition: string) => {

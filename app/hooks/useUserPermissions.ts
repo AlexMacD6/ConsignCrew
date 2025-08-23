@@ -14,7 +14,7 @@ const permissionsCache = new Map<string, { permissions: UserPermissions; timesta
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export function useUserPermissions(): UserPermissions {
-  const { data: session } = authClient.useSession();
+  const { data: session, isPending: sessionLoading } = authClient.useSession();
   const [permissions, setPermissions] = useState<UserPermissions>({
     canListItems: false,
     canBuyItems: false,
@@ -27,6 +27,11 @@ export function useUserPermissions(): UserPermissions {
 
   useEffect(() => {
     async function fetchUserPermissions() {
+      // Wait for session to be resolved
+      if (sessionLoading) {
+        return; // Stay in loading state while session is being fetched
+      }
+
       if (!session?.user?.id) {
         setPermissions({
           canListItems: false,
@@ -77,9 +82,16 @@ export function useUserPermissions(): UserPermissions {
               member.organizationSlug === 'buyers'
             );
             
-            // Permissions based on organization membership
-            const canListItems = isSeller;
-            const canBuyItems = isBuyer;
+            // Check if user is admin (should have all permissions)
+            const isAdmin = userOrganizations.some((member: any) => 
+              member.organizationSlug === 'treasurehub-admin' || 
+              member.role === 'ADMIN' || 
+              member.role === 'OWNER'
+            );
+            
+            // Permissions based on organization membership (admins get all permissions)
+            const canListItems = isSeller || isAdmin;
+            const canBuyItems = isBuyer || isAdmin;
             
             const newPermissions: UserPermissions = {
               canListItems,
@@ -98,25 +110,38 @@ export function useUserPermissions(): UserPermissions {
             setPermissions(newPermissions);
           } else {
             console.log('useUserPermissions: Organizations API failed:', response.status);
+            // Keep loading true for API failures to prevent false access denied
             const fallbackPermissions: UserPermissions = {
               canListItems: false,
               canBuyItems: false,
               isSeller: false,
               isBuyer: false,
-              isLoading: false,
+              isLoading: true, // Keep loading true to retry
             };
             setPermissions(fallbackPermissions);
+            
+            // Retry after 3 seconds for API failures
+            setTimeout(() => {
+              fetchUserPermissions();
+            }, 3000);
           }
         } catch (error) {
           console.error('useUserPermissions: Error fetching user organizations:', error);
+          // Keep loading state true on error to prevent false access denied
+          // User can retry by refreshing the page
           const errorPermissions: UserPermissions = {
             canListItems: false,
             canBuyItems: false,
             isSeller: false,
             isBuyer: false,
-            isLoading: false,
+            isLoading: true, // Keep loading true to show loading spinner instead of access denied
           };
           setPermissions(errorPermissions);
+          
+          // Retry after 3 seconds
+          setTimeout(() => {
+            fetchUserPermissions();
+          }, 3000);
         } finally {
           fetchingRef.current = null;
         }
@@ -126,7 +151,7 @@ export function useUserPermissions(): UserPermissions {
     }
 
     fetchUserPermissions();
-  }, [session?.user?.id]);
+  }, [session?.user?.id, sessionLoading]);
 
   return permissions;
 }

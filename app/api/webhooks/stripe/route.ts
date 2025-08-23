@@ -119,14 +119,16 @@ async function handleCheckoutSessionCompleted(session: any) {
       return;
     }
 
-    // Update order with payment details
+    // Update order with payment details and move to delivery workflow
     const updatedOrder = await prisma.order.update({
       where: { id: order.id },
       data: {
-        status: 'PAID',
+        status: 'PENDING_SCHEDULING', // Start delivery workflow immediately
         stripePaymentIntentId: session.payment_intent,
         stripeChargeId: session.payment_intent ? undefined : undefined, // Will be set when payment intent succeeds
         amount: session.amount_total / 100, // Convert from cents
+        statusUpdatedAt: new Date(),
+        statusUpdatedBy: 'system', // Automatically triggered by payment
       },
       include: {
         listing: true,

@@ -90,10 +90,14 @@ function generateOrderConfirmationHTML(order: OrderDetails): string {
           margin-bottom: 40px;
         }
         .logo {
-          font-size: 28px;
-          font-weight: bold;
-          color: #D4AF3D;
+          text-align: center;
           margin-bottom: 10px;
+        }
+        .logo img {
+          max-width: 300px;
+          height: auto;
+          display: block;
+          margin: 0 auto;
         }
         .success-icon {
           width: 60px;
@@ -288,7 +292,9 @@ function generateOrderConfirmationHTML(order: OrderDetails): string {
       <div class="email-container">
         <!-- Header -->
         <div class="header">
-          <div class="logo">🏛️ TreasureHub</div>
+          <div class="logo">
+            <img src="${process.env.NEXT_PUBLIC_APP_URL || 'https://treasurehub.club'}/TreasureHub%20Banner%20Logo.png" alt="TreasureHub" style="max-width: 300px; height: auto; margin-bottom: 20px;" />
+          </div>
           <div class="success-icon">
             <div class="success-checkmark">✓</div>
           </div>

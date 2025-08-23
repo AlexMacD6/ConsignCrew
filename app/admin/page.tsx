@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import InventoryReceiving from "./InventoryReceiving";
 import { Button } from "../components/ui/button";
 import {
   MapPin,
@@ -21,6 +22,7 @@ import {
   Users2,
   CheckCircle,
   Clock,
+  Truck,
   AlertCircle,
   MessageSquare,
   FileText,
@@ -297,6 +299,24 @@ export default function AdminDashboard() {
     useState<Organization | null>(null);
 
   const adminModules = [
+    {
+      title: "Delivery Scheduler",
+      description:
+        "Manage order deliveries from payment to completion through the fulfillment workflow",
+      icon: Clock,
+      href: "/admin/delivery-scheduler",
+      color: "bg-indigo-500",
+      stats: "Track Orders",
+    },
+    {
+      title: "Delivery Operations",
+      description:
+        "Manage driver schedules, delivery capacity, and optimize daily delivery operations",
+      icon: Truck,
+      href: "/admin/delivery-operations",
+      color: "bg-blue-600",
+      stats: "Optimize Routes",
+    },
     {
       title: "Treasure Hunt",
       description:
@@ -1511,7 +1531,10 @@ export default function AdminDashboard() {
               Facebook Catalog
             </button>
             <button
-              onClick={() => setActiveTab("inventory")}
+              onClick={() => {
+                setActiveTab("inventory");
+                setActiveSubTab("inventory_receiving");
+              }}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
                 activeTab === "inventory"
                   ? "border-[#D4AF3D] text-[#D4AF3D]"
@@ -2541,193 +2564,233 @@ export default function AdminDashboard() {
               Inventory Management
             </h2>
 
-            {/* Inventory Lists Overview */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Inventory Lists
-                  </h3>
-                  <p className="text-gray-600 mt-1">
-                    Create and manage your inventory lists. You can create a
-                    list and upload CSV data in one step.
-                  </p>
-                </div>
-                <Button
-                  onClick={() => setShowCreateInventoryListModal(true)}
-                  className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white flex items-center gap-2"
+            {/* Sub-tabs */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setActiveSubTab("inventory_receiving")}
+                  className={`px-4 py-2 rounded ${
+                    activeSubTab === "inventory_receiving"
+                      ? "bg-[#D4AF3D] text-white"
+                      : "bg-gray-100 text-gray-700"
+                  }`}
                 >
-                  <Plus className="h-4 w-4" />
-                  Create List & Upload CSV
-                </Button>
+                  Receiving
+                </button>
+                <button
+                  onClick={() => setActiveSubTab("inventory_upload")}
+                  className={`px-4 py-2 rounded ${
+                    activeSubTab === "inventory_upload"
+                      ? "bg-[#D4AF3D] text-white"
+                      : "bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  Data Upload
+                </button>
               </div>
+            </div>
 
-              {/* Inventory Lists Display */}
-              <div className="space-y-4">
-                {Array.isArray(inventoryLists) &&
-                  inventoryLists.map((list) => (
-                    <div
-                      key={list.id}
-                      className="border border-gray-200 rounded-lg p-4"
+            {activeSubTab === "inventory_upload" && (
+              <>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Inventory Lists
+                      </h3>
+                      <p className="text-gray-600 mt-1">
+                        Create and manage your inventory lists. You can create a
+                        list and upload CSV data in one step.
+                      </p>
+                    </div>
+                    <Button
+                      onClick={() => setShowCreateInventoryListModal(true)}
+                      className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white flex items-center gap-2"
                     >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-semibold text-gray-900">
-                            {list.name}
-                          </h4>
-                          <p className="text-sm text-gray-600">
-                            {list._count?.items || 0} items •{" "}
-                            {list.totalUnits || 0} total units • Created{" "}
-                            {new Date(list.createdAt).toLocaleDateString()}
-                          </p>
-                          {(list.lotNumber ||
-                            list.datePurchased ||
-                            list.briefDescription) && (
-                            <div className="mt-1 space-y-1">
-                              {list.lotNumber && (
-                                <p className="text-xs text-gray-500">
-                                  <span className="font-medium">Lot:</span>{" "}
-                                  {list.lotNumber}
-                                </p>
+                      <Plus className="h-4 w-4" />
+                      Create List & Upload CSV
+                    </Button>
+                  </div>
+
+                  {/* Inventory Lists Display */}
+                  <div className="space-y-4">
+                    {Array.isArray(inventoryLists) &&
+                      inventoryLists.map((list) => (
+                        <div
+                          key={list.id}
+                          className="border border-gray-200 rounded-lg p-4"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h4 className="font-semibold text-gray-900">
+                                {list.name}
+                              </h4>
+                              <p className="text-sm text-gray-600">
+                                {list._count?.items || 0} items •{" "}
+                                {list.totalUnits || 0} total units • Created{" "}
+                                {new Date(list.createdAt).toLocaleDateString()}
+                              </p>
+                              {(list.lotNumber ||
+                                list.datePurchased ||
+                                list.briefDescription) && (
+                                <div className="mt-1 space-y-1">
+                                  {list.lotNumber && (
+                                    <p className="text-xs text-gray-500">
+                                      <span className="font-medium">Lot:</span>{" "}
+                                      {list.lotNumber}
+                                    </p>
+                                  )}
+                                  {list.datePurchased && (
+                                    <p className="text-xs text-gray-500">
+                                      <span className="font-medium">
+                                        Purchased:
+                                      </span>{" "}
+                                      {new Date(
+                                        list.datePurchased
+                                      ).toLocaleDateString()}
+                                    </p>
+                                  )}
+                                  {list.briefDescription && (
+                                    <p className="text-xs text-gray-500">
+                                      <span className="font-medium">
+                                        Description:
+                                      </span>{" "}
+                                      {list.briefDescription}
+                                    </p>
+                                  )}
+                                </div>
                               )}
-                              {list.datePurchased && (
-                                <p className="text-xs text-gray-500">
+                              {/* Financial Summary */}
+                              <div className="mt-2 space-y-1">
+                                <div className="flex items-center gap-4 text-xs">
+                                  <span className="text-gray-500">
+                                    Total Purchase:
+                                  </span>
                                   <span className="font-medium">
-                                    Purchased:
-                                  </span>{" "}
-                                  {new Date(
-                                    list.datePurchased
-                                  ).toLocaleDateString()}
-                                </p>
-                              )}
-                              {list.briefDescription && (
-                                <p className="text-xs text-gray-500">
+                                    {formatCurrency(list.totalPurchasePrice)}
+                                  </span>
+                                  <span className="text-gray-500">
+                                    MSRP Value:
+                                  </span>
                                   <span className="font-medium">
-                                    Description:
-                                  </span>{" "}
-                                  {list.briefDescription}
-                                </p>
-                              )}
+                                    {formatCurrency(list.totalExtRetailValue)}
+                                  </span>
+                                  <span className="text-gray-500">
+                                    % of MSRP:
+                                  </span>
+                                  <span className="font-medium">
+                                    {formatPercentage(list.msrpPercentage)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-4 text-xs">
+                                  <span className="text-gray-500">
+                                    Avg Unit Purchase:
+                                  </span>
+                                  <span className="font-medium text-purple-600">
+                                    {list.totalPurchasePrice &&
+                                    list.totalExtRetailValue
+                                      ? `${(
+                                          (list.totalPurchasePrice /
+                                            list.totalExtRetailValue) *
+                                          100
+                                        ).toFixed(1)}% of retail per unit`
+                                      : "N/A"}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                          )}
-                          {/* Financial Summary */}
-                          <div className="mt-2 space-y-1">
-                            <div className="flex items-center gap-4 text-xs">
-                              <span className="text-gray-500">
-                                Total Purchase:
-                              </span>
-                              <span className="font-medium">
-                                {formatCurrency(list.totalPurchasePrice)}
-                              </span>
-                              <span className="text-gray-500">MSRP Value:</span>
-                              <span className="font-medium">
-                                {formatCurrency(list.totalExtRetailValue)}
-                              </span>
-                              <span className="text-gray-500">% of MSRP:</span>
-                              <span className="font-medium">
-                                {formatPercentage(list.msrpPercentage)}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-4 text-xs">
-                              <span className="text-gray-500">
-                                Avg Unit Purchase:
-                              </span>
-                              <span className="font-medium text-purple-600">
-                                {list.totalPurchasePrice &&
-                                list.totalExtRetailValue
-                                  ? `${(
-                                      (list.totalPurchasePrice /
-                                        list.totalExtRetailValue) *
-                                      100
-                                    ).toFixed(1)}% of retail per unit`
-                                  : "N/A"}
-                              </span>
+                            <div className="flex space-x-2">
+                              <Button
+                                onClick={() =>
+                                  handleViewInventoryItems(list.id)
+                                }
+                                variant="outline"
+                                size="sm"
+                              >
+                                View Items
+                              </Button>
+                              <Button
+                                onClick={() => handleEditFinancials(list)}
+                                variant="outline"
+                                size="sm"
+                                className="text-green-600 hover:text-green-700"
+                              >
+                                Financials
+                              </Button>
+                              <Button
+                                onClick={() => startEditInventoryList(list)}
+                                variant="outline"
+                                size="sm"
+                                className="text-blue-600 hover:text-blue-700"
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                onClick={() =>
+                                  handleDeleteInventoryList(list.id)
+                                }
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                           </div>
                         </div>
-                        <div className="flex space-x-2">
-                          <Button
-                            onClick={() => handleViewInventoryItems(list.id)}
-                            variant="outline"
-                            size="sm"
-                          >
-                            View Items
-                          </Button>
-                          <Button
-                            onClick={() => handleEditFinancials(list)}
-                            variant="outline"
-                            size="sm"
-                            className="text-green-600 hover:text-green-700"
-                          >
-                            Financials
-                          </Button>
-                          <Button
-                            onClick={() => startEditInventoryList(list)}
-                            variant="outline"
-                            size="sm"
-                            className="text-blue-600 hover:text-blue-700"
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            onClick={() => handleDeleteInventoryList(list.id)}
-                            variant="outline"
-                            size="sm"
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                      ))}
+
+                    {(!Array.isArray(inventoryLists) ||
+                      inventoryLists.length === 0) && (
+                      <div className="text-center py-8 text-gray-500">
+                        <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                        <p>No inventory lists created yet</p>
+                        <p className="text-sm">
+                          Create your first list to get started
+                        </p>
                       </div>
-                    </div>
-                  ))}
-
-                {(!Array.isArray(inventoryLists) ||
-                  inventoryLists.length === 0) && (
-                  <div className="text-center py-8 text-gray-500">
-                    <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                    <p>No inventory lists created yet</p>
-                    <p className="text-sm">
-                      Create your first list to get started
-                    </p>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
+                </div>
 
-            {/* CSV Upload Section */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Upload CSV Inventory
-              </h3>
-              <p className="text-gray-600 mb-4">
-                Upload a CSV file to populate your inventory lists. The CSV
-                should include columns for: lot number, item number, department,
-                description, quantity, unit retail, vendor, category, etc.
-              </p>
+                {/* CSV Upload Section */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Upload CSV Inventory
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    Upload a CSV file to populate your inventory lists. The CSV
+                    should include columns for: lot number, item number,
+                    department, description, quantity, unit retail, vendor,
+                    category, etc.
+                  </p>
 
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={handleCSVUpload}
-                  className="hidden"
-                  id="csv-upload"
-                />
-                <label
-                  htmlFor="csv-upload"
-                  className="cursor-pointer flex flex-col items-center"
-                >
-                  <FileText className="h-8 w-8 text-gray-400 mb-2" />
-                  <span className="text-sm font-medium text-gray-600">
-                    Click to upload CSV file
-                  </span>
-                  <span className="text-xs text-gray-500 mt-1">
-                    or drag and drop
-                  </span>
-                </label>
-              </div>
-            </div>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={handleCSVUpload}
+                      className="hidden"
+                      id="csv-upload"
+                    />
+                    <label
+                      htmlFor="csv-upload"
+                      className="cursor-pointer flex flex-col items-center"
+                    >
+                      <FileText className="h-8 w-8 text-gray-400 mb-2" />
+                      <span className="text-sm font-medium text-gray-600">
+                        Click to upload CSV file
+                      </span>
+                      <span className="text-xs text-gray-500 mt-1">
+                        or drag and drop
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {activeSubTab === "inventory_receiving" && <InventoryReceiving />}
           </div>
         )}
 

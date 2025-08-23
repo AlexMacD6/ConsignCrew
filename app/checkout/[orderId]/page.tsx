@@ -39,6 +39,7 @@ interface User {
   addressLine2?: string;
   city?: string;
   state?: string;
+  country?: string;
 }
 
 /**
@@ -552,10 +553,45 @@ export default function CheckoutPage() {
   };
 
   // Handle address confirmation
-  const handleAddressConfirmation = () => {
-    setAddressConfirmed(true);
-    setSuccess("Shipping address confirmed!");
-    setTimeout(() => setSuccess(null), 3000);
+  const handleAddressConfirmation = async () => {
+    if (!order || !user) return;
+
+    try {
+      // Prepare shipping address data
+      const shippingAddressData = {
+        streetAddress: user.addressLine1,
+        apartment: user.addressLine2 || "",
+        city: user.city,
+        state: user.state,
+        zipCode: user.zipCode,
+        country: user.country || "US",
+      };
+
+      // Update the order with the confirmed shipping address
+      const response = await fetch(`/api/orders/${order.id}/shipping-address`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ shippingAddress: shippingAddressData }),
+      });
+
+      if (response.ok) {
+        console.log("Shipping address saved to order successfully");
+        setAddressConfirmed(true);
+        setSuccess("Shipping address confirmed and saved!");
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        const errorData = await response.json();
+        console.error("Failed to save shipping address:", errorData);
+        setError(`Failed to save shipping address: ${errorData.error}`);
+        setTimeout(() => setError(null), 5000);
+      }
+    } catch (error) {
+      console.error("Error confirming shipping address:", error);
+      setError("Failed to confirm shipping address. Please try again.");
+      setTimeout(() => setError(null), 5000);
+    }
   };
 
   // Handle cancel
