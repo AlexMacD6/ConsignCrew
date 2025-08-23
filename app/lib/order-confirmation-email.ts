@@ -293,13 +293,13 @@ function generateOrderConfirmationHTML(order: OrderDetails): string {
         <!-- Header -->
         <div class="header">
           <div class="logo">
-            <img src="${process.env.NEXT_PUBLIC_APP_URL || 'https://treasurehub.club'}/TreasureHub%20Banner%20Logo.png" alt="TreasureHub" style="max-width: 300px; height: auto; margin-bottom: 20px;" />
-          </div>
-          <div class="success-icon">
-            <div class="success-checkmark">✓</div>
+            <img src="${process.env.NEXT_PUBLIC_APP_URL || 'https://treasurehub.club'}/TreasureHub%20Centered.png" alt="TreasureHub" style="max-width: 300px; height: auto; margin-bottom: 20px;" />
           </div>
           <h1 class="title">Thank You for Your Purchase!</h1>
           <p class="subtitle">Your order has been confirmed and is being processed.</p>
+          <p class="subtitle" style="color:#111827; font-weight:600;">
+            Watch your email closely — you'll be able to pick your delivery window soon.
+          </p>
         </div>
 
         <!-- Order Details -->

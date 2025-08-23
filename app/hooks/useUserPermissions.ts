@@ -71,27 +71,19 @@ export function useUserPermissions(): UserPermissions {
           if (response.ok) {
             const data = await response.json();
             const userOrganizations = data.organizations || [];
-            
-            // Check if user is part of seller organization
-            const isSeller = userOrganizations.some((member: any) => 
-              member.organizationSlug === 'sellers'
+
+            // BetterAuth role-based policy (strict): use roles only, ignore slugs
+            const roleSet = new Set(
+              userOrganizations.map((m: any) => (m.role || '').toUpperCase())
             );
-            
-            // Check if user is part of buyer organization
-            const isBuyer = userOrganizations.some((member: any) => 
-              member.organizationSlug === 'buyers'
-            );
-            
-            // Check if user is admin (should have all permissions)
-            const isAdmin = userOrganizations.some((member: any) => 
-              member.organizationSlug === 'treasurehub-admin' || 
-              member.role === 'ADMIN' || 
-              member.role === 'OWNER'
-            );
-            
-            // Permissions based on organization membership (admins get all permissions)
-            const canListItems = isSeller || isAdmin;
-            const canBuyItems = isBuyer || isAdmin;
+            const isAdmin = roleSet.has('ADMIN') || roleSet.has('OWNER');
+            const isSeller = roleSet.has('SELLER');
+            const isBuyer = roleSet.has('BUYER');
+
+            // Permissions strictly from roles; admins inherit all
+            const canListItems = isAdmin || isSeller;
+            // Everyone can buy: if authenticated, allow regardless of role
+            const canBuyItems = true;
             
             const newPermissions: UserPermissions = {
               canListItems,

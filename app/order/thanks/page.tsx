@@ -156,12 +156,29 @@ function OrderThanksContent() {
                     {new Date(order.createdAt).toLocaleDateString()}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Total:</span>
-                  <span className="font-bold text-lg text-[#D4AF3D]">
-                    ${order.amount.toFixed(2)}
-                  </span>
-                </div>
+                {(() => {
+                  const TAX_RATE = 0.0825; // 8.25%
+                  const subtotal = order.amount || 0;
+                  const tax = subtotal * TAX_RATE;
+                  const total = subtotal + tax;
+                  const fmt = (n: number) => `$${n.toFixed(2)}`;
+                  return (
+                    <div className="space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Subtotal:</span>
+                        <span className="font-medium">{fmt(subtotal)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Sales Tax (8.25%):</span>
+                        <span className="font-medium">{fmt(tax)}</span>
+                      </div>
+                      <div className="flex justify-between pt-1 mt-1 border-t">
+                        <span className="text-gray-800 font-semibold">Total:</span>
+                        <span className="font-bold text-lg text-[#D4AF3D]">{fmt(total)}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div className="flex justify-between">
                   <span className="text-gray-600">Status:</span>
                   <div className="flex items-center gap-2">

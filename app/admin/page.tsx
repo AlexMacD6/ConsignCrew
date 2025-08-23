@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import InventoryReceiving from "./InventoryReceiving";
+import InventoryInStock from "./InventoryInStock";
 import { Button } from "../components/ui/button";
 import {
   MapPin,
@@ -2578,6 +2579,16 @@ export default function AdminDashboard() {
                   Receiving
                 </button>
                 <button
+                  onClick={() => setActiveSubTab("inventory_instock")}
+                  className={`px-4 py-2 rounded ${
+                    activeSubTab === "inventory_instock"
+                      ? "bg-[#D4AF3D] text-white"
+                      : "bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  In Stock
+                </button>
+                <button
                   onClick={() => setActiveSubTab("inventory_upload")}
                   className={`px-4 py-2 rounded ${
                     activeSubTab === "inventory_upload"
@@ -2791,6 +2802,7 @@ export default function AdminDashboard() {
             )}
 
             {activeSubTab === "inventory_receiving" && <InventoryReceiving />}
+            {activeSubTab === "inventory_instock" && <InventoryInStock />}
           </div>
         )}
 

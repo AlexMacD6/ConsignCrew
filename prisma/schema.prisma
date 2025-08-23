@@ -250,6 +250,7 @@ model Listing {
   googleProductCategory  String?
   heldUntil              DateTime?
   isHeld                 Boolean          @default(false)
+  deliveryCategory       DeliveryCategory @default(NORMAL)
   saves                  Int              @default(0)
   user                   user             @relation(fields: [userId], references: [id])
   history                ListingHistory[]
@@ -264,6 +265,11 @@ model Listing {
   @@index([department])
   @@index([facebookShopEnabled])
   @@index([facebookLastSync])
+}
+
+enum DeliveryCategory {
+  NORMAL
+  BULK
 }
 
 model PriceHistory {

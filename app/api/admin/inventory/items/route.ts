@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const q = searchParams.get("q")?.trim();
     const statusParam = searchParams.get("status");
+    const inStockParam = searchParams.get("inStock");
     const status = (statusParam && statusParam !== "ALL"
       ? (statusParam as "MANIFESTED" | "PARTIALLY_RECEIVED" | "RECEIVED")
       : null);
@@ -24,12 +25,17 @@ export async function GET(request: NextRequest) {
     const where: any = {};
     if (listId) where.listId = listId;
     if (status) where.receiveStatus = status;
+    if (inStockParam === "true") {
+      // Only items with at least one unit received
+      where.receivedQuantity = { gt: 0 };
+    }
     if (q) {
       where.OR = [
         { description: { contains: q, mode: "insensitive" } },
         { itemNumber: { contains: q, mode: "insensitive" } },
         { vendor: { contains: q, mode: "insensitive" } },
         { department: { contains: q, mode: "insensitive" } },
+        { list: { name: { contains: q, mode: "insensitive" } } },
       ];
     }
 
@@ -52,6 +58,15 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
+    // Include unitPurchasePrice like the Data Upload modal (total purchase / quantity)
+    const itemsWithUnit = items.map((it: any) => ({
+      ...it,
+      unitPurchasePrice:
+        typeof it.purchasePrice === "number" && typeof it.quantity === "number" && it.quantity > 0
+          ? it.purchasePrice / it.quantity
+          : null,
+    }));
+
     const statusCounts = {
       MANIFESTED: 0,
       PARTIALLY_RECEIVED: 0,
@@ -61,7 +76,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      items,
+      items: itemsWithUnit,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
       statusCounts,
     });

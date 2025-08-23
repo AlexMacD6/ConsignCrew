@@ -123,6 +123,7 @@ RESPONSE FORMAT: Return a JSON object with enhanced reasoning and analysis:
   "marketAnalysis": "Detailed market analysis including demand trends, competition, and positioning opportunities",
   "competitiveAdvantage": "Analysis of unique selling propositions and competitive differentiators",
   "consumerInsights": "Consumer psychology analysis and buying motivation factors"
+  ,"deliveryCategory": "NORMAL|BULK" 
 }
 
 Provide deep reasoning for each field to maximize value, appeal, and competitive positioning while maintaining honesty and transparency.`;
@@ -228,6 +229,8 @@ Provide deep reasoning for each field to maximize value, appeal, and competitive
       marketAnalysis: formData.marketAnalysis || 'Market analysis not available',
       competitiveAdvantage: formData.competitiveAdvantage || 'Competitive advantage analysis not available',
       consumerInsights: formData.consumerInsights || 'Consumer insights not available',
+      // Delivery category: ask if 2-person delivery is needed; default NORMAL
+      deliveryCategory: (formData.deliveryCategory === 'BULK' || /two\s*people|2\s*people|heavy|bulky|oversized/i.test(`${title} ${description} ${additionalInfo||''}`)) ? 'BULK' : 'NORMAL',
     };
 
     console.log("📊 Form Fields API: Validated data:", validatedData);

@@ -57,6 +57,18 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
+  const [promo, setPromo] = useState("");
+  const [promoStatus, setPromoStatus] = useState<null | {
+    valid: boolean;
+    discount: number;
+  }>(null);
+  const [deliveryCategory, setDeliveryCategory] = useState<"NORMAL" | "BULK">(
+    "NORMAL"
+  );
+
+  // Harris County, TX sales tax rate (8.25%)
+  const HARRIS_COUNTY_TAX_RATE = 0.0825;
+  const formatCurrency = (n: number) => `$${n.toFixed(2)}`;
 
   // Debug: Log error state changes
   useEffect(() => {
@@ -959,9 +971,66 @@ export default function CheckoutPage() {
               <p className="text-sm text-gray-600 mb-2">
                 Item ID: {order.listing.itemId}
               </p>
-              <p className="text-lg font-semibold text-[#D4AF3D]">
-                ${order.amount.toFixed(2)}
-              </p>
+              {/* Price Breakdown with Harris County Sales Tax */}
+              {(() => {
+                const subtotal = order.amount || 0;
+                const deliveryFee = deliveryCategory === "BULK" ? 100 : 50;
+                const promoDiscount = promoStatus?.valid
+                  ? promoStatus.discount
+                  : 0;
+                const taxedBase = Math.max(
+                  0,
+                  subtotal + deliveryFee - promoDiscount
+                );
+                const salesTax = subtotal * HARRIS_COUNTY_TAX_RATE;
+                const estimatedTotal =
+                  taxedBase + taxedBase * HARRIS_COUNTY_TAX_RATE;
+                return (
+                  <div className="text-sm text-gray-800">
+                    <div className="flex items-center justify-between py-0.5">
+                      <span className="text-gray-600">Subtotal</span>
+                      <span className="font-medium">
+                        {formatCurrency(subtotal)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between py-0.5">
+                      <span className="text-gray-600">
+                        Delivery (
+                        {deliveryCategory === "BULK" ? "Bulk" : "Normal"})
+                      </span>
+                      <span className="font-medium">
+                        {formatCurrency(deliveryFee)}
+                      </span>
+                    </div>
+                    {promoStatus?.valid && (
+                      <div className="flex items-center justify-between py-0.5 text-green-700">
+                        <span className="">Promo Discount</span>
+                        <span className="font-medium">
+                          - {formatCurrency(promoStatus.discount)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between py-0.5">
+                      <span className="text-gray-600">
+                        Sales Tax ({(HARRIS_COUNTY_TAX_RATE * 100).toFixed(2)}%)
+                      </span>
+                      <span className="font-medium">
+                        {formatCurrency(taxedBase * HARRIS_COUNTY_TAX_RATE)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between pt-1 mt-1 border-t">
+                      <span className="font-semibold">Estimated Total</span>
+                      <span className="text-[#D4AF3D] font-semibold">
+                        {formatCurrency(estimatedTotal)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Tax shown is calculated at{" "}
+                      {(HARRIS_COUNTY_TAX_RATE * 100).toFixed(2)}%.
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -1099,6 +1168,76 @@ export default function CheckoutPage() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Promo + Delivery Controls */}
+        <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
+          <h2 className="text-lg font-semibold mb-3">Delivery & Promo</h2>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">
+                Delivery Type
+              </label>
+              <select
+                value={deliveryCategory}
+                onChange={(e) => setDeliveryCategory(e.target.value as any)}
+                className="border rounded px-3 py-2"
+              >
+                <option value="NORMAL">Normal ($50)</option>
+                <option value="BULK">Bulk ($100)</option>
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="block text-sm text-gray-600 mb-1">
+                Promo Code
+              </label>
+              <div className="flex gap-2">
+                <input
+                  value={promo}
+                  onChange={(e) => setPromo(e.target.value)}
+                  placeholder="Enter code"
+                  className="border rounded px-3 py-2 flex-1"
+                />
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch("/api/checkout/validate-promo", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          code: promo,
+                          subtotal: order?.amount || 0,
+                        }),
+                      });
+                      const data = await res.json();
+                      if (data.valid)
+                        setPromoStatus({
+                          valid: true,
+                          discount: data.discount,
+                        });
+                      else setPromoStatus({ valid: false, discount: 0 });
+                    } catch {
+                      setPromoStatus({ valid: false, discount: 0 });
+                    }
+                  }}
+                >
+                  Apply
+                </Button>
+              </div>
+              {promoStatus && (
+                <p
+                  className={`text-sm mt-1 ${
+                    promoStatus.valid ? "text-green-700" : "text-red-600"
+                  }`}
+                >
+                  {promoStatus.valid
+                    ? `Promo applied: -$${promoStatus.discount.toFixed(2)}`
+                    : "Invalid promo code"}
+                </p>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Security Notice */}
