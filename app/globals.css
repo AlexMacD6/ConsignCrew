@@ -668,6 +668,137 @@ canvas {
 	border-radius: 10px !important;
 }
 
+/* Print Styles for Pick Tickets */
+@media print {
+	/* Ensure Poppins font is used in print */
+	* {
+		font-family: 'Poppins', Arial, sans-serif !important;
+	}
+
+	/* Page setup */
+	@page {
+		size: 8.5in 11in;
+		margin: 0.5in;
+	}
+
+	/* Hide navigation and page chrome */
+	nav,
+	header,
+	.navbar,
+	.navigation,
+	.menu,
+	.header,
+	.fixed.inset-0,
+	.sticky,
+	.print-hide {
+		display: none !important;
+	}
+
+	/* Hide everything except the print content */
+	body > *:not(.pick-ticket-print-area) {
+		display: none !important;
+	}
+
+	/* Ensure the print area is visible and properly positioned */
+	.pick-ticket-print-area {
+		display: block !important;
+		position: static !important;
+		width: 100% !important;
+		max-width: none !important;
+		margin: 0 !important;
+		padding: 0.5in !important;
+		background: white !important;
+		box-shadow: none !important;
+		border-radius: 0 !important;
+	}
+
+	/* Show print-only content */
+	.print-show {
+		display: block !important;
+		visibility: visible !important;
+	}
+
+
+
+	/* Ensure proper colors and backgrounds in print */
+	body {
+		background: white !important;
+		color: black !important;
+		-webkit-print-color-adjust: exact !important;
+		print-color-adjust: exact !important;
+	}
+
+	.print-title {
+		text-align: center !important;
+		font-size: 18pt !important;
+		font-weight: bold !important;
+		margin-bottom: 0.2in !important;
+		page-break-after: avoid !important;
+	}
+
+	.print-section {
+		page-break-inside: avoid !important;
+		margin-bottom: 0.15in !important;
+	}
+
+	.print-section-title {
+		font-size: 12pt !important;
+		font-weight: bold !important;
+		border-bottom: 1pt solid black !important;
+		padding-bottom: 3pt !important;
+		margin-bottom: 8pt !important;
+	}
+
+	.print-grid {
+		display: grid !important;
+		grid-template-columns: 1fr 1fr !important;
+		gap: 0.15in !important;
+	}
+
+	.print-border {
+		border: 1pt solid black !important;
+		padding: 0.1in !important;
+	}
+
+	/* Clean text formatting for print */
+	h1, h2, h3, h4, h5, h6 {
+		color: black !important;
+		background: transparent !important;
+	}
+
+	p, div, span {
+		color: black !important;
+		background: transparent !important;
+	}
+
+	/* Ensure images print properly */
+	img {
+		max-width: 100% !important;
+		height: auto !important;
+		-webkit-print-color-adjust: exact !important;
+		print-color-adjust: exact !important;
+	}
+
+	/* Clean borders for print */
+	.border, .border-gray-300 {
+		border: 1pt solid #000 !important;
+	}
+
+	.border-b {
+		border-bottom: 1pt solid #000 !important;
+	}
+
+	.border-b-2 {
+		border-bottom: 2pt solid #000 !important;
+	}
+
+	/* Remove any shadows or rounded corners that don't print well */
+	* {
+		box-shadow: none !important;
+		border-radius: 0 !important;
+	}
+}
+
 /* Enhanced circle styling */
 .treasure-hunt-map .leaflet-interactive {
 	transition: all 0.3s ease !important;

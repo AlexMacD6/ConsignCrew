@@ -90,10 +90,14 @@ function generateOrderConfirmationHTML(order: OrderDetails): string {
           margin-bottom: 40px;
         }
         .logo {
-          font-size: 28px;
-          font-weight: bold;
-          color: #D4AF3D;
+          text-align: center;
           margin-bottom: 10px;
+        }
+        .logo img {
+          max-width: 300px;
+          height: auto;
+          display: block;
+          margin: 0 auto;
         }
         .success-icon {
           width: 60px;
@@ -288,12 +292,14 @@ function generateOrderConfirmationHTML(order: OrderDetails): string {
       <div class="email-container">
         <!-- Header -->
         <div class="header">
-          <div class="logo">🏛️ TreasureHub</div>
-          <div class="success-icon">
-            <div class="success-checkmark">✓</div>
+          <div class="logo">
+            <img src="${process.env.NEXT_PUBLIC_APP_URL || 'https://treasurehub.club'}/TreasureHub%20Centered.png" alt="TreasureHub" style="max-width: 300px; height: auto; margin-bottom: 20px;" />
           </div>
           <h1 class="title">Thank You for Your Purchase!</h1>
           <p class="subtitle">Your order has been confirmed and is being processed.</p>
+          <p class="subtitle" style="color:#111827; font-weight:600;">
+            Watch your email closely — you'll be able to pick your delivery window soon.
+          </p>
         </div>
 
         <!-- Order Details -->

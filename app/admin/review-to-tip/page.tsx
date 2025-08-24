@@ -11,6 +11,7 @@ import {
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
+import { Trash2, Edit, AlertTriangle, Skull } from "lucide-react";
 import {
   Tabs,
   TabsContent,
@@ -24,6 +25,7 @@ interface Driver {
   fullName: string;
   email?: string;
   phone?: string;
+  vehicleType?: string;
   isActive: boolean;
   totalReviews: number;
   totalBonusEarned: number;
@@ -82,6 +84,9 @@ export default function ReviewToTipDashboard() {
     confirmedReviews: 0,
     pendingBonuses: 0,
     totalBonusAmount: 0,
+    preScreeningRatings: 0,
+    highRatings: 0,
+    conversionRate: 0,
   });
 
   // New driver form
@@ -90,6 +95,7 @@ export default function ReviewToTipDashboard() {
     fullName: "",
     email: "",
     phone: "",
+    vehicleType: "",
     googleReviewsUrl: "",
   });
 
@@ -121,6 +127,10 @@ export default function ReviewToTipDashboard() {
       const bonusesRes = await fetch("/api/admin/bonuses");
       const bonusesData = await bonusesRes.json();
 
+      // Fetch pre-screening ratings
+      const preScreeningRes = await fetch("/api/admin/prescreening-stats");
+      const preScreeningData = await preScreeningRes.json();
+
       if (driversData.success) {
         setDrivers(driversData.drivers);
       }
@@ -140,6 +150,15 @@ export default function ReviewToTipDashboard() {
           ...prev,
           pendingBonuses: bonusesData.stats.byStatus?.pending?.count || 0,
           totalBonusAmount: bonusesData.stats.totalAmount,
+        }));
+      }
+
+      if (preScreeningData.success) {
+        setStats((prev) => ({
+          ...prev,
+          preScreeningRatings: preScreeningData.stats.totalRatings,
+          highRatings: preScreeningData.stats.highRatings,
+          conversionRate: preScreeningData.stats.conversionRate,
         }));
       }
 
@@ -175,6 +194,7 @@ export default function ReviewToTipDashboard() {
           fullName: "",
           email: "",
           phone: "",
+          vehicleType: "",
           googleReviewsUrl: "",
         });
         fetchData(); // Refresh data
@@ -185,6 +205,70 @@ export default function ReviewToTipDashboard() {
     } catch (error) {
       console.error("Error creating driver:", error);
       alert("Failed to create driver");
+    }
+  };
+
+  const deleteDriver = async (driverId: string, driverName: string) => {
+    if (
+      !confirm(
+        `⚠️ PERMANENT DELETE: Are you sure you want to permanently delete ${driverName}? This will permanently remove the driver and ALL their review history, bonuses, and QR scan data. This action CANNOT be undone!`
+      )
+    ) {
+      return;
+    }
+
+    // Double confirmation for permanent delete
+    if (
+      !confirm(
+        `This is your final warning! Deleting ${driverName} will permanently destroy all their data. Type YES in your mind and click OK to proceed, or Cancel to abort.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/admin/drivers/${driverId}/permanent-delete`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        fetchData(); // Refresh data
+        alert("Driver permanently deleted!");
+      } else {
+        alert(data.error || "Failed to delete driver");
+      }
+    } catch (error) {
+      console.error("Error deleting driver:", error);
+      alert("Failed to delete driver");
+    }
+  };
+
+  const toggleDriverStatus = async (driverId: string, isActive: boolean) => {
+    try {
+      const response = await fetch("/api/admin/drivers", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: driverId, isActive: !isActive }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        fetchData(); // Refresh data
+        alert(
+          `Driver ${!isActive ? "activated" : "deactivated"} successfully!`
+        );
+      } else {
+        alert(data.error || "Failed to update driver status");
+      }
+    } catch (error) {
+      console.error("Error updating driver status:", error);
+      alert("Failed to update driver status");
     }
   };
 
@@ -265,7 +349,7 @@ export default function ReviewToTipDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-9 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold">{stats.totalDrivers}</div>
@@ -308,6 +392,30 @@ export default function ReviewToTipDashboard() {
               ${stats.totalBonusAmount.toFixed(2)}
             </div>
             <div className="text-sm text-gray-600">Total Bonuses</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-blue-600">
+              {stats.preScreeningRatings}
+            </div>
+            <div className="text-sm text-gray-600">Pre-Screenings</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-green-600">
+              {stats.highRatings}
+            </div>
+            <div className="text-sm text-gray-600">4-5 Star Ratings</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-purple-600">
+              {stats.conversionRate}%
+            </div>
+            <div className="text-sm text-gray-600">Conversion Rate</div>
           </CardContent>
         </Card>
       </div>
@@ -369,6 +477,23 @@ export default function ReviewToTipDashboard() {
                     setNewDriver((prev) => ({ ...prev, phone: e.target.value }))
                   }
                 />
+                <select
+                  className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  value={newDriver.vehicleType}
+                  onChange={(e) =>
+                    setNewDriver((prev) => ({
+                      ...prev,
+                      vehicleType: e.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Select Vehicle Type (optional)</option>
+                  <option value="Large Van">Large Van</option>
+                  <option value="Small Van">Small Van</option>
+                  <option value="Pickup Truck">Pickup Truck</option>
+                  <option value="SUV">SUV</option>
+                  <option value="Car">Car</option>
+                </select>
                 <Input
                   placeholder="Google Reviews URL (optional)"
                   value={newDriver.googleReviewsUrl}
@@ -393,6 +518,13 @@ export default function ReviewToTipDashboard() {
           <Card>
             <CardHeader>
               <CardTitle>All Drivers</CardTitle>
+              <CardDescription>
+                <strong>Deactivate:</strong> Temporarily removes from duty but
+                preserves all review history.
+                <strong className="text-red-600 ml-2">Delete:</strong>{" "}
+                Permanently removes driver and ALL reviews/bonuses (cannot be
+                undone).
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -408,7 +540,9 @@ export default function ReviewToTipDashboard() {
                       <div>
                         <div className="font-semibold">{driver.fullName}</div>
                         <div className="text-sm text-gray-600">
-                          {driver.email} • {driver._count.reviewScans} scans • $
+                          {driver.email} •{" "}
+                          {driver.vehicleType && `${driver.vehicleType} • `}
+                          {driver._count.reviewScans} scans • $
                           {driver.totalBonusEarned.toFixed(2)} earned
                         </div>
                       </div>
@@ -423,9 +557,35 @@ export default function ReviewToTipDashboard() {
                         QR: treasurehub.club/review/
                         {driver.initials.toLowerCase()}
                       </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          toggleDriverStatus(driver.id, driver.isActive)
+                        }
+                        className="ml-2"
+                      >
+                        {driver.isActive ? "Deactivate" : "Activate"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => deleteDriver(driver.id, driver.fullName)}
+                        className="ml-1 bg-red-600 hover:bg-red-700 border-2 border-red-800"
+                        title="⚠️ PERMANENT DELETE: Removes driver and ALL reviews/bonuses forever"
+                      >
+                        <Skull className="h-4 w-4 mr-1" />
+                        DELETE
+                      </Button>
                     </div>
                   </div>
                 ))}
+                {drivers.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No drivers found. Add a driver to get started.</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

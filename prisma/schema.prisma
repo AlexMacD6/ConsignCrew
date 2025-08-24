@@ -211,7 +211,6 @@ model Listing {
   createdAt              DateTime         @default(now())
   updatedAt              DateTime         @updatedAt
   views                  Int              @default(0)
-  saves                  Int              @default(0)
   videoUrl               String?
   reservePrice           Float?
   depth                  String?
@@ -251,6 +250,8 @@ model Listing {
   googleProductCategory  String?
   heldUntil              DateTime?
   isHeld                 Boolean          @default(false)
+  deliveryCategory       DeliveryCategory @default(NORMAL)
+  saves                  Int              @default(0)
   user                   user             @relation(fields: [userId], references: [id])
   history                ListingHistory[]
   orders                 Order[]
@@ -264,6 +265,11 @@ model Listing {
   @@index([department])
   @@index([facebookShopEnabled])
   @@index([facebookLastSync])
+}
+
+enum DeliveryCategory {
+  NORMAL
+  BULK
 }
 
 model PriceHistory {
@@ -514,28 +520,41 @@ model InventoryList {
 }
 
 model InventoryItem {
-  id            String        @id @default(cuid())
-  listId        String
-  lotNumber     String?
-  itemNumber    String?
-  deptCode      String?
-  department    String?
-  description   String?
-  quantity      Int?
-  unitRetail    Float?
-  extRetail     Float?
-  vendor        String?
-  categoryCode  String?
-  category      String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  purchasePrice Float?
-  list          InventoryList @relation(fields: [listId], references: [id], onDelete: Cascade)
-  listings      Listing[]     @relation("InventoryItemToListing")
+  id               String                 @id @default(cuid())
+  listId           String
+  lotNumber        String?
+  itemNumber       String?
+  deptCode         String?
+  department       String?
+  description      String?
+  quantity         Int?
+  unitRetail       Float?
+  extRetail        Float?
+  vendor           String?
+  categoryCode     String?
+  category         String?
+  notes            String?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  purchasePrice    Float?
+  // Receiving fields
+  receiveStatus    InventoryReceiveStatus @default(MANIFESTED)
+  receivedQuantity Int                    @default(0)
+  receivedAt       DateTime?
+  receivedBy       String?
+  list             InventoryList          @relation(fields: [listId], references: [id], onDelete: Cascade)
+  listings         Listing[]              @relation("InventoryItemToListing")
 
   @@unique([listId, itemNumber])
   @@index([listId])
   @@index([itemNumber])
+  @@index([receiveStatus])
+}
+
+enum InventoryReceiveStatus {
+  MANIFESTED
+  PARTIALLY_RECEIVED
+  RECEIVED
 }
 
 model Order {
@@ -559,6 +578,15 @@ model Order {
   disputeCreatedAt        DateTime?
   checkoutExpiresAt       DateTime?
   isHeld                  Boolean     @default(false)
+  deliveryAttempts        Int         @default(0)
+  deliveryDriverId        String?
+  deliveryNotes           String?
+  estimatedDeliveryTime   DateTime?
+  lastDeliveryAttempt     DateTime?
+  pickupTimeSlot          String?
+  scheduledPickupTime     DateTime?
+  statusUpdatedAt         DateTime?
+  statusUpdatedBy         String?
   buyer                   user        @relation("BuyerOrders", fields: [buyerId], references: [id])
   listing                 Listing     @relation(fields: [listingId], references: [id])
   seller                  user        @relation("SellerOrders", fields: [sellerId], references: [id])
@@ -572,32 +600,35 @@ model Order {
 }
 
 model Driver {
-  id               String        @id @default(cuid())
-  initials         String        @unique
-  fullName         String
-  email            String?       @unique
-  phone            String?
-  isActive         Boolean       @default(true)
-  totalReviews     Int           @default(0)
-  totalBonusEarned Float         @default(0)
-  googleReviewsUrl String?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  reviewBonuses    ReviewBonus[]
-  reviewScans      ReviewScan[]
+  id                  String               @id @default(cuid())
+  initials            String               @unique
+  fullName            String
+  email               String?              @unique
+  phone               String?
+  vehicleType         String?
+  isActive            Boolean              @default(true)
+  totalReviews        Int                  @default(0)
+  totalBonusEarned    Float                @default(0)
+  googleReviewsUrl    String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  reviewBonuses       ReviewBonus[]
+  reviewScans         ReviewScan[]
+  preScreeningRatings PreScreeningRating[]
 
   @@index([initials])
   @@index([isActive])
 }
 
 model ReviewScan {
-  id           String        @id @default(cuid())
-  driverId     String
-  ipAddress    String?
-  userAgent    String?
-  scannedAt    DateTime      @default(now())
-  googleReview GoogleReview?
-  driver       Driver        @relation(fields: [driverId], references: [id])
+  id                 String              @id @default(cuid())
+  driverId           String
+  ipAddress          String?
+  userAgent          String?
+  scannedAt          DateTime            @default(now())
+  googleReview       GoogleReview?
+  preScreeningRating PreScreeningRating?
+  driver             Driver              @relation(fields: [driverId], references: [id])
 
   @@index([driverId])
   @@index([scannedAt])
@@ -637,6 +668,23 @@ model ReviewBonus {
   @@index([awardedAt])
 }
 
+model PreScreeningRating {
+  id               String      @id @default(cuid())
+  driverId         String
+  reviewScanId     String?     @unique
+  rating           Int // 1-5 stars
+  ipAddress        String?
+  proceedsToGoogle Boolean     @default(false)
+  createdAt        DateTime    @default(now())
+  driver           Driver      @relation(fields: [driverId], references: [id])
+  reviewScan       ReviewScan? @relation(fields: [reviewScanId], references: [id])
+
+  @@index([driverId])
+  @@index([rating])
+  @@index([proceedsToGoogle])
+  @@index([createdAt])
+}
+
 enum OrderStatus {
   PENDING
   PAID
@@ -647,4 +695,7 @@ enum OrderStatus {
   DISPUTED
   CANCELLED
   REFUNDED
+  PENDING_SCHEDULING
+  SCHEDULED
+  EN_ROUTE
 }

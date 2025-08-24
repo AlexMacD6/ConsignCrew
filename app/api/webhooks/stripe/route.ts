@@ -58,6 +58,10 @@ export async function POST(request: NextRequest) {
         await handleCheckoutSessionCompleted(event.data.object);
         break;
 
+      case 'checkout.session.expired':
+        await handleCheckoutSessionExpired(event.data.object);
+        break;
+
       case 'payment_intent.succeeded':
         await handlePaymentIntentSucceeded(event.data.object);
         break;
@@ -82,6 +86,58 @@ export async function POST(request: NextRequest) {
       { error: 'Webhook processing failed' },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Handle checkout session expiration
+ * Releases hold and marks order abandoned
+ */
+async function handleCheckoutSessionExpired(session: any) {
+  try {
+    // Find order by checkout session ID
+    const order = await prisma.order.findUnique({
+      where: { stripeCheckoutSessionId: session.id },
+      include: { listing: true },
+    });
+
+    if (!order) {
+      console.warn('Expired session with no matching order:', session.id);
+      return;
+    }
+
+    // Mark order cancelled/abandoned and release listing hold
+    await prisma.$transaction([
+      prisma.order.update({
+        where: { id: order.id },
+        data: {
+          status: 'CANCELLED',
+          statusUpdatedAt: new Date(),
+          statusUpdatedBy: 'system',
+        },
+      }),
+      prisma.listing.update({
+        where: { id: order.listingId },
+        data: {
+          status: 'active',
+          isHeld: false,
+          heldUntil: null,
+        },
+      }),
+      prisma.listingHistory.create({
+        data: {
+          listingId: order.listingId,
+          eventType: 'CHECKOUT_EXPIRED',
+          eventTitle: 'Checkout Session Expired',
+          description: 'Buyer abandoned checkout; item released',
+          metadata: { orderId: order.id, stripeSessionId: session.id },
+        },
+      }),
+    ]);
+
+    console.log('Released hold for expired session order:', order.id);
+  } catch (error) {
+    console.error('Error handling checkout session expired:', error);
   }
 }
 
@@ -119,14 +175,16 @@ async function handleCheckoutSessionCompleted(session: any) {
       return;
     }
 
-    // Update order with payment details
+    // Update order with payment details and move to delivery workflow
     const updatedOrder = await prisma.order.update({
       where: { id: order.id },
       data: {
-        status: 'PAID',
+        status: 'PENDING_SCHEDULING', // Start delivery workflow immediately
         stripePaymentIntentId: session.payment_intent,
         stripeChargeId: session.payment_intent ? undefined : undefined, // Will be set when payment intent succeeds
         amount: session.amount_total / 100, // Convert from cents
+        statusUpdatedAt: new Date(),
+        statusUpdatedBy: 'system', // Automatically triggered by payment
       },
       include: {
         listing: true,

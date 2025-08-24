@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { initials, fullName, email, phone, googleReviewsUrl } = body;
+    const { initials, fullName, email, phone, vehicleType, googleReviewsUrl } = body;
 
     // Validate required fields
     if (!initials || !fullName) {
@@ -141,6 +141,7 @@ export async function POST(request: NextRequest) {
         fullName,
         email: email || null,
         phone: phone || null,
+        vehicleType: vehicleType || null,
         googleReviewsUrl: googleReviewsUrl || null,
       },
     });
@@ -166,7 +167,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, initials, fullName, email, phone, googleReviewsUrl, isActive } = body;
+    const { id, initials, fullName, email, phone, vehicleType, googleReviewsUrl, isActive } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -230,6 +231,7 @@ export async function PUT(request: NextRequest) {
         ...(fullName && { fullName }),
         ...(email !== undefined && { email: email || null }),
         ...(phone !== undefined && { phone: phone || null }),
+        ...(vehicleType !== undefined && { vehicleType: vehicleType || null }),
         ...(googleReviewsUrl !== undefined && { googleReviewsUrl: googleReviewsUrl || null }),
         ...(isActive !== undefined && { isActive }),
       },
@@ -252,7 +254,7 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE - Deactivate a driver (soft delete)
+// DELETE - Deactivate a driver (soft delete - preserves all data)
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -277,16 +279,18 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Soft delete by setting isActive to false
+    // Soft delete by setting isActive to false (preserves all review data)
     const updatedDriver = await prisma.driver.update({
       where: { id },
       data: { isActive: false },
     });
 
+    console.log(`🔄 SOFT DELETE: Driver ${existingDriver.fullName} (${existingDriver.initials}) deactivated (data preserved)`);
+
     return NextResponse.json({
       success: true,
       driver: updatedDriver,
-      message: 'Driver deactivated successfully',
+      message: 'Driver deactivated successfully (review history preserved)',
     });
 
   } catch (error) {

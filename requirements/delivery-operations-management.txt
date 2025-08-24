@@ -1,0 +1,176 @@
+# Delivery Operations Management System
+
+## Overview
+A comprehensive driver allocation and delivery operations management system that replaces mock data with real capacity management and provides detailed oversight of daily delivery operations.
+
+## Core Requirements
+
+### 1. Delivery Operations Dashboard
+- **Location**: `/admin/delivery-operations`
+- **Purpose**: Central hub for managing driver schedules and delivery capacity
+- **Access**: Admin users only (treasurehub-admin organization or ADMIN/OWNER role)
+
+### 2. Key Features
+
+#### Daily Schedule Management
+- **Date Navigation**: Browse delivery schedules by date with previous/next day controls
+- **Time Windows**: Three delivery windows per day:
+  - Morning Shift (8:00 AM - 12:00 PM)
+  - Afternoon Shift (12:00 PM - 4:00 PM) 
+  - Evening Shift (4:00 PM - 8:00 PM)
+- **Real-time Data**: Shows actual scheduled deliveries for each window
+
+#### Capacity Management
+- **Dynamic Capacity**: Adjust delivery capacity per window (1-8 deliveries)
+- **Default Capacity**: 4 deliveries per window (standard operational capacity)
+- **Flexible Scaling**: Ability to increase to 5+ deliveries when demand requires
+- **Visual Indicators**: Clear capacity utilization percentages with color coding
+
+#### Delivery Tracking
+- **Complete Delivery Info**: Shows all essential details for each delivery:
+  - Order ID and listing title
+  - Customer name and phone number
+  - Full delivery address
+  - Estimated delivery duration
+  - Priority level (Standard/Express/Fragile)
+  - Special delivery notes
+- **Priority Management**: Visual indicators for different delivery priorities
+- **Driver Assignment**: Track which drivers are assigned to each window
+
+#### Operational Insights
+- **Daily Statistics**: 
+  - Total deliveries scheduled
+  - Total capacity across all windows
+  - Number of active drivers
+  - Average utilization percentage
+- **Utilization Monitoring**: Color-coded utilization tracking:
+  - Green: < 60% utilization
+  - Blue: 60-79% utilization
+  - Yellow: 80-99% utilization
+  - Red: 100%+ utilization (overbooked)
+
+### 3. Integration with Delivery Scheduler
+
+#### Mock Data Removal
+- **Removed**: Random capacity generation in Assign Slots modal
+- **Replaced**: Real capacity tracking with proper API integration
+- **Default Behavior**: All windows show full capacity (4 slots) until modified
+
+#### Improved Workflow
+- Delivery Scheduler handles order progression through delivery workflow
+- Delivery Operations manages the operational side (capacity, drivers, optimization)
+- Both systems work together for complete delivery management
+
+### 4. Technical Implementation
+
+#### API Endpoints
+- `GET /api/admin/delivery-operations/schedule?date=YYYY-MM-DD`
+  - Fetches delivery schedule for specific date
+  - Returns organized data by time windows
+  - Includes delivery details and capacity info
+
+- `PUT /api/admin/delivery-operations/schedule`
+  - Updates delivery window capacity
+  - Logs admin user making the change
+  - Validates capacity ranges (1-8)
+
+- `GET /api/admin/delivery-operations/drivers`
+  - Returns list of all delivery drivers
+  - Includes driver status and vehicle information
+
+- `POST/PUT /api/admin/delivery-operations/drivers`
+  - Create new drivers or update existing driver info
+  - Manage driver active/inactive status
+
+#### Database Integration
+- Uses existing Order model for delivery data
+- Organizes orders by scheduledPickupTime into appropriate windows
+- Admin permission checking via organization membership
+- Future-ready for DeliveryCapacity and Driver models
+
+### 5. User Experience
+
+#### Admin Navigation
+- **Added**: "Delivery Operations" module to admin dashboard
+- **Icon**: Truck icon with blue color scheme
+- **Description**: "Manage driver schedules, delivery capacity, and optimize daily delivery operations"
+- **Stats**: "Optimize Routes"
+
+#### Intuitive Interface
+- **Clear Visual Hierarchy**: Well-organized layout with distinct sections
+- **Interactive Controls**: Plus/minus buttons for capacity adjustment
+- **Detailed Modals**: Click on deliveries to see complete information
+- **Responsive Design**: Works on desktop and tablet devices
+
+#### Operational Efficiency
+- **Quick Capacity Adjustments**: Immediate capacity changes with +/- buttons
+- **Visual Utilization**: Instant feedback on window utilization
+- **Comprehensive View**: All delivery information in one place
+- **Driver Management**: Easy access to driver information and assignment
+
+### 6. Future Enhancements
+
+#### Driver Management
+- Complete driver profile management
+- Driver performance tracking
+- Vehicle maintenance scheduling
+- Route optimization suggestions
+
+#### Advanced Analytics
+- Historical delivery performance
+- Peak demand analysis
+- Driver efficiency metrics
+- Customer satisfaction correlation
+
+#### Integration Improvements
+- Real-time GPS tracking integration
+- Automated capacity recommendations
+- Dynamic pricing based on demand
+- Customer notification improvements
+
+## Implementation Status
+
+### ✅ Completed
+- Delivery Operations dashboard page created
+- Mock data removed from Delivery Scheduler
+- Admin navigation updated
+- API endpoints structured (with TODO markers for database integration)
+- Capacity management UI implemented
+- Daily schedule visualization
+- Delivery detail modals
+- Utilization tracking and color coding
+
+### 🔄 Ready for Database Integration
+- API endpoints prepared for real database models
+- Driver management foundation laid
+- Capacity storage system designed
+- Order integration mapped out
+
+### 📋 Next Steps
+1. Create database models for Driver and DeliveryCapacity
+2. Implement real API functionality
+3. Add driver assignment capabilities
+4. Build route optimization features
+5. Add performance analytics
+
+## Benefits
+
+### Operational Control
+- **Capacity Optimization**: Adjust delivery capacity based on real demand
+- **Resource Management**: Better allocation of driver resources
+- **Demand Response**: Ability to scale up operations during peak periods
+- **Quality Control**: Monitor delivery performance and customer satisfaction
+
+### Administrative Efficiency
+- **Centralized Management**: Single dashboard for all delivery operations
+- **Real-time Visibility**: Immediate view of daily operations
+- **Quick Adjustments**: Instant capacity and assignment changes
+- **Performance Monitoring**: Track utilization and operational metrics
+
+### Scalability
+- **Growth Ready**: System designed to handle increased delivery volume
+- **Flexible Capacity**: Easy adjustment from 4 to 5+ deliveries per window
+- **Driver Expansion**: Ready for additional driver onboarding
+- **Geographic Growth**: Framework for multiple delivery zones
+
+The Delivery Operations Management System provides comprehensive oversight and control of daily delivery operations, replacing mock data with real operational management capabilities.

@@ -88,7 +88,7 @@ export default function ListingsPage() {
   const [listings, setListings] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All"); // Department
-  const [selectedSubCategory, setSelectedSubCategory] = useState("All"); // Category  
+  const [selectedSubCategory, setSelectedSubCategory] = useState("All"); // Category
   const [selectedSubSubCategory, setSelectedSubSubCategory] = useState("All"); // Subcategory
   const [sortBy, setSortBy] = useState("newest");
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
@@ -172,12 +172,12 @@ export default function ListingsPage() {
         }
         const data = await response.json();
         if (data.success) {
-          // Debug: Log listing statuses to see what we have
-          console.log(
-            "Listing statuses:",
-            data.listings.map((l: any) => ({ id: l.itemId, status: l.status }))
-          );
-          console.log("Total listings received:", data.listings.length);
+          // Debug: Log listing statuses to see what we have (commented out to reduce console spam)
+          // console.log(
+          //   "Listing statuses:",
+          //   data.listings.map((l: any) => ({ id: l.itemId, status: l.status }))
+          // );
+          // console.log("Total listings received:", data.listings.length);
 
           // Transform API data to match the expected format
           const transformedListings = data.listings.map((listing: any) => {
@@ -318,23 +318,23 @@ export default function ListingsPage() {
         shouldShowSoldItems &&
         shouldShowProcessingItems;
 
-      // Debug: Log filtering decisions for sold and processing items
-      if (isSoldItem) {
-        console.log(`Sold item ${listing.itemId}:`, {
-          showSold,
-          shouldShowSoldItems,
-          result,
-          status: listing.status,
-        });
-      }
+      // Debug: Log filtering decisions for sold and processing items (commented out to reduce console spam)
+      // if (isSoldItem) {
+      //   console.log(`Sold item ${listing.itemId}:`, {
+      //     showSold,
+      //     shouldShowSoldItems,
+      //     result,
+      //     status: listing.status,
+      //   });
+      // }
 
-      if (isProcessingItem) {
-        console.log(`Processing item ${listing.itemId}:`, {
-          shouldShowProcessingItems,
-          result,
-          status: listing.status,
-        });
-      }
+      // if (isProcessingItem) {
+      //   console.log(`Processing item ${listing.itemId}:`, {
+      //     shouldShowProcessingItems,
+      //     result,
+      //     status: listing.status,
+      //   });
+      // }
 
       return result;
     })
@@ -403,40 +403,41 @@ export default function ListingsPage() {
       }
     });
 
-  console.log(
-    "🔄 Final sorted order:",
-    filteredListings.map((l) => {
-      const displayPrice = getDisplayPrice(l);
-      const discount =
-        displayPrice.isDiscounted && displayPrice.originalPrice
-          ? displayPrice.originalPrice - displayPrice.price
-          : getStandardizedCondition(l) === "New" && l.estimated_retail_price
-          ? l.estimated_retail_price - displayPrice.price
-          : 0;
+  // Debug logging commented out to reduce console spam
+  // console.log(
+  //   "🔄 Final sorted order:",
+  //   filteredListings.map((l) => {
+  //     const displayPrice = getDisplayPrice(l);
+  //     const discount =
+  //       displayPrice.isDiscounted && displayPrice.originalPrice
+  //         ? displayPrice.originalPrice - displayPrice.price
+  //         : getStandardizedCondition(l) === "New" && l.estimated_retail_price
+  //         ? l.estimated_retail_price - displayPrice.price
+  //         : 0;
 
-      return {
-        id: l.itemId,
-        title: l.title,
-        listPrice: l.list_price,
-        calculatedDisplayPrice: displayPrice.price,
-        isDiscounted: displayPrice.isDiscounted,
-        discountAmount: discount,
-        condition: getStandardizedCondition(l),
-        estimatedRetail: l.estimated_retail_price,
-        status: l.status,
-      };
-    })
-  );
+  //     return {
+  //       id: l.itemId,
+  //       title: l.title,
+  //       listPrice: l.list_price,
+  //       calculatedDisplayPrice: displayPrice.price,
+  //       isDiscounted: displayPrice.isDiscounted,
+  //       discountAmount: discount,
+  //       condition: getStandardizedCondition(l),
+  //       estimatedRetail: l.estimated_retail_price,
+  //       status: l.status,
+  //     };
+  //   })
+  // );
 
-  console.log("📊 Filter states:", {
-    showSold,
-    showProcessing,
-    showSaved,
-    showHidden,
-    showTreasures,
-    totalListings: listings.length,
-    filteredCount: filteredListings.length,
-  });
+  // console.log("📊 Filter states:", {
+  //   showSold,
+  //   showProcessing,
+  //   showSaved,
+  //   showHidden,
+  //   showTreasures,
+  //   totalListings: listings.length,
+  //   filteredCount: filteredListings.length,
+  // });
 
   const toggleSaved = (id: string) => {
     setSavedListings((prev) => {
@@ -764,20 +765,34 @@ export default function ListingsPage() {
   };
 
   // Function to get subcategories for a selected department and category
-  const getSubCategoriesForDepartmentAndCategory = (department: string, category: string): string[] => {
-    if (department === "All" || category === "All" || !taxonomy[department as keyof typeof taxonomy])
+  const getSubCategoriesForDepartmentAndCategory = (
+    department: string,
+    category: string
+  ): string[] => {
+    if (
+      department === "All" ||
+      category === "All" ||
+      !taxonomy[department as keyof typeof taxonomy]
+    )
       return [];
-    
+
     const departmentData = taxonomy[department as keyof typeof taxonomy];
-    if (!departmentData || !departmentData[category as keyof typeof departmentData])
+    if (
+      !departmentData ||
+      !departmentData[category as keyof typeof departmentData]
+    )
       return [];
-    
-    const subcategories = departmentData[category as keyof typeof departmentData];
+
+    const subcategories =
+      departmentData[category as keyof typeof departmentData];
     return Array.isArray(subcategories) ? subcategories : [];
   };
 
   const availableCategories = getCategoriesForDepartment(selectedCategory);
-  const availableSubCategories = getSubCategoriesForDepartmentAndCategory(selectedCategory, selectedSubCategory);
+  const availableSubCategories = getSubCategoriesForDepartmentAndCategory(
+    selectedCategory,
+    selectedSubCategory
+  );
 
   // Reset subcategory when department changes
   const handleCategoryChange = (newDepartment: string) => {
@@ -1459,12 +1474,12 @@ export default function ListingsPage() {
                       value={option.value}
                       checked={sortBy === option.value}
                       onChange={(e) => {
-                        console.log(
-                          "🎯 Sort changed from",
-                          sortBy,
-                          "to",
-                          e.target.value
-                        );
+                        // console.log(
+                        //   "🎯 Sort changed from",
+                        //   sortBy,
+                        //   "to",
+                        //   e.target.value
+                        // );
                         setSortBy(e.target.value);
                       }}
                       className="h-4 w-4 text-[#D4AF3D] border-gray-300 focus:ring-[#D4AF3D]"
@@ -1517,27 +1532,27 @@ export default function ListingsPage() {
             )}
 
             {/* Sub-Category Filter - Only show when both department and category are selected */}
-            {selectedCategory !== "All" && 
-             selectedSubCategory !== "All" && 
-             availableSubCategories.length > 0 && (
-              <div>
-                <h4 className="text-sm font-medium text-gray-900 mb-3">
-                  Sub-Category
-                </h4>
-                <select
-                  value={selectedSubSubCategory}
-                  onChange={(e) => setSelectedSubSubCategory(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                >
-                  <option value="All">All {selectedSubCategory}</option>
-                  {availableSubCategories.map((subCategory) => (
-                    <option key={subCategory} value={subCategory}>
-                      {subCategory}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+            {selectedCategory !== "All" &&
+              selectedSubCategory !== "All" &&
+              availableSubCategories.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-3">
+                    Sub-Category
+                  </h4>
+                  <select
+                    value={selectedSubSubCategory}
+                    onChange={(e) => setSelectedSubSubCategory(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                  >
+                    <option value="All">All {selectedSubCategory}</option>
+                    {availableSubCategories.map((subCategory) => (
+                      <option key={subCategory} value={subCategory}>
+                        {subCategory}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
             {/* View Options */}
             <div>

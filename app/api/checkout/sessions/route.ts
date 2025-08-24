@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+// Extend Prisma types for PromoCode table created via migration
+type Promo = { code: string; discountType: 'PERCENT'|'AMOUNT'; value: number; isActive: boolean; maxRedemptions: number|null; timesRedeemed: number; expiresAt: Date|null };
 import { createCheckoutSession } from '@/lib/stripe';
 import { getDisplayPrice } from '@/lib/price-calculator';
 
@@ -34,7 +36,7 @@ export async function POST(request: NextRequest) {
     console.log('Checkout request body:', body); // Debug log
     console.log('Request body type:', typeof body); // Debug log
 
-    const { listingId, overrideOwnPurchase } = body;
+    const { listingId, overrideOwnPurchase, promoCode } = body;
     console.log('Extracted listingId:', listingId); // Debug log
 
     if (!listingId) {
@@ -128,10 +130,30 @@ export async function POST(request: NextRequest) {
     // Create success and cancel URLs
     const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
     const successUrl = `${baseUrl}/order/thanks?session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrl = `${baseUrl}/list-item/${listingId}`;
+    const cancelUrl = `${baseUrl}/checkout/cancel?session_id={CHECKOUT_SESSION_ID}`;
 
     // Get the correct display price (sales price if available, otherwise list price)
     const { price: finalPrice } = getDisplayPrice(listing);
+
+    // Delivery fee based on deliveryCategory
+    const deliveryCategory = (listing as any).deliveryCategory || 'NORMAL';
+    const deliveryFee = deliveryCategory === 'BULK' ? 100 : 50;
+
+    // Promo code
+    let promoDiscount = 0;
+    if (promoCode) {
+      const promo = await (prisma as any).promoCode.findFirst({ where: { code: promoCode.toUpperCase(), isActive: true } });
+      if (promo && (!promo.expiresAt || new Date(promo.expiresAt) > new Date()) && (!promo.maxRedemptions || promo.timesRedeemed < promo.maxRedemptions)) {
+        if (promo.discountType === 'PERCENT') promoDiscount = Math.max(0, Math.min(finalPrice, (promo.value / 100) * finalPrice));
+        else promoDiscount = Math.max(0, Math.min(finalPrice, promo.value));
+      }
+    }
+
+    // Tax at fixed 8.25%
+    const TAX_RATE = 0.0825;
+    const taxable = Math.max(0, finalPrice + deliveryFee - promoDiscount);
+    const salesTax = taxable * TAX_RATE;
+    const orderTotal = taxable + salesTax;
 
     // Hold the item for 10 minutes during checkout (like StubHub)
     const holdDuration = 10 * 60 * 1000; // 10 minutes in milliseconds
@@ -150,7 +172,7 @@ export async function POST(request: NextRequest) {
     // Create Stripe Checkout Session
     console.log('Creating Stripe checkout session for listing:', listing.itemId);
     const checkoutSession = await createCheckoutSession(
-      listing,
+      { ...listing, price: orderTotal },
       session.user.id,
       successUrl,
       cancelUrl
@@ -168,11 +190,20 @@ export async function POST(request: NextRequest) {
         listingId: listing.id,
         buyerId: session.user.id,
         sellerId: listing.userId,
-        amount: finalPrice, // Use the correct display price (sales price or list price)
+        amount: orderTotal,
         status: 'PENDING',
         stripeCheckoutSessionId: checkoutSession.id,
         checkoutExpiresAt: holdExpiry,
         isHeld: true,
+        // Store breakdown
+        shippingAddress: {
+          deliveryCategory,
+          deliveryFee,
+          promoCode: promoCode || null,
+          promoDiscount,
+          taxRate: TAX_RATE,
+          salesTax,
+        } as any
       },
     });
     console.log('Order created successfully:', {

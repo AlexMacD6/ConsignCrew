@@ -1,5 +1,5 @@
 "use client";
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../../components/ui/button";
 import {
@@ -307,27 +307,6 @@ export default function ListItemPage() {
   } = useUserPermissions();
   const routerNavigation = useRouter();
 
-  // Debug logging
-  console.log("ListItemPage: Session:", session);
-  console.log("ListItemPage: canListItems:", canListItems);
-  console.log("ListItemPage: isSeller:", isSeller);
-  console.log("ListItemPage: isBuyer:", isBuyer);
-  console.log("ListItemPage: permissionsLoading:", permissionsLoading);
-
-  // Redirect buyers away from this page
-  useEffect(() => {
-    console.log(
-      "ListItemPage: useEffect triggered - canListItems:",
-      canListItems,
-      "permissionsLoading:",
-      permissionsLoading
-    );
-    if (!permissionsLoading && !canListItems) {
-      console.log("ListItemPage: Redirecting user - not allowed to list items");
-      routerNavigation.push("/listings"); // Redirect to browse instead
-    }
-  }, [canListItems, permissionsLoading, routerNavigation]);
-
   // Photo management with S3 integration
   const [photos, setPhotos] = useState<{
     hero: { file: File | null; key: string | null; url: string | null };
@@ -413,6 +392,29 @@ export default function ListItemPage() {
   const [isTreasure, setIsTreasure] = useState(false);
   const [treasureReason, setTreasureReason] = useState("");
 
+  // Additional state that was defined later - moving here to fix hooks order
+  const [reservePrice, setReservePrice] = useState<string>("");
+  const [itemId, setItemId] = useState<string>("");
+
+  // Inventory selection state
+  const [isItemInInventory, setIsItemInInventory] = useState<boolean | null>(
+    null
+  );
+  const [selectedInventoryItem, setSelectedInventoryItem] = useState<any>(null);
+  const [showInventoryModal, setShowInventoryModal] = useState(false);
+  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+  const [isLoadingInventory, setIsLoadingInventory] = useState(false);
+  const [inventoryFilters, setInventoryFilters] = useState({
+    lotDescription: "all",
+    vendor: "all",
+    department: "all",
+  });
+  const [availableFilters, setAvailableFilters] = useState({
+    lotDescriptions: [],
+    vendors: [],
+    departments: [],
+  });
+
   // Zip code validation state
   const [zipCodeValidation, setZipCodeValidation] = useState<{
     isValid: boolean | null;
@@ -473,32 +475,6 @@ export default function ListItemPage() {
   const [showVideoFrames, setShowVideoFrames] = useState(false);
   const [showVideoPreview, setShowVideoPreview] = useState(false);
 
-  // Helper function to get confidence color
-  const getConfidenceColor = (level: string) => {
-    switch (level?.toLowerCase()) {
-      case "high":
-        return "text-green-600 bg-green-100";
-      case "medium":
-        return "text-yellow-600 bg-yellow-100";
-      case "low":
-        return "text-red-600 bg-red-100";
-      default:
-        return "text-gray-600 bg-gray-100";
-    }
-  };
-
-  // TODO: Re-enable staged photo state in Phase 2
-  // Staged photo state
-  // const [stagedPhoto, setStagedPhoto] = useState<{
-  //   url: string | null;
-  //   generating: boolean;
-  //   error: string | null;
-  // }>({
-  //   url: null,
-  //   generating: false,
-  //   error: null,
-  // });
-
   // Phase 2: Staged photo data state
   const [stagedPhotoData, setStagedPhotoData] = useState<{
     referenceImageUrl: string;
@@ -509,129 +485,89 @@ export default function ListItemPage() {
     generatedImageUrl?: string;
   } | null>(null);
 
+  // Refs and other hooks
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  // Tag management functions
-  const addTag = () => {
-    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
-      setTags([...tags, tagInput.trim()]);
-      setTagInput("");
-    }
-  };
+  // Video upload handlers (memoized to prevent unnecessary re-renders) - MOVED BEFORE useEffect
+  const handleVideoUploaded = useCallback(
+    async (data: {
+      videoId: string;
+      frameUrls: string[];
+      thumbnailUrl: string;
+      duration: number;
+    }) => {
+      console.log("Video uploaded successfully:", data);
+      console.log("Data structure:", JSON.stringify(data, null, 2));
+      console.log("Frame URLs received:", data.frameUrls);
+      console.log("Frame count:", data.frameUrls?.length || 0);
+      // Generate video URL from videoId using CloudFront domain
+      const cdnDomain =
+        process.env.NEXT_PUBLIC_CDN_URL ||
+        "https://dtlqyjbwka60p.cloudfront.net";
+      const videoUrl = `${cdnDomain}/processed/videos/${data.videoId}.mp4`;
 
-  const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter((tag) => tag !== tagToRemove));
-  };
+      setVideoData({
+        videoId: data.videoId,
+        videoUrl: videoUrl,
+        thumbnailUrl: data.thumbnailUrl,
+        frameUrls: data.frameUrls,
+        duration: data.duration,
+        processing: false,
+        error: null,
+        uploaded: true,
+      });
 
-  // Conditional logic - must come after all hooks
-  // Show loading while checking permissions
-  if (permissionsLoading) {
+      // Show a brief success message
+      setTimeout(() => {
+        setVideoData((prev) => ({ ...prev, processing: false }));
+      }, 3000); // Hide processing indicator after 3 seconds
+    },
+    []
+  );
+
+  const handleVideoStarted = useCallback(() => {
+    // Video upload started - mark as processing and allow user to continue
+    setVideoData((prev) => ({
+      ...prev,
+      processing: true,
+      uploaded: true,
+    }));
+  }, []);
+
+  const handleVideoError = useCallback((error: string) => {
+    console.error("Video upload error:", error);
+    setVideoData((prev) => ({
+      ...prev,
+      error,
+      processing: false,
+    }));
+  }, []);
+
+  // Helper functions - moved here to be available for hooks
+  const hasMinimumPhotos = () => {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p>Loading...</p>
-        </div>
-      </div>
+      (photos.hero?.file || photos.hero?.url) &&
+      (photos.back?.file || photos.back?.url) &&
+      (photos.proof?.file || photos.proof?.url)
     );
-  }
+  };
 
-  // TEMPORARY: Debug override - allow access if user is logged in
-  const debugOverride = session?.user;
+  const generateItemId = () => {
+    return Math.random().toString(36).substring(2, 10).toUpperCase();
+  };
 
-  // Show access denied if user is a buyer (and not using debug override)
-  if (!canListItems && !debugOverride) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Access Restricted
-          </h1>
-          <p className="text-gray-600 mb-4">
-            This feature is only available to sellers. You can browse and
-            purchase items instead.
-          </p>
+  const calculateReservePrice = (price: number) => {
+    return price * 0.6; // 60% of list price
+  };
 
-          {/* Debug Information */}
-          <div className="bg-gray-100 p-4 rounded-lg mb-4 text-left text-sm">
-            <h3 className="font-semibold mb-2">Debug Information:</h3>
-            <p>
-              <strong>Session User ID:</strong> {session?.user?.id || "None"}
-            </p>
-            <p>
-              <strong>Seller Status:</strong> {isSeller ? "Yes" : "No"}
-            </p>
-            <p>
-              <strong>Buyer Status:</strong> {isBuyer ? "Yes" : "No"}
-            </p>
-            <p>
-              <strong>Can List Items:</strong> {canListItems.toString()}
-            </p>
-            <p>
-              <strong>Permissions Loading:</strong>{" "}
-              {permissionsLoading.toString()}
-            </p>
-
-            <div className="mt-3 pt-3 border-t border-gray-300">
-              <p className="text-xs text-gray-600 mb-2">
-                Need more info? Check your user data:
-              </p>
-              <a
-                href="/api/debug/user-info"
-                target="_blank"
-                className="text-blue-600 hover:text-blue-800 underline text-xs"
-              >
-                View User Data
-              </a>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <Button onClick={() => routerNavigation.push("/listings")}>
-              Browse Items
-            </Button>
-
-            {/* Temporary Debug Override */}
-            <Button
-              onClick={() => {
-                console.log("Debug: Manual override clicked");
-                // Force refresh the page to test if it's a state issue
-                window.location.reload();
-              }}
-              variant="outline"
-              className="ml-2"
-            >
-              Debug: Force Refresh
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Debug message if using override
-  if (debugOverride && !canListItems) {
-    console.log(
-      "ListItemPage: Using debug override - user logged in but no permission"
-    );
-  }
-
-  const handleTagKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      addTag();
+  // UseEffect hooks - placed after all state declarations to avoid hook order issues
+  // Redirect users without listing permissions away from this page
+  useEffect(() => {
+    if (!permissionsLoading && !canListItems) {
+      routerNavigation.push("/listings"); // Redirect to browse instead
     }
-  };
-
-  // Safety check function for map operations
-  const safeMap = <T, R>(
-    array: T[] | undefined | null,
-    callback: (item: T, index: number) => R
-  ): R[] => {
-    return Array.isArray(array) ? array.map(callback) : [];
-  };
+  }, [canListItems, permissionsLoading, routerNavigation]);
 
   // Set neighborhood based on zip code (simplified without validation)
   useEffect(() => {
@@ -661,6 +597,208 @@ export default function ListItemPage() {
       }
     }
   }, [step, photos.hero, photos.back]);
+
+  // Generate itemId once when component mounts
+  useEffect(() => {
+    if (!itemId) {
+      setItemId(generateItemId());
+    }
+  }, [itemId]);
+
+  // Auto-populate reserve price when list price changes
+  useEffect(() => {
+    if (price && !reservePrice) {
+      setReservePrice(calculateReservePrice(parseFloat(price)).toFixed(2));
+    }
+  }, [price, reservePrice]);
+
+  // Fetch user's ZIP code from profile
+  useEffect(() => {
+    const fetchUserZipCode = async () => {
+      try {
+        const response = await fetch("/api/profile");
+        if (response.ok) {
+          const userData = await response.json();
+          if (userData.user?.zipCode && !zipCode) {
+            setZipCode(userData.user.zipCode);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user ZIP code:", error);
+      }
+    };
+
+    fetchUserZipCode();
+  }, [zipCode]);
+
+  // Load inventory items for modal
+  const loadInventoryItems = async () => {
+    setIsLoadingInventory(true);
+    try {
+      const params = new URLSearchParams();
+      if (inventoryFilters.lotDescription !== "all")
+        params.append("lotDescription", inventoryFilters.lotDescription);
+      if (inventoryFilters.vendor !== "all")
+        params.append("vendor", inventoryFilters.vendor);
+      if (inventoryFilters.department !== "all")
+        params.append("department", inventoryFilters.department);
+      params.append("limit", "50");
+
+      const response = await fetch(
+        `/api/inventory/search?${params.toString()}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setInventoryItems(data.items || []);
+        setAvailableFilters(
+          data.filters || { lotDescriptions: [], vendors: [], departments: [] }
+        );
+      } else {
+        console.error("Failed to load inventory");
+        setInventoryItems([]);
+      }
+    } catch (error) {
+      console.error("Error loading inventory:", error);
+      setInventoryItems([]);
+    } finally {
+      setIsLoadingInventory(false);
+    }
+  };
+
+  // Load inventory when modal opens or filters change
+  useEffect(() => {
+    if (showInventoryModal) {
+      loadInventoryItems();
+    }
+  }, [showInventoryModal, inventoryFilters]);
+
+  // Cleanup modal state on component unmount
+  useEffect(() => {
+    return () => {
+      setShowInventoryModal(false);
+    };
+  }, []);
+
+  // Handle escape key to close inventory modal
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && showInventoryModal) {
+        setShowInventoryModal(false);
+      }
+    };
+
+    if (showInventoryModal) {
+      document.addEventListener("keydown", handleEscape);
+      return () => {
+        document.removeEventListener("keydown", handleEscape);
+      };
+    }
+  }, [showInventoryModal]);
+
+  // Helper function to get confidence color
+  const getConfidenceColor = (level: string) => {
+    switch (level?.toLowerCase()) {
+      case "high":
+        return "text-green-600 bg-green-100";
+      case "medium":
+        return "text-yellow-600 bg-yellow-100";
+      case "low":
+        return "text-red-600 bg-red-100";
+      default:
+        return "text-gray-600 bg-gray-100";
+    }
+  };
+
+  // TODO: Re-enable staged photo state in Phase 2
+  // Staged photo state
+  // const [stagedPhoto, setStagedPhoto] = useState<{
+  //   url: string | null;
+  //   generating: boolean;
+  //   error: string | null;
+  // }>({
+  //   url: null,
+  //   generating: false,
+  //   error: null,
+  // });
+
+  // Tag management functions
+  const addTag = () => {
+    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+      setTags([...tags, tagInput.trim()]);
+      setTagInput("");
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter((tag) => tag !== tagToRemove));
+  };
+
+  // Conditional logic - must come after all hooks
+  // Show loading while checking permissions
+  if (permissionsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-blue-600" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            Checking Your Permissions
+          </h2>
+          <p className="text-gray-600">
+            Please wait while we verify your access level...
+          </p>
+          <div className="mt-4 text-sm text-gray-500">
+            This may take a few seconds
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show access denied if user does not have permission to list items
+  if (!canListItems) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Access Restricted
+          </h1>
+          <p className="text-gray-600 mb-4">
+            This feature is only available to sellers. You can browse and
+            purchase items instead.
+          </p>
+
+          <div className="space-y-3">
+            <Button onClick={() => routerNavigation.push("/listings")}>
+              Browse Items
+            </Button>
+            <Button
+              onClick={() => window.location.reload()}
+              variant="outline"
+              className="ml-2"
+            >
+              Retry Loading
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const handleTagKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addTag();
+    }
+  };
+
+  // Safety check function for map operations
+  const safeMap = <T, R>(
+    array: T[] | undefined | null,
+    callback: (item: T, index: number) => R
+  ): R[] => {
+    return Array.isArray(array) ? array.map(callback) : [];
+  };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -738,56 +876,7 @@ export default function ListItemPage() {
     }
   };
 
-  // Video upload handlers
-  const handleVideoUploaded = async (data: {
-    videoId: string;
-    frameUrls: string[];
-    thumbnailUrl: string;
-    duration: number;
-  }) => {
-    console.log("Video uploaded successfully:", data);
-    console.log("Data structure:", JSON.stringify(data, null, 2));
-    console.log("Frame URLs received:", data.frameUrls);
-    console.log("Frame count:", data.frameUrls?.length || 0);
-    // Generate video URL from videoId using CloudFront domain
-    const cdnDomain =
-      process.env.NEXT_PUBLIC_CDN_URL || "https://dtlqyjbwka60p.cloudfront.net";
-    const videoUrl = `${cdnDomain}/processed/videos/${data.videoId}.mp4`;
-
-    setVideoData({
-      videoId: data.videoId,
-      videoUrl: videoUrl,
-      thumbnailUrl: data.thumbnailUrl,
-      frameUrls: data.frameUrls,
-      duration: data.duration,
-      processing: false,
-      error: null,
-      uploaded: true,
-    });
-
-    // Show a brief success message
-    setTimeout(() => {
-      setVideoData((prev) => ({ ...prev, processing: false }));
-    }, 3000); // Hide processing indicator after 3 seconds
-  };
-
-  const handleVideoStarted = () => {
-    // Video upload started - mark as processing and allow user to continue
-    setVideoData((prev) => ({
-      ...prev,
-      processing: true,
-      uploaded: true,
-    }));
-  };
-
-  const handleVideoError = (error: string) => {
-    console.error("Video upload error:", error);
-    setVideoData((prev) => ({
-      ...prev,
-      error,
-      processing: false,
-    }));
-  };
+  // Video upload handlers moved to top of component to fix hooks order
 
   const handleVideoProcessing = (processing: boolean) => {
     setVideoData((prev) => ({
@@ -1086,6 +1175,31 @@ export default function ListItemPage() {
                   duration: videoData.duration || 0,
                 }
               : undefined,
+          inventoryItem: selectedInventoryItem
+            ? {
+                description: selectedInventoryItem.description,
+                vendor: selectedInventoryItem.vendor,
+                category: selectedInventoryItem.category,
+                department: selectedInventoryItem.department,
+                itemNumber: selectedInventoryItem.itemNumber,
+                lotNumber: selectedInventoryItem.lotNumber,
+                quantity: selectedInventoryItem.quantity,
+                unitRetail: selectedInventoryItem.unitRetail,
+                extRetail: selectedInventoryItem.extRetail,
+                categoryCode: selectedInventoryItem.categoryCode,
+                deptCode: selectedInventoryItem.deptCode,
+                // Note: purchasePrice is excluded for privacy
+                list: selectedInventoryItem.list
+                  ? {
+                      name: selectedInventoryItem.list.name,
+                      briefDescription:
+                        selectedInventoryItem.list.briefDescription,
+                      datePurchased: selectedInventoryItem.list.datePurchased,
+                      lotNumber: selectedInventoryItem.list.lotNumber,
+                    }
+                  : undefined,
+              }
+            : undefined,
           mode: "comprehensive", // Use comprehensive mode for full analysis
         }),
       });
@@ -1347,15 +1461,6 @@ export default function ListItemPage() {
     return true;
   };
 
-  // Helper function to check if minimum photo requirements are met
-  const hasMinimumPhotos = () => {
-    return (
-      (photos.hero?.file || photos.hero?.url) &&
-      (photos.back?.file || photos.back?.url) &&
-      (photos.proof?.file || photos.proof?.url)
-    );
-  };
-
   const isFormValid =
     (photos.hero?.file || photos.hero?.url) &&
     (photos.back?.file || photos.back?.url) &&
@@ -1436,6 +1541,9 @@ export default function ListItemPage() {
           itemId: generatedListingId || itemId,
           qrCodeUrl: generatedQRCode || generateQRCode(itemId),
           videoId: videoData.videoId || null, // Add video ID to link video to listing
+          // Inventory item relationship
+          inventoryItemId: selectedInventoryItem?.id || null,
+          inventoryListId: selectedInventoryItem?.list?.id || null,
         };
 
         console.log("Submitting listing with data:", formData);
@@ -1487,27 +1595,12 @@ export default function ListItemPage() {
   };
 
   // Generate auto-generated fields preview
-  const generateItemId = () => {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let result = "";
-    for (let i = 0; i < 6; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-  };
 
   const generateQRCode = (itemId: string) => {
     // Generate the full URL for the QR code
     const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
     return `${baseUrl}/list-item/${itemId}`;
   };
-
-  const calculateFee = (price: number) => {
-    return price * 0.085; // 8.5% fee
-  };
-
-  const [reservePrice, setReservePrice] = useState<string>("");
-  const [itemId, setItemId] = useState<string>("");
 
   // Progress steps configuration
   const progressSteps: Step[] = [
@@ -1533,43 +1626,6 @@ export default function ListItemPage() {
       required: true,
     },
   ];
-
-  // Generate itemId once when component mounts
-  useEffect(() => {
-    if (!itemId) {
-      setItemId(generateItemId());
-    }
-  }, [itemId]);
-
-  const calculateReservePrice = (price: number) => {
-    return price * 0.6; // 60% of list price
-  };
-
-  // Auto-populate reserve price when list price changes
-  useEffect(() => {
-    if (price && !reservePrice) {
-      setReservePrice(calculateReservePrice(parseFloat(price)).toFixed(2));
-    }
-  }, [price, reservePrice]);
-
-  // Fetch user's ZIP code from profile
-  useEffect(() => {
-    const fetchUserZipCode = async () => {
-      try {
-        const response = await fetch("/api/profile");
-        if (response.ok) {
-          const userData = await response.json();
-          if (userData.user?.zipCode && !zipCode) {
-            setZipCode(userData.user.zipCode);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching user ZIP code:", error);
-      }
-    };
-
-    fetchUserZipCode();
-  }, [zipCode]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -1624,6 +1680,132 @@ export default function ListItemPage() {
                   </div>
                 </div>
               )}
+
+              {/* Inventory Selection Section */}
+              <div className="mt-8 w-full max-w-2xl">
+                <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-lg p-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                      <svg
+                        className="w-4 h-4 text-white"
+                        fill="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M20 6h-2.18c.11-.31.18-.65.18-1a2.996 2.996 0 0 0-5.5-1.65l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-blue-800">
+                      Inventory Item Selection
+                    </h3>
+                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                      Enhanced AI Data
+                    </span>
+                  </div>
+                  <p className="text-sm text-blue-700 mb-4 leading-relaxed">
+                    Is this item already in your inventory? Selecting an
+                    inventory item will provide detailed information to the AI
+                    for better listing generation.
+                  </p>
+
+                  {/* Is this item in inventory? */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-blue-800 mb-2">
+                      Is this item in your inventory?
+                    </label>
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsItemInInventory(true);
+                          setShowInventoryModal(true);
+                        }}
+                        className={`px-4 py-2 rounded-lg border transition-colors ${
+                          isItemInInventory === true
+                            ? "bg-blue-500 text-white border-blue-500"
+                            : "bg-white text-blue-700 border-blue-300 hover:bg-blue-50"
+                        }`}
+                      >
+                        Yes, select from inventory
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsItemInInventory(false);
+                          setShowInventoryModal(false);
+                          setSelectedInventoryItem(null);
+                        }}
+                        className={`px-4 py-2 rounded-lg border transition-colors ${
+                          isItemInInventory === false
+                            ? "bg-blue-500 text-white border-blue-500"
+                            : "bg-white text-blue-700 border-blue-300 hover:bg-blue-50"
+                        }`}
+                      >
+                        No, new item
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Inventory Selection Status */}
+                  {isItemInInventory === true && (
+                    <div className="mb-4">
+                      {selectedInventoryItem ? (
+                        <div className="p-3 bg-white border border-blue-200 rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium text-gray-900">
+                                ✓ Selected:{" "}
+                                {selectedInventoryItem.description ||
+                                  "No description"}
+                              </div>
+                              <div className="text-sm text-gray-600 mt-1">
+                                {selectedInventoryItem.vendor &&
+                                  `Vendor: ${selectedInventoryItem.vendor}`}
+                                {selectedInventoryItem.vendor &&
+                                  selectedInventoryItem.category &&
+                                  " • "}
+                                {selectedInventoryItem.category &&
+                                  `Category: ${selectedInventoryItem.category}`}
+                                {selectedInventoryItem.unitRetail && (
+                                  <>
+                                    {(selectedInventoryItem.vendor ||
+                                      selectedInventoryItem.category) &&
+                                      " • "}
+                                    <span className="text-green-600 font-medium">
+                                      ${selectedInventoryItem.unitRetail}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setShowInventoryModal(true)}
+                              className="text-blue-600 hover:text-blue-800 text-sm underline"
+                            >
+                              Change
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <div className="text-gray-600">
+                              No inventory item selected
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setShowInventoryModal(true)}
+                              className="px-3 py-1 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors"
+                            >
+                              Browse Inventory
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
 
               {/* User Input Section - Item Description for AI */}
               <div className="mt-8 w-full max-w-2xl">
@@ -4306,6 +4488,303 @@ export default function ListItemPage() {
           </>
         )}
       </div>
+
+      {/* Inventory Selection Modal */}
+      {showInventoryModal && isItemInInventory === true && (
+        <div
+          key="inventory-modal"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowInventoryModal(false);
+            }
+          }}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-blue-200 p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-blue-900">
+                    Select Inventory Item
+                  </h2>
+                  <p className="text-blue-700 mt-1">
+                    Choose an item to enhance your listing with detailed
+                    information
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowInventoryModal(false)}
+                  className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
+                >
+                  <svg
+                    className="w-6 h-6 text-blue-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Filters */}
+              <div className="mt-4 flex flex-wrap gap-3">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-blue-800">
+                    Lot Description:
+                  </label>
+                  <select
+                    value={inventoryFilters.lotDescription}
+                    onChange={(e) =>
+                      setInventoryFilters((prev) => ({
+                        ...prev,
+                        lotDescription: e.target.value,
+                      }))
+                    }
+                    className="px-3 py-1 border border-blue-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="all">All Lots</option>
+                    {availableFilters.lotDescriptions.map((lotDescription) => (
+                      <option key={lotDescription} value={lotDescription}>
+                        {lotDescription}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-blue-800">
+                    Vendor:
+                  </label>
+                  <select
+                    value={inventoryFilters.vendor}
+                    onChange={(e) =>
+                      setInventoryFilters((prev) => ({
+                        ...prev,
+                        vendor: e.target.value,
+                      }))
+                    }
+                    className="px-3 py-1 border border-blue-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="all">All Vendors</option>
+                    {availableFilters.vendors.map((vendor) => (
+                      <option key={vendor} value={vendor}>
+                        {vendor}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-blue-800">
+                    Department:
+                  </label>
+                  <select
+                    value={inventoryFilters.department}
+                    onChange={(e) =>
+                      setInventoryFilters((prev) => ({
+                        ...prev,
+                        department: e.target.value,
+                      }))
+                    }
+                    className="px-3 py-1 border border-blue-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="all">All Departments</option>
+                    {availableFilters.departments.map((department) => (
+                      <option key={department} value={department}>
+                        {department}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+              {isLoadingInventory ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+                    <p className="text-gray-600">Loading inventory items...</p>
+                  </div>
+                </div>
+              ) : inventoryItems.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                    <svg
+                      className="w-8 h-8 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m13-8l-2-2M7 5l-2 2M8 12l4-4 4 4"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    No items found
+                  </h3>
+                  <p className="text-gray-600">
+                    Try adjusting your filters or check back later.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {inventoryItems.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => {
+                        setSelectedInventoryItem(item);
+                        // Small delay to ensure proper DOM cleanup
+                        setTimeout(() => setShowInventoryModal(false), 0);
+                      }}
+                      className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-lg hover:border-blue-300 transition-all duration-200 cursor-pointer group"
+                    >
+                      {/* Item Header */}
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h3 className="font-medium text-gray-900 group-hover:text-blue-900 transition-colors">
+                            {item.description || "No description"}
+                          </h3>
+                          {item.itemNumber && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              #{item.itemNumber}
+                            </p>
+                          )}
+                        </div>
+                        {item.unitRetail && (
+                          <div className="ml-2 text-right">
+                            <span className="text-lg font-semibold text-green-600">
+                              ${item.unitRetail}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Item Details */}
+                      <div className="space-y-2 mb-3">
+                        {item.vendor && (
+                          <div className="flex items-center text-sm">
+                            <svg
+                              className="w-4 h-4 text-gray-400 mr-2"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                              />
+                            </svg>
+                            <span className="text-gray-600">{item.vendor}</span>
+                          </div>
+                        )}
+
+                        {item.category && (
+                          <div className="flex items-center text-sm">
+                            <svg
+                              className="w-4 h-4 text-gray-400 mr-2"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                              />
+                            </svg>
+                            <span className="text-gray-600">
+                              {item.category}
+                            </span>
+                          </div>
+                        )}
+
+                        {item.quantity && (
+                          <div className="flex items-center text-sm">
+                            <svg
+                              className="w-4 h-4 text-gray-400 mr-2"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"
+                              />
+                            </svg>
+                            <span className="text-gray-600">
+                              Qty: {item.quantity}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Inventory List Info */}
+                      {item.list && (
+                        <div className="pt-3 border-t border-gray-100">
+                          <p className="text-xs text-blue-600 font-medium">
+                            {item.list.name}
+                          </p>
+                          {item.list.datePurchased && (
+                            <p className="text-xs text-gray-500">
+                              Purchased:{" "}
+                              {new Date(
+                                item.list.datePurchased
+                              ).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Hover Effect */}
+                      <div className="mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="text-xs text-blue-600 font-medium">
+                          Click to select this item
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-gray-50 border-t border-gray-200 p-4 flex justify-between items-center">
+              <div className="text-sm text-gray-600">
+                {inventoryItems.length} items available
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInventoryModal(false)}
+                className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

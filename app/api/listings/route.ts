@@ -104,6 +104,9 @@ export async function POST(request: NextRequest) {
       // Treasure fields
       isTreasure,
       treasureReason,
+      // Inventory relationship fields
+      inventoryItemId,
+      inventoryListId,
     } = body;
 
     // Validate required fields
@@ -219,6 +222,13 @@ export async function POST(request: NextRequest) {
               id: videoId
             }
           } : undefined,
+          // Inventory relationships
+          inventoryItems: inventoryItemId ? {
+            connect: { id: inventoryItemId }
+          } : undefined,
+          inventoryLists: inventoryListId ? {
+            connect: { id: inventoryListId }
+          } : undefined,
           priceHistory: {
             create: {
               price: parseFloat(price),
@@ -287,6 +297,13 @@ export async function POST(request: NextRequest) {
                 connect: {
                   id: videoId
                 }
+              } : undefined,
+              // Inventory relationships
+              inventoryItems: inventoryItemId ? {
+                connect: { id: inventoryItemId }
+              } : undefined,
+              inventoryLists: inventoryListId ? {
+                connect: { id: inventoryListId }
               } : undefined,
               priceHistory: {
                 create: {

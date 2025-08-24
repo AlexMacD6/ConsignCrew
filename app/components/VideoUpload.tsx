@@ -38,7 +38,6 @@ export default function VideoUpload({
   onStarted,
   disabled = false,
 }: VideoUploadProps) {
-  console.log("VideoUpload component rendered");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -436,36 +435,13 @@ export default function VideoUpload({
       )}
 
       {/* Video Processing Modal */}
-      {console.log(
-        "VideoUpload render - showProcessingModal:",
-        showProcessingModal,
-        "currentVideoId:",
-        currentVideoId
-      )}
-      {console.log(
-        "Should render modal?",
-        showProcessingModal && currentVideoId
-      )}
-      {showProcessingModal && currentVideoId ? (
-        <>
-          {console.log(
-            "✅ RENDERING VideoProcessingModal with videoId:",
-            currentVideoId
-          )}
-          <VideoProcessingModal
-            videoId={currentVideoId}
-            isOpen={showProcessingModal}
-            onClose={handleProcessingModalClose}
-            onComplete={handleProcessingComplete}
-          />
-        </>
-      ) : (
-        console.log(
-          "❌ NOT rendering modal - showProcessingModal:",
-          showProcessingModal,
-          "currentVideoId:",
-          currentVideoId
-        )
+      {showProcessingModal && currentVideoId && (
+        <VideoProcessingModal
+          videoId={currentVideoId}
+          isOpen={showProcessingModal}
+          onClose={handleProcessingModalClose}
+          onComplete={handleProcessingComplete}
+        />
       )}
     </div>
   );

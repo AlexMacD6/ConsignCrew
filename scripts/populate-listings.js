@@ -21,7 +21,6 @@ const mockListings = [
     price_range_high: 1100,
     list_price: 899.99,
     reserve_price: 650.0,
-    fee_pct: 8.5,
     estimated_retail_price: 1299.99,
 
     // Provided by seller
@@ -64,7 +63,6 @@ const mockListings = [
     price_range_high: 850,
     list_price: 749.99,
     reserve_price: 550.0,
-    fee_pct: 7.5,
     estimated_retail_price: 999.99,
 
     // Provided by seller
@@ -107,7 +105,6 @@ const mockListings = [
     price_range_high: 600,
     list_price: 450.0,
     reserve_price: 350.0,
-    fee_pct: 9.0,
     estimated_retail_price: null,
 
     // Provided by seller
@@ -150,7 +147,6 @@ const mockListings = [
     price_range_high: 350,
     list_price: 299.99,
     reserve_price: 200.0,
-    fee_pct: 6.5,
     estimated_retail_price: 399.99,
 
     // Provided by seller
@@ -193,7 +189,6 @@ const mockListings = [
     price_range_high: 700,
     list_price: 599.99,
     reserve_price: 450.0,
-    fee_pct: 8.0,
     estimated_retail_price: 899.99,
 
     // Provided by seller
@@ -236,7 +231,6 @@ const mockListings = [
     price_range_high: 120,
     list_price: 89.99,
     reserve_price: 60.0,
-    fee_pct: 8.5,
     estimated_retail_price: 149.99,
 
     // Provided by seller
@@ -388,7 +382,6 @@ async function populateListings() {
         estimatedRetailPrice: mockListing.estimated_retail_price || null,
         discountSchedule: {
           type: mockListing.discount_schedule,
-          feePercentage: mockListing.fee_pct,
           reservePrice: mockListing.reserve_price
         },
         status: "active",

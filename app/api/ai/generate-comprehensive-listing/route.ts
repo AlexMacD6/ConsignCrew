@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
       video,
       additionalInfo,
       userInput,
+      inventoryItem,
       mode = 'comprehensive', // 'comprehensive' or 'formFields' mode
     } = body;
 
@@ -218,6 +219,37 @@ PRODUCT INFORMATION:
 - Video Available: ${accessibleVideoUrl ? 'Yes' : 'No'}
 - Video Keyframes Available: ${accessibleVideoFrameUrls.length} frames
 - Video Duration: ${video?.duration ? `${video.duration.toFixed(1)} seconds` : 'Unknown'}
+
+${inventoryItem ? `
+INVENTORY ITEM DATA (Use this detailed information to enhance accuracy):
+- Description: ${inventoryItem.description || 'Not provided'}
+- Vendor/Manufacturer: ${inventoryItem.vendor || 'Not provided'}
+- Category: ${inventoryItem.category || 'Not provided'}
+- Department: ${inventoryItem.department || 'Not provided'}
+- Item Number: ${inventoryItem.itemNumber || 'Not provided'}
+- Lot Number: ${inventoryItem.lotNumber || 'Not provided'}
+- Quantity Available: ${inventoryItem.quantity || 'Not provided'}
+- Unit Retail Price: ${inventoryItem.unitRetail ? `$${inventoryItem.unitRetail}` : 'Not provided'}
+- Extended Retail Value: ${inventoryItem.extRetail ? `$${inventoryItem.extRetail}` : 'Not provided'}
+- Category Code: ${inventoryItem.categoryCode || 'Not provided'}
+- Department Code: ${inventoryItem.deptCode || 'Not provided'}
+${inventoryItem.list ? `
+- Inventory List: ${inventoryItem.list.name || 'Not provided'}
+- List Description: ${inventoryItem.list.briefDescription || 'Not provided'}
+- Purchase Date: ${inventoryItem.list.datePurchased ? new Date(inventoryItem.list.datePurchased).toLocaleDateString() : 'Not provided'}
+- List Lot Number: ${inventoryItem.list.lotNumber || 'Not provided'}` : ''}
+
+IMPORTANT: Use this inventory data to:
+1. Verify and improve product title accuracy using vendor and description details
+2. Enhance product description with vendor/manufacturer details and specifications
+3. Set appropriate category and department classifications from inventory codes
+4. Calculate competitive pricing: use unitRetail as estimatedRetailPrice, suggest listPrice 50-80% of retail based on condition
+5. Include relevant technical specifications and features from description
+6. Improve brand identification if vendor information is available
+7. Use itemNumber as potential modelNumber if it represents a product model
+8. Consider purchase date for age-related condition assessment
+9. Reference quantity for availability context in description
+` : ''}
 
 VISUAL ANALYSIS INSTRUCTIONS:
 ${accessiblePhotoUrls.length > 0 || accessibleVideoFrameUrls.length > 0 ? `
