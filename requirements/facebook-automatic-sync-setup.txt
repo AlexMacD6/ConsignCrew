@@ -104,3 +104,4 @@ Your Database → Facebook Sync Service → Facebook API → Facebook Catalog �
 Your Facebook shop will now automatically stay in sync with your database without any manual intervention!
 
 
+
