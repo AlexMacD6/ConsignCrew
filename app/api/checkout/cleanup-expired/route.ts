@@ -85,16 +85,36 @@ export async function POST(request: NextRequest) {
     if (order.status === 'CANCELLED') {
       console.log('Cleanup expired: Order already cancelled, just updating listing status');
       
-      // Update the listing to active status and remove hold
-      await prisma.listing.update({
-        where: { id: order.listing.id },
-        data: {
-          status: 'active',
-          isHeld: false,
-          heldUntil: null,
-          updatedAt: new Date(),
-        },
-      });
+      // Check if this is a multi-item order
+      const priceBreakdown = (order as any).shippingAddress?.priceBreakdown;
+      const isMultiItem = priceBreakdown?.isMultiItem;
+      const items = priceBreakdown?.items || [];
+
+      if (isMultiItem && items.length > 1) {
+        // Update all listings in multi-item order
+        for (const item of items) {
+          await prisma.listing.update({
+            where: { id: item.listingId },
+            data: {
+              status: 'active',
+              isHeld: false,
+              heldUntil: null,
+              updatedAt: new Date(),
+            },
+          });
+        }
+      } else {
+        // Update single listing
+        await prisma.listing.update({
+          where: { id: order.listing.id },
+          data: {
+            status: 'active',
+            isHeld: false,
+            heldUntil: null,
+            updatedAt: new Date(),
+          },
+        });
+      }
 
       return NextResponse.json({
         success: true,
@@ -120,20 +140,45 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Update the listing to active status and remove hold
-      const updatedListing = await tx.listing.update({
-        where: { id: order.listing.id },
-        data: {
-          status: 'active',
-          isHeld: false,
-          heldUntil: null,
-          updatedAt: new Date(),
-        },
-      });
+      // Check if this is a multi-item order and update all listings
+      const priceBreakdown = (updatedOrder as any).shippingAddress?.priceBreakdown;
+      const isMultiItem = priceBreakdown?.isMultiItem;
+      const items = priceBreakdown?.items || [];
+
+      let updatedListing;
+      if (isMultiItem && items.length > 1) {
+        // Update all listings in multi-item order
+        for (const item of items) {
+          await tx.listing.update({
+            where: { id: item.listingId },
+            data: {
+              status: 'active',
+              isHeld: false,
+              heldUntil: null,
+              updatedAt: new Date(),
+            },
+          });
+        }
+        // For response, use the first listing
+        updatedListing = await tx.listing.findUnique({
+          where: { id: order.listing.id }
+        });
+      } else {
+        // Update single listing
+        updatedListing = await tx.listing.update({
+          where: { id: order.listing.id },
+          data: {
+            status: 'active',
+            isHeld: false,
+            heldUntil: null,
+            updatedAt: new Date(),
+          },
+        });
+      }
 
       // If this order came from cart (has price breakdown in shippingAddress), 
-      // restore the item to the user's cart
-      const priceBreakdown = (order as any).shippingAddress?.priceBreakdown;
+      // restore the items to the user's cart
+      // Note: priceBreakdown is already available from above
       let restoredToCart = false;
       
       if (priceBreakdown) {
@@ -148,26 +193,52 @@ export async function POST(request: NextRequest) {
           });
         }
 
-        // Check if item is already in cart (shouldn't be, but just in case)
-        const existingCartItem = await tx.cartItem.findUnique({
-          where: {
-            cartId_listingId: {
-              cartId: cart.id,
-              listingId: order.listing.id,
-            },
-          },
-        });
+        // Restore all items to cart
+        if (isMultiItem && items.length > 1) {
+          // Restore multiple items
+          for (const item of items) {
+            // Check if item is already in cart (shouldn't be, but just in case)
+            const existingCartItem = await tx.cartItem.findUnique({
+              where: {
+                cartId_listingId: {
+                  cartId: cart.id,
+                  listingId: item.listingId,
+                },
+              },
+            });
 
-        if (!existingCartItem) {
-          // Add the item back to cart
-          await tx.cartItem.create({
-            data: {
-              cartId: cart.id,
-              listingId: order.listing.id,
-              quantity: 1,
+            if (!existingCartItem) {
+              await tx.cartItem.create({
+                data: {
+                  cartId: cart.id,
+                  listingId: item.listingId,
+                  quantity: item.quantity,
+                },
+              });
+            }
+          }
+          restoredToCart = true;
+        } else {
+          // Restore single item
+          const existingCartItem = await tx.cartItem.findUnique({
+            where: {
+              cartId_listingId: {
+                cartId: cart.id,
+                listingId: order.listing.id,
+              },
             },
           });
-          restoredToCart = true;
+
+          if (!existingCartItem) {
+            await tx.cartItem.create({
+              data: {
+                cartId: cart.id,
+                listingId: order.listing.id,
+                quantity: 1,
+              },
+            });
+            restoredToCart = true;
+          }
         }
       }
 

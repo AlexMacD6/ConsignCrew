@@ -176,14 +176,14 @@ export default function CustomQRCode({
       centerLogo.src = "/TreasureHub - Logo Black.png";
     });
 
-    // Calculate spacing: minimal margins to maximize QR code size
-    const margin = 20; // Further reduced to maximize QR code space
+    // Calculate spacing: proper margins to ensure printability within 2" x 3" label
+    const margin = 40; // Increased margin to prevent cut-off on printers
     const availableWidth = labelWidth - margin * 2;
     const availableHeight = labelHeight - margin * 2;
 
-    // Draw TreasureHub banner at the top
+    // Draw TreasureHub banner at the top - reduced size to fit better
     const bannerY = margin;
-    let bannerHeight = 100; // Much bigger banner (2.5x larger)
+    let bannerHeight = 70; // Reduced from 100px to ensure it fits
 
     if (useBannerLogo) {
       // Use the banner logo
@@ -194,9 +194,9 @@ export default function CustomQRCode({
       const bannerX = (labelWidth - bannerWidth) / 2;
       ctx.drawImage(bannerLogo, bannerX, bannerY, bannerWidth, bannerHeight);
     } else {
-      // Fallback to black text (scaled up for larger banner)
+      // Fallback to black text (reduced size to fit better)
       ctx.fillStyle = "#000000"; // Black ink only
-      ctx.font = "bold 64px Arial"; // Much larger font to match banner size
+      ctx.font = "bold 48px Arial"; // Reduced from 64px to fit better
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText("TreasureHub", labelWidth / 2, bannerY + bannerHeight / 2);
@@ -206,14 +206,14 @@ export default function CustomQRCode({
     const spacingBetweenElements = 5; // Minimal spacing to maximize QR code size
 
     // Calculate Item ID text dimensions first to size box appropriately
-    const itemIdFontSize = 90; // Bigger than previous 77px
+    const itemIdFontSize = 70; // Reduced from 90px to fit better
     ctx.font = `bold ${itemIdFontSize}px monospace`;
     const textMetrics = ctx.measureText(itemId);
     const textWidth = textMetrics.width;
     const textHeight = itemIdFontSize; // Approximate height based on font size
 
     // Create a snug-fitting black box around the text with padding
-    const textPadding = 15; // Padding around text
+    const textPadding = 12; // Reduced padding to save space
     const skuBoxWidth = textWidth + textPadding * 2;
     const skuBoxHeight = textHeight + textPadding * 2;
     const skuY = labelHeight - margin - skuBoxHeight;
@@ -262,15 +262,15 @@ export default function CustomQRCode({
 
     // Draw white text inside black box (bigger and centered in the snug box)
     ctx.fillStyle = "#ffffff";
-    ctx.font = `bold ${itemIdFontSize}px monospace`; // Use the calculated font size (90px)
+    ctx.font = `bold ${itemIdFontSize}px monospace`; // Use the calculated font size (70px)
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(itemId, labelWidth / 2, skuY + skuBoxHeight / 2);
 
-    // Add very bold black border around entire label with margin to prevent scanner cut-off
+    // Add border around entire label with proper margin to prevent cut-off
     ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 8; // Slightly thinner border to accommodate margin
-    const borderMargin = 15; // Margin from edge to prevent scanner cut-off
+    ctx.lineWidth = 6; // Reduced border thickness
+    const borderMargin = 30; // Increased margin from edge to prevent cut-off
     ctx.strokeRect(
       borderMargin,
       borderMargin,
@@ -526,13 +526,13 @@ export default function CustomQRCode({
       });
 
       // Use the EXACT same layout as PNG generation
-      const margin = 20;
+      const margin = 40; // Match the PNG generation margin
       const availableWidth = labelWidth - margin * 2;
       const availableHeight = labelHeight - margin * 2;
 
       // Draw TreasureHub banner at the top
       const bannerY = margin;
-      let bannerHeight = 100;
+      let bannerHeight = 70; // Match the PNG generation banner height
 
       if (useBannerLogo) {
         const bannerWidth = Math.min(
@@ -543,7 +543,7 @@ export default function CustomQRCode({
         ctx.drawImage(bannerLogo, bannerX, bannerY, bannerWidth, bannerHeight);
       } else {
         ctx.fillStyle = "#000000";
-        ctx.font = "bold 64px Arial";
+        ctx.font = "bold 48px Arial"; // Match the PNG generation font size
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText("TreasureHub", labelWidth / 2, bannerY + bannerHeight / 2);
@@ -551,13 +551,13 @@ export default function CustomQRCode({
 
       // Calculate layout (exact same as PNG)
       const spacingBetweenElements = 5;
-      const itemIdFontSize = 90;
+      const itemIdFontSize = 70; // Match the PNG generation font size
       ctx.font = `bold ${itemIdFontSize}px monospace`;
       const textMetrics = ctx.measureText(itemId);
       const textWidth = textMetrics.width;
       const textHeight = itemIdFontSize;
 
-      const textPadding = 15;
+      const textPadding = 12; // Match the PNG generation padding
       const skuBoxWidth = textWidth + textPadding * 2;
       const skuBoxHeight = textHeight + textPadding * 2;
       const skuY = labelHeight - margin - skuBoxHeight;
@@ -607,10 +607,10 @@ export default function CustomQRCode({
       ctx.textBaseline = "middle";
       ctx.fillText(itemId, labelWidth / 2, skuY + skuBoxHeight / 2);
 
-      // Add thin white margin border (15px margin from edge)
-      const borderMargin = 15;
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 30; // Thin white border
+      // Add border around entire label with proper margin to prevent cut-off (match PNG)
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 6; // Match the PNG generation border
+      const borderMargin = 30; // Match the PNG generation border margin
       ctx.strokeRect(
         borderMargin,
         borderMargin,
@@ -629,8 +629,8 @@ export default function CustomQRCode({
         compress: true,
       });
 
-      // Add the canvas image to PDF with small margin to prevent cut-off
-      const pdfMargin = 0.05; // 0.05 inch margin
+      // Add the canvas image to PDF with margin to prevent cut-off
+      const pdfMargin = 0.1; // 0.1 inch margin to ensure printability
       pdf.addImage(
         canvasDataURL,
         "PNG",
@@ -672,9 +672,9 @@ export default function CustomQRCode({
   };
 
   return (
-    <div className={`relative inline-block ${className}`}>
+    <div className={`relative block ${className}`}>
       {/* QR Code */}
-      <div className="relative">
+      <div className="relative flex justify-center">
         {isLoading ? (
           <div
             className="bg-gray-100 rounded-lg p-4 text-center"

@@ -967,294 +967,335 @@ export default function CheckoutPage() {
             Order Summary
           </h2>
 
-          <div className="flex gap-4">
-            {/* Item Image */}
-            {order.listing.photos?.hero && (
-              <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                <img
-                  src={order.listing.photos.hero}
-                  alt={order.listing.title}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            )}
+          {(() => {
+            // Check if this is a multi-item order
+            const storedBreakdown = (order as any).shippingAddress
+              ?.priceBreakdown;
+            const isMultiItem = storedBreakdown?.isMultiItem;
+            const items = storedBreakdown?.items || [];
 
-            {/* Item Details */}
-            <div className="flex-1">
-              <h3 className="font-medium text-gray-900 mb-1">
-                {order.listing.title}
-              </h3>
-              <p className="text-sm text-gray-600 mb-2">
-                Item ID: {order.listing.itemId}
-              </p>
-              {/* Price Breakdown with Harris County Sales Tax */}
-              {(() => {
-                // Check if order has stored price breakdown (from cart checkout)
-                const storedBreakdown = (order as any).shippingAddress
-                  ?.priceBreakdown;
-
-                if (storedBreakdown) {
-                  // Use stored price breakdown from cart
-                  const {
-                    subtotal,
-                    deliveryFee,
-                    deliveryCategory: storedDeliveryCategory,
-                    deliveryMethod: storedDeliveryMethod,
-                    tax,
-                    total,
-                  } = storedBreakdown;
-                  const promoDiscount = promoStatus?.valid
-                    ? promoStatus.discount
-                    : 0;
-                  const finalTotal = total - promoDiscount;
-
-                  return (
-                    <div className="text-sm text-gray-800">
-                      <div className="flex items-center justify-between py-0.5">
-                        <span className="text-gray-600">Subtotal</span>
-                        <span className="font-medium">
-                          {formatCurrency(subtotal)}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between py-0.5">
-                        <span className="text-gray-600">
-                          {storedDeliveryMethod === "pickup"
-                            ? "Pickup"
-                            : "Delivery"}
-                          {storedDeliveryMethod === "delivery" &&
-                            ` (${
-                              storedDeliveryCategory === "BULK"
-                                ? "Bulk"
-                                : "Normal"
-                            })`}
-                        </span>
-                        <span className="font-medium">
-                          {deliveryFee > 0
-                            ? formatCurrency(deliveryFee)
-                            : "FREE"}
-                        </span>
-                      </div>
-                      {promoStatus?.valid && (
-                        <div className="flex items-center justify-between py-0.5 text-green-700">
-                          <span className="">Promo Discount</span>
-                          <span className="font-medium">
-                            - {formatCurrency(promoStatus.discount)}
-                          </span>
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between py-0.5">
-                        <span className="text-gray-600">Sales Tax (8.25%)</span>
-                        <span className="font-medium">
-                          {formatCurrency(tax)}
-                        </span>
-                      </div>
-
-                      {/* Promo Code Input */}
-                      <div className="pt-2 mt-2 border-t">
-                        <label className="block text-sm text-gray-600 mb-2">
-                          Promo Code
-                        </label>
-                        <div className="flex gap-2">
-                          <input
-                            value={promo}
-                            onChange={(e) => setPromo(e.target.value)}
-                            placeholder="Enter code"
-                            className="border rounded px-3 py-2 flex-1 text-sm"
-                          />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={async () => {
-                              try {
-                                const res = await fetch(
-                                  "/api/checkout/validate-promo",
-                                  {
-                                    method: "POST",
-                                    headers: {
-                                      "Content-Type": "application/json",
-                                    },
-                                    body: JSON.stringify({
-                                      code: promo,
-                                      subtotal: subtotal,
-                                    }),
-                                  }
-                                );
-                                const data = await res.json();
-                                if (data.valid)
-                                  setPromoStatus({
-                                    valid: true,
-                                    discount: data.discount,
-                                  });
-                                else
-                                  setPromoStatus({ valid: false, discount: 0 });
-                              } catch {
-                                setPromoStatus({ valid: false, discount: 0 });
-                              }
-                            }}
-                          >
-                            Apply
-                          </Button>
-                        </div>
-                        {promoStatus && (
-                          <p
-                            className={`text-xs mt-1 ${
-                              promoStatus.valid
-                                ? "text-green-700"
-                                : "text-red-600"
-                            }`}
-                          >
-                            {promoStatus.valid
-                              ? `Promo applied: -$${promoStatus.discount.toFixed(
-                                  2
-                                )}`
-                              : "Invalid promo code"}
-                          </p>
+            if (isMultiItem && items.length > 1) {
+              // Display multiple items
+              return (
+                <div className="space-y-4">
+                  <h3 className="font-medium text-gray-900 mb-3">
+                    Order Items ({items.length} items)
+                  </h3>
+                  <div className="space-y-3 max-h-60 overflow-y-auto">
+                    {items.map((item: any, index: number) => (
+                      <div
+                        key={index}
+                        className="flex gap-3 p-3 bg-gray-50 rounded-lg"
+                      >
+                        {item.photos?.hero && (
+                          <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                            <img
+                              src={item.photos.hero}
+                              alt={item.title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
                         )}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-gray-900 text-sm truncate">
+                            {item.title}
+                          </h4>
+                          <p className="text-xs text-gray-600 mb-1">
+                            ID: {item.listingItemId}
+                          </p>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-600">
+                              Qty: {item.quantity}
+                            </span>
+                            <span className="text-sm font-medium text-gray-900">
+                              ${item.itemTotal.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-
-                      <div className="flex items-center justify-between pt-2 mt-2 border-t">
-                        <span className="font-semibold">Total</span>
-                        <span className="text-[#D4AF3D] font-semibold">
-                          {formatCurrency(finalTotal)}
-                        </span>
-                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            } else {
+              // Display single item (original layout)
+              return (
+                <div className="flex gap-4">
+                  {/* Item Image */}
+                  {order.listing.photos?.hero && (
+                    <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                      <img
+                        src={order.listing.photos.hero}
+                        alt={order.listing.title}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
-                  );
-                } else {
-                  // Fallback to original calculation for orders not from cart
-                  const subtotal = order.amount || 0;
-                  // Get delivery category from listing, default to NORMAL if not set
-                  const listingDeliveryCategory =
-                    (order.listing as any).deliveryCategory || "NORMAL";
-                  const deliveryFee =
-                    listingDeliveryCategory === "BULK" ? 100 : 50;
-                  const promoDiscount = promoStatus?.valid
-                    ? promoStatus.discount
-                    : 0;
-                  const taxedBase = Math.max(
-                    0,
-                    subtotal + deliveryFee - promoDiscount
-                  );
-                  const salesTax = subtotal * HARRIS_COUNTY_TAX_RATE;
-                  const estimatedTotal =
-                    taxedBase + taxedBase * HARRIS_COUNTY_TAX_RATE;
-                  return (
-                    <div className="text-sm text-gray-800">
-                      <div className="flex items-center justify-between py-0.5">
-                        <span className="text-gray-600">Subtotal</span>
-                        <span className="font-medium">
-                          {formatCurrency(subtotal)}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between py-0.5">
-                        <span className="text-gray-600">
-                          Delivery (
-                          {listingDeliveryCategory === "BULK"
-                            ? "Bulk"
-                            : "Normal"}
-                          )
-                        </span>
-                        <span className="font-medium">
-                          {formatCurrency(deliveryFee)}
-                        </span>
-                      </div>
-                      {promoStatus?.valid && (
-                        <div className="flex items-center justify-between py-0.5 text-green-700">
-                          <span className="">Promo Discount</span>
-                          <span className="font-medium">
-                            - {formatCurrency(promoStatus.discount)}
-                          </span>
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between py-0.5">
-                        <span className="text-gray-600">
-                          Sales Tax ({(HARRIS_COUNTY_TAX_RATE * 100).toFixed(2)}
-                          %)
-                        </span>
-                        <span className="font-medium">
-                          {formatCurrency(taxedBase * HARRIS_COUNTY_TAX_RATE)}
-                        </span>
-                      </div>
+                  )}
 
-                      {/* Promo Code Input */}
-                      <div className="pt-2 mt-2 border-t">
-                        <label className="block text-sm text-gray-600 mb-2">
-                          Promo Code
-                        </label>
-                        <div className="flex gap-2">
-                          <input
-                            value={promo}
-                            onChange={(e) => setPromo(e.target.value)}
-                            placeholder="Enter code"
-                            className="border rounded px-3 py-2 flex-1 text-sm"
-                          />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={async () => {
-                              try {
-                                const res = await fetch(
-                                  "/api/checkout/validate-promo",
-                                  {
-                                    method: "POST",
-                                    headers: {
-                                      "Content-Type": "application/json",
-                                    },
-                                    body: JSON.stringify({
-                                      code: promo,
-                                      subtotal: subtotal,
-                                    }),
-                                  }
-                                );
-                                const data = await res.json();
-                                if (data.valid)
-                                  setPromoStatus({
-                                    valid: true,
-                                    discount: data.discount,
-                                  });
-                                else
-                                  setPromoStatus({ valid: false, discount: 0 });
-                              } catch {
-                                setPromoStatus({ valid: false, discount: 0 });
+                  {/* Item Details */}
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900 mb-1">
+                      {order.listing.title}
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-2">
+                      Item ID: {order.listing.itemId}
+                    </p>
+                  </div>
+                </div>
+              );
+            }
+          })()}
+
+          {/* Price Breakdown with Harris County Sales Tax */}
+          {(() => {
+            // Check if order has stored price breakdown (from cart checkout)
+            const storedBreakdown = (order as any).shippingAddress
+              ?.priceBreakdown;
+
+            if (storedBreakdown) {
+              // Use stored price breakdown from cart
+              const {
+                subtotal,
+                deliveryFee,
+                deliveryCategory: storedDeliveryCategory,
+                deliveryMethod: storedDeliveryMethod,
+                tax,
+                total,
+              } = storedBreakdown;
+              const promoDiscount = promoStatus?.valid
+                ? promoStatus.discount
+                : 0;
+              const finalTotal = total - promoDiscount;
+
+              return (
+                <div className="text-sm text-gray-800">
+                  <div className="flex items-center justify-between py-0.5">
+                    <span className="text-gray-600">Subtotal</span>
+                    <span className="font-medium">
+                      {formatCurrency(subtotal)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-0.5">
+                    <span className="text-gray-600">
+                      {storedDeliveryMethod === "pickup"
+                        ? "Pickup"
+                        : "Delivery"}
+                      {storedDeliveryMethod === "delivery" &&
+                        ` (${
+                          storedDeliveryCategory === "BULK" ? "Bulk" : "Normal"
+                        })`}
+                    </span>
+                    <span className="font-medium">
+                      {deliveryFee > 0 ? formatCurrency(deliveryFee) : "FREE"}
+                    </span>
+                  </div>
+                  {promoStatus?.valid && (
+                    <div className="flex items-center justify-between py-0.5 text-green-700">
+                      <span className="">Promo Discount</span>
+                      <span className="font-medium">
+                        - {formatCurrency(promoStatus.discount)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between py-0.5">
+                    <span className="text-gray-600">Sales Tax (8.25%)</span>
+                    <span className="font-medium">{formatCurrency(tax)}</span>
+                  </div>
+
+                  {/* Promo Code Input */}
+                  <div className="pt-2 mt-2 border-t">
+                    <label className="block text-sm text-gray-600 mb-2">
+                      Promo Code
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        value={promo}
+                        onChange={(e) => setPromo(e.target.value)}
+                        placeholder="Enter code"
+                        className="border rounded px-3 py-2 flex-1 text-sm"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(
+                              "/api/checkout/validate-promo",
+                              {
+                                method: "POST",
+                                headers: {
+                                  "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify({
+                                  code: promo,
+                                  subtotal: subtotal,
+                                }),
                               }
-                            }}
-                          >
-                            Apply
-                          </Button>
-                        </div>
-                        {promoStatus && (
-                          <p
-                            className={`text-xs mt-1 ${
-                              promoStatus.valid
-                                ? "text-green-700"
-                                : "text-red-600"
-                            }`}
-                          >
-                            {promoStatus.valid
-                              ? `Promo applied: -$${promoStatus.discount.toFixed(
-                                  2
-                                )}`
-                              : "Invalid promo code"}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex items-center justify-between pt-2 mt-2 border-t">
-                        <span className="font-semibold">Estimated Total</span>
-                        <span className="text-[#D4AF3D] font-semibold">
-                          {formatCurrency(estimatedTotal)}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Tax shown is calculated at{" "}
-                        {(HARRIS_COUNTY_TAX_RATE * 100).toFixed(2)}%.
+                            );
+                            const data = await res.json();
+                            if (data.valid)
+                              setPromoStatus({
+                                valid: true,
+                                discount: data.discount,
+                              });
+                            else setPromoStatus({ valid: false, discount: 0 });
+                          } catch {
+                            setPromoStatus({ valid: false, discount: 0 });
+                          }
+                        }}
+                      >
+                        Apply
+                      </Button>
+                    </div>
+                    {promoStatus && (
+                      <p
+                        className={`text-xs mt-1 ${
+                          promoStatus.valid ? "text-green-700" : "text-red-600"
+                        }`}
+                      >
+                        {promoStatus.valid
+                          ? `Promo applied: -$${promoStatus.discount.toFixed(
+                              2
+                            )}`
+                          : "Invalid promo code"}
                       </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 mt-2 border-t">
+                    <span className="font-semibold">Total</span>
+                    <span className="text-[#D4AF3D] font-semibold">
+                      {formatCurrency(finalTotal)}
+                    </span>
+                  </div>
+                </div>
+              );
+            } else {
+              // Fallback to original calculation for orders not from cart
+              const subtotal = order.amount || 0;
+              // Get delivery category from listing, default to NORMAL if not set
+              const listingDeliveryCategory =
+                (order.listing as any).deliveryCategory || "NORMAL";
+              const deliveryFee = listingDeliveryCategory === "BULK" ? 100 : 50;
+              const promoDiscount = promoStatus?.valid
+                ? promoStatus.discount
+                : 0;
+              const taxedBase = Math.max(
+                0,
+                subtotal + deliveryFee - promoDiscount
+              );
+              const salesTax = subtotal * HARRIS_COUNTY_TAX_RATE;
+              const estimatedTotal =
+                taxedBase + taxedBase * HARRIS_COUNTY_TAX_RATE;
+              return (
+                <div className="text-sm text-gray-800">
+                  <div className="flex items-center justify-between py-0.5">
+                    <span className="text-gray-600">Subtotal</span>
+                    <span className="font-medium">
+                      {formatCurrency(subtotal)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-0.5">
+                    <span className="text-gray-600">
+                      Delivery (
+                      {listingDeliveryCategory === "BULK" ? "Bulk" : "Normal"})
+                    </span>
+                    <span className="font-medium">
+                      {formatCurrency(deliveryFee)}
+                    </span>
+                  </div>
+                  {promoStatus?.valid && (
+                    <div className="flex items-center justify-between py-0.5 text-green-700">
+                      <span className="">Promo Discount</span>
+                      <span className="font-medium">
+                        - {formatCurrency(promoStatus.discount)}
+                      </span>
                     </div>
-                  );
-                }
-              })()}
-            </div>
-          </div>
+                  )}
+                  <div className="flex items-center justify-between py-0.5">
+                    <span className="text-gray-600">
+                      Sales Tax ({(HARRIS_COUNTY_TAX_RATE * 100).toFixed(2)}
+                      %)
+                    </span>
+                    <span className="font-medium">
+                      {formatCurrency(taxedBase * HARRIS_COUNTY_TAX_RATE)}
+                    </span>
+                  </div>
+
+                  {/* Promo Code Input */}
+                  <div className="pt-2 mt-2 border-t">
+                    <label className="block text-sm text-gray-600 mb-2">
+                      Promo Code
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        value={promo}
+                        onChange={(e) => setPromo(e.target.value)}
+                        placeholder="Enter code"
+                        className="border rounded px-3 py-2 flex-1 text-sm"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(
+                              "/api/checkout/validate-promo",
+                              {
+                                method: "POST",
+                                headers: {
+                                  "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify({
+                                  code: promo,
+                                  subtotal: subtotal,
+                                }),
+                              }
+                            );
+                            const data = await res.json();
+                            if (data.valid)
+                              setPromoStatus({
+                                valid: true,
+                                discount: data.discount,
+                              });
+                            else setPromoStatus({ valid: false, discount: 0 });
+                          } catch {
+                            setPromoStatus({ valid: false, discount: 0 });
+                          }
+                        }}
+                      >
+                        Apply
+                      </Button>
+                    </div>
+                    {promoStatus && (
+                      <p
+                        className={`text-xs mt-1 ${
+                          promoStatus.valid ? "text-green-700" : "text-red-600"
+                        }`}
+                      >
+                        {promoStatus.valid
+                          ? `Promo applied: -$${promoStatus.discount.toFixed(
+                              2
+                            )}`
+                          : "Invalid promo code"}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 mt-2 border-t">
+                    <span className="font-semibold">Estimated Total</span>
+                    <span className="text-[#D4AF3D] font-semibold">
+                      {formatCurrency(estimatedTotal)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Tax shown is calculated at{" "}
+                    {(HARRIS_COUNTY_TAX_RATE * 100).toFixed(2)}%.
+                  </p>
+                </div>
+              );
+            }
+          })()}
         </div>
 
         {/* Shipping Address Confirmation */}
@@ -1322,10 +1363,10 @@ export default function CheckoutPage() {
                           Your current shipping address:
                         </p>
                         <div className="font-medium text-gray-900">
-                          <p>{user.addressLine1}</p>
-                          {user.addressLine2 && <p>{user.addressLine2}</p>}
+                          <p>{user?.addressLine1}</p>
+                          {user?.addressLine2 && <p>{user?.addressLine2}</p>}
                           <p>
-                            {user.city}, {user.state} {user.zipCode}
+                            {user?.city}, {user?.state} {user?.zipCode}
                           </p>
                         </div>
                       </div>
@@ -1518,7 +1559,9 @@ export default function CheckoutPage() {
             ) : (
               (() => {
                 const now = new Date();
-                const orderExpiry = new Date(order.checkoutExpiresAt);
+                const orderExpiry = new Date(
+                  order?.checkoutExpiresAt || new Date()
+                );
                 const isExpired = now > orderExpiry;
 
                 if (isExpired) {
@@ -1598,19 +1641,21 @@ export default function CheckoutPage() {
           onAddressSelect={handleAddressChange}
           currentAddress={
             user
-              ? `${user.addressLine1}${
-                  user.addressLine2 ? ", " + user.addressLine2 : ""
-                }, ${user.city}, ${user.state} ${user.zipCode}`
+              ? `${user?.addressLine1 || ""}${
+                  user?.addressLine2 ? ", " + user.addressLine2 : ""
+                }, ${user?.city || ""}, ${user?.state || ""} ${
+                  user?.zipCode || ""
+                }`
               : ""
           }
           currentAddressData={
             user
               ? {
-                  streetAddress: user.addressLine1 || "",
-                  apartment: user.addressLine2 || "",
-                  city: user.city || "",
-                  state: user.state || "",
-                  postalCode: user.zipCode || "",
+                  streetAddress: user?.addressLine1 || "",
+                  apartment: user?.addressLine2 || "",
+                  city: user?.city || "",
+                  state: user?.state || "",
+                  postalCode: user?.zipCode || "",
                   country: "United States",
                 }
               : undefined
