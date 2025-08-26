@@ -28,10 +28,14 @@ import {
   mapConditionToFacebook,
   mapFacebookToGoogleProductCategory,
 } from "../../lib/ai-service";
+import { mapToGoogleProductCategory } from "../../lib/google-product-categories";
 import {
-  mapToGoogleProductCategory,
-  getAvailableCategoriesForDepartment,
-} from "../../lib/google-product-categories";
+  FACEBOOK_TAXONOMY,
+  getDepartments as fbGetDepartments,
+  getCategories as fbGetCategories,
+  getSubCategories as fbGetSubCategories,
+  validateCategoryHierarchy,
+} from "@/lib/facebook-taxonomy";
 // FormGenerationData interface moved to ai-service for unified typing
 import { FormGenerationData } from "../../lib/ai-form-generator";
 import VideoUpload from "../../components/VideoUpload";
@@ -58,243 +62,18 @@ import {
   type AgeGroup,
 } from "../../lib/product-specifications";
 
-const taxonomy = {
-  // Facebook Marketplace Categories - Primary Categories
-  Furniture: {
-    "Living Room": [
-      "Sofas",
-      "Loveseats",
-      "Sectionals",
-      "Coffee Tables",
-      "Side Tables",
-      "Console Tables",
-    ],
-    "Dining Room": [
-      "Dining Tables",
-      "Dining Chairs",
-      "Buffets",
-      "China Cabinets",
-    ],
-    Bedroom: ["Beds", "Dressers", "Nightstands", "Wardrobes", "Vanities"],
-    Office: ["Desks", "Office Chairs", "Filing Cabinets", "Bookshelves"],
-    Storage: ["Wardrobes", "Chests", "Shelving Units", "Storage Bins"],
-    Outdoor: ["Patio Sets", "Garden Chairs", "Outdoor Tables"],
-    Kids: ["Children's Beds", "Kids' Desks", "Toy Storage"],
-  },
-  Electronics: {
-    "Computers & Tablets": [
-      "Laptops",
-      "Desktops",
-      "Tablets",
-      "Monitors",
-      "Keyboards",
-      "Mice",
-    ],
-    "Mobile Phones": [
-      "Smartphones",
-      "Phone Cases",
-      "Chargers",
-      "Screen Protectors",
-    ],
-    "Audio Equipment": ["Speakers", "Headphones", "Microphones", "Amplifiers"],
-    "Cameras & Photo": ["Digital Cameras", "Lenses", "Tripods", "Camera Bags"],
-    "TVs & Video": [
-      "Televisions",
-      "Projectors",
-      "DVD Players",
-      "Streaming Devices",
-    ],
-    "Smart Home": ["Smart Speakers", "Security Cameras", "Smart Thermostats"],
-    Gaming: ["Gaming Consoles", "Gaming PCs", "Controllers", "Gaming Headsets"],
-  },
-  "Home & Garden": {
-    "Home Décor": ["Wall Art", "Mirrors", "Vases", "Throw Pillows", "Curtains"],
-    Lighting: ["Lamps", "Chandeliers", "Sconces", "Light Bulbs"],
-    "Kitchen & Dining": [
-      "Cookware",
-      "Dinnerware",
-      "Kitchen Utensils",
-      "Small Appliances",
-    ],
-    Bathroom: ["Towels", "Shower Curtains", "Bathroom Accessories"],
-    "Storage & Organization": [
-      "Closet Organizers",
-      "Storage Bins",
-      "Hooks",
-      "Shelving",
-    ],
-    "Rugs & Textiles": ["Area Rugs", "Carpets", "Blankets", "Throws"],
-    // Added missing categories that AI generates
-    Furniture: [
-      "Bedroom Furniture",
-      "Living Room Furniture",
-      "Dining Room Furniture",
-      "Office Furniture",
-      "Outdoor Furniture",
-      "Storage Furniture",
-    ],
-    "Garden & Outdoor": [
-      "Garden Tools",
-      "Planters",
-      "Outdoor Decor",
-      "Patio Furniture",
-      "BBQ & Grilling",
-    ],
-  },
-  "Clothing & Accessories": {
-    "Men's Clothing": ["Shirts", "Pants", "Jackets", "Shoes", "Accessories"],
-    "Women's Clothing": ["Dresses", "Tops", "Bottoms", "Shoes", "Accessories"],
-    "Kids' Clothing": [
-      "Boys' Clothing",
-      "Girls' Clothing",
-      "Baby Clothes",
-      "Shoes",
-    ],
-    "Jewelry & Watches": ["Necklaces", "Rings", "Watches", "Bracelets"],
-    "Bags & Purses": ["Handbags", "Backpacks", "Wallets", "Luggage"],
-    Shoes: ["Sneakers", "Boots", "Sandals", "Formal Shoes"],
-  },
-  "Sporting Goods": {
-    "Fitness Equipment": [
-      "Treadmills",
-      "Weights",
-      "Yoga Mats",
-      "Exercise Bikes",
-    ],
-    "Team Sports": [
-      "Basketballs",
-      "Soccer Balls",
-      "Baseball Equipment",
-      "Tennis Rackets",
-    ],
-    "Outdoor Sports": [
-      "Bicycles",
-      "Camping Gear",
-      "Hiking Equipment",
-      "Fishing Gear",
-    ],
-    "Water Sports": ["Swimming Gear", "Surfboards", "Kayaks", "Life Jackets"],
-    "Winter Sports": ["Skis", "Snowboards", "Winter Clothing", "Boots"],
-  },
-  "Toys & Games": {
-    "Board Games": ["Strategy Games", "Family Games", "Party Games", "Puzzles"],
-    "Action Figures": ["Collectible Figures", "Dolls", "Plush Toys"],
-    Educational: ["Learning Toys", "Science Kits", "Art Supplies"],
-    "Outdoor Toys": ["Bikes", "Scooters", "Playground Equipment"],
-    "Video Games": ["Game Consoles", "Game Cartridges", "Controllers"],
-  },
-  "Tools & Hardware": {
-    "Power Tools": ["Drills", "Saws", "Sanders", "Grinders", "Nail Guns"],
-    "Hand Tools": ["Hammers", "Screwdrivers", "Wrenches", "Pliers"],
-    "Garden Tools": ["Shovels", "Rakes", "Pruners", "Watering Cans"],
-    "Safety Equipment": ["Gloves", "Goggles", "Hard Hats", "Safety Vests"],
-    Storage: ["Tool Boxes", "Tool Chests", "Organizers"],
-  },
-  "Pet Supplies": {
-    Dogs: ["Dog Food", "Toys", "Beds", "Collars", "Leashes"],
-    Cats: ["Cat Food", "Toys", "Beds", "Litter Boxes", "Scratchers"],
-    "Other Pets": ["Bird Supplies", "Fish Supplies", "Small Animal Supplies"],
-    "Health & Grooming": ["Shampoo", "Brushes", "Medications", "Treats"],
-  },
-  "Books & Magazines": {
-    Fiction: ["Novels", "Short Stories", "Poetry"],
-    "Non-Fiction": ["Biographies", "History", "Science", "Self-Help"],
-    "Children's Books": ["Picture Books", "Chapter Books", "Educational"],
-    Magazines: ["Fashion", "Sports", "News", "Entertainment"],
-    Textbooks: ["Academic", "Professional", "Reference"],
-  },
-  Automotive: {
-    "Car Parts": ["Engine Parts", "Brake Parts", "Suspension", "Electrical"],
-    Accessories: ["Seat Covers", "Floor Mats", "Dash Cams", "Phone Mounts"],
-    Tools: ["Wrenches", "Jacks", "Battery Chargers", "Diagnostic Tools"],
-    Maintenance: ["Oil", "Filters", "Fluids", "Cleaning Supplies"],
-  },
-  "Beauty & Health": {
-    Skincare: ["Moisturizers", "Cleansers", "Sunscreen", "Anti-aging"],
-    Haircare: ["Shampoo", "Conditioner", "Styling Products", "Hair Tools"],
-    Makeup: ["Foundation", "Lipstick", "Eyeshadow", "Brushes"],
-    Fragrances: ["Perfumes", "Colognes", "Body Sprays"],
-    Health: ["Vitamins", "Supplements", "First Aid", "Medical Devices"],
-  },
-  "Office & Business": {
-    "Office Furniture": ["Desks", "Chairs", "Filing Cabinets", "Bookshelves"],
-    Stationery: ["Paper", "Pens", "Pencils", "Notebooks"],
-    Technology: ["Computers", "Printers", "Scanners", "Software"],
-    Supplies: ["Ink", "Toner", "Staplers", "Organizers"],
-  },
-  "Garden & Outdoor": {
-    Plants: ["Indoor Plants", "Outdoor Plants", "Seeds", "Bulbs"],
-    "Garden Tools": ["Shovels", "Rakes", "Pruners", "Watering Systems"],
-    "Outdoor Décor": ["Planters", "Garden Statues", "Fountains", "Wind Chimes"],
-    "Grills & Cooking": [
-      "Charcoal Grills",
-      "Gas Grills",
-      "Smokers",
-      "Accessories",
-    ],
-  },
-  Collectibles: {
-    "Trading Cards": ["Sports Cards", "Pokemon Cards", "Magic Cards"],
-    "Coins & Currency": ["Coins", "Bills", "Commemorative Items"],
-    Stamps: ["Postage Stamps", "Collector Stamps"],
-    Memorabilia: [
-      "Sports Memorabilia",
-      "Movie Memorabilia",
-      "Music Memorabilia",
-    ],
-  },
-  Music: {
-    "Vinyl Records": ["Rock", "Jazz", "Classical", "Pop"],
-    CDs: ["Albums", "Singles", "Compilations"],
-    Instruments: ["Guitars", "Pianos", "Drums", "Wind Instruments"],
-    Equipment: ["Amplifiers", "Microphones", "Recording Equipment"],
-  },
-  "Video Games & Consoles": {
-    "Gaming Consoles": ["PlayStation", "Xbox", "Nintendo", "PC Gaming"],
-    "Video Games": ["Action", "Adventure", "Sports", "Racing", "RPG"],
-    Accessories: ["Controllers", "Headsets", "Gaming Chairs", "Storage"],
-  },
-  Appliances: {
-    "Kitchen Appliances": [
-      "Refrigerators",
-      "Dishwashers",
-      "Ovens",
-      "Microwaves",
-    ],
-    Laundry: ["Washers", "Dryers", "Ironing Boards"],
-    Cleaning: ["Vacuum Cleaners", "Steam Cleaners", "Air Purifiers"],
-    "Small Appliances": ["Blenders", "Coffee Makers", "Toasters", "Mixers"],
-  },
-  "Arts & Crafts": {
-    "Art Supplies": ["Paints", "Brushes", "Canvas", "Sketchbooks"],
-    "Craft Supplies": ["Paper", "Glue", "Scissors", "Beads"],
-    Sewing: ["Fabric", "Thread", "Needles", "Sewing Machines"],
-    DIY: ["Woodworking", "Jewelry Making", "Candle Making"],
-  },
-  "Baby & Kids": {
-    "Baby Gear": ["Strollers", "Car Seats", "High Chairs", "Cribs"],
-    Toys: ["Educational Toys", "Building Blocks", "Dolls", "Action Figures"],
-    Clothing: ["Onesies", "Sleepers", "Outfits", "Shoes"],
-    Feeding: ["Bottles", "Formula", "Baby Food", "Bibs"],
-  },
-  "Jewelry & Watches": {
-    Necklaces: ["Gold", "Silver", "Pearl", "Diamond"],
-    Rings: ["Engagement Rings", "Wedding Bands", "Fashion Rings"],
-    Watches: ["Luxury Watches", "Smart Watches", "Fashion Watches"],
-    Earrings: ["Studs", "Hoops", "Dangles", "Clip-ons"],
-  },
-  Entertainment: {
-    Movies: ["DVDs", "Blu-rays", "Digital Movies"],
-    Books: ["Fiction", "Non-fiction", "Magazines"],
-    "Board Games": ["Family Games", "Strategy Games", "Party Games"],
-    Music: ["CDs", "Vinyl", "Digital Music"],
-  },
-} as const;
+// Use centralized Facebook taxonomy
+const taxonomy = FACEBOOK_TAXONOMY;
 
 type Department = keyof typeof taxonomy;
 type Category = keyof (typeof taxonomy)[Department] | string;
 type SubCategory = string;
-const conditions = ["new", "used", "refurbished"] as const;
+const conditions = [
+  "New",
+  "Used - Like New",
+  "Used - Good",
+  "Used - Fair",
+] as const;
 const discountSchedules = ["Turbo-30", "Classic-60"] as const;
 
 export default function ListItemPage() {
@@ -357,6 +136,10 @@ export default function ListItemPage() {
   const [facebookBrand, setFacebookBrand] = useState("");
   const [facebookCondition, setFacebookCondition] = useState("");
   const [facebookGtin, setFacebookGtin] = useState("");
+  const [gtinEdited, setGtinEdited] = useState(false);
+
+  // External Item ID shown separately (do not map to GTIN)
+  const [externalItemId, setExternalItemId] = useState("");
 
   // Google Product Category (Legacy - keeping for backward compatibility)
   const [googleProductCategory, setGoogleProductCategory] = useState("");
@@ -404,16 +187,10 @@ export default function ListItemPage() {
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [inventoryItems, setInventoryItems] = useState<any[]>([]);
   const [isLoadingInventory, setIsLoadingInventory] = useState(false);
-  const [inventoryFilters, setInventoryFilters] = useState({
-    lotDescription: "all",
-    vendor: "all",
-    department: "all",
-  });
-  const [availableFilters, setAvailableFilters] = useState({
-    lotDescriptions: [],
-    vendors: [],
-    departments: [],
-  });
+  const [inventorySearchQuery, setInventorySearchQuery] = useState("");
+  const [inventoryPage, setInventoryPage] = useState(1);
+  const [inventoryTotalPages, setInventoryTotalPages] = useState(1);
+  const [showAvailableOnly, setShowAvailableOnly] = useState(false); // Default to showing all items
 
   // Zip code validation state
   const [zipCodeValidation, setZipCodeValidation] = useState<{
@@ -554,7 +331,8 @@ export default function ListItemPage() {
   };
 
   const generateItemId = () => {
-    return Math.random().toString(36).substring(2, 10).toUpperCase();
+    // Generate 6-character alphanumeric ID
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
   };
 
   const calculateReservePrice = (price: number) => {
@@ -636,23 +414,22 @@ export default function ListItemPage() {
     setIsLoadingInventory(true);
     try {
       const params = new URLSearchParams();
-      if (inventoryFilters.lotDescription !== "all")
-        params.append("lotDescription", inventoryFilters.lotDescription);
-      if (inventoryFilters.vendor !== "all")
-        params.append("vendor", inventoryFilters.vendor);
-      if (inventoryFilters.department !== "all")
-        params.append("department", inventoryFilters.department);
-      params.append("limit", "50");
+      if (inventorySearchQuery) {
+        params.append("q", inventorySearchQuery);
+      }
+      params.append("page", String(inventoryPage));
+      params.append("limit", "25");
+      if (showAvailableOnly) {
+        params.append("availableOnly", "true");
+      }
 
       const response = await fetch(
-        `/api/inventory/search?${params.toString()}`
+        `/api/admin/inventory/items?${params.toString()}`
       );
       if (response.ok) {
         const data = await response.json();
         setInventoryItems(data.items || []);
-        setAvailableFilters(
-          data.filters || { lotDescriptions: [], vendors: [], departments: [] }
-        );
+        setInventoryTotalPages(data.pagination.totalPages || 1);
       } else {
         console.error("Failed to load inventory");
         setInventoryItems([]);
@@ -665,12 +442,17 @@ export default function ListItemPage() {
     }
   };
 
-  // Load inventory when modal opens or filters change
+  // Load inventory when modal opens or search query changes
   useEffect(() => {
     if (showInventoryModal) {
       loadInventoryItems();
     }
-  }, [showInventoryModal, inventoryFilters]);
+  }, [
+    showInventoryModal,
+    inventorySearchQuery,
+    inventoryPage,
+    showAvailableOnly,
+  ]);
 
   // Cleanup modal state on component unmount
   useEffect(() => {
@@ -708,6 +490,15 @@ export default function ListItemPage() {
         return "text-gray-600 bg-gray-100";
     }
   };
+
+  // Sync Item ID display from inventory selection (read-only field)
+  useEffect(() => {
+    if (selectedInventoryItem?.itemNumber) {
+      setExternalItemId(selectedInventoryItem.itemNumber);
+    }
+  }, [selectedInventoryItem]);
+
+  // (Removed duplicate GTIN sync effect; single instance lives near progressSteps)
 
   // TODO: Re-enable staged photo state in Phase 2
   // Staged photo state
@@ -1014,26 +805,69 @@ export default function ListItemPage() {
   };
 
   const autoCategorizePhotos = (photos: typeof bulkPhotos) => {
+    // This will now be handled by the comprehensive AI endpoint during form generation
+    // For now, use improved simple logic as a placeholder
+    return autoCategorizePhotosSimple(photos);
+  };
+
+  const autoCategorizePhotosSimple = (photos: typeof bulkPhotos) => {
     const categorized = [...photos];
     let heroIndex = -1;
     let backIndex = -1;
     let proofIndex = -1;
 
-    // Find the best photos for required types
+    // Improved simple logic: look for clues in filenames/metadata
+    // This is still not ideal but better than pure sequential assignment
     for (let i = 0; i < categorized.length; i++) {
       const photo = categorized[i];
-      if (heroIndex === -1) {
+      const filename = photo.file?.name?.toLowerCase() || "";
+
+      // Try to identify hero (front-facing) photos
+      if (
+        heroIndex === -1 &&
+        (filename.includes("front") ||
+          filename.includes("hero") ||
+          filename.includes("main") ||
+          i === 0) // Default first photo as hero
+      ) {
         photo.type = "hero";
         heroIndex = i;
-      } else if (backIndex === -1) {
+      }
+      // Try to identify back photos
+      else if (
+        backIndex === -1 &&
+        (filename.includes("back") ||
+          filename.includes("rear") ||
+          filename.includes("behind") ||
+          i === 1) // Default second photo as back
+      ) {
         photo.type = "back";
         backIndex = i;
-      } else if (proofIndex === -1) {
+      }
+      // Try to identify proof photos
+      else if (
+        proofIndex === -1 &&
+        (filename.includes("proof") ||
+          filename.includes("label") ||
+          filename.includes("serial") ||
+          filename.includes("model") ||
+          i === 2) // Default third photo as proof
+      ) {
         photo.type = "proof";
         proofIndex = i;
-      } else {
+      }
+      // Everything else is additional
+      else {
         photo.type = "additional";
       }
+    }
+
+    // Ensure we have at least hero and back assigned
+    if (heroIndex === -1 && categorized.length > 0) {
+      categorized[0].type = "hero";
+    }
+    if (backIndex === -1 && categorized.length > 1) {
+      categorized[1].type = "back";
     }
 
     return categorized;
@@ -1175,8 +1009,10 @@ export default function ListItemPage() {
                   duration: videoData.duration || 0,
                 }
               : undefined,
+          externalItemId: externalItemId || undefined,
           inventoryItem: selectedInventoryItem
             ? {
+                id: selectedInventoryItem.id,
                 description: selectedInventoryItem.description,
                 vendor: selectedInventoryItem.vendor,
                 category: selectedInventoryItem.category,
@@ -1186,6 +1022,7 @@ export default function ListItemPage() {
                 quantity: selectedInventoryItem.quantity,
                 unitRetail: selectedInventoryItem.unitRetail,
                 extRetail: selectedInventoryItem.extRetail,
+                unitPurchasePrice: selectedInventoryItem.unitPurchasePrice,
                 categoryCode: selectedInventoryItem.categoryCode,
                 deptCode: selectedInventoryItem.deptCode,
                 // Note: purchasePrice is excluded for privacy
@@ -1252,33 +1089,49 @@ export default function ListItemPage() {
       const aiSubCategory =
         listingData.facebookSubCategory || listingData.subCategory;
 
-      console.log("🔍 DEBUG: AI-Generated Facebook Categories");
+      console.log(
+        "🔍 DEBUG: AI-Generated Facebook Categories (Before Validation)"
+      );
       console.log("🔍 Department:", aiDepartment);
       console.log("🔍 Category:", aiCategory);
       console.log("🔍 Sub-Category:", aiSubCategory);
 
-      setDepartment(aiDepartment as Department);
-      setCategory(aiCategory || "");
-      setSubCategory(aiSubCategory || "");
+      // Validate and fix category hierarchy
+      const validatedCategories = validateCategoryHierarchy(
+        aiDepartment || "",
+        aiCategory || "",
+        aiSubCategory || ""
+      );
+
+      console.log("🔍 DEBUG: Validated Facebook Categories (After Validation)");
+      console.log("🔍 Department:", validatedCategories.department);
+      console.log("🔍 Category:", validatedCategories.category);
+      console.log("🔍 Sub-Category:", validatedCategories.subCategory);
+
+      setDepartment(validatedCategories.department as Department);
+      setCategory(validatedCategories.category || "");
+      setSubCategory(validatedCategories.subCategory || "");
 
       // Update available Google Product Categories for existing listing
-      if (listingData.department) {
-        const categories = getAvailableCategoriesForDepartment(
-          listingData.department
-        );
-        setAvailableGoogleCategories(
-          categories.map((cat) => cat.googleProductCategory)
-        );
-      }
-      setCondition(mapConditionToFacebook(listingData.facebookCondition));
+      // (kept as-is; dropdowns for FB are driven by FACEBOOK_TAXONOMY)
+      setCondition(listingData.condition || "");
       setPrice(listingData.listPrice.toString());
       setBrand(listingData.brand);
-      setHeight(listingData.height || "");
-      setWidth(listingData.width || "");
-      setDepth(listingData.depth || "");
+      setHeight(listingData.height ? String(listingData.height) : "");
+      setWidth(listingData.width ? String(listingData.width) : "");
+      setDepth(listingData.depth ? String(listingData.depth) : "");
       setSerialNumber(listingData.serialNumber || "");
       setModelNumber(listingData.modelNumber || "");
-      setEstimatedRetailPrice(listingData.estimatedRetailPrice.toString());
+      // If we have an inventory item with a precise MSRP (unitRetail), prefer that over AI estimate
+      const msrpFromInventory = selectedInventoryItem?.unitRetail;
+      if (
+        typeof msrpFromInventory === "number" &&
+        !Number.isNaN(msrpFromInventory)
+      ) {
+        setEstimatedRetailPrice(msrpFromInventory.toFixed(2));
+      } else {
+        setEstimatedRetailPrice(listingData.estimatedRetailPrice.toString());
+      }
       setDiscountSchedule(
         listingData.discountSchedule as "Turbo-30" | "Classic-60"
       );
@@ -1293,6 +1146,83 @@ export default function ListItemPage() {
       console.log("🔍 DEBUG: Google Product Categories Received");
       console.log("🔍 Primary:", listingData.googleProductCategoryPrimary);
       console.log("🔍 Secondary:", listingData.googleProductCategorySecondary);
+
+      // Apply AI photo categorization if available
+      if (
+        Array.isArray(listingData.photoCategorization) &&
+        listingData.photoCategorization.length > 0
+      ) {
+        console.log(
+          "📸 AI Photo Categorization:",
+          listingData.photoCategorization
+        );
+
+        // Apply categorization to current photos based on AI analysis
+        const newPhotos = { ...photos };
+        const allPhotoUrls = [
+          photos.hero?.url || photos.hero?.key,
+          photos.back?.url || photos.back?.key,
+          photos.proof?.url || photos.proof?.key,
+          ...(photos.additional || []).map((p) => p.url || p.key),
+        ].filter(Boolean);
+
+        // Create new photo structure based on AI categorization
+        const categorizedPhotos: {
+          hero: { file: File | null; key: string | null; url: string | null };
+          back: { file: File | null; key: string | null; url: string | null };
+          proof: { file: File | null; key: string | null; url: string | null };
+          additional: Array<{
+            file: File;
+            key: string | null;
+            url: string | null;
+          }>;
+        } = {
+          hero: { file: null, key: null, url: null },
+          back: { file: null, key: null, url: null },
+          proof: { file: null, key: null, url: null },
+          additional: [],
+        };
+
+        // Apply AI categorization to reorganize photos
+        listingData.photoCategorization.forEach(
+          (category: string, index: number) => {
+            const photoUrl = allPhotoUrls[index];
+            if (photoUrl && typeof photoUrl === "string") {
+              if (category === "hero") {
+                categorizedPhotos.hero = {
+                  file: null,
+                  key: null,
+                  url: photoUrl,
+                };
+              } else if (category === "back") {
+                categorizedPhotos.back = {
+                  file: null,
+                  key: null,
+                  url: photoUrl,
+                };
+              } else if (category === "proof") {
+                categorizedPhotos.proof = {
+                  file: null,
+                  key: null,
+                  url: photoUrl,
+                };
+              } else if (category === "additional") {
+                categorizedPhotos.additional.push({
+                  file: null as any,
+                  key: null,
+                  url: photoUrl,
+                });
+              }
+            }
+          }
+        );
+
+        setPhotos(categorizedPhotos);
+        console.log(
+          "📸 Photos reorganized based on AI categorization:",
+          categorizedPhotos
+        );
+      }
       console.log("🔍 Tertiary:", listingData.googleProductCategoryTertiary);
       console.log("🔍 Legacy Field:", listingData.googleProductCategory);
 
@@ -1511,7 +1441,9 @@ export default function ListItemPage() {
           // Facebook Shop Integration Fields
           facebookShopEnabled,
           facebookBrand: brand || null, // Use main brand field
-          facebookCondition: condition || null, // Use main condition field
+          facebookCondition: condition
+            ? mapConditionToFacebook(condition)
+            : null, // Map to Facebook format
           facebookGtin: facebookGtin || null,
           googleProductCategory:
             googleProductCategory ||
@@ -1758,23 +1690,68 @@ export default function ListItemPage() {
                                   "No description"}
                               </div>
                               <div className="text-sm text-gray-600 mt-1">
-                                {selectedInventoryItem.vendor &&
-                                  `Vendor: ${selectedInventoryItem.vendor}`}
-                                {selectedInventoryItem.vendor &&
-                                  selectedInventoryItem.category &&
-                                  " • "}
-                                {selectedInventoryItem.category &&
-                                  `Category: ${selectedInventoryItem.category}`}
-                                {selectedInventoryItem.unitRetail && (
-                                  <>
-                                    {(selectedInventoryItem.vendor ||
-                                      selectedInventoryItem.category) &&
-                                      " • "}
-                                    <span className="text-green-600 font-medium">
-                                      ${selectedInventoryItem.unitRetail}
-                                    </span>
-                                  </>
-                                )}
+                                <div>
+                                  {selectedInventoryItem.vendor && (
+                                    <>
+                                      <span className="font-medium">
+                                        Vendor:
+                                      </span>{" "}
+                                      {selectedInventoryItem.vendor}
+                                    </>
+                                  )}
+                                  {selectedInventoryItem.category && (
+                                    <>
+                                      {selectedInventoryItem.vendor && " • "}
+                                      <span className="font-medium">
+                                        Category:
+                                      </span>{" "}
+                                      {selectedInventoryItem.category}
+                                    </>
+                                  )}
+                                </div>
+                                <div className="mt-1 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+                                  <div>
+                                    <span className="font-medium">MSRP:</span>{" "}
+                                    {selectedInventoryItem.unitRetail
+                                      ? `$${selectedInventoryItem.unitRetail}`
+                                      : "N/A"}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">
+                                      Unit Purchase:
+                                    </span>{" "}
+                                    {selectedInventoryItem.unitPurchasePrice
+                                      ? `$${Number(
+                                          selectedInventoryItem.unitPurchasePrice
+                                        ).toFixed(2)}`
+                                      : "N/A"}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Item #:</span>{" "}
+                                    {selectedInventoryItem.itemNumber || "N/A"}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Lot #:</span>{" "}
+                                    {selectedInventoryItem.lotNumber || "N/A"}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">
+                                      Dept/Code:
+                                    </span>{" "}
+                                    {selectedInventoryItem.department || "N/A"}
+                                    {selectedInventoryItem.deptCode
+                                      ? ` (${selectedInventoryItem.deptCode})`
+                                      : ""}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">
+                                      Ext. Retail:
+                                    </span>{" "}
+                                    {selectedInventoryItem.extRetail
+                                      ? `$${selectedInventoryItem.extRetail}`
+                                      : "N/A"}
+                                  </div>
+                                </div>
                               </div>
                             </div>
                             <button
@@ -3338,19 +3315,7 @@ export default function ListItemPage() {
                             // Reset user input when department changes
                             setUserInput("");
                             // Update available Google Product Categories
-                            if (e.target.value) {
-                              const categories =
-                                getAvailableCategoriesForDepartment(
-                                  e.target.value
-                                );
-                              setAvailableGoogleCategories(
-                                categories.map(
-                                  (cat) => cat.googleProductCategory
-                                )
-                              );
-                            } else {
-                              setAvailableGoogleCategories([]);
-                            }
+                            // Google categories UI stays, but FB dropdowns are from FACEBOOK_TAXONOMY
                           }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
                           required
@@ -3785,7 +3750,10 @@ export default function ListItemPage() {
                         <input
                           type="text"
                           value={facebookGtin}
-                          onChange={(e) => setFacebookGtin(e.target.value)}
+                          onChange={(e) => {
+                            setFacebookGtin(e.target.value);
+                            setGtinEdited(true);
+                          }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
                           placeholder="e.g., 1234567890123"
                           maxLength={13}
@@ -3841,7 +3809,9 @@ export default function ListItemPage() {
                           placeholder="0.00"
                         />
                         <p className="text-xs text-gray-500 mt-1">
-                          Original retail price for comparison
+                          {typeof selectedInventoryItem?.unitRetail === "number"
+                            ? `MSRP: $${selectedInventoryItem.unitRetail}`
+                            : "Original retail price for comparison"}
                         </p>
                       </div>
 
@@ -4036,9 +4006,19 @@ export default function ListItemPage() {
                           required
                         >
                           <option value="">Select Condition</option>
-                          <option value="new">New</option>
-                          <option value="used">Used</option>
-                          <option value="refurbished">Refurbished</option>
+                          <option value="New">
+                            New - Brand new, never used
+                          </option>
+                          <option value="Used - Like New">
+                            Used - Like New - Excellent condition, no visible
+                            wear
+                          </option>
+                          <option value="Used - Good">
+                            Used - Good - Light signs of use, fully functional
+                          </option>
+                          <option value="Used - Fair">
+                            Used - Fair - Heavily used, significant wear
+                          </option>
                         </select>
                         <p className="text-xs text-gray-500 mt-1">
                           Facebook-compatible condition format
@@ -4512,8 +4492,8 @@ export default function ListItemPage() {
                     Select Inventory Item
                   </h2>
                   <p className="text-blue-700 mt-1">
-                    Choose an item to enhance your listing with detailed
-                    information
+                    Search and choose an item to enhance your listing with
+                    detailed information
                   </p>
                 </div>
                 <button
@@ -4537,81 +4517,96 @@ export default function ListItemPage() {
                 </button>
               </div>
 
-              {/* Filters */}
-              <div className="mt-4 flex flex-wrap gap-3">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-blue-800">
-                    Lot Description:
-                  </label>
-                  <select
-                    value={inventoryFilters.lotDescription}
-                    onChange={(e) =>
-                      setInventoryFilters((prev) => ({
-                        ...prev,
-                        lotDescription: e.target.value,
-                      }))
-                    }
-                    className="px-3 py-1 border border-blue-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              {/* Search Bar */}
+              <div className="mt-4 flex items-center gap-2 border rounded-lg px-3 py-2 bg-white">
+                <svg
+                  className="h-5 w-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                <input
+                  type="text"
+                  value={inventorySearchQuery}
+                  onChange={(e) => {
+                    setInventoryPage(1);
+                    setInventorySearchQuery(e.target.value);
+                  }}
+                  placeholder="Search description, item #, vendor, dept..."
+                  className="flex-1 outline-none text-sm"
+                />
+                {inventorySearchQuery && (
+                  <button
+                    onClick={() => {
+                      setInventorySearchQuery("");
+                      setInventoryPage(1);
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
                   >
-                    <option value="all">All Lots</option>
-                    {availableFilters.lotDescriptions.map((lotDescription) => (
-                      <option key={lotDescription} value={lotDescription}>
-                        {lotDescription}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                )}
+              </div>
 
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-blue-800">
-                    Vendor:
-                  </label>
-                  <select
-                    value={inventoryFilters.vendor}
-                    onChange={(e) =>
-                      setInventoryFilters((prev) => ({
-                        ...prev,
-                        vendor: e.target.value,
-                      }))
-                    }
-                    className="px-3 py-1 border border-blue-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              {/* Inventory Filter Toggle */}
+              <div className="mt-3 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => {
+                      setShowAvailableOnly(false);
+                      setInventoryPage(1);
+                    }}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      !showAvailableOnly
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
                   >
-                    <option value="all">All Vendors</option>
-                    {availableFilters.vendors.map((vendor) => (
-                      <option key={vendor} value={vendor}>
-                        {vendor}
-                      </option>
-                    ))}
-                  </select>
+                    All Inventory
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowAvailableOnly(true);
+                      setInventoryPage(1);
+                    }}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      showAvailableOnly
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    Listed
+                  </button>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-blue-800">
-                    Department:
-                  </label>
-                  <select
-                    value={inventoryFilters.department}
-                    onChange={(e) =>
-                      setInventoryFilters((prev) => ({
-                        ...prev,
-                        department: e.target.value,
-                      }))
-                    }
-                    className="px-3 py-1 border border-blue-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="all">All Departments</option>
-                    {availableFilters.departments.map((department) => (
-                      <option key={department} value={department}>
-                        {department}
-                      </option>
-                    ))}
-                  </select>
+                <div className="text-sm text-gray-600">
+                  {showAvailableOnly
+                    ? "Showing only items that have been posted as listings"
+                    : "Showing all items including posted listings"}
                 </div>
               </div>
             </div>
 
             {/* Modal Content */}
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-250px)]">
               {isLoadingInventory ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="text-center">
@@ -4640,7 +4635,7 @@ export default function ListItemPage() {
                     No items found
                   </h3>
                   <p className="text-gray-600">
-                    Try adjusting your filters or check back later.
+                    Try adjusting your search query or check back later.
                   </p>
                 </div>
               ) : (
@@ -4718,26 +4713,57 @@ export default function ListItemPage() {
                           </div>
                         )}
 
-                        {item.quantity && (
-                          <div className="flex items-center text-sm">
-                            <svg
-                              className="w-4 h-4 text-gray-400 mr-2"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"
-                              />
-                            </svg>
-                            <span className="text-gray-600">
-                              Qty: {item.quantity}
-                            </span>
-                          </div>
-                        )}
+                        {/* Quantity and Posting Status */}
+                        <div className="space-y-1">
+                          {item.totalInventory && (
+                            <div className="flex items-center justify-between text-sm">
+                              <div className="flex items-center">
+                                <svg
+                                  className="w-4 h-4 text-gray-400 mr-2"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"
+                                  />
+                                </svg>
+                                <span className="text-gray-600">
+                                  Total: {item.totalInventory}
+                                </span>
+                              </div>
+                              {item.postedListings > 0 && (
+                                <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded">
+                                  {item.postedListings} posted
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {item.availableToList !== undefined &&
+                            item.totalInventory > 0 && (
+                              <div className="flex items-center text-sm">
+                                <svg
+                                  className="w-4 h-4 text-green-500 mr-2"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                  />
+                                </svg>
+                                <span className="text-green-700 font-medium">
+                                  {item.availableToList} available to list
+                                </span>
+                              </div>
+                            )}
+                        </div>
                       </div>
 
                       {/* Inventory List Info */}
@@ -4767,12 +4793,41 @@ export default function ListItemPage() {
                   ))}
                 </div>
               )}
+
+              {/* Pagination */}
+              {inventoryTotalPages > 1 && (
+                <div className="flex justify-center items-center gap-2 mt-6">
+                  <button
+                    onClick={() =>
+                      setInventoryPage(Math.max(1, inventoryPage - 1))
+                    }
+                    disabled={inventoryPage === 1}
+                    className="px-3 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    Previous
+                  </button>
+                  <span className="px-4 py-2 text-sm text-gray-600">
+                    Page {inventoryPage} of {inventoryTotalPages}
+                  </span>
+                  <button
+                    onClick={() =>
+                      setInventoryPage(
+                        Math.min(inventoryTotalPages, inventoryPage + 1)
+                      )
+                    }
+                    disabled={inventoryPage === inventoryTotalPages}
+                    className="px-3 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}
             <div className="bg-gray-50 border-t border-gray-200 p-4 flex justify-between items-center">
               <div className="text-sm text-gray-600">
-                {inventoryItems.length} items available
+                {inventoryItems.length} items shown
               </div>
               <button
                 type="button"

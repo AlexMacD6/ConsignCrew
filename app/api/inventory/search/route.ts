@@ -37,8 +37,8 @@ export async function GET(request: NextRequest) {
       whereConditions.department = { equals: department, mode: "insensitive" };
     }
 
-    // Get inventory items with all fields except purchasePrice
-    const items = await prisma.inventoryItem.findMany({
+    // Get inventory items and compute unitPurchasePrice (purchasePrice/quantity)
+    const rawItems = await prisma.inventoryItem.findMany({
       where: whereConditions,
       select: {
         id: true,
@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
         category: true,
         createdAt: true,
         updatedAt: true,
+        purchasePrice: true,
         // Exclude purchasePrice from selection
         list: {
           select: {
@@ -72,6 +73,16 @@ export async function GET(request: NextRequest) {
       ],
       take: limit,
     });
+
+    // Map to include unitPurchasePrice and hide purchasePrice
+    const items = rawItems.map((it: any) => ({
+      ...it,
+      unitPurchasePrice:
+        typeof it.purchasePrice === 'number' && typeof it.quantity === 'number' && it.quantity > 0
+          ? it.purchasePrice / it.quantity
+          : null,
+      purchasePrice: undefined,
+    }));
 
     // Get unique values for filters
     const allItems = await prisma.inventoryItem.findMany({

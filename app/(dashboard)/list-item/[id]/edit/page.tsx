@@ -39,183 +39,18 @@ import {
 } from "../../../../lib/product-specifications";
 import { getDisplayPrice } from "../../../../lib/price-calculator";
 import { API_ENDPOINTS } from "../../../../lib/api";
+import {
+  FACEBOOK_TAXONOMY,
+  getDepartments,
+  getCategories,
+  getSubCategories,
+} from "../../../../lib/facebook-taxonomy";
 // ZIP code validation now handled via API endpoint
 
 const discountSchedules = ["Turbo-30", "Classic-60"] as const;
 
-const taxonomy = {
-  // Facebook Marketplace Categories - Primary Categories
-  Furniture: {
-    "Living Room": [
-      "Sofas",
-      "Loveseats",
-      "Sectionals",
-      "Coffee Tables",
-      "Side Tables",
-      "Console Tables",
-    ],
-    "Dining Room": [
-      "Dining Tables",
-      "Dining Chairs",
-      "Buffets",
-      "China Cabinets",
-    ],
-    Bedroom: ["Beds", "Dressers", "Nightstands", "Wardrobes", "Vanities"],
-    Office: ["Desks", "Office Chairs", "Filing Cabinets", "Bookshelves"],
-    Storage: ["Wardrobes", "Chests", "Shelving Units", "Storage Bins"],
-    Outdoor: ["Patio Sets", "Garden Chairs", "Outdoor Tables"],
-    Kids: ["Children's Beds", "Kids' Desks", "Toy Storage"],
-  },
-  Electronics: {
-    "Computers & Tablets": [
-      "Laptops",
-      "Desktops",
-      "Tablets",
-      "Monitors",
-      "Keyboards",
-      "Mice",
-    ],
-    "Mobile Phones": [
-      "Smartphones",
-      "Phone Cases",
-      "Chargers",
-      "Screen Protectors",
-    ],
-    "Audio Equipment": ["Speakers", "Headphones", "Microphones", "Amplifiers"],
-    "Cameras & Photo": ["Digital Cameras", "Lenses", "Tripods", "Camera Bags"],
-    "TVs & Video": [
-      "Televisions",
-      "Projectors",
-      "DVD Players",
-      "Streaming Devices",
-    ],
-    "Smart Home": ["Smart Speakers", "Security Cameras", "Smart Thermostats"],
-    Gaming: ["Gaming Consoles", "Gaming PCs", "Controllers", "Gaming Headsets"],
-  },
-  "Home & Garden": {
-    "Home Décor": ["Wall Art", "Mirrors", "Vases", "Throw Pillows", "Curtains"],
-    Lighting: ["Lamps", "Chandeliers", "Sconces", "Light Bulbs"],
-    "Kitchen & Dining": [
-      "Cookware",
-      "Dinnerware",
-      "Kitchen Utensils",
-      "Small Appliances",
-    ],
-    Bathroom: ["Towels", "Shower Curtains", "Bathroom Accessories"],
-    "Storage & Organization": [
-      "Closet Organizers",
-      "Storage Bins",
-      "Hooks",
-      "Shelving",
-    ],
-    "Rugs & Textiles": ["Area Rugs", "Carpets", "Blankets", "Throws"],
-  },
-  "Clothing & Accessories": {
-    "Men's Clothing": ["Shirts", "Pants", "Jackets", "Shoes", "Accessories"],
-    "Women's Clothing": ["Dresses", "Tops", "Bottoms", "Shoes", "Accessories"],
-    "Kids' Clothing": [
-      "Boys' Clothing",
-      "Girls' Clothing",
-      "Baby Clothes",
-      "Shoes",
-    ],
-    "Jewelry & Watches": ["Necklaces", "Rings", "Watches", "Bracelets"],
-    "Bags & Purses": ["Handbags", "Backpacks", "Wallets", "Luggage"],
-    Shoes: ["Sneakers", "Boots", "Sandals", "Formal Shoes"],
-  },
-  "Sporting Goods": {
-    "Fitness Equipment": [
-      "Treadmills",
-      "Weights",
-      "Yoga Mats",
-      "Exercise Bikes",
-    ],
-    "Team Sports": [
-      "Basketballs",
-      "Soccer Balls",
-      "Baseball Equipment",
-      "Tennis Rackets",
-    ],
-    "Outdoor Sports": [
-      "Bicycles",
-      "Camping Gear",
-      "Hiking Equipment",
-      "Fishing Gear",
-    ],
-    "Water Sports": ["Swimming Gear", "Surfboards", "Kayaks", "Life Jackets"],
-    "Winter Sports": ["Skis", "Snowboards", "Winter Clothing", "Boots"],
-  },
-  "Toys & Games": {
-    "Board Games": ["Strategy Games", "Family Games", "Party Games", "Puzzles"],
-    "Action Figures": ["Collectible Figures", "Dolls", "Plush Toys"],
-    Educational: ["Learning Toys", "Science Kits", "Art Supplies"],
-    "Outdoor Toys": ["Bikes", "Scooters", "Playground Equipment"],
-    "Video Games": ["Game Consoles", "Game Cartridges", "Controllers"],
-  },
-  "Tools & Hardware": {
-    "Power Tools": ["Drills", "Saws", "Sanders", "Grinders", "Nail Guns"],
-    "Hand Tools": ["Hammers", "Screwdrivers", "Wrenches", "Pliers"],
-    "Garden Tools": ["Shovels", "Rakes", "Pruners", "Watering Cans"],
-    Automotive: ["Car Parts", "Motorcycle Parts", "Boat Parts"],
-    "Building Materials": ["Lumber", "Hardware", "Fasteners", "Adhesives"],
-  },
-  "Books & Media": {
-    Books: ["Fiction", "Non-Fiction", "Textbooks", "Children's Books"],
-    "Movies & TV": ["DVDs", "Blu-rays", "Digital Codes", "VHS Tapes"],
-    Music: ["CDs", "Vinyl Records", "Digital Downloads", "Instruments"],
-    Magazines: ["Current Issues", "Back Issues", "Subscriptions"],
-    Collectibles: ["Comic Books", "Trading Cards", "Memorabilia"],
-  },
-  "Health & Beauty": {
-    "Personal Care": ["Skincare", "Haircare", "Oral Care", "Fragrances"],
-    "Health & Wellness": ["Vitamins", "Supplements", "Medical Devices"],
-    "Beauty Tools": ["Makeup Brushes", "Hair Tools", "Mirrors"],
-    "Fitness & Nutrition": ["Protein Powder", "Workout Gear", "Supplements"],
-    "Baby & Kids": ["Diapers", "Baby Food", "Toys", "Clothing"],
-  },
-  "Pet Supplies": {
-    "Dog Supplies": ["Food", "Toys", "Beds", "Collars", "Leashes"],
-    "Cat Supplies": ["Food", "Toys", "Litter", "Scratchers", "Beds"],
-    "Other Pets": ["Bird Supplies", "Fish Supplies", "Small Animal Supplies"],
-    "Pet Health": ["Medications", "Grooming", "Vaccines", "Treatments"],
-    "Pet Services": ["Grooming", "Training", "Boarding", "Veterinary"],
-  },
-  Automotive: {
-    "Cars & Trucks": ["Sedans", "SUVs", "Trucks", "Vans", "Motorcycles"],
-    "Auto Parts": ["Engine Parts", "Body Parts", "Interior Parts", "Tires"],
-    "Auto Accessories": ["Audio Systems", "Navigation", "Covers", "Mats"],
-    "Auto Services": ["Repair", "Maintenance", "Towing", "Insurance"],
-    Motorcycles: ["Sport Bikes", "Cruisers", "Scooters", "Parts"],
-  },
-  "Real Estate": {
-    "Homes for Sale": ["Single Family", "Condos", "Townhouses", "Land"],
-    "Homes for Rent": ["Apartments", "Houses", "Rooms", "Vacation Rentals"],
-    Commercial: ["Office Space", "Retail Space", "Warehouses", "Land"],
-    "Real Estate Services": ["Agents", "Mortgage", "Insurance", "Legal"],
-    "Property Management": ["Rental Management", "Maintenance", "Utilities"],
-  },
-  Services: {
-    "Professional Services": ["Legal", "Accounting", "Consulting", "Design"],
-    "Home Services": ["Cleaning", "Repair", "Landscaping", "Moving"],
-    "Health Services": ["Medical", "Dental", "Therapy", "Fitness"],
-    "Beauty Services": ["Hair", "Nails", "Massage", "Spa"],
-    Education: ["Tutoring", "Classes", "Training", "Lessons"],
-  },
-  Jobs: {
-    "Full-Time": ["Administrative", "Customer Service", "Sales", "Technology"],
-    "Part-Time": ["Retail", "Food Service", "Delivery", "Childcare"],
-    Contract: ["Freelance", "Consulting", "Project-Based", "Seasonal"],
-    Remote: ["Work from Home", "Virtual", "Online", "Telecommute"],
-    Internships: ["Paid", "Unpaid", "Academic Credit", "Experience"],
-  },
-  "Free Stuff": {
-    Household: ["Furniture", "Appliances", "Decor", "Kitchen Items"],
-    Clothing: ["Men's", "Women's", "Kids'", "Baby", "Shoes"],
-    Electronics: ["Computers", "Phones", "TVs", "Audio", "Gaming"],
-    "Books & Media": ["Books", "Movies", "Music", "Magazines", "Games"],
-    Miscellaneous: ["Tools", "Sports", "Toys", "Pet Items", "Other"],
-  },
-};
+// Use centralized Facebook taxonomy
+const taxonomy = FACEBOOK_TAXONOMY;
 
 type Department = keyof typeof taxonomy;
 type Category = keyof (typeof taxonomy)[Department] | string;
@@ -886,11 +721,12 @@ export default function EditListingPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
                   required
                 >
-                  {Object.keys(taxonomy).map((dept) => (
-                    <option key={dept} value={dept}>
-                      {dept}
-                    </option>
-                  ))}
+                  {taxonomy &&
+                    Object.keys(taxonomy).map((dept) => (
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
+                    ))}
                 </select>
               </div>
 
@@ -909,39 +745,48 @@ export default function EditListingPage() {
                   required
                 >
                   <option value="">Select Category</option>
-                  {Object.keys(taxonomy[department] as Record<string, any>).map(
-                    (cat) => (
+                  {taxonomy &&
+                    department &&
+                    taxonomy[department] &&
+                    Object.keys(
+                      taxonomy[department] as Record<string, any>
+                    ).map((cat) => (
                       <option key={cat} value={cat}>
                         {cat}
                       </option>
-                    )
-                  )}
+                    ))}
                 </select>
               </div>
 
               {/* Sub Category */}
-              {(taxonomy[department] as Record<string, any>)[category]?.length >
-                0 && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Sub Category
-                  </label>
-                  <select
-                    value={subCategory}
-                    onChange={(e) => setSubCategory(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                  >
-                    <option value="">Select Sub Category</option>
-                    {(taxonomy[department] as Record<string, any>)[
-                      category
-                    ]?.map((subCat: string) => (
-                      <option key={subCat} value={subCat}>
-                        {subCat}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              {taxonomy &&
+                department &&
+                category &&
+                (taxonomy[department] as Record<string, any>)[category]
+                  ?.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Sub Category
+                    </label>
+                    <select
+                      value={subCategory}
+                      onChange={(e) => setSubCategory(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+                    >
+                      <option value="">Select Sub Category</option>
+                      {taxonomy &&
+                        department &&
+                        category &&
+                        (taxonomy[department] as Record<string, any>)[
+                          category
+                        ]?.map((subCat: string) => (
+                          <option key={subCat} value={subCat}>
+                            {subCat}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                )}
 
               {/* Title */}
               <div className="md:col-span-2">
@@ -1435,7 +1280,7 @@ export default function EditListingPage() {
                 } else if (photoId === "proof" && photos.proof) {
                   photoUrl = photos.proof;
                   photoType = "Proof";
-                  photoTitle = "AI Generated";
+                  photoTitle = "Proof";
                 } else if (photoId.startsWith("additional-")) {
                   const additionalIndex = parseInt(photoId.split("-")[1]);
                   if (photos.additional[additionalIndex]) {

@@ -720,20 +720,29 @@ export default function ListingDetailPage() {
       });
     }
 
-    // Add staged photo if available
-    if (listing.photos?.staged) {
-      images.push({
-        src: listing.photos.staged,
-        type: "staged",
-        label: "Staged scene - for inspiration",
-      });
-    }
+    // Note: Staged photos are currently disabled (AI Phase 2 not in use)
+    // if (listing.photos?.staged) {
+    //   images.push({
+    //     src: listing.photos.staged,
+    //     type: "staged",
+    //     label: "Staged scene - for inspiration",
+    //   });
+    // }
 
     // Add back photo if available
     if (listing.photos?.back) {
       images.push({
         src: listing.photos.back,
         type: "back",
+        label: null,
+      });
+    }
+
+    // Add proof photo if available
+    if (listing.photos?.proof) {
+      images.push({
+        src: listing.photos.proof,
+        type: "proof",
         label: null,
       });
     }

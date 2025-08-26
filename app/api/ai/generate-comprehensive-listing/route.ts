@@ -4,6 +4,7 @@ import { calculateAllFieldConfidence, ConfidenceFactors } from '@/lib/ai-confide
 import { AI_SERVICE_PHASE_1_PROMPT, mapConditionToFacebook, ensureFacebookTaxonomy, generateStagedPhotoPhase2, mapFacebookToGoogleProductCategory } from '@/lib/ai-service';
 import { mapToGoogleProductCategory } from '@/lib/google-product-categories';
 import { getPhase1Model, isUsingGpt5 } from '@/lib/ai-model-config';
+import { FACEBOOK_TAXONOMY, validateCategoryHierarchy } from '@/lib/facebook-taxonomy';
 
 /**
  * AI Service Phase 1: Comprehensive Listing Generation
@@ -51,6 +52,7 @@ export async function POST(request: NextRequest) {
       video,
       additionalInfo,
       userInput,
+      externalItemId,
       inventoryItem,
       mode = 'comprehensive', // 'comprehensive' or 'formFields' mode
     } = body;
@@ -220,8 +222,18 @@ PRODUCT INFORMATION:
 - Video Keyframes Available: ${accessibleVideoFrameUrls.length} frames
 - Video Duration: ${video?.duration ? `${video.duration.toFixed(1)} seconds` : 'Unknown'}
 
+${externalItemId ? `
+EXTERNAL ITEM ID: ${externalItemId}
+**CRITICAL**: This is a product identifier (like Costco item number) that can help you identify the EXACT product type and specifications. Use this to:
+- Determine precise product category (e.g., if this is a Costco refrigerator item ID, it should be categorized as Home Goods > Appliances > Refrigerators)
+- Look up known specifications and dimensions
+- Identify the correct brand and model
+- Ensure accurate product classification
+` : ''}
+
 ${inventoryItem ? `
 INVENTORY ITEM DATA (Use this detailed information to enhance accuracy):
+- Inventory Item ID: ${inventoryItem.id || 'Not provided'}
 - Description: ${inventoryItem.description || 'Not provided'}
 - Vendor/Manufacturer: ${inventoryItem.vendor || 'Not provided'}
 - Category: ${inventoryItem.category || 'Not provided'}
@@ -229,8 +241,9 @@ INVENTORY ITEM DATA (Use this detailed information to enhance accuracy):
 - Item Number: ${inventoryItem.itemNumber || 'Not provided'}
 - Lot Number: ${inventoryItem.lotNumber || 'Not provided'}
 - Quantity Available: ${inventoryItem.quantity || 'Not provided'}
-- Unit Retail Price: ${inventoryItem.unitRetail ? `$${inventoryItem.unitRetail}` : 'Not provided'}
+- Unit Retail Price (MSRP): ${inventoryItem.unitRetail ? `$${inventoryItem.unitRetail}` : 'Not provided'}
 - Extended Retail Value: ${inventoryItem.extRetail ? `$${inventoryItem.extRetail}` : 'Not provided'}
+- Unit Purchase Price: ${inventoryItem.unitPurchasePrice ? `$${inventoryItem.unitPurchasePrice}` : 'Not provided'}
 - Category Code: ${inventoryItem.categoryCode || 'Not provided'}
 - Department Code: ${inventoryItem.deptCode || 'Not provided'}
 ${inventoryItem.list ? `
@@ -240,15 +253,16 @@ ${inventoryItem.list ? `
 - List Lot Number: ${inventoryItem.list.lotNumber || 'Not provided'}` : ''}
 
 IMPORTANT: Use this inventory data to:
-1. Verify and improve product title accuracy using vendor and description details
-2. Enhance product description with vendor/manufacturer details and specifications
-3. Set appropriate category and department classifications from inventory codes
-4. Calculate competitive pricing: use unitRetail as estimatedRetailPrice, suggest listPrice 50-80% of retail based on condition
-5. Include relevant technical specifications and features from description
-6. Improve brand identification if vendor information is available
-7. Use itemNumber as potential modelNumber if it represents a product model
-8. Consider purchase date for age-related condition assessment
-9. Reference quantity for availability context in description
+1. **CATEGORIZATION PRIORITY**: The vendor and description from inventory are the PRIMARY source for categorization. If inventory says "appliances" vendor and "refrigerator" description, it MUST be categorized as Home Goods > Appliances > Refrigerators.
+2. Verify and improve product title accuracy using vendor and description details
+3. Enhance product description with vendor/manufacturer details and specifications
+4. Set appropriate category and department classifications from inventory codes and description
+5. Pricing: Treat unitRetail as ground-truth MSRP (estimatedRetailPrice). Determine a SINGLE numeric resale price (listPrice) that is BELOW the MSRP, considering this is used/second-hand merchandise. Factor in comps, condition, brand, age, demand, and category. Do NOT output ranges; return a specific number with two decimals that is less than the MSRP.
+6. Include relevant technical specifications and features from description
+7. Improve brand identification if vendor information is available
+8. Use itemNumber as potential modelNumber if it represents a product model
+9. Consider purchase date for age-related condition assessment
+10. Reference quantity for availability context in description
 ` : ''}
 
 VISUAL ANALYSIS INSTRUCTIONS:
@@ -283,13 +297,35 @@ Rely on the user-provided information and your expertise to generate the best po
 Focus on creating compelling descriptions based on the product details provided.
 `}
 
+FACEBOOK MARKETPLACE TAXONOMY (MUST USE EXACT CATEGORIES):
+${JSON.stringify(FACEBOOK_TAXONOMY, null, 2)}
+
+For a refrigerator/fridge, you MUST use:
+- Department: "Home Goods"
+- Category: "Appliances"  
+- Sub-category: "Refrigerators"
+
+For laptops/computers, you MUST use:
+- Department: "Electronics"
+- Category: "Computers & Tablets"
+- Sub-category: "Laptops"
+
+FACEBOOK CONDITION STANDARDS (MUST USE EXACT VALUES):
+1. "New" - Brand new, never used. Still in original packaging with tags (if applicable). No defects, wear, or missing parts.
+2. "Used - Like New" - Item was opened/used briefly but is in excellent condition. No visible signs of wear. 100% functional. May be missing original packaging.
+3. "Used - Good" - Item shows light signs of use (minor scratches, scuffs, or blemishes). Still fully functional. Wear is cosmetic only and doesn't affect use.
+4. "Used - Fair" - Item is heavily used and shows significant wear/defects. May have cosmetic or minor functional issues. Still usable, but not in great shape.
+
 CRITICAL REQUIREMENTS:
-1. DIMENSIONS: If you can determine dimensions from visual analysis, provide EXACT NUMERICAL VALUES only (e.g., "48" not "Approximately 48 inches", "24.5" not "About 24.5 inches"). If dimensions cannot be determined, use null.
-2. CATEGORIES: Use ONLY the specific categories and subcategories from the provided taxonomy. Do not create new categories.
-3. VIDEO ANALYSIS: If video frames are available, explicitly mention what you observed in the video analysis in your detailed description.
-4. ACCURACY: Be precise and factual. Do not guess or estimate unless clearly stated.
-5. NULL VALUES: If you cannot determine a field from visual analysis, use null (not "Cannot determine from images" or similar text).
-6. TEXT FORMATTING: Use proper title case for all text fields (e.g., "Solid" not "SOLID", "Furniture" not "furniture", "Modern" not "MODERN").
+1. CATEGORIES: Use ONLY the exact categories from the Facebook taxonomy above. A refrigerator is ALWAYS in Home Goods > Appliances > Refrigerators, never in Electronics.
+2. CONDITIONS: Use ONLY the exact Facebook condition values above (New, Used - Like New, Used - Good, Used - Fair). Assess condition based on visible wear and functionality.
+3. EXTERNAL ITEM ID: If provided, use this to identify the exact product type and specifications. Costco item IDs can help determine exact product details.
+4. INVENTORY DATA: The vendor, description, and department from inventory should guide categorization (e.g., appliances vendor = appliances category).
+5. DIMENSIONS: If you can determine dimensions from visual analysis, provide EXACT NUMERICAL VALUES only (e.g., "48" not "Approximately 48 inches", "24.5" not "About 24.5 inches"). If dimensions cannot be determined, use null.
+6. VIDEO ANALYSIS: If video frames are available, explicitly mention what you observed in the video analysis in your detailed description.
+7. ACCURACY: Be precise and factual. Do not guess or estimate unless clearly stated.
+8. NULL VALUES: If you cannot determine a field from visual analysis, use null (not "Cannot determine from images" or similar text).
+9. TEXT FORMATTING: Use proper title case for all text fields (e.g., "Solid" not "SOLID", "Furniture" not "furniture", "Modern" not "MODERN").
 
 TASK: Generate a comprehensive listing and return it as a valid JSON object with the following structure:
 
@@ -336,7 +372,11 @@ TASK: Generate a comprehensive listing and return it as a valid JSON object with
   "googleProductCategoryTertiary": "Tertiary category (e.g., Laptops, Shirts, Cookware)"
 }
 
-IMPORTANT: Return ONLY valid JSON. No additional text, comments, or explanations outside the JSON object.`;
+IMPORTANT:
+- Return ONLY valid JSON. No additional text, comments, or explanations outside the JSON object.
+- listPrice MUST be a single numeric price (two decimals), not a range, and MUST be below the MSRP for used goods.
+- Use MSRP as estimatedRetailPrice when provided via inventory.
+`;
 
     // Use the model configured in the admin dashboard
     const modelToUse = getPhase1Model();
@@ -475,7 +515,11 @@ FINAL INSTRUCTIONS:
 - Do NOT say "images not accessible" or "awaiting verification" - you have direct access to analyze these images
 - Be confident and analytical based on the visual evidence available
 
-IMPORTANT: Return ONLY valid JSON. No additional text, comments, or explanations outside the JSON object.`;
+IMPORTANT:
+- Return ONLY valid JSON. No additional text, comments, or explanations outside the JSON object.
+- listPrice MUST be a single numeric price (two decimals), not a range, and MUST be below the MSRP for used goods.
+- When inventory unitRetail is available, treat it as MSRP and use it for estimatedRetailPrice.
+`;
     
     // DEBUG: Log API call details
     console.log('🔍 DEBUG: API Call Details');
@@ -590,10 +634,10 @@ IMPORTANT: Return ONLY valid JSON. No additional text, comments, or explanations
     console.log('🔍 Sub-Category:', aiGeneratedSubCategory);
     
     // Step 2: Ensure Facebook taxonomy compliance and get validated categories
-    const facebookCategories = ensureFacebookTaxonomy(
-      aiGeneratedDepartment || department,
-      aiGeneratedCategory || category,
-      aiGeneratedSubCategory || subCategory
+    const facebookCategories = validateCategoryHierarchy(
+      aiGeneratedDepartment || department || "",
+      aiGeneratedCategory || category || "",
+      aiGeneratedSubCategory || subCategory || ""
     );
     
     console.log('🔍 DEBUG: Validated Facebook Categories');
@@ -614,6 +658,12 @@ IMPORTANT: Return ONLY valid JSON. No additional text, comments, or explanations
     console.log('🔍 Google Tertiary:', googleCategoryMapping.tertiary);
     
     // Step 4: Validate and clean the data with the new flow
+    // Prefer precise MSRP from inventory when available
+    const msrpFromInventory =
+      typeof inventoryItem?.unitRetail === 'number' && !Number.isNaN(inventoryItem.unitRetail)
+        ? Number(inventoryItem.unitRetail)
+        : null;
+
     const validatedData = {
       title: listingData.title || title,
       description: listingData.description || description,
@@ -623,7 +673,10 @@ IMPORTANT: Return ONLY valid JSON. No additional text, comments, or explanations
       category: facebookCategories.category,
       subCategory: facebookCategories.subCategory,
       
-      estimatedRetailPrice: parseFloat(listingData.estimatedRetailPrice) || price * 1.5,
+      estimatedRetailPrice: msrpFromInventory !== null
+        ? msrpFromInventory
+        : (parseFloat(listingData.estimatedRetailPrice) || price * 1.5),
+      // Use AI-generated list price, with fallback only if AI didn't provide one
       listPrice: parseFloat(listingData.listPrice) || price,
       priceReasoning: listingData.priceReasoning || 'AI-generated pricing based on market analysis',
       brand: listingData.brand || brand || 'Unknown',
@@ -667,6 +720,9 @@ IMPORTANT: Return ONLY valid JSON. No additional text, comments, or explanations
       googleProductCategoryPrimary: googleCategoryMapping.primary,
       googleProductCategorySecondary: googleCategoryMapping.secondary,
       googleProductCategoryTertiary: googleCategoryMapping.tertiary,
+      
+      // Photo categorization from AI analysis
+      photoCategorization: Array.isArray(listingData.photoCategorization) ? listingData.photoCategorization : null,
     };
     
     // Post-process data to clean up any remaining "Cannot determine from images" text
