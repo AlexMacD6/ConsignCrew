@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     const q = searchParams.get("q")?.trim();
     const statusParam = searchParams.get("status");
     const inStockParam = searchParams.get("inStock");
+    const availableOnlyParam = searchParams.get("availableOnly"); // Now means "listed only"
     const status = (statusParam && statusParam !== "ALL"
       ? (statusParam as "MANIFESTED" | "PARTIALLY_RECEIVED" | "RECEIVED")
       : null);
@@ -29,6 +30,8 @@ export async function GET(request: NextRequest) {
       // Only items with at least one unit received
       where.receivedQuantity = { gt: 0 };
     }
+    // Note: We'll handle availableOnlyParam filtering after getting the data
+    // availableOnlyParam=true now means "show only listed items"
     if (q) {
       where.OR = [
         { description: { contains: q, mode: "insensitive" } },
@@ -39,6 +42,10 @@ export async function GET(request: NextRequest) {
       ];
     }
 
+    // For listed-only filtering, we need to get all items first, then filter and paginate
+    // This is because we need to calculate posting counts before filtering
+    const shouldFetchAll = availableOnlyParam === "true";
+    
     const [items, total, counts] = await Promise.all([
       prisma.inventoryItem.findMany({
         where,
@@ -46,10 +53,13 @@ export async function GET(request: NextRequest) {
           list: {
             select: { id: true, name: true, lotNumber: true, briefDescription: true },
           },
+          listings: {
+            select: { id: true, status: true, createdAt: true },
+            where: { status: "active" }, // Only count active listings
+          },
         },
         orderBy: [{ updatedAt: "desc" }, { description: "asc" }],
-        skip,
-        take: limit,
+        ...(shouldFetchAll ? {} : { skip, take: limit }), // Skip pagination if we need to filter
       }),
       prisma.inventoryItem.count({ where }),
       prisma.inventoryItem.groupBy({
@@ -58,14 +68,36 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    // Include unitPurchasePrice like the Data Upload modal (total purchase / quantity)
-    const itemsWithUnit = items.map((it: any) => ({
-      ...it,
-      unitPurchasePrice:
-        typeof it.purchasePrice === "number" && typeof it.quantity === "number" && it.quantity > 0
-          ? it.purchasePrice / it.quantity
-          : null,
-    }));
+    // Include unitPurchasePrice and listing counts
+    const itemsWithUnit = items.map((it: any) => {
+      const postedListings = it.listings?.length || 0;
+      const totalInventory = it.quantity || 0;
+      const availableToList = Math.max(0, totalInventory - postedListings);
+      
+      return {
+        ...it,
+        unitPurchasePrice:
+          typeof it.purchasePrice === "number" && typeof it.quantity === "number" && it.quantity > 0
+            ? it.purchasePrice / it.quantity
+            : null,
+        postedListings,
+        availableToList,
+        totalInventory,
+      };
+    });
+
+    // Apply filtering after calculating counts
+    // availableOnlyParam=true now means "show only items with posted listings"
+    let filteredItems = availableOnlyParam === "true" 
+      ? itemsWithUnit.filter(item => item.postedListings > 0)
+      : itemsWithUnit;
+
+    // Apply pagination to filtered results if we fetched all items
+    if (shouldFetchAll) {
+      const startIndex = skip;
+      const endIndex = startIndex + limit;
+      filteredItems = filteredItems.slice(startIndex, endIndex);
+    }
 
     const statusCounts = {
       MANIFESTED: 0,
@@ -74,10 +106,20 @@ export async function GET(request: NextRequest) {
     } as Record<string, number>;
     for (const c of counts) statusCounts[c.receiveStatus] = c._count.receiveStatus;
 
+    // Calculate proper pagination counts
+    const totalFilteredCount = availableOnlyParam === "true" 
+      ? itemsWithUnit.filter(item => item.postedListings > 0).length
+      : total;
+
     return NextResponse.json({
       success: true,
-      items: itemsWithUnit,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      items: filteredItems,
+      pagination: { 
+        page, 
+        limit, 
+        total: totalFilteredCount,
+        totalPages: Math.ceil(totalFilteredCount / limit) 
+      },
       statusCounts,
     });
   } catch (error) {

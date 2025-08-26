@@ -205,7 +205,14 @@ Provide deep reasoning for each field to maximize value, appeal, and competitive
       category: formData.category || category,
       subCategory: formData.subCategory || subCategory,
       facebookCondition: formData.facebookCondition || facebookCondition,
-      estimatedRetailPrice: parseFloat(formData.estimatedRetailPrice) || price * 1.5,
+      // Prefer exact MSRP from inventory if supplied via additionalInfo
+      // Expect pattern like MSRP:$99.99
+      estimatedRetailPrice: (()=>{
+        const m = (additionalInfo||'').match(/MSRP\s*:\s*\$?(\d+(?:\.\d{1,2})?)/i);
+        if (m) return parseFloat(m[1]);
+        const val = parseFloat(formData.estimatedRetailPrice);
+        return Number.isFinite(val) ? val : price * 1.5;
+      })(),
       listPrice: parseFloat(formData.listPrice) || price,
       priceReasoning: formData.priceReasoning || 'Comprehensive pricing analysis with market research and competitive factors',
       brand: formData.brand || brand || 'Unknown',

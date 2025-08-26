@@ -1,4 +1,5 @@
 "use client";
+import { FACEBOOK_TAXONOMY } from "@/lib/facebook-taxonomy";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "../../lib/auth-client";
@@ -187,10 +188,8 @@ export default function ListingsPage() {
               created_at: listing.createdAt,
               status: listing.status,
               qr_code_url: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${listing.itemId}`,
-              image_urls_staged: getPhotoUrl(listing.photos.staged)
-                ? [getPhotoUrl(listing.photos.staged)] // Use actual staged photo if available
-                : getPhotoUrl(listing.photos.hero)
-                ? [getPhotoUrl(listing.photos.hero)] // Fallback to hero photo
+              image_urls_staged: getPhotoUrl(listing.photos.hero)
+                ? [getPhotoUrl(listing.photos.hero)] // Use hero photo (staged photos disabled)
                 : [],
               title: listing.title,
               description: listing.description,
@@ -199,14 +198,16 @@ export default function ListingsPage() {
               image_urls_original:
                 listing.photos.gallery || [getPhotoUrl(listing.photos.hero)] ||
                 [],
-              // Create a comprehensive image array for carousel - put staged photo first if available
+              // Create a comprehensive image array for carousel - hero photo first
               all_images: [
-                getPhotoUrl(listing.photos.staged), // AI-generated staged photo as FIRST image
-                getPhotoUrl(listing.photos.hero), // Hero photo as second image
+                getPhotoUrl(listing.photos.hero), // Hero photo as FIRST image
                 getPhotoUrl(listing.photos.back),
+                getPhotoUrl(listing.photos.proof),
                 ...(listing.photos.additional?.map((photo: any) =>
                   getPhotoUrl(photo)
                 ) || []),
+                // Note: Staged photos disabled (AI Phase 2 not in use)
+                // getPhotoUrl(listing.photos.staged),
               ].filter(Boolean), // Remove any null/undefined values
               serial_number: listing.serialNumber,
               model_number: listing.modelNumber,
@@ -605,154 +606,8 @@ export default function ListingsPage() {
     }
   };
 
-  // Real taxonomy structure from list-item page
-  const taxonomy = {
-    Furniture: {
-      "Living Room": [
-        "Sofas",
-        "Loveseats",
-        "Sectionals",
-        "Coffee Tables",
-        "Side Tables",
-        "Console Tables",
-      ],
-      "Dining Room": [
-        "Dining Tables",
-        "Dining Chairs",
-        "Buffets",
-        "China Cabinets",
-      ],
-      Bedroom: ["Beds", "Dressers", "Nightstands", "Wardrobes", "Vanities"],
-      Office: ["Desks", "Office Chairs", "Filing Cabinets", "Bookshelves"],
-      Storage: ["Wardrobes", "Chests", "Shelving Units", "Storage Bins"],
-      Outdoor: ["Patio Sets", "Garden Chairs", "Outdoor Tables"],
-      Kids: ["Children's Beds", "Kids' Desks", "Toy Storage"],
-    },
-    Electronics: {
-      "Computers & Tablets": [
-        "Laptops",
-        "Desktops",
-        "Tablets",
-        "Monitors",
-        "Keyboards",
-        "Mice",
-      ],
-      "Mobile Phones": [
-        "Smartphones",
-        "Phone Cases",
-        "Chargers",
-        "Screen Protectors",
-      ],
-      "Audio Equipment": [
-        "Speakers",
-        "Headphones",
-        "Microphones",
-        "Amplifiers",
-      ],
-      "Cameras & Photo": [
-        "Digital Cameras",
-        "Lenses",
-        "Tripods",
-        "Camera Bags",
-      ],
-      "TVs & Video": [
-        "Televisions",
-        "Projectors",
-        "DVD Players",
-        "Streaming Devices",
-      ],
-      "Smart Home": ["Smart Speakers", "Security Cameras", "Smart Thermostats"],
-      Gaming: [
-        "Gaming Consoles",
-        "Gaming PCs",
-        "Controllers",
-        "Gaming Headsets",
-      ],
-    },
-    "Home & Garden": {
-      "Home Décor": ["Wall Art", "Mirrors", "Vases", "Candles"],
-      Lighting: ["Lamps", "Chandeliers", "Sconces", "Light Bulbs"],
-      "Kitchen & Dining": [
-        "Cookware",
-        "Dinnerware",
-        "Kitchen Utensils",
-        "Small Appliances",
-      ],
-      Bathroom: ["Towels", "Shower Curtains", "Bathroom Accessories"],
-      "Storage & Organization": [
-        "Closet Organizers",
-        "Storage Bins",
-        "Hooks",
-        "Shelving",
-      ],
-      "Rugs & Textiles": ["Area Rugs", "Carpets", "Blankets", "Throws"],
-      "Garden & Outdoor": [
-        "Garden Tools",
-        "Planters",
-        "Outdoor Decor",
-        "Patio Furniture",
-        "BBQ & Grilling",
-      ],
-    },
-    "Clothing & Accessories": {
-      "Men's Clothing": ["Shirts", "Pants", "Jackets", "Shoes", "Accessories"],
-      "Women's Clothing": [
-        "Dresses",
-        "Tops",
-        "Bottoms",
-        "Shoes",
-        "Accessories",
-      ],
-      "Kids' Clothing": [
-        "Boys' Clothing",
-        "Girls' Clothing",
-        "Baby Clothes",
-        "Shoes",
-      ],
-      "Jewelry & Watches": ["Necklaces", "Rings", "Watches", "Bracelets"],
-      "Bags & Purses": ["Handbags", "Backpacks", "Wallets", "Luggage"],
-      Shoes: ["Sneakers", "Boots", "Sandals", "Formal Shoes"],
-    },
-    "Sporting Goods": {
-      "Fitness Equipment": [
-        "Treadmills",
-        "Weights",
-        "Yoga Mats",
-        "Exercise Bikes",
-      ],
-      "Team Sports": [
-        "Basketballs",
-        "Soccer Balls",
-        "Baseball Equipment",
-        "Tennis Rackets",
-      ],
-      "Outdoor Sports": [
-        "Bicycles",
-        "Camping Gear",
-        "Hiking Equipment",
-        "Fishing Gear",
-      ],
-      "Water Sports": ["Swimming Gear", "Surfboards", "Kayaks", "Life Jackets"],
-      "Winter Sports": ["Skis", "Snowboards", "Winter Clothing", "Boots"],
-    },
-    Appliances: {
-      "Kitchen Appliances": [
-        "Refrigerators",
-        "Dishwashers",
-        "Ovens",
-        "Microwaves",
-      ],
-      Laundry: ["Washers", "Dryers", "Ironing Boards"],
-      Cleaning: ["Vacuum Cleaners", "Steam Cleaners", "Air Purifiers"],
-      "Small Appliances": ["Blenders", "Coffee Makers", "Toasters", "Mixers"],
-    },
-    "Baby & Kids": {
-      "Baby Gear": ["Strollers", "Car Seats", "High Chairs", "Cribs"],
-      Toys: ["Educational Toys", "Building Blocks", "Dolls", "Action Figures"],
-      Clothing: ["Onesies", "Sleepers", "Outfits", "Shoes"],
-      Feeding: ["Bottles", "Formula", "Baby Food", "Bibs"],
-    },
-  } as const;
+  // Use centralized Facebook taxonomy
+  const taxonomy = FACEBOOK_TAXONOMY;
 
   // Get departments (top level categories)
   const departments = ["All", ...Object.keys(taxonomy)];

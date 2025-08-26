@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { FACEBOOK_TAXONOMY } from '@/lib/facebook-taxonomy';
 
 /**
  * AI Service for analyzing product photos and generating listing information
@@ -459,6 +460,15 @@ You are given a set of user inputs (text fields, photo URLs, optional video) and
 🛠️ Instructions:
 Analyze the photos (and video frames if provided) to understand the item's visual identity, category, and likely brand.
 
+🔍 Photo Categorization:
+If multiple photos are provided, analyze each image to determine its type:
+- **hero**: The front-facing view of the item - shows the main product face, centered, front-on angle
+- **back**: The rear/underside view - shows ports, hinges, back fabric, cabinet backs, battery doors  
+- **proof**: Shows identification marks - powered screens, labels, serial numbers, brand stamps, model info
+- **additional**: Close-ups of damage, accessories, different angles, size comparisons
+
+CRITICAL: For appliances like refrigerators, the HERO must be the front door view (not the back coils/vents).
+
 Classify the item using TreasureHub's taxonomy: department → category → subCategory.
 
 Produce core content fields:
@@ -515,6 +525,12 @@ Optional: Analyze video:
 - Extract 5 keyframes based on video duration % (0%, 10%, 25%, 50%, 90%)
 - Use frames to enhance accuracy of brand, category, and condition
 - Populate videoAnalysis summary if applicable
+
+📸 Photo Categorization:
+When multiple photos are provided, analyze each image and return an array categorizing them in order:
+- Return array like ["hero", "back", "proof", "additional"] matching photo order
+- If only one photo or no photos, return null
+- CRITICAL: Hero should be the main front view, back should be rear/underside view
 
 🎯 Confidence Scoring:
 For each field, assess confidence level based on:
@@ -579,6 +595,9 @@ Return a single JSON object with the following fields populated (NO COMMENTS IN 
 
   // Video analysis (optional)
   "videoAnalysis": string | null,
+
+  // Photo categorization (when multiple photos provided)
+  "photoCategorization": ["hero" | "back" | "proof" | "additional"] | null,
 
   // Confidence scores for all fields (high/medium/low)
   "confidenceScores": {
@@ -779,26 +798,22 @@ CRITICAL: Return ONLY valid JSON. Do not include any markdown formatting, code b
 
 /**
  * Utility function to map condition values to Facebook-compatible format
- * Handles both old format (GOOD, NEW, EXCELLENT, FAIR) and new format (new, used, refurbished)
+ * Maps detailed Facebook conditions to simplified API format for catalog integration
  */
 export function mapConditionToFacebook(condition: string): "new" | "used" | "refurbished" {
-  const conditionLower = condition.toLowerCase();
-  
-  // Handle new Facebook-compatible format
-  if (conditionLower === "new" || conditionLower === "used" || conditionLower === "refurbished") {
-    return conditionLower as "new" | "used" | "refurbished";
-  }
-  
-  // Handle old format mapping
-  switch (condition.toUpperCase()) {
-    case "NEW":
+  // Handle Facebook Marketplace detailed conditions
+  switch (condition) {
+    case "New":
       return "new";
-    case "EXCELLENT":
-    case "GOOD":
-    case "FAIR":
-    case "POOR":
+    case "Used - Like New":
+    case "Used - Good": 
+    case "Used - Fair":
       return "used";
     default:
+      // Handle legacy formats and fallbacks
+      const conditionLower = condition.toLowerCase();
+      if (conditionLower === "new") return "new";
+      if (conditionLower === "refurbished") return "refurbished";
       return "used"; // Default fallback
   }
 }
@@ -817,51 +832,64 @@ export function ensureFacebookTaxonomy(
   subCategory: string;
 } {
   // Handle undefined/null values gracefully
-  if (!department) department = 'Home & Garden';
-  if (!category) category = 'General';
-  if (!subCategory) subCategory = 'Other';
-  // Facebook Marketplace departments
-  const facebookDepartments = [
-    'Furniture', 'Electronics', 'Home & Garden', 'Clothing & Accessories',
-    'Sporting Goods', 'Toys & Games', 'Books & Magazines', 'Automotive',
-    'Beauty & Health', 'Jewelry & Watches', 'Tools & Hardware',
-    'Collectibles & Art', 'Antiques'
-  ];
+  const inputDept = (department || '').trim();
+  const inputCat = (category || '').trim();
+  const inputSub = (subCategory || '').trim();
 
-  // Map common misclassifications to Facebook departments
-  const departmentMapping: Record<string, string> = {
-    'Sports & Outdoors': 'Sporting Goods', // Facebook uses "Sporting Goods"
-    'Home & Garden': 'Home & Garden', // Keep as is
-    'Furniture': 'Furniture', // Keep as is
-    'Electronics': 'Electronics', // Keep as is
-    'Clothing & Accessories': 'Clothing & Accessories', // Keep as is
+  // Derive display departments from centralized taxonomy
+  const taxonomyDepartments = Object.keys(FACEBOOK_TAXONOMY);
+
+  // Common synonyms → Facebook label used in UI
+  const uiDepartmentSynonyms: Record<string, string> = {
+    'home & garden': 'Home Goods',
+    'home goods': 'Home Goods',
+    'homegoods': 'Home Goods',
+    'clothing': 'Apparel',
   };
 
-  // Ensure department is Facebook-compliant
-  const mappedDepartment = departmentMapping[department] || 
-    (facebookDepartments.includes(department) ? department : 'Home & Garden');
+  const inputDeptLower = inputDept.toLowerCase();
+  const displayDepartment =
+    taxonomyDepartments.find((d) => d.toLowerCase() === inputDeptLower) ||
+    uiDepartmentSynonyms[inputDeptLower] ||
+    'Home Goods';
 
-  // For furniture items, ensure they're in the Furniture department
-  if (mappedDepartment === 'Home & Garden' && 
-      category && (category.toLowerCase().includes('dresser') || 
-       category.toLowerCase().includes('table') || 
-       category.toLowerCase().includes('chair') || 
-       category.toLowerCase().includes('bed') || 
-       category.toLowerCase().includes('desk') ||
-       category.toLowerCase().includes('cabinet') ||
-       category.toLowerCase().includes('sofa') ||
-       category.toLowerCase().includes('couch'))) {
-    return {
-      department: 'Furniture',
-      category: category,
-      subCategory: subCategory
-    };
-  }
+  // Validate/normalize category against selected department
+  const departmentCategories = FACEBOOK_TAXONOMY[displayDepartment] || {};
+  const candidateCategories = Object.keys(departmentCategories);
+  const inputCatLower = inputCat.toLowerCase();
+  const validatedCategory =
+    candidateCategories.find((c) => c.toLowerCase() === inputCatLower) ||
+    // Fallback heuristics for Home Goods
+    (displayDepartment === 'Home Goods' && inputCatLower.includes('light')
+      ? 'Home Lighting'
+      : displayDepartment === 'Home Goods' && inputCatLower.includes('decor')
+      ? 'Home Decor'
+      : displayDepartment === 'Home Goods' && inputCatLower.includes('appliance')
+      ? 'Appliances'
+      : displayDepartment === 'Home Goods' && inputCatLower.includes('bedding')
+      ? 'Bedding'
+      : displayDepartment === 'Home Goods' && inputCatLower.includes('bath')
+      ? 'Bath Products'
+      : displayDepartment === 'Home Goods' && inputCatLower.includes('kitchen')
+      ? 'Kitchen & Dining Products'
+      : displayDepartment === 'Home Goods' && (inputCatLower.includes('storage') || inputCatLower.includes('organ'))
+      ? 'Storage & Organization'
+      : candidateCategories[0] || 'Appliances');
+
+  // Validate/normalize sub-category against selected category
+  const categorySubs = departmentCategories[validatedCategory] || [];
+  const inputSubLower = inputSub.toLowerCase();
+  const validatedSubCategory =
+    categorySubs.find((s: string) => s.toLowerCase() === inputSubLower) ||
+    (categorySubs[0] || '');
+
+  // Normalize for Google mapping: map UI label "Home Goods" → "Home & Garden"
+  const departmentForGoogle = displayDepartment === 'Home Goods' ? 'Home & Garden' : displayDepartment;
 
   return {
-    department: mappedDepartment,
-    category: category,
-    subCategory: subCategory
+    department: departmentForGoogle,
+    category: validatedCategory,
+    subCategory: validatedSubCategory,
   };
 }
 
