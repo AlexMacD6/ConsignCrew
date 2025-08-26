@@ -9,11 +9,12 @@ import {
   NavigationMenuItem,
   NavigationMenuLink,
 } from "./ui/navigation-menu";
-import { ChevronDown, Menu, X } from "lucide-react";
+import { ChevronDown, Menu, X, ShoppingCart } from "lucide-react";
 import { useState } from "react";
 import { useModal } from "../contexts/ModalContext";
 import { useUserPermissions } from "../hooks/useUserPermissions";
 import { useEarlyAuth } from "../hooks/useEarlyAuth";
+import { useCart } from "../contexts/CartContext";
 
 export default function NavBar() {
   const pathname = usePathname();
@@ -26,6 +27,7 @@ export default function NavBar() {
 
   const { data: session } = authClient.useSession();
   const { canListItems } = useUserPermissions();
+  const { cartItemCount } = useCart();
 
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -146,6 +148,19 @@ export default function NavBar() {
 
         {session?.user ? (
           <>
+            {/* Cart Icon with Count */}
+            <Link
+              href="/cart"
+              className="relative p-2 text-gray-600 hover:text-[#D4AF3D] transition"
+              title="Shopping Cart"
+            >
+              <ShoppingCart className="h-6 w-6" />
+              {cartItemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-[#D4AF3D] text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                  {cartItemCount > 99 ? "99+" : cartItemCount}
+                </span>
+              )}
+            </Link>
             {canListItems && (
               <Link href="/list-item" className="btn btn-primary btn-md">
                 List an Item
@@ -281,6 +296,23 @@ export default function NavBar() {
               >
                 Listings
               </Link>
+              {session?.user && (
+                <Link
+                  href="/cart"
+                  className="flex items-center justify-between w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <span className="flex items-center gap-2">
+                    <ShoppingCart className="h-4 w-4" />
+                    Shopping Cart
+                  </span>
+                  {cartItemCount > 0 && (
+                    <span className="bg-[#D4AF3D] text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                      {cartItemCount > 99 ? "99+" : cartItemCount}
+                    </span>
+                  )}
+                </Link>
+              )}
               <Link
                 href="/our-origin"
                 className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../../components/ui/button";
@@ -35,13 +35,26 @@ import {
   getCategories as fbGetCategories,
   getSubCategories as fbGetSubCategories,
   validateCategoryHierarchy,
-} from "@/lib/facebook-taxonomy";
+} from "../../lib/facebook-taxonomy";
 // FormGenerationData interface moved to ai-service for unified typing
 import { FormGenerationData } from "../../lib/ai-form-generator";
 import VideoUpload from "../../components/VideoUpload";
 import VideoProcessingModal from "../../components/VideoProcessingModal";
 import CustomQRCode from "../../components/CustomQRCode";
 import ProgressBar, { Step } from "../../components/ProgressBar";
+import DeliveryCategory from "../../components/DeliveryCategory";
+import BasicFormFields from "../../components/BasicFormFields";
+import CategorySelector from "../../components/CategorySelector";
+import ProductDimensions from "../../components/ProductDimensions";
+import FacebookShopIntegration from "../../components/FacebookShopIntegration";
+import ProductSpecifications from "../../components/ProductSpecifications";
+import InventorySelector from "../../components/InventorySelector";
+import TreasureDetection from "../../components/TreasureDetection";
+import AdditionalFormFields from "../../components/AdditionalFormFields";
+import PhotoDisplay from "../../components/PhotoDisplay";
+import VideoDisplay from "../../components/VideoDisplay";
+import FormSection from "../../components/FormSection";
+import MediaPreview from "../../components/MediaPreview";
 import {
   ConfidenceBadge,
   ConfidenceSummary,
@@ -130,6 +143,9 @@ export default function ListItemPage() {
   const [discountSchedule, setDiscountSchedule] = useState<
     (typeof discountSchedules)[number] | ""
   >("");
+  const [deliveryCategory, setDeliveryCategory] = useState<"NORMAL" | "BULK">(
+    "NORMAL"
+  );
 
   // Facebook Shop Integration Fields
   const [facebookShopEnabled, setFacebookShopEnabled] = useState(true);
@@ -250,6 +266,7 @@ export default function ListItemPage() {
   // UI state for collapsible sections
   const [showPhotos, setShowPhotos] = useState(false);
   const [showVideoFrames, setShowVideoFrames] = useState(false);
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
   const [showVideoPreview, setShowVideoPreview] = useState(false);
 
   // Phase 2: Staged photo data state
@@ -783,11 +800,11 @@ export default function ListItemPage() {
         // Automatically trigger form field generation
         setTimeout(async () => {
           try {
-            console.log("🔄 Starting auto form generation...");
+            console.log("ðŸ”„ Starting auto form generation...");
             await generateFormFieldsData();
-            console.log("✅ Auto form generation completed successfully");
+            console.log("âœ… Auto form generation completed successfully");
           } catch (error) {
-            console.error("❌ Auto form generation failed:", error);
+            console.error("âŒ Auto form generation failed:", error);
             setComprehensiveError(
               "AI form generation failed. You can still fill out the form manually."
             );
@@ -952,18 +969,18 @@ export default function ListItemPage() {
         return url;
       });
 
-    console.log("📸 Photo URLs for AI analysis:", photoUrls);
-    console.log("📸 Photos object for AI:", {
+    console.log("ðŸ“¸ Photo URLs for AI analysis:", photoUrls);
+    console.log("ðŸ“¸ Photos object for AI:", {
       hero: { url: photoUrls[0] || null },
       back: { url: photoUrls[1] || null },
       proof: { url: photoUrls[2] || null },
       additional: photoUrls.slice(3).map((url) => ({ url })),
     });
-    console.log("📸 Raw photos state:", photos);
-    console.log("📸 Photo URLs array:", photoUrls);
-    console.log("🎥 Video data for AI:", videoData);
-    console.log("🎥 Video frame URLs:", videoData.frameUrls);
-    console.log("🎥 Video frame count:", videoData.frameUrls?.length || 0);
+    console.log("ðŸ“¸ Raw photos state:", photos);
+    console.log("ðŸ“¸ Photo URLs array:", photoUrls);
+    console.log("ðŸŽ¥ Video data for AI:", videoData);
+    console.log("ðŸŽ¥ Video frame URLs:", videoData.frameUrls);
+    console.log("ðŸŽ¥ Video frame count:", videoData.frameUrls?.length || 0);
 
     // Use the userInput state variable if available, otherwise use default values
     const aiUserInput = userInput || "Product description for AI analysis";
@@ -972,7 +989,7 @@ export default function ListItemPage() {
     setComprehensiveError(null);
 
     // Log what we're about to send to the API
-    console.log("🚀 Sending to AI API:", {
+    console.log("ðŸš€ Sending to AI API:", {
       userInput,
       photoUrls,
       videoData,
@@ -987,7 +1004,7 @@ export default function ListItemPage() {
       additional: photoUrls.slice(3).map((url) => ({ url })),
     };
 
-    console.log("📸 Photos object being sent to API:", photosForApi);
+    console.log("ðŸ“¸ Photos object being sent to API:", photosForApi);
 
     try {
       // Use unified comprehensive listing service
@@ -1049,20 +1066,20 @@ export default function ListItemPage() {
       }
 
       const data = await response.json();
-      console.log("🎯 Comprehensive Generation Complete:", data);
+      console.log("ðŸŽ¯ Comprehensive Generation Complete:", data);
 
       // DEBUG: Log model information received from API
       if (data.debug) {
-        console.log("🔍 DEBUG: Model Information from API");
-        console.log("🔍 Model Requested:", data.debug.modelRequested);
-        console.log("🔍 Model Actually Used:", data.debug.modelUsed);
+        console.log("ðŸ” DEBUG: Model Information from API");
+        console.log("ðŸ” Model Requested:", data.debug.modelRequested);
+        console.log("ðŸ” Model Actually Used:", data.debug.modelUsed);
         console.log(
-          "🔍 Model Match:",
-          data.debug.modelMatch ? "✅ EXACT MATCH" : "❌ MODEL MISMATCH"
+          "ðŸ” Model Match:",
+          data.debug.modelMatch ? "âœ… EXACT MATCH" : "âŒ MODEL MISMATCH"
         );
-        console.log("🔍 Full Debug Info:", data.debug);
+        console.log("ðŸ” Full Debug Info:", data.debug);
       } else {
-        console.log("⚠️ No debug information received from API");
+        console.log("âš ï¸ No debug information received from API");
       }
 
       setComprehensiveListing(data.listingData);
@@ -1070,14 +1087,14 @@ export default function ListItemPage() {
       // Extract confidence scores if available
       if (data.confidenceScores) {
         setConfidenceScores(data.confidenceScores);
-        console.log("🎯 Confidence scores set:", data.confidenceScores);
+        console.log("ðŸŽ¯ Confidence scores set:", data.confidenceScores);
       } else {
-        console.log("⚠️ No confidence scores found in response");
+        console.log("âš ï¸ No confidence scores found in response");
       }
 
       // Apply the form data to the form
       const listingData = data.listingData;
-      console.log("📝 Setting title to:", listingData.title);
+      console.log("ðŸ“ Setting title to:", listingData.title);
       setTitle(listingData.title);
       setDescription(listingData.description);
 
@@ -1090,11 +1107,11 @@ export default function ListItemPage() {
         listingData.facebookSubCategory || listingData.subCategory;
 
       console.log(
-        "🔍 DEBUG: AI-Generated Facebook Categories (Before Validation)"
+        "ðŸ” DEBUG: AI-Generated Facebook Categories (Before Validation)"
       );
-      console.log("🔍 Department:", aiDepartment);
-      console.log("🔍 Category:", aiCategory);
-      console.log("🔍 Sub-Category:", aiSubCategory);
+      console.log("ðŸ” Department:", aiDepartment);
+      console.log("ðŸ” Category:", aiCategory);
+      console.log("ðŸ” Sub-Category:", aiSubCategory);
 
       // Validate and fix category hierarchy
       const validatedCategories = validateCategoryHierarchy(
@@ -1103,10 +1120,12 @@ export default function ListItemPage() {
         aiSubCategory || ""
       );
 
-      console.log("🔍 DEBUG: Validated Facebook Categories (After Validation)");
-      console.log("🔍 Department:", validatedCategories.department);
-      console.log("🔍 Category:", validatedCategories.category);
-      console.log("🔍 Sub-Category:", validatedCategories.subCategory);
+      console.log(
+        "ðŸ” DEBUG: Validated Facebook Categories (After Validation)"
+      );
+      console.log("ðŸ” Department:", validatedCategories.department);
+      console.log("ðŸ” Category:", validatedCategories.category);
+      console.log("ðŸ” Sub-Category:", validatedCategories.subCategory);
 
       setDepartment(validatedCategories.department as Department);
       setCategory(validatedCategories.category || "");
@@ -1122,6 +1141,7 @@ export default function ListItemPage() {
       setDepth(listingData.depth ? String(listingData.depth) : "");
       setSerialNumber(listingData.serialNumber || "");
       setModelNumber(listingData.modelNumber || "");
+      setDeliveryCategory(listingData.deliveryCategory || "NORMAL");
       // If we have an inventory item with a precise MSRP (unitRetail), prefer that over AI estimate
       const msrpFromInventory = selectedInventoryItem?.unitRetail;
       if (
@@ -1143,9 +1163,9 @@ export default function ListItemPage() {
       setFacebookGtin(listingData.facebookGtin || "");
 
       // DEBUG: Log Google Product Categories received
-      console.log("🔍 DEBUG: Google Product Categories Received");
-      console.log("🔍 Primary:", listingData.googleProductCategoryPrimary);
-      console.log("🔍 Secondary:", listingData.googleProductCategorySecondary);
+      console.log("ðŸ” DEBUG: Google Product Categories Received");
+      console.log("ðŸ” Primary:", listingData.googleProductCategoryPrimary);
+      console.log("ðŸ” Secondary:", listingData.googleProductCategorySecondary);
 
       // Apply AI photo categorization if available
       if (
@@ -1153,7 +1173,7 @@ export default function ListItemPage() {
         listingData.photoCategorization.length > 0
       ) {
         console.log(
-          "📸 AI Photo Categorization:",
+          "ðŸ“¸ AI Photo Categorization:",
           listingData.photoCategorization
         );
 
@@ -1219,12 +1239,12 @@ export default function ListItemPage() {
 
         setPhotos(categorizedPhotos);
         console.log(
-          "📸 Photos reorganized based on AI categorization:",
+          "ðŸ“¸ Photos reorganized based on AI categorization:",
           categorizedPhotos
         );
       }
-      console.log("🔍 Tertiary:", listingData.googleProductCategoryTertiary);
-      console.log("🔍 Legacy Field:", listingData.googleProductCategory);
+      console.log("ðŸ” Tertiary:", listingData.googleProductCategoryTertiary);
+      console.log("ðŸ” Legacy Field:", listingData.googleProductCategory);
 
       // Set the new separated Google Product Category fields
       // If AI provides them, use those; otherwise, map from Facebook categories
@@ -1302,11 +1322,11 @@ export default function ListItemPage() {
 
       // Phase 2: Staged photo generation is currently paused
       // if (photos.hero?.url || photos.hero?.key) {
-      //   console.log("🎨 Phase 2 - Starting staged photo generation...");
+      //   console.log("ðŸŽ¨ Phase 2 - Starting staged photo generation...");
       //   // ... Phase 2 logic commented out ...
       // }
     } catch (error) {
-      console.error("❌ Error generating form fields:", error);
+      console.error("âŒ Error generating form fields:", error);
       setComprehensiveError(
         error instanceof Error
           ? error.message
@@ -1438,6 +1458,7 @@ export default function ListItemPage() {
             ? parseFloat(estimatedRetailPrice)
             : null,
           discountSchedule,
+          deliveryCategory,
           // Facebook Shop Integration Fields
           facebookShopEnabled,
           facebookBrand: brand || null, // Use main brand field
@@ -1685,7 +1706,7 @@ export default function ListItemPage() {
                           <div className="flex items-center justify-between">
                             <div>
                               <div className="font-medium text-gray-900">
-                                ✓ Selected:{" "}
+                                âœ“ Selected:{" "}
                                 {selectedInventoryItem.description ||
                                   "No description"}
                               </div>
@@ -1701,7 +1722,7 @@ export default function ListItemPage() {
                                   )}
                                   {selectedInventoryItem.category && (
                                     <>
-                                      {selectedInventoryItem.vendor && " • "}
+                                      {selectedInventoryItem.vendor && " â€¢ "}
                                       <span className="font-medium">
                                         Category:
                                       </span>{" "}
@@ -2041,7 +2062,7 @@ export default function ListItemPage() {
                           onClick={() => removePhoto("hero")}
                           className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
                         >
-                          ×
+                          Ã—
                         </button>
                       </div>
                     )}
@@ -2074,7 +2095,7 @@ export default function ListItemPage() {
                           onClick={() => removePhoto("back")}
                           className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
                         >
-                          ×
+                          Ã—
                         </button>
                       </div>
                     )}
@@ -2107,7 +2128,7 @@ export default function ListItemPage() {
                           onClick={() => removePhoto("proof")}
                           className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
                         >
-                          ×
+                          Ã—
                         </button>
                       </div>
                     )}
@@ -2144,7 +2165,7 @@ export default function ListItemPage() {
                                 onClick={() => removePhoto("additional", index)}
                                 className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
                               >
-                                ×
+                                Ã—
                               </button>
                             </div>
                           ) : null;
@@ -2217,15 +2238,17 @@ export default function ListItemPage() {
                         </p>
                         <p className="font-medium mt-3 mb-2">Shooting tips:</p>
                         <ul className="text-left space-y-1">
-                          <li>• Place on uncluttered surface or wall</li>
-                          <li>• Shoot straight-on (eye-level), not angled</li>
-                          <li>• Fill ~80% of frame—but leave clean margins</li>
+                          <li>â€¢ Place on uncluttered surface or wall</li>
+                          <li>â€¢ Shoot straight-on (eye-level), not angled</li>
                           <li>
-                            • Use daylight or neutral lamp; avoid window
+                            â€¢ Fill ~80% of frameâ€”but leave clean margins
+                          </li>
+                          <li>
+                            â€¢ Use daylight or neutral lamp; avoid window
                             back-glare
                           </li>
                           <li>
-                            • Remove cords, trash, personal items from scene
+                            â€¢ Remove cords, trash, personal items from scene
                           </li>
                         </ul>
                       </>
@@ -2240,12 +2263,14 @@ export default function ListItemPage() {
                         </p>
                         <p className="font-medium mt-3 mb-2">Shooting tips:</p>
                         <ul className="text-left space-y-1">
-                          <li>• Step back to capture the whole reverse side</li>
                           <li>
-                            • Flip small items face-down on a clean surface
+                            â€¢ Step back to capture the whole reverse side
                           </li>
-                          <li>• Keep lighting consistent with Photo 1</li>
-                          <li>• Don't crop off feet, plugs, or vent areas</li>
+                          <li>
+                            â€¢ Flip small items face-down on a clean surface
+                          </li>
+                          <li>â€¢ Keep lighting consistent with Photo 1</li>
+                          <li>â€¢ Don't crop off feet, plugs, or vent areas</li>
                         </ul>
                       </>
                     )}
@@ -2255,28 +2280,31 @@ export default function ListItemPage() {
                         <p>One of the following based on your item type:</p>
                         <ul className="text-left space-y-1 mb-3">
                           <li>
-                            • Electronics & Appliances: powered-on screen or
+                            â€¢ Electronics & Appliances: powered-on screen or
                             label plate with model + serial
                           </li>
-                          <li>• Luxury Bags / Shoes: logo stamp & date code</li>
                           <li>
-                            • Furniture: wood grain or tag showing brand +
+                            â€¢ Luxury Bags / Shoes: logo stamp & date code
+                          </li>
+                          <li>
+                            â€¢ Furniture: wood grain or tag showing brand +
                             fabric code
                           </li>
                           <li>
-                            • Collectibles: maker's mark, limited-edition number
+                            â€¢ Collectibles: maker's mark, limited-edition
+                            number
                           </li>
                         </ul>
                         <p className="font-medium mb-2">Shooting tips:</p>
                         <ul className="text-left space-y-1">
                           <li>
-                            • Fill frame with label or lit screen—text must be
-                            legible
+                            â€¢ Fill frame with label or lit screenâ€”text must
+                            be legible
                           </li>
-                          <li>• Use flash only if it doesn't blow out ink</li>
-                          <li>• Hold phone steady; tap focus on text</li>
+                          <li>â€¢ Use flash only if it doesn't blow out ink</li>
+                          <li>â€¢ Hold phone steady; tap focus on text</li>
                           <li>
-                            • For power shots, show full screen—no standby
+                            â€¢ For power shots, show full screenâ€”no standby
                             splash
                           </li>
                         </ul>
@@ -2293,11 +2321,11 @@ export default function ListItemPage() {
                         </p>
                         <p className="font-medium mt-3 mb-2">Guidance:</p>
                         <ul className="text-left space-y-1">
-                          <li>• Close-ups of any damage or wear</li>
-                          <li>• Different angles or perspectives</li>
-                          <li>• Included accessories or parts</li>
-                          <li>• Size comparison with common objects</li>
-                          <li>• Functionality demonstrations</li>
+                          <li>â€¢ Close-ups of any damage or wear</li>
+                          <li>â€¢ Different angles or perspectives</li>
+                          <li>â€¢ Included accessories or parts</li>
+                          <li>â€¢ Size comparison with common objects</li>
+                          <li>â€¢ Functionality demonstrations</li>
                         </ul>
                       </>
                     )}
@@ -2354,7 +2382,7 @@ export default function ListItemPage() {
                           onClick={clearCurrentPhoto}
                           className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
                         >
-                          ×
+                          Ã—
                         </button>
                       </div>
                     ) : null;
@@ -2441,15 +2469,15 @@ export default function ListItemPage() {
                           setTimeout(async () => {
                             try {
                               console.log(
-                                "🔄 Starting auto form generation..."
+                                "ðŸ”„ Starting auto form generation..."
                               );
                               await generateFormFieldsData();
                               console.log(
-                                "✅ Auto form generation completed successfully"
+                                "âœ… Auto form generation completed successfully"
                               );
                             } catch (error) {
                               console.error(
-                                "❌ Auto form generation failed:",
+                                "âŒ Auto form generation failed:",
                                 error
                               );
                               // Show user-friendly error message
@@ -2608,7 +2636,7 @@ export default function ListItemPage() {
                                 onClick={() => removeBulkPhoto(index)}
                                 className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100 transition-opacity"
                               >
-                                ×
+                                Ã—
                               </button>
                               <div className="absolute bottom-1 left-1 right-1 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
                                 {photo.type || "Auto-categorize"}
@@ -2738,49 +2766,11 @@ export default function ListItemPage() {
               className="bg-white rounded-xl shadow-lg p-8"
               onSubmit={handleSubmit}
             >
-              {/* Facebook Shop Integration Section - Moved to Top */}
-              <div className="border-b pb-6 mb-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-                    <svg
-                      className="w-5 h-5 text-white"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Facebook Shop Integration
-                  </h3>
-                </div>
-
-                <div className="space-y-4">
-                  {/* Facebook Shop Toggle */}
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <label className="text-sm font-medium text-gray-700">
-                        Enable Facebook Shop Sync
-                      </label>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Sync this listing with Facebook Shop for increased
-                        visibility
-                      </p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={facebookShopEnabled}
-                        onChange={(e) =>
-                          setFacebookShopEnabled(e.target.checked)
-                        }
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
-                  </div>
-                </div>
-              </div>
+              {/* Facebook Shop Integration Section */}
+              <FacebookShopIntegration
+                facebookShopEnabled={facebookShopEnabled}
+                setFacebookShopEnabled={setFacebookShopEnabled}
+              />
 
               {/* AI Pricing Analysis - Moved to Top */}
               {priceReasoning && (
@@ -2873,1973 +2863,156 @@ export default function ListItemPage() {
                       </p>
                     </div>
 
-                    {/* Photo Gallery - Collapsible */}
-                    <div className="mb-6">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-medium text-gray-700">
-                          Uploaded Photos (
-                          {
-                            Object.values(photos).filter(
-                              (p) =>
-                                p &&
-                                (Array.isArray(p)
-                                  ? p.length > 0
-                                  : p.file || p.url)
-                            ).length
-                          }
-                          )
-                        </h3>
-                        <button
-                          type="button"
-                          onClick={() => setShowPhotos(!showPhotos)}
-                          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
-                        >
-                          {showPhotos ? "−" : "+"}{" "}
-                          {showPhotos ? "Hide" : "Show"}
-                        </button>
-                      </div>
-                      {showPhotos && (
-                        <>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            {/* Hero Photo */}
-                            {photos.hero && (
-                              <div className="relative">
-                                <img
-                                  src={
-                                    photos.hero.url ||
-                                    (photos.hero.file
-                                      ? URL.createObjectURL(photos.hero.file)
-                                      : "")
-                                  }
-                                  alt="Hero"
-                                  className="w-full h-24 object-cover rounded-lg border border-gray-200"
-                                />
-                                <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-1 rounded">
-                                  1
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => removePhoto("hero")}
-                                  className="absolute top-1 right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            )}
+                    <MediaPreview
+                      photos={photos}
+                      videoData={videoData}
+                      showPhotos={showPhotos}
+                      setShowPhotos={setShowPhotos}
+                      showVideoFrames={showVideoFrames}
+                      setShowVideoFrames={setShowVideoFrames}
+                      showVideoPlayer={showVideoPlayer}
+                      setShowVideoPlayer={setShowVideoPlayer}
+                      removePhoto={removePhoto}
+                      goToPhotoType={goToPhotoType}
+                      safeMap={safeMap}
+                    />
 
-                            {/* Back Photo */}
-                            {photos.back && (
-                              <div className="relative">
-                                <img
-                                  src={
-                                    photos.back.url ||
-                                    (photos.back.file
-                                      ? URL.createObjectURL(photos.back.file)
-                                      : "")
-                                  }
-                                  alt="Back"
-                                  className="w-full h-24 object-cover rounded-lg border border-gray-200"
-                                />
-                                <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-1 rounded">
-                                  2
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => removePhoto("back")}
-                                  className="absolute top-1 right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            )}
-
-                            {/* Proof Photo */}
-                            {photos.proof && (
-                              <div className="relative">
-                                <img
-                                  src={
-                                    photos.proof.url ||
-                                    (photos.proof.file
-                                      ? URL.createObjectURL(photos.proof.file)
-                                      : "")
-                                  }
-                                  alt="Proof"
-                                  className="w-full h-24 object-cover rounded-lg border border-gray-200"
-                                />
-                                <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-1 rounded">
-                                  3
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => removePhoto("proof")}
-                                  className="absolute top-1 right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            )}
-
-                            {/* Additional Photos */}
-                            {safeMap(photos.additional, (photo, index) => (
-                              <div key={index} className="relative">
-                                <img
-                                  src={
-                                    photo.url ||
-                                    (photo.file
-                                      ? URL.createObjectURL(photo.file)
-                                      : "")
-                                  }
-                                  alt={`Additional ${index + 4}`}
-                                  className="w-full h-24 object-cover rounded-lg border border-gray-200"
-                                />
-                                <div className="absolute top-1 left-1 bg-green-500 text-white text-xs px-1 rounded">
-                                  {index + 4}
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    removePhoto("additional", index)
-                                  }
-                                  className="absolute top-1 right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Add More Photos Button */}
-                          <button
-                            type="button"
-                            onClick={() => goToPhotoType("additional")}
-                            className="mt-3 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
-                          >
-                            + Add More Photos
-                          </button>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Video Keyframes Section - Collapsible */}
-                    {videoData.frameUrls && videoData.frameUrls.length > 0 && (
-                      <div className="mb-6">
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="text-sm font-medium text-gray-700">
-                            Video Keyframes ({videoData.frameUrls.length})
-                          </h3>
-                          <button
-                            type="button"
-                            onClick={() => setShowVideoFrames(!showVideoFrames)}
-                            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
-                          >
-                            {showVideoFrames ? "−" : "+"}{" "}
-                            {showVideoFrames ? "Hide" : "Show"}
-                          </button>
-                        </div>
-                        {showVideoFrames && (
-                          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                            {videoData.frameUrls.map((frameUrl, index) => (
-                              <div key={index} className="relative">
-                                <img
-                                  src={frameUrl}
-                                  alt={`Frame ${index + 1}`}
-                                  className="w-full h-20 object-cover rounded-lg border border-gray-200"
-                                />
-                                <div className="absolute top-1 left-1 bg-purple-500 text-white text-xs px-1 rounded">
-                                  {index + 1}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Video Preview Section - Collapsible */}
-                    {videoData.videoUrl && (
-                      <div className="mb-6">
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="text-sm font-medium text-gray-700">
-                            Video Preview
-                          </h3>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setShowVideoPreview(!showVideoPreview)
-                            }
-                            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
-                          >
-                            {showVideoPreview ? "−" : "+"}{" "}
-                            {showVideoPreview ? "Hide" : "Show"}
-                          </button>
-                        </div>
-                        {showVideoPreview && (
-                          <div className="relative w-full max-w-md">
-                            <video
-                              src={videoData.videoUrl || undefined}
-                              poster={videoData.thumbnailUrl || undefined}
-                              className="w-full h-48 object-cover rounded-lg border border-gray-200"
-                              controls
-                              preload="metadata"
-                              crossOrigin="anonymous"
-                            >
-                              <source
-                                src={videoData.videoUrl || ""}
-                                type="video/mp4"
-                              />
-                              <source
-                                src={videoData.videoUrl || ""}
-                                type="video/quicktime"
-                              />
-                              Your browser does not support the video tag.
-                            </video>
-                            <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
-                              <Play className="h-3 w-3" />
-                              Video
-                            </div>
-                            <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
-                              {Math.round(videoData.duration || 0)}s
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="space-y-4">
-                      {/* Item ID */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Item ID
-                        </label>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={itemId || "Generating..."}
-                            disabled
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-                          />
-                          <Lock className="h-4 w-4 text-gray-400" />
-                        </div>
-                      </div>
-
-                      {/* QR Code */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          QR Code
-                        </label>
-                        <div className="space-y-2">
-                          {(generatedListingId || itemId) && (
-                            <div className="flex justify-center">
-                              <CustomQRCode
-                                itemId={generatedListingId || itemId}
-                                size={150}
-                                className="border border-gray-200 rounded-lg p-4 bg-white"
-                              />
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              value={
-                                generatedQRCode ||
-                                (itemId
-                                  ? generateQRCode(itemId)
-                                  : "Generating...")
-                              }
-                              disabled
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 text-xs"
-                            />
-                            <Lock className="h-4 w-4 text-gray-400" />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Listing ID */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Listing ID
-                        </label>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={
-                              generatedListingId || itemId || "Generating..."
-                            }
-                            disabled
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-                          />
-                          <Lock className="h-4 w-4 text-gray-400" />
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Unique identifier for this listing
-                        </p>
-                      </div>
-
-                      {/* Insights Query */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Insights Query
-                        </label>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={`${title || "item"} ${
-                              category || "category"
-                            } ${department || "department"}`}
-                            disabled
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-                          />
-                          <Lock className="h-4 w-4 text-gray-400" />
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Used for market analysis and pricing insights
-                        </p>
-                      </div>
-
-                      {/* Price Range */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Price Range (Low - High)
-                        </label>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={
-                              price
-                                ? `$${Math.floor(
-                                    parseFloat(price) * 0.8
-                                  )} - $${Math.floor(parseFloat(price) * 1.2)}`
-                                : "Calculated from list price"
-                            }
-                            disabled
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-                          />
-                          <Lock className="h-4 w-4 text-gray-400" />
-                        </div>
-                      </div>
-
-                      {/* Reserve Price */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Reserve Price
-                        </label>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={
-                              price
-                                ? `$${calculateReservePrice(
-                                    parseFloat(price)
-                                  ).toFixed(2)}`
-                                : "60% of list price"
-                            }
-                            disabled
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-                          />
-                          <Lock className="h-4 w-4 text-gray-400" />
-                        </div>
-                      </div>
-
-                      {/* Status */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Status
-                        </label>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value="LISTED"
-                            disabled
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-                          />
-                          <Lock className="h-4 w-4 text-gray-400" />
-                        </div>
-                      </div>
-
-                      {/* Created At */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Created At
-                        </label>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={new Date().toISOString()}
-                            disabled
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-                          />
-                          <Lock className="h-4 w-4 text-gray-400" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* AI Confidence Summary */}
-                  {confidenceScores && (
-                    <ConfidenceSummary confidenceData={confidenceScores} />
-                  )}
-                </div>
-
-                {/* Right Column - Editable Fields */}
-                <div className="space-y-6">
-                  <div className="bg-blue-50 rounded-lg p-6">
-                    <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                      Editable Fields
-                    </h2>
-                    <p className="text-sm text-gray-600 mb-4">
-                      Fill out these fields to complete your listing
-                    </p>
-
-                    <div className="space-y-4">
-                      {/* Department */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                          Department *
-                          {confidenceScores?.department && (
-                            <ConfidenceBadge
-                              level={confidenceScores.department.level}
-                            />
-                          )}
-                        </label>
-                        <select
-                          value={department}
-                          onChange={(e) => {
-                            setDepartment(e.target.value as Department);
-                            setCategory("");
-                            setSubCategory("");
-                            setGoogleProductCategory("");
-                            // Reset new Google Product Category fields
-                            setGoogleProductCategoryPrimary("");
-                            setGoogleProductCategorySecondary("");
-                            setGoogleProductCategoryTertiary("");
-                            // Reset user input when department changes
-                            setUserInput("");
-                            // Update available Google Product Categories
-                            // Google categories UI stays, but FB dropdowns are from FACEBOOK_TAXONOMY
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                          required
-                        >
-                          <option value="">Select Department</option>
-                          {(Object.keys(taxonomy) as string[]).map((dept) => (
-                            <option key={dept} value={dept}>
-                              {dept}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Category */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                          Category *
-                          {confidenceScores?.category && (
-                            <ConfidenceBadge
-                              level={confidenceScores.category.level}
-                            />
-                          )}
-                        </label>
-                        <select
-                          value={category}
-                          onChange={(e) => {
-                            setCategory(e.target.value);
-                            setSubCategory("");
-
-                            // Auto-map to Google Product Categories
-                            if (e.target.value && department) {
-                              const googleMapping =
-                                mapFacebookToGoogleProductCategory(
-                                  department,
-                                  e.target.value,
-                                  ""
-                                );
-                              setGoogleProductCategoryPrimary(
-                                googleMapping.primary
-                              );
-                              setGoogleProductCategorySecondary(
-                                googleMapping.secondary
-                              );
-                              setGoogleProductCategoryTertiary(
-                                googleMapping.tertiary
-                              );
-
-                              // Also set the legacy field for backward compatibility
-                              setGoogleProductCategory(
-                                `${googleMapping.primary} > ${googleMapping.secondary} > ${googleMapping.tertiary}`
-                              );
-                            }
-                          }}
-                          disabled={false}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                          required
-                        >
-                          <option value="">Select Category</option>
-                          {department && taxonomy[department]
-                            ? // Show categories for selected department
-                              (
-                                Object.keys(taxonomy[department]) as string[]
-                              ).map((cat) => (
-                                <option key={cat} value={cat}>
-                                  {cat}
-                                </option>
-                              ))
-                            : // Show all categories from all departments when no department is selected
-                              (() => {
-                                const allCategories: JSX.Element[] = [];
-                                const deptKeys = Object.keys(taxonomy);
-
-                                for (const dept of deptKeys) {
-                                  const deptData =
-                                    taxonomy[dept as keyof typeof taxonomy];
-                                  if (!deptData) continue;
-
-                                  const catKeys = Object.keys(deptData);
-                                  // Use explicit loop to avoid type inference issues
-                                  for (let i = 0; i < catKeys.length; i++) {
-                                    const cat = catKeys[i];
-                                    allCategories.push(
-                                      <option
-                                        key={`${dept}-${cat}`}
-                                        value={cat}
-                                      >
-                                        {cat}
-                                      </option>
-                                    );
-                                  }
-                                }
-                                return allCategories;
-                              })()}
-                        </select>
-                      </div>
-
-                      {/* Sub-category */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                          Sub-category *
-                          {confidenceScores?.subCategory && (
-                            <ConfidenceBadge
-                              level={confidenceScores.subCategory.level}
-                            />
-                          )}
-                        </label>
-                        <select
-                          value={subCategory}
-                          onChange={(e) => {
-                            setSubCategory(e.target.value);
-
-                            // Update Google Product Categories with subcategory
-                            if (e.target.value && category && department) {
-                              const googleMapping =
-                                mapFacebookToGoogleProductCategory(
-                                  department,
-                                  category,
-                                  e.target.value
-                                );
-                              setGoogleProductCategoryPrimary(
-                                googleMapping.primary
-                              );
-                              setGoogleProductCategorySecondary(
-                                googleMapping.secondary
-                              );
-                              setGoogleProductCategoryTertiary(
-                                googleMapping.tertiary
-                              );
-
-                              // Also set the legacy field for backward compatibility
-                              setGoogleProductCategory(
-                                `${googleMapping.primary} > ${googleMapping.secondary} > ${googleMapping.tertiary}`
-                              );
-                            }
-                          }}
-                          disabled={false}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                          required
-                        >
-                          <option value="">Select Sub-category</option>
-                          {category &&
-                          department &&
-                          taxonomy[department] &&
-                          taxonomy[department][
-                            category as keyof (typeof taxonomy)[typeof department]
-                          ]
-                            ? // Show sub-categories for selected category
-                              (
-                                taxonomy[department][
-                                  category as keyof (typeof taxonomy)[typeof department]
-                                ] as unknown as string[]
-                              ).map((sub) => (
-                                <option key={sub} value={sub}>
-                                  {sub}
-                                </option>
-                              ))
-                            : // Show all sub-categories from all categories when no category is selected
-                              (() => {
-                                const allSubCategories: JSX.Element[] = [];
-                                const deptKeys = Object.keys(taxonomy);
-
-                                for (const dept of deptKeys) {
-                                  const deptData =
-                                    taxonomy[dept as keyof typeof taxonomy];
-                                  if (!deptData) continue;
-
-                                  const catKeys = Object.keys(deptData);
-                                  for (let i = 0; i < catKeys.length; i++) {
-                                    const cat = catKeys[i];
-                                    const catData =
-                                      deptData[cat as keyof typeof deptData];
-                                    if (!Array.isArray(catData)) continue;
-
-                                    // Use explicit loop to avoid type inference issues
-                                    const subArray = catData as string[];
-                                    for (let j = 0; j < subArray.length; j++) {
-                                      const sub = subArray[j];
-                                      allSubCategories.push(
-                                        <option
-                                          key={`${dept}-${cat}-${sub}`}
-                                          value={sub}
-                                        >
-                                          {sub}
-                                        </option>
-                                      );
-                                    }
-                                  }
-                                }
-                                return allSubCategories;
-                              })()}
-                        </select>
-                      </div>
-
-                      {/* Title */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                          Title *
-                          {confidenceScores?.title && (
-                            <ConfidenceBadge
-                              level={confidenceScores.title.level}
-                            />
-                          )}
-                        </label>
-                        <input
-                          type="text"
-                          value={title}
-                          onChange={(e) => setTitle(e.target.value)}
-                          maxLength={100}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                          placeholder="Enter item title"
-                          required
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          {title.length}/100 characters
-                        </p>
-                      </div>
-
-                      {/* List Price */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          List Price ($) *
-                        </label>
-                        <input
-                          type="number"
-                          value={price}
-                          onChange={(e) => setPrice(e.target.value)}
-                          min="0"
-                          step="0.01"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                          placeholder="0.00"
-                          required
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Price range: $
-                          {price ? Math.floor(parseFloat(price) * 0.8) : 0} - $
-                          {price ? Math.floor(parseFloat(price) * 1.2) : 0}
-                        </p>
-                      </div>
-
-                      {/* Reserve Price */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Reserve Price ($)
-                        </label>
-                        <input
-                          type="number"
-                          value={reservePrice}
-                          onChange={(e) => setReservePrice(e.target.value)}
-                          min="0"
-                          step="0.01"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                          placeholder="0.00"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Minimum price you're willing to accept (default: 60%
-                          of list price)
-                        </p>
-                      </div>
-
-                      {/* Brand */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                          Brand/Manufacturer
-                          {confidenceScores?.brand && (
-                            <ConfidenceBadge
-                              level={confidenceScores.brand.level}
-                            />
-                          )}
-                        </label>
-                        <input
-                          type="text"
-                          value={brand}
-                          onChange={(e) => setBrand(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                          placeholder="e.g., Apple, Nike, Ashley Furniture"
-                        />
-                      </div>
-
-                      {/* Product Dimensions */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                          Product Dimensions (inches)
-                          {(confidenceScores?.height ||
-                            confidenceScores?.width ||
-                            confidenceScores?.depth) && (
-                            <div className="flex gap-1">
-                              {confidenceScores?.height && (
-                                <ConfidenceBadge
-                                  level={confidenceScores.height.level}
-                                />
-                              )}
-                              {confidenceScores?.width && (
-                                <ConfidenceBadge
-                                  level={confidenceScores.width.level}
-                                />
-                              )}
-                              {confidenceScores?.depth && (
-                                <ConfidenceBadge
-                                  level={confidenceScores.depth.level}
-                                />
-                              )}
-                            </div>
-                          )}
-                        </label>
-                        <div className="grid grid-cols-3 gap-3">
-                          {/* Height */}
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">
-                              Height
-                            </label>
-                            <input
-                              type="number"
-                              value={height}
-                              onChange={(e) => setHeight(e.target.value)}
-                              min="0"
-                              step="0.1"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                              placeholder="H"
-                            />
-                          </div>
-
-                          {/* Width */}
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">
-                              Width
-                            </label>
-                            <input
-                              type="number"
-                              value={width}
-                              onChange={(e) => setWidth(e.target.value)}
-                              min="0"
-                              step="0.1"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                              placeholder="W"
-                            />
-                          </div>
-
-                          {/* Depth */}
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">
-                              Depth
-                            </label>
-                            <input
-                              type="number"
-                              value={depth}
-                              onChange={(e) => setDepth(e.target.value)}
-                              min="0"
-                              step="0.1"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                              placeholder="D"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Dimensions Summary */}
-                        {(height || width || depth) && (
-                          <div className="mt-2 p-2 bg-gray-50 rounded-lg">
-                            <p className="text-sm text-gray-700">
-                              <span className="font-medium">Dimensions:</span>{" "}
-                              {height ? `${height}"` : "—"} H ×{" "}
-                              {width ? `${width}"` : "—"} W ×{" "}
-                              {depth ? `${depth}"` : "—"} D
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Dimensions Confirmation */}
-                        {(height || width || depth) && !dimensionsConfirmed && (
-                          <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                            <div className="flex items-start gap-3">
-                              <div className="flex-shrink-0">
-                                <AlertCircle className="h-5 w-5 text-yellow-600" />
-                              </div>
-                              <div className="flex-1">
-                                <h4 className="text-sm font-medium text-yellow-800">
-                                  Verify Dimensions
-                                </h4>
-                                <p className="text-sm text-yellow-700 mt-1">
-                                  Please verify these dimensions are accurate.
-                                  AI estimates may not be precise.
-                                </p>
-                                <div className="mt-2 flex gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => setDimensionsConfirmed(true)}
-                                    className="px-3 py-1 bg-yellow-600 text-white text-xs rounded hover:bg-yellow-700 transition-colors"
-                                  >
-                                    Confirm Accurate
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setHeight("");
-                                      setWidth("");
-                                      setDepth("");
-                                    }}
-                                    className="px-3 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600 transition-colors"
-                                  >
-                                    Clear & Measure
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Confirmed Dimensions */}
-                        {dimensionsConfirmed && (
-                          <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                            <div className="flex items-center gap-2">
-                              <CheckCircle className="h-4 w-4 text-green-600" />
-                              <span className="text-sm text-green-800 font-medium">
-                                Dimensions verified as accurate
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => setDimensionsConfirmed(false)}
-                                className="ml-auto text-xs text-green-600 hover:text-green-800 underline"
-                              >
-                                Edit
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* GTIN/UPC Code */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          GTIN/UPC Code
-                        </label>
-                        <input
-                          type="text"
-                          value={facebookGtin}
-                          onChange={(e) => {
-                            setFacebookGtin(e.target.value);
-                            setGtinEdited(true);
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                          placeholder="e.g., 1234567890123"
-                          maxLength={13}
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Global Trade Item Number or UPC code for better
-                          Facebook matching
-                        </p>
-                      </div>
-
-                      {/* Serial Number */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Serial Number
-                        </label>
-                        <input
-                          type="text"
-                          value={serialNumber}
-                          onChange={(e) => setSerialNumber(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                          placeholder="Enter serial number if available"
-                        />
-                      </div>
-
-                      {/* Model Number */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Model Number
-                        </label>
-                        <input
-                          type="text"
-                          value={modelNumber}
-                          onChange={(e) => setModelNumber(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                          placeholder="Enter model number if available"
-                        />
-                      </div>
-
-                      {/* Estimated Retail Price */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Estimated Retail Price
-                        </label>
-                        <input
-                          type="number"
-                          value={estimatedRetailPrice}
-                          onChange={(e) =>
-                            setEstimatedRetailPrice(e.target.value)
-                          }
-                          min="0"
-                          step="0.01"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                          placeholder="0.00"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          {typeof selectedInventoryItem?.unitRetail === "number"
-                            ? `MSRP: $${selectedInventoryItem.unitRetail}`
-                            : "Original retail price for comparison"}
-                        </p>
-                      </div>
-
-                      {/* Discount Schedule */}
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <label className="text-sm font-medium text-gray-700">
-                            Discount Schedule *
-                          </label>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <button
-                                type="button"
-                                className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors"
-                              >
-                                <Info className="w-3 h-3 text-gray-600" />
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-96 p-4" align="start">
-                              <div className="space-y-4">
-                                <h4 className="font-semibold text-gray-900">
-                                  Discount Schedule Options
-                                </h4>
-
-                                <div className="space-y-3">
-                                  <div>
-                                    <h5 className="font-medium text-blue-600 mb-2">
-                                      Turbo-30 (30-Day)
-                                    </h5>
-                                    <div className="text-xs text-gray-600 space-y-1">
-                                      <p>
-                                        <strong>
-                                          Price drops every 3 days
-                                        </strong>
-                                      </p>
-                                      <div className="bg-gray-50 p-2 rounded">
-                                        <div className="grid grid-cols-3 gap-2 text-xs">
-                                          <div className="font-medium">Day</div>
-                                          <div className="font-medium">
-                                            Price
-                                          </div>
-                                          <div className="font-medium">
-                                            Drop
-                                          </div>
-                                          <div>0</div>
-                                          <div>100%</div>
-                                          <div>0%</div>
-                                          <div>3</div>
-                                          <div>95%</div>
-                                          <div>-5%</div>
-                                          <div>6</div>
-                                          <div>90%</div>
-                                          <div>-10%</div>
-                                          <div>9</div>
-                                          <div>85%</div>
-                                          <div>-15%</div>
-                                          <div>12</div>
-                                          <div>80%</div>
-                                          <div>-20%</div>
-                                          <div>15</div>
-                                          <div>75%</div>
-                                          <div>-25%</div>
-                                          <div>18</div>
-                                          <div>70%</div>
-                                          <div>-30%</div>
-                                          <div>21</div>
-                                          <div>65%</div>
-                                          <div>-35%</div>
-                                          <div>24</div>
-                                          <div>60%</div>
-                                          <div>-40%</div>
-                                          <div>30</div>
-                                          <div>Expire</div>
-                                          <div>-</div>
-                                        </div>
-                                      </div>
-                                      <p className="text-gray-500">
-                                        • Expires after 30 days
-                                      </p>
-                                    </div>
-                                  </div>
-
-                                  <div>
-                                    <h5 className="font-medium text-green-600 mb-2">
-                                      Classic-60 (60-Day)
-                                    </h5>
-                                    <div className="text-xs text-gray-600 space-y-1">
-                                      <p>
-                                        <strong>
-                                          Price drops every 7 days
-                                        </strong>
-                                      </p>
-                                      <div className="bg-gray-50 p-2 rounded">
-                                        <div className="grid grid-cols-3 gap-2 text-xs">
-                                          <div className="font-medium">Day</div>
-                                          <div className="font-medium">
-                                            Price
-                                          </div>
-                                          <div className="font-medium">
-                                            Drop
-                                          </div>
-                                          <div>0</div>
-                                          <div>100%</div>
-                                          <div>0%</div>
-                                          <div>7</div>
-                                          <div>90%</div>
-                                          <div>-10%</div>
-                                          <div>14</div>
-                                          <div>80%</div>
-                                          <div>-20%</div>
-                                          <div>21</div>
-                                          <div>75%</div>
-                                          <div>-25%</div>
-                                          <div>28</div>
-                                          <div>70%</div>
-                                          <div>-30%</div>
-                                          <div>35</div>
-                                          <div>65%</div>
-                                          <div>-35%</div>
-                                          <div>42</div>
-                                          <div>60%</div>
-                                          <div>-40%</div>
-                                          <div>49</div>
-                                          <div>55%</div>
-                                          <div>-45%</div>
-                                          <div>56</div>
-                                          <div>50%</div>
-                                          <div>-50%</div>
-                                          <div>60</div>
-                                          <div>Expire</div>
-                                          <div>-</div>
-                                        </div>
-                                      </div>
-                                      <p className="mt-2 text-gray-500">
-                                        • 25% drop triggers opt-out modal
-                                      </p>
-                                      <p className="text-gray-500">
-                                        • Expires after 60 days
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="text-xs text-gray-500 border-t pt-2">
-                                  <p>
-                                    <strong>Note:</strong> All schedules respect
-                                    your reserve price minimum.
-                                  </p>
-                                </div>
-                              </div>
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                        <select
-                          value={discountSchedule}
-                          onChange={(e) =>
-                            setDiscountSchedule(
-                              e.target
-                                .value as (typeof discountSchedules)[number]
-                            )
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                          required
-                        >
-                          <option value="">Select Discount Schedule</option>
-                          {discountSchedules.map((schedule) => (
-                            <option key={schedule} value={schedule}>
-                              {schedule}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Condition */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                          Condition *
-                          {confidenceScores?.facebookCondition && (
-                            <ConfidenceBadge
-                              level={confidenceScores.facebookCondition.level}
-                            />
-                          )}
-                        </label>
-                        <select
-                          value={condition}
-                          onChange={(e) =>
-                            setCondition(
-                              e.target.value as (typeof conditions)[number] | ""
-                            )
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                          required
-                        >
-                          <option value="">Select Condition</option>
-                          <option value="New">
-                            New - Brand new, never used
-                          </option>
-                          <option value="Used - Like New">
-                            Used - Like New - Excellent condition, no visible
-                            wear
-                          </option>
-                          <option value="Used - Good">
-                            Used - Good - Light signs of use, fully functional
-                          </option>
-                          <option value="Used - Fair">
-                            Used - Fair - Heavily used, significant wear
-                          </option>
-                        </select>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Facebook-compatible condition format
-                        </p>
-                      </div>
-                    </div>
+                    <FormSection
+                      department={department}
+                      setDepartment={setDepartment}
+                      category={category}
+                      setCategory={setCategory}
+                      subCategory={subCategory}
+                      setSubCategory={setSubCategory}
+                      title={title}
+                      setTitle={setTitle}
+                      price={price}
+                      setPrice={setPrice}
+                      description={description}
+                      setDescription={setDescription}
+                      brand={brand}
+                      setBrand={setBrand}
+                      condition={condition}
+                      setCondition={setCondition}
+                      height={height}
+                      setHeight={setHeight}
+                      width={width}
+                      setWidth={setWidth}
+                      depth={depth}
+                      setDepth={setDepth}
+                      dimensionsConfirmed={dimensionsConfirmed}
+                      setDimensionsConfirmed={setDimensionsConfirmed}
+                      reservePrice={reservePrice}
+                      setReservePrice={setReservePrice}
+                      serialNumber={serialNumber}
+                      setSerialNumber={setSerialNumber}
+                      modelNumber={modelNumber}
+                      setModelNumber={setModelNumber}
+                      estimatedRetailPrice={estimatedRetailPrice}
+                      setEstimatedRetailPrice={setEstimatedRetailPrice}
+                      discountSchedule={discountSchedule}
+                      setDiscountSchedule={setDiscountSchedule}
+                      facebookGtin={facebookGtin}
+                      setFacebookGtin={setFacebookGtin}
+                      setGtinEdited={setGtinEdited}
+                      deliveryCategory={deliveryCategory}
+                      setDeliveryCategory={setDeliveryCategory}
+                      selectedInventoryItem={selectedInventoryItem}
+                      discountSchedules={discountSchedules}
+                      generatedListingId={generatedListingId}
+                      itemId={itemId}
+                      generateQRCode={generateQRCode}
+                      generatedQRCode={generatedQRCode}
+                      confidenceScores={confidenceScores}
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* Product Specifications (Facebook Shop Fields) */}
-              <div className="mt-6 bg-white rounded-xl shadow-lg p-8">
-                <h2 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
-                  <svg
-                    className="h-5 w-5 text-[#D4AF3D]"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                  </svg>
-                  Product Specifications
-                </h2>
-                <p className="text-sm text-gray-600 mb-6">
-                  Detailed product specifications for better categorization and
-                  search visibility.
-                </p>
+              <FacebookShopIntegration
+                facebookShopEnabled={facebookShopEnabled}
+                setFacebookShopEnabled={setFacebookShopEnabled}
+              />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Quantity */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      Quantity Available
-                      {confidenceScores?.quantity && (
-                        <ConfidenceBadge
-                          level={confidenceScores.quantity.level}
-                        />
-                      )}
-                    </label>
-                    <input
-                      type="number"
-                      value={quantity}
-                      onChange={(e) => setQuantity(e.target.value)}
-                      min="1"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                      placeholder="1"
-                    />
-                  </div>
+              <ProductSpecifications
+                quantity={quantity}
+                setQuantity={setQuantity}
+                salePrice={salePrice}
+                setSalePrice={setSalePrice}
+                salePriceEffectiveDate={salePriceEffectiveDate}
+                setSalePriceEffectiveDate={setSalePriceEffectiveDate}
+                itemGroupId={itemGroupId}
+                setItemGroupId={setItemGroupId}
+                gender={gender}
+                setGender={setGender}
+                ageGroup={ageGroup}
+                setAgeGroup={setAgeGroup}
+                color={color}
+                setColor={setColor}
+                size={size}
+                setSize={setSize}
+                material={material}
+                setMaterial={setMaterial}
+                pattern={pattern}
+                setPattern={setPattern}
+                style={style}
+                setStyle={setStyle}
+                confidenceScores={confidenceScores}
+                genderOptions={GENDER_OPTIONS}
+                ageGroupOptions={AGE_GROUP_OPTIONS}
+                colorSuggestions={COLOR_SUGGESTIONS}
+                materialSuggestions={MATERIAL_SUGGESTIONS}
+                patternSuggestions={PATTERN_SUGGESTIONS}
+                styleSuggestions={STYLE_SUGGESTIONS}
+              />
 
-                  {/* Sale Price */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      Sale Price ($)
-                      {confidenceScores?.salePrice && (
-                        <ConfidenceBadge
-                          level={confidenceScores.salePrice.level}
-                        />
-                      )}
-                    </label>
-                    <input
-                      type="number"
-                      value={salePrice}
-                      onChange={(e) => setSalePrice(e.target.value)}
-                      min="0"
-                      step="0.01"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                      placeholder="0.00"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Special sale price (optional)
-                    </p>
-                  </div>
+              <TreasureDetection
+                isTreasure={isTreasure}
+                setIsTreasure={setIsTreasure}
+                treasureReason={treasureReason}
+                setTreasureReason={setTreasureReason}
+                comprehensiveListing={comprehensiveListing}
+              />
 
-                  {/* Sale Price Effective Date */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      Sale Price Effective Date
-                      {confidenceScores?.salePriceEffectiveDate && (
-                        <ConfidenceBadge
-                          level={confidenceScores.salePriceEffectiveDate.level}
-                        />
-                      )}
-                    </label>
-                    <input
-                      type="date"
-                      value={salePriceEffectiveDate}
-                      onChange={(e) =>
-                        setSalePriceEffectiveDate(e.target.value)
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                    />
-                  </div>
-
-                  {/* Item Group ID */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      Item Group ID
-                      {confidenceScores?.itemGroupId && (
-                        <ConfidenceBadge
-                          level={confidenceScores.itemGroupId.level}
-                        />
-                      )}
-                      <div className="relative group">
-                        <svg
-                          className="w-4 h-4 text-gray-400 cursor-help"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
-                          Used to group related product variants (e.g., same
-                          shirt in different colors/sizes)
-                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-                        </div>
-                      </div>
-                    </label>
-                    <input
-                      type="text"
-                      value={itemGroupId}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (value.length <= 50) {
-                          setItemGroupId(value);
-                        }
-                      }}
-                      maxLength={50}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                      placeholder="For product variants"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      {itemGroupId.length}/50 characters
-                    </p>
-                  </div>
-
-                  {/* Gender */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      Gender
-                      {confidenceScores?.gender && (
-                        <ConfidenceBadge
-                          level={confidenceScores.gender.level}
-                        />
-                      )}
-                    </label>
-                    <select
-                      value={gender}
-                      onChange={(e) => setGender(e.target.value as Gender | "")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                    >
-                      <option value="">Select Gender</option>
-                      {GENDER_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option.charAt(0).toUpperCase() + option.slice(1)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Age Group */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      Age Group
-                      {confidenceScores?.ageGroup && (
-                        <ConfidenceBadge
-                          level={confidenceScores.ageGroup.level}
-                        />
-                      )}
-                    </label>
-                    <select
-                      value={ageGroup}
-                      onChange={(e) =>
-                        setAgeGroup(e.target.value as AgeGroup | "")
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                    >
-                      <option value="">Select Age Group</option>
-                      {AGE_GROUP_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option.charAt(0).toUpperCase() + option.slice(1)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Color */}
-                  <HybridInput
-                    value={color}
-                    onChange={setColor}
-                    suggestions={COLOR_SUGGESTIONS}
-                    placeholder="e.g., Red, Blue, Black"
-                    label="Color"
-                    confidenceBadge={
-                      confidenceScores?.color && (
-                        <ConfidenceBadge level={confidenceScores.color.level} />
-                      )
-                    }
-                  />
-
-                  {/* Size */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      Size
-                      {confidenceScores?.size && (
-                        <ConfidenceBadge level={confidenceScores.size.level} />
-                      )}
-                    </label>
-                    <input
-                      type="text"
-                      value={size}
-                      onChange={(e) => setSize(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                      placeholder="e.g., Large, XL, 42"
-                    />
-                  </div>
-
-                  {/* Material */}
-                  <HybridInput
-                    value={material}
-                    onChange={setMaterial}
-                    suggestions={MATERIAL_SUGGESTIONS}
-                    placeholder="e.g., Cotton, Wood, Metal"
-                    label="Material"
-                    confidenceBadge={
-                      confidenceScores?.material && (
-                        <ConfidenceBadge
-                          level={confidenceScores.material.level}
-                        />
-                      )
-                    }
-                  />
-
-                  {/* Pattern */}
-                  <HybridInput
-                    value={pattern}
-                    onChange={setPattern}
-                    suggestions={PATTERN_SUGGESTIONS}
-                    placeholder="e.g., Striped, Floral, Solid"
-                    label="Pattern"
-                    confidenceBadge={
-                      confidenceScores?.pattern && (
-                        <ConfidenceBadge
-                          level={confidenceScores.pattern.level}
-                        />
-                      )
-                    }
-                  />
-
-                  {/* Style */}
-                  <HybridInput
-                    value={style}
-                    onChange={setStyle}
-                    suggestions={STYLE_SUGGESTIONS}
-                    placeholder="e.g., Modern, Vintage, Casual"
-                    label="Style"
-                    confidenceBadge={
-                      confidenceScores?.style && (
-                        <ConfidenceBadge level={confidenceScores.style.level} />
-                      )
-                    }
-                  />
-
-                  {/* Tags - Full Width */}
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      Tags
-                      {confidenceScores?.tags && (
-                        <ConfidenceBadge level={confidenceScores.tags.level} />
-                      )}
-                      <div className="relative group">
-                        <svg
-                          className="w-4 h-4 text-gray-400 cursor-help"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
-                          Keywords to help buyers find your item (e.g.,
-                          "vintage", "handmade", "eco-friendly")
-                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-                        </div>
-                      </div>
-                    </label>
-                    <div className="flex gap-2 mb-2">
-                      <input
-                        type="text"
-                        value={tagInput}
-                        onChange={(e) => setTagInput(e.target.value)}
-                        onKeyPress={handleTagKeyPress}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                        placeholder="Add a tag and press Enter"
-                      />
-                      <button
-                        type="button"
-                        onClick={addTag}
-                        className="px-4 py-2 bg-[#D4AF3D] text-white rounded-lg hover:bg-[#b8932f] transition-colors"
-                      >
-                        Add
-                      </button>
-                    </div>
-                    {tags.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {tags.map((tag, index) => (
-                          <span
-                            key={index}
-                            className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
-                          >
-                            {tag}
-                            <button
-                              type="button"
-                              onClick={() => removeTag(tag)}
-                              className="text-blue-600 hover:text-blue-800"
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Treasure Detection Section */}
-              <div className="mt-6 bg-white rounded-xl shadow-lg p-8">
-                <h2 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
-                  <svg
-                    className="h-5 w-5 text-[#D4AF3D]"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                  </svg>
-                  Treasure Detection
-                </h2>
-                <p className="text-sm text-gray-600 mb-6">
-                  Mark items as "Treasures" for one-of-a-kind, vintage, or
-                  collector pieces that don't have standard retail pricing.
-                </p>
-
-                <div className="space-y-6">
-                  {/* Is Treasure Toggle */}
-                  <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={isTreasure}
-                        onChange={(e) => setIsTreasure(e.target.checked)}
-                        className="w-4 h-4 text-[#D4AF3D] border-gray-300 rounded focus:ring-[#D4AF3D]"
-                      />
-                      <span className="text-sm font-medium text-gray-700">
-                        This is a Treasure (one-of-a-kind, vintage, or collector
-                        piece)
-                      </span>
-                    </label>
-                    {comprehensiveListing?.isTreasure && (
-                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                        AI Detected
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Treasure Reason */}
-                  {isTreasure && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Treasure Reason
-                      </label>
-                      <textarea
-                        value={treasureReason}
-                        onChange={(e) => setTreasureReason(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-                        rows={3}
-                        placeholder="Explain why this is a treasure (e.g., 'Vintage 1980s design', 'Discontinued model', 'One-of-a-kind piece')"
-                      />
-                      {comprehensiveListing?.treasureReason &&
-                        !treasureReason && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            AI suggestion: {comprehensiveListing.treasureReason}
-                          </p>
-                        )}
-                    </div>
-                  )}
-
-                  {/* Treasure Info */}
-                  {isTreasure && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                      <div className="flex items-start gap-3">
-                        <svg
-                          className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                        <div>
-                          <h4 className="text-sm font-medium text-amber-800">
-                            Treasure Items
-                          </h4>
-                          <p className="text-sm text-amber-700 mt-1">
-                            Treasure items are one-of-a-kind, vintage, or
-                            collector pieces that don't follow standard pricing
-                            schedules. They're marked with a special badge and
-                            use collector-based pricing instead of retail
-                            pricing.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="sticky bottom-0 left-0 right-0 bg-white pt-6 pb-2">
-                <div className="flex gap-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={goBackToPhotos}
-                  >
-                    Back to Photos
-                  </Button>
-                  <Button
-                    type="submit"
-                    variant="default"
-                    className="flex-1"
-                    disabled={!isFormValid}
-                  >
-                    Post Listing
-                  </Button>
-                </div>
+              {/* Submit Button Section */}
+              <div className="mt-8 flex gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={goBackToPhotos}
+                >
+                  Back to Photos
+                </Button>
+                <Button
+                  type="submit"
+                  variant="default"
+                  className="flex-1"
+                  disabled={!isFormValid}
+                >
+                  Post Listing
+                </Button>
               </div>
             </form>
           </>
         )}
+
+        <InventorySelector
+          showInventoryModal={showInventoryModal}
+          setShowInventoryModal={setShowInventoryModal}
+          inventoryItems={inventoryItems}
+          inventorySearchQuery={inventorySearchQuery}
+          setInventorySearchQuery={setInventorySearchQuery}
+          selectedInventoryItem={selectedInventoryItem}
+          setSelectedInventoryItem={setSelectedInventoryItem}
+          inventoryPage={inventoryPage}
+          setInventoryPage={setInventoryPage}
+          inventoryTotalPages={inventoryTotalPages}
+          showAvailableOnly={showAvailableOnly}
+          setShowAvailableOnly={setShowAvailableOnly}
+          isLoadingInventory={isLoadingInventory}
+        />
       </div>
-
-      {/* Inventory Selection Modal */}
-      {showInventoryModal && isItemInInventory === true && (
-        <div
-          key="inventory-modal"
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setShowInventoryModal(false);
-            }
-          }}
-        >
-          <div
-            className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-blue-200 p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-blue-900">
-                    Select Inventory Item
-                  </h2>
-                  <p className="text-blue-700 mt-1">
-                    Search and choose an item to enhance your listing with
-                    detailed information
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowInventoryModal(false)}
-                  className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
-                >
-                  <svg
-                    className="w-6 h-6 text-blue-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Search Bar */}
-              <div className="mt-4 flex items-center gap-2 border rounded-lg px-3 py-2 bg-white">
-                <svg
-                  className="h-5 w-5 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-                <input
-                  type="text"
-                  value={inventorySearchQuery}
-                  onChange={(e) => {
-                    setInventoryPage(1);
-                    setInventorySearchQuery(e.target.value);
-                  }}
-                  placeholder="Search description, item #, vendor, dept..."
-                  className="flex-1 outline-none text-sm"
-                />
-                {inventorySearchQuery && (
-                  <button
-                    onClick={() => {
-                      setInventorySearchQuery("");
-                      setInventoryPage(1);
-                    }}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <svg
-                      className="h-4 w-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                )}
-              </div>
-
-              {/* Inventory Filter Toggle */}
-              <div className="mt-3 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={() => {
-                      setShowAvailableOnly(false);
-                      setInventoryPage(1);
-                    }}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      !showAvailableOnly
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
-                  >
-                    All Inventory
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowAvailableOnly(true);
-                      setInventoryPage(1);
-                    }}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      showAvailableOnly
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
-                  >
-                    Listed
-                  </button>
-                </div>
-                <div className="text-sm text-gray-600">
-                  {showAvailableOnly
-                    ? "Showing only items that have been posted as listings"
-                    : "Showing all items including posted listings"}
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-250px)]">
-              {isLoadingInventory ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="text-center">
-                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
-                    <p className="text-gray-600">Loading inventory items...</p>
-                  </div>
-                </div>
-              ) : inventoryItems.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                    <svg
-                      className="w-8 h-8 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m13-8l-2-2M7 5l-2 2M8 12l4-4 4 4"
-                      />
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    No items found
-                  </h3>
-                  <p className="text-gray-600">
-                    Try adjusting your search query or check back later.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {inventoryItems.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => {
-                        setSelectedInventoryItem(item);
-                        // Small delay to ensure proper DOM cleanup
-                        setTimeout(() => setShowInventoryModal(false), 0);
-                      }}
-                      className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-lg hover:border-blue-300 transition-all duration-200 cursor-pointer group"
-                    >
-                      {/* Item Header */}
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <h3 className="font-medium text-gray-900 group-hover:text-blue-900 transition-colors">
-                            {item.description || "No description"}
-                          </h3>
-                          {item.itemNumber && (
-                            <p className="text-xs text-gray-500 mt-1">
-                              #{item.itemNumber}
-                            </p>
-                          )}
-                        </div>
-                        {item.unitRetail && (
-                          <div className="ml-2 text-right">
-                            <span className="text-lg font-semibold text-green-600">
-                              ${item.unitRetail}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Item Details */}
-                      <div className="space-y-2 mb-3">
-                        {item.vendor && (
-                          <div className="flex items-center text-sm">
-                            <svg
-                              className="w-4 h-4 text-gray-400 mr-2"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                              />
-                            </svg>
-                            <span className="text-gray-600">{item.vendor}</span>
-                          </div>
-                        )}
-
-                        {item.category && (
-                          <div className="flex items-center text-sm">
-                            <svg
-                              className="w-4 h-4 text-gray-400 mr-2"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                              />
-                            </svg>
-                            <span className="text-gray-600">
-                              {item.category}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Quantity and Posting Status */}
-                        <div className="space-y-1">
-                          {item.totalInventory && (
-                            <div className="flex items-center justify-between text-sm">
-                              <div className="flex items-center">
-                                <svg
-                                  className="w-4 h-4 text-gray-400 mr-2"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"
-                                  />
-                                </svg>
-                                <span className="text-gray-600">
-                                  Total: {item.totalInventory}
-                                </span>
-                              </div>
-                              {item.postedListings > 0 && (
-                                <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded">
-                                  {item.postedListings} posted
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          {item.availableToList !== undefined &&
-                            item.totalInventory > 0 && (
-                              <div className="flex items-center text-sm">
-                                <svg
-                                  className="w-4 h-4 text-green-500 mr-2"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                  />
-                                </svg>
-                                <span className="text-green-700 font-medium">
-                                  {item.availableToList} available to list
-                                </span>
-                              </div>
-                            )}
-                        </div>
-                      </div>
-
-                      {/* Inventory List Info */}
-                      {item.list && (
-                        <div className="pt-3 border-t border-gray-100">
-                          <p className="text-xs text-blue-600 font-medium">
-                            {item.list.name}
-                          </p>
-                          {item.list.datePurchased && (
-                            <p className="text-xs text-gray-500">
-                              Purchased:{" "}
-                              {new Date(
-                                item.list.datePurchased
-                              ).toLocaleDateString()}
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Hover Effect */}
-                      <div className="mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="text-xs text-blue-600 font-medium">
-                          Click to select this item
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Pagination */}
-              {inventoryTotalPages > 1 && (
-                <div className="flex justify-center items-center gap-2 mt-6">
-                  <button
-                    onClick={() =>
-                      setInventoryPage(Math.max(1, inventoryPage - 1))
-                    }
-                    disabled={inventoryPage === 1}
-                    className="px-3 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                  >
-                    Previous
-                  </button>
-                  <span className="px-4 py-2 text-sm text-gray-600">
-                    Page {inventoryPage} of {inventoryTotalPages}
-                  </span>
-                  <button
-                    onClick={() =>
-                      setInventoryPage(
-                        Math.min(inventoryTotalPages, inventoryPage + 1)
-                      )
-                    }
-                    disabled={inventoryPage === inventoryTotalPages}
-                    className="px-3 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="bg-gray-50 border-t border-gray-200 p-4 flex justify-between items-center">
-              <div className="text-sm text-gray-600">
-                {inventoryItems.length} items shown
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowInventoryModal(false)}
-                className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { FACEBOOK_TAXONOMY } from '@/lib/facebook-taxonomy';
+import { FACEBOOK_TAXONOMY } from './facebook-taxonomy';
 
 /**
  * AI Service for analyzing product photos and generating listing information

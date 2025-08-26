@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
       modelNumber,
       estimatedRetailPrice,
       discountSchedule,
+      deliveryCategory,
       reservePrice,
       height,
       width,
@@ -191,6 +192,7 @@ export async function POST(request: NextRequest) {
           modelNumber: modelNumber || null,
           estimatedRetailPrice: estimatedRetailPrice ? parseFloat(estimatedRetailPrice) : null,
           discountSchedule: discountSchedule || null,
+          deliveryCategory: deliveryCategory || "NORMAL",
           // Facebook Shop Integration Fields
           facebookShopEnabled: facebookShopEnabled !== undefined ? facebookShopEnabled : true,
           facebookBrand: facebookBrand || null,
@@ -267,6 +269,7 @@ export async function POST(request: NextRequest) {
               modelNumber: modelNumber || null,
               estimatedRetailPrice: estimatedRetailPrice ? parseFloat(estimatedRetailPrice) : null,
               discountSchedule: discountSchedule || null,
+              deliveryCategory: deliveryCategory || "NORMAL",
               // Facebook Shop Integration Fields
               facebookShopEnabled: facebookShopEnabled !== undefined ? facebookShopEnabled : true,
               facebookBrand: facebookBrand || null,

@@ -6,6 +6,7 @@ import Script from "next/script";
 import NavBar from "./components/NavBar";
 import Footer from "./components/Footer";
 import { ModalProvider } from "./contexts/ModalContext";
+import { CartProvider } from "./contexts/CartContext";
 import MetaPixelScript from "./components/MetaPixelScript";
 import ErrorBoundary from "./components/ErrorBoundary";
 import "../app/lib/console-filter"; // Import console filter
@@ -245,9 +246,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
         <ErrorBoundary>
           <ModalProvider>
-            <NavBar />
-            {children}
-            <Footer />
+            <CartProvider>
+              <NavBar />
+              {children}
+              <Footer />
+            </CartProvider>
           </ModalProvider>
         </ErrorBoundary>
       </body>
