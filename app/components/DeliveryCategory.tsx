@@ -2,13 +2,14 @@
 import React from "react";
 import { AlertCircle } from "lucide-react";
 import { ConfidenceBadge } from "./ConfidenceIndicator";
+import { ConfidenceLevel } from "@/lib/ai-confidence-scorer";
 
 interface DeliveryCategoryProps {
   deliveryCategory: "NORMAL" | "BULK";
   setDeliveryCategory: (category: "NORMAL" | "BULK") => void;
   confidenceScores?: {
     deliveryCategory?: {
-      level: string;
+      level: ConfidenceLevel;
     };
   };
 }

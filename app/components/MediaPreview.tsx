@@ -51,11 +51,12 @@ export default function MediaPreview({
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-medium text-gray-700">
             Uploaded Photos (
-            {
-              Object.values(photos).filter(
-                (p) => p && (Array.isArray(p) ? p.length > 0 : p.file || p.url)
-              ).length
-            }
+            {photos
+              ? Object.values(photos).filter(
+                  (p) =>
+                    p && (Array.isArray(p) ? p.length > 0 : p.file || p.url)
+                ).length
+              : 0}
             )
           </h3>
           <button
@@ -66,7 +67,7 @@ export default function MediaPreview({
             {showPhotos ? "−" : "+"} {showPhotos ? "Hide" : "Show"}
           </button>
         </div>
-        {showPhotos && (
+        {showPhotos && photos && (
           <PhotoDisplay
             photos={photos}
             removePhoto={removePhoto}

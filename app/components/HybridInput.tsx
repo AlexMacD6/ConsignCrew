@@ -5,7 +5,7 @@ import React, { useState, useRef, useEffect } from "react";
 interface HybridInputProps {
   value: string;
   onChange: (value: string) => void;
-  suggestions: string[];
+  suggestions: readonly string[];
   placeholder: string;
   label: string;
   className?: string;

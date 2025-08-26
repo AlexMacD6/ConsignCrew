@@ -7,6 +7,7 @@ import ProductDimensions from "./ProductDimensions";
 import AdditionalFormFields from "./AdditionalFormFields";
 import DeliveryCategory from "./DeliveryCategory";
 
+
 interface FormSectionProps {
   // Form data
   department: string;
@@ -19,11 +20,9 @@ interface FormSectionProps {
   setTitle: (value: string) => void;
   price: string;
   setPrice: (value: string) => void;
-  description: string;
-  setDescription: (value: string) => void;
   brand: string;
   setBrand: (value: string) => void;
-  condition: string;
+  condition: "" | "New" | "Used - Like New" | "Used - Good" | "Used - Fair";
   setCondition: React.Dispatch<
     React.SetStateAction<
       "" | "New" | "Used - Like New" | "Used - Good" | "Used - Fair"
@@ -45,7 +44,7 @@ interface FormSectionProps {
   setModelNumber: (value: string) => void;
   estimatedRetailPrice: string;
   setEstimatedRetailPrice: (value: string) => void;
-  discountSchedule: string;
+  discountSchedule: "" | "Turbo-30" | "Classic-60";
   setDiscountSchedule: React.Dispatch<
     React.SetStateAction<"" | "Turbo-30" | "Classic-60">
   >;
@@ -55,6 +54,8 @@ interface FormSectionProps {
   deliveryCategory: "NORMAL" | "BULK";
   setDeliveryCategory: (value: "NORMAL" | "BULK") => void;
 
+
+
   // Additional props
   selectedInventoryItem?: any;
   discountSchedules: readonly string[];
@@ -63,27 +64,12 @@ interface FormSectionProps {
   generateQRCode?: (id: string) => string;
   generatedQRCode?: string;
   confidenceScores?: any;
+  taxonomy?: any;
 }
 
 export default function FormSection(props: FormSectionProps) {
   return (
     <div className="space-y-4">
-      {/* Item ID (Read-only) */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Item ID
-        </label>
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={props.itemId || "Generating..."}
-            disabled
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-          />
-          <Lock className="h-4 w-4 text-gray-400" />
-        </div>
-      </div>
-
       <CategorySelector
         department={props.department}
         setDepartment={props.setDepartment}
@@ -91,6 +77,7 @@ export default function FormSection(props: FormSectionProps) {
         setCategory={props.setCategory}
         subCategory={props.subCategory}
         setSubCategory={props.setSubCategory}
+        taxonomy={props.taxonomy}
         confidenceScores={props.confidenceScores}
       />
 
@@ -99,12 +86,13 @@ export default function FormSection(props: FormSectionProps) {
         setTitle={props.setTitle}
         price={props.price}
         setPrice={props.setPrice}
-        description={props.description}
-        setDescription={props.setDescription}
         brand={props.brand}
         setBrand={props.setBrand}
         condition={props.condition}
-        setCondition={props.setCondition}
+        setCondition={(value: string) => props.setCondition(value as any)}
+        estimatedRetailPrice={props.estimatedRetailPrice}
+        setEstimatedRetailPrice={props.setEstimatedRetailPrice}
+        selectedInventoryItem={props.selectedInventoryItem}
         confidenceScores={props.confidenceScores}
       />
 
@@ -128,11 +116,8 @@ export default function FormSection(props: FormSectionProps) {
         setSerialNumber={props.setSerialNumber}
         modelNumber={props.modelNumber}
         setModelNumber={props.setModelNumber}
-        estimatedRetailPrice={props.estimatedRetailPrice}
-        setEstimatedRetailPrice={props.setEstimatedRetailPrice}
-        selectedInventoryItem={props.selectedInventoryItem}
         discountSchedule={props.discountSchedule}
-        setDiscountSchedule={props.setDiscountSchedule}
+        setDiscountSchedule={(value: string) => props.setDiscountSchedule(value as any)}
         discountSchedules={props.discountSchedules}
         facebookGtin={props.facebookGtin}
         setFacebookGtin={props.setFacebookGtin}
@@ -148,6 +133,8 @@ export default function FormSection(props: FormSectionProps) {
         setDeliveryCategory={props.setDeliveryCategory}
         confidenceScores={props.confidenceScores}
       />
+
+
     </div>
   );
 }

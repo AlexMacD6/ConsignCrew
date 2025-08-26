@@ -28,30 +28,30 @@ export interface FacebookProductData {
 
 /**
  * Maps our condition values to Facebook's exact expected format
- * Facebook expects: New, Refurbished, Used (like new), Used (good), Used (fair)
+ * Facebook expects: new, refurbished, used, used_like_new, used_good, used_fair, cpo, open_box_new
  */
 function mapConditionToFacebook(condition: string): string {
   const conditionMap: { [key: string]: string } = {
-    'new': 'New',
-    'new with tags': 'New',
-    'new without tags': 'New',
-    'refurbished': 'Refurbished',
-    'used': 'Used (good)',
-    'used like new': 'Used (like new)',
-    'used good': 'Used (good)',
-    'used fair': 'Used (fair)',
-    'used poor': 'Used (fair)',
-    'pre-owned': 'Used (good)',
-    'second hand': 'Used (good)',
-    'vintage': 'Used (good)',
-    'antique': 'Used (good)',
-    'mint': 'Used (like new)',
-    'excellent': 'Used (like new)',
-    'very good': 'Used (good)',
-    'good': 'Used (good)',
-    'fair': 'Used (fair)',
-    'poor': 'Used (fair)',
-    'acceptable': 'Used (fair)'
+    'new': 'new',
+    'new with tags': 'new',
+    'new without tags': 'new',
+    'refurbished': 'refurbished',
+    'used': 'used_good',
+    'used like new': 'used_like_new',
+    'used good': 'used_good',
+    'used fair': 'used_fair',
+    'used poor': 'used_fair',
+    'pre-owned': 'used_good',
+    'second hand': 'used_good',
+    'vintage': 'used_good',
+    'antique': 'used_good',
+    'mint': 'used_like_new',
+    'excellent': 'used_like_new',
+    'very good': 'used_good',
+    'good': 'used_good',
+    'fair': 'used_fair',
+    'poor': 'used_fair',
+    'acceptable': 'used_fair'
   };
 
   // Convert to lowercase and trim for matching
@@ -70,15 +70,15 @@ function mapConditionToFacebook(condition: string): string {
   }
   
   // Default fallback based on common patterns
-  if (normalizedCondition.includes('new')) return 'New';
-  if (normalizedCondition.includes('refurbish')) return 'Refurbished';
-  if (normalizedCondition.includes('like new') || normalizedCondition.includes('mint') || normalizedCondition.includes('excellent')) return 'Used (like new)';
-  if (normalizedCondition.includes('good') || normalizedCondition.includes('very good')) return 'Used (good)';
-  if (normalizedCondition.includes('fair') || normalizedCondition.includes('poor') || normalizedCondition.includes('acceptable')) return 'Used (fair)';
+  if (normalizedCondition.includes('new')) return 'new';
+  if (normalizedCondition.includes('refurbish')) return 'refurbished';
+  if (normalizedCondition.includes('like new') || normalizedCondition.includes('mint') || normalizedCondition.includes('excellent')) return 'used_like_new';
+  if (normalizedCondition.includes('good') || normalizedCondition.includes('very good')) return 'used_good';
+  if (normalizedCondition.includes('fair') || normalizedCondition.includes('poor') || normalizedCondition.includes('acceptable')) return 'used_fair';
   
   // Default fallback
-  console.log(`⚠️ Unknown condition value: "${condition}", defaulting to "Used (good)"`);
-  return 'Used (good)';
+  console.log(`⚠️ Unknown condition value: "${condition}", defaulting to "used_good"`);
+  return 'used_good';
 }
 
 /**
@@ -298,7 +298,7 @@ async function createProductInFacebook(listingId: string): Promise<{ success: bo
       const requestBody = {
         name: productData.title,
         description: productData.description,
-        price: Number(productData.price),
+        price: Math.round(Number(productData.price) * 100), // Convert dollars to cents for Facebook
         currency: 'USD',
         condition: mapConditionToFacebook(listing.facebookCondition || 'used'),
         availability: productData.availability,
@@ -320,8 +320,8 @@ async function createProductInFacebook(listingId: string): Promise<{ success: bo
         pattern: listing.pattern || undefined,
         style: listing.style || undefined,
         // Product identifiers
-        gtin: listing.serialNumber || listing.modelNumber || undefined,
-        mpn: listing.modelNumber || undefined,
+        gtin: listing.serialNumber && /^\d{14}$/.test(listing.serialNumber) ? listing.serialNumber : undefined, // Only include if valid 14-digit GTIN
+        mpn: undefined, // Remove MPN mapping to avoid conflicts
         // Additional metadata
         item_group_id: `group_${listing.department}_${listing.category}`,
         // Rich description (can include HTML)
@@ -349,7 +349,7 @@ async function createProductInFacebook(listingId: string): Promise<{ success: bo
         rating_average: undefined, // Can be added if you have ratings
         rating_count: undefined,   // Can be added if you have ratings
         // Sale price for discount schedule integration
-        ...(productData.salePrice && shouldUseSalePrice && { sale_price: productData.salePrice })
+        ...(productData.salePrice && shouldUseSalePrice && { sale_price: Math.round(Number(productData.salePrice) * 100) })
       };
 
               // Only add URL if it's a public URL (not localhost)
@@ -365,7 +365,7 @@ async function createProductInFacebook(listingId: string): Promise<{ success: bo
         
         // Add sale price if available and should be used
         if (productData.salePrice && shouldUseSalePrice) {
-          (requestBody as any).sale_price = productData.salePrice;
+          (requestBody as any).sale_price = Math.round(Number(productData.salePrice) * 100); // Convert dollars to cents
           console.log(`💰 Adding sale price to Facebook product: $${productData.salePrice}`);
         }
       
@@ -578,7 +578,7 @@ async function updateProductInFacebook(listingId: string): Promise<{ success: bo
         const updateRequestBody = {
           name: productData.title,
           description: productData.description,
-          price: productData.price,
+          price: Math.round(Number(productData.price) * 100), // Convert dollars to cents for Facebook
           currency: 'USD',
           condition: mapConditionToFacebook(listing.facebookCondition || 'used'),
           availability: productData.availability,
@@ -600,8 +600,8 @@ async function updateProductInFacebook(listingId: string): Promise<{ success: bo
         pattern: listing.pattern || undefined,
         style: listing.style || undefined,
           // Product identifiers
-          gtin: listing.serialNumber || listing.modelNumber || undefined,
-          mpn: listing.modelNumber || undefined,
+          gtin: listing.serialNumber && /^\d{14}$/.test(listing.serialNumber) ? listing.serialNumber : undefined, // Only include if valid 14-digit GTIN
+          mpn: undefined, // Remove MPN mapping to avoid conflicts
           // Additional metadata
           item_group_id: `group_${listing.department}_${listing.category}`,
                   // Rich description (can include HTML)
@@ -629,7 +629,7 @@ async function updateProductInFacebook(listingId: string): Promise<{ success: bo
         rating_average: undefined, // Can be added if you have ratings
         rating_count: undefined,   // Can be added if you have ratings
         // Sale price for discount schedule integration
-        ...(productData.salePrice && shouldUseSalePrice && { sale_price: productData.salePrice })
+        ...(productData.salePrice && shouldUseSalePrice && { sale_price: Math.round(Number(productData.salePrice) * 100) })
           };
 
         // Only add URL if it's a public URL (not localhost)
@@ -645,7 +645,7 @@ async function updateProductInFacebook(listingId: string): Promise<{ success: bo
         
         // Add sale price if available and should be used
         if (productData.salePrice && shouldUseSalePrice) {
-          (updateRequestBody as any).sale_price = productData.salePrice;
+          (updateRequestBody as any).sale_price = Math.round(Number(productData.salePrice) * 100); // Convert dollars to cents
           console.log(`💰 Adding sale price to Facebook product update: $${productData.salePrice}`);
         }
         

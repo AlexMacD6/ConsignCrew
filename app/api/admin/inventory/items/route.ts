@@ -71,14 +71,28 @@ export async function GET(request: NextRequest) {
     // Include unitPurchasePrice and listing counts
     const itemsWithUnit = items.map((it: any) => {
       const postedListings = it.listings?.length || 0;
+      // Handle null quantity by defaulting to 0, but preserve original for debugging
+      const originalQuantity = it.quantity;
       const totalInventory = it.quantity || 0;
       const availableToList = Math.max(0, totalInventory - postedListings);
       
+      // Debug logging for items with null quantity
+      if (originalQuantity === null || originalQuantity === undefined) {
+        console.log(`Warning: Item ${it.itemNumber} has null/undefined quantity:`, {
+          itemNumber: it.itemNumber,
+          originalQuantity,
+          totalInventory,
+          description: it.description
+        });
+      }
+      
       return {
         ...it,
+        quantity: availableToList, // Override with available quantity for the UI
+        totalQuantity: totalInventory, // Keep total for display
         unitPurchasePrice:
-          typeof it.purchasePrice === "number" && typeof it.quantity === "number" && it.quantity > 0
-            ? it.purchasePrice / it.quantity
+          typeof it.purchasePrice === "number" && typeof totalInventory === "number" && totalInventory > 0
+            ? it.purchasePrice / totalInventory
             : null,
         postedListings,
         availableToList,
@@ -87,9 +101,9 @@ export async function GET(request: NextRequest) {
     });
 
     // Apply filtering after calculating counts
-    // availableOnlyParam=true now means "show only items with posted listings"
+    // availableOnlyParam=true means "show only items available to list" (availableToList > 0)
     let filteredItems = availableOnlyParam === "true" 
-      ? itemsWithUnit.filter(item => item.postedListings > 0)
+      ? itemsWithUnit.filter(item => item.availableToList > 0)
       : itemsWithUnit;
 
     // Apply pagination to filtered results if we fetched all items
@@ -108,7 +122,7 @@ export async function GET(request: NextRequest) {
 
     // Calculate proper pagination counts
     const totalFilteredCount = availableOnlyParam === "true" 
-      ? itemsWithUnit.filter(item => item.postedListings > 0).length
+      ? itemsWithUnit.filter(item => item.availableToList > 0).length
       : total;
 
     return NextResponse.json({
