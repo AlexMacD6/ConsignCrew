@@ -122,8 +122,9 @@ RESPONSE FORMAT: Return a JSON object with enhanced reasoning and analysis:
   "valueProposition": "Value proposition with competitive advantage analysis and market positioning",
   "marketAnalysis": "Detailed market analysis including demand trends, competition, and positioning opportunities",
   "competitiveAdvantage": "Analysis of unique selling propositions and competitive differentiators",
-  "consumerInsights": "Consumer psychology analysis and buying motivation factors"
-  ,"deliveryCategory": "NORMAL|BULK" 
+  "consumerInsights": "Consumer psychology analysis and buying motivation factors",
+  "deliveryCategory": "NORMAL|BULK (BULK for items requiring 2+ people to safely lift/move, over 50lbs, or bulky furniture)",
+  "deliveryReasoning": "Reasoning for delivery category selection based on size, weight, and handling requirements"
 }
 
 Provide deep reasoning for each field to maximize value, appeal, and competitive positioning while maintaining honesty and transparency.`;
@@ -236,8 +237,28 @@ Provide deep reasoning for each field to maximize value, appeal, and competitive
       marketAnalysis: formData.marketAnalysis || 'Market analysis not available',
       competitiveAdvantage: formData.competitiveAdvantage || 'Competitive advantage analysis not available',
       consumerInsights: formData.consumerInsights || 'Consumer insights not available',
-      // Delivery category: ask if 2-person delivery is needed; default NORMAL
-      deliveryCategory: (formData.deliveryCategory === 'BULK' || /two\s*people|2\s*people|heavy|bulky|oversized/i.test(`${title} ${description} ${additionalInfo||''}`)) ? 'BULK' : 'NORMAL',
+      // Enhanced delivery category detection with reasoning
+      deliveryCategory: (() => {
+        // Check AI suggestion first
+        if (formData.deliveryCategory === 'BULK') return 'BULK';
+        
+        // Check text patterns for bulk indicators
+        const textToCheck = `${title} ${description} ${additionalInfo || ''}`.toLowerCase();
+        const bulkKeywords = [
+          'two people', '2 people', 'heavy', 'bulky', 'oversized', 'large', 'massive',
+          'sectional', 'dining table', 'dining set', 'king bed', 'queen bed',
+          'washer', 'dryer', 'refrigerator', 'freezer', 'piano', 'organ',
+          'treadmill', 'exercise bike', 'weight bench', 'safe', 'desk',
+          'entertainment center', 'armoire', 'china cabinet', 'bookshelf',
+          'couch', 'sofa', 'love seat', 'ottoman', 'recliner',
+          '50 lbs', '50lbs', '75 lbs', '75lbs', '100 lbs', '100lbs',
+          'requires two', 'needs two', 'help needed', 'assistance needed'
+        ];
+        
+        const hasBulkKeywords = bulkKeywords.some(keyword => textToCheck.includes(keyword));
+        return hasBulkKeywords ? 'BULK' : 'NORMAL';
+      })(),
+      deliveryReasoning: formData.deliveryReasoning || 'Automatic classification based on item characteristics',
     };
 
     console.log("📊 Form Fields API: Validated data:", validatedData);

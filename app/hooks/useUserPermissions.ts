@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { authClient } from '@/lib/auth-client';
+import { authClient } from '../lib/auth-client';
 
 interface UserPermissions {
   canListItems: boolean;

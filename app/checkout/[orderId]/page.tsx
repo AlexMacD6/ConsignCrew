@@ -62,9 +62,6 @@ export default function CheckoutPage() {
     valid: boolean;
     discount: number;
   }>(null);
-  const [deliveryCategory, setDeliveryCategory] = useState<"NORMAL" | "BULK">(
-    "NORMAL"
-  );
 
   // Harris County, TX sales tax rate (8.25%)
   const HARRIS_COUNTY_TAX_RATE = 0.0825;
@@ -83,6 +80,16 @@ export default function CheckoutPage() {
   const [timeExtensionUsed, setTimeExtensionUsed] = useState(false);
   const [extendingTime, setExtendingTime] = useState(false);
   const [addressConfirmed, setAddressConfirmed] = useState(false);
+
+  // Check if this is a resumed session with extended time
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("resumed") === "true") {
+      setSuccess("Checkout resumed with 10 minutes added to your timer!");
+      // Clear the success message after 5 seconds
+      setTimeout(() => setSuccess(null), 5000);
+    }
+  }, []);
 
   // Fetch order details and user profile
   useEffect(() => {
@@ -467,8 +474,11 @@ export default function CheckoutPage() {
           router.push("/listings");
         }, 3000);
       } else {
+        const errorText = await response.text();
         console.error(
-          "Checkout Page: Failed to cleanup expired session from API"
+          "Checkout Page: Failed to cleanup expired session from API:",
+          response.status,
+          errorText
         );
         // Still redirect even if cleanup fails
         setTimeout(() => {
@@ -628,14 +638,24 @@ export default function CheckoutPage() {
       if (response.ok) {
         const data = await response.json();
         console.log("Checkout Page: Session cleaned up on cancel:", data);
-        setSuccess(
-          "Purchase cancelled. The item has been released and is available for purchase again."
-        );
 
-        // Redirect back to the listing page after a short delay
-        setTimeout(() => {
-          router.push(`/list-item/${order.listing.itemId}`);
-        }, 2000);
+        if (data.restoredToCart) {
+          setSuccess(
+            "Purchase cancelled. The item has been restored to your cart."
+          );
+          // Redirect to cart if item was restored
+          setTimeout(() => {
+            router.push("/cart");
+          }, 2000);
+        } else {
+          setSuccess(
+            "Purchase cancelled. The item has been released and is available for purchase again."
+          );
+          // Redirect back to the listing page after a short delay
+          setTimeout(() => {
+            router.push(`/list-item/${order.listing.itemId}`);
+          }, 2000);
+        }
       } else {
         console.error("Checkout Page: Failed to cleanup session on cancel");
         // Still redirect even if cleanup fails
@@ -865,11 +885,7 @@ export default function CheckoutPage() {
                 );
 
                 if (remainingTimeForExtension > 0) {
-                  return (
-                    <p className="text-blue-600 font-medium mt-1">
-                      Extension available for {remainingMinutes} more minutes
-                    </p>
-                  );
+                  return null; // Extension message removed per user request
                 }
                 return null;
               })()}
@@ -951,293 +967,520 @@ export default function CheckoutPage() {
             Order Summary
           </h2>
 
-          <div className="flex gap-4">
-            {/* Item Image */}
-            {order.listing.photos?.hero && (
-              <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                <img
-                  src={order.listing.photos.hero}
-                  alt={order.listing.title}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            )}
+          {(() => {
+            // Check if this is a multi-item order
+            const storedBreakdown = (order as any).shippingAddress
+              ?.priceBreakdown;
+            const isMultiItem = storedBreakdown?.isMultiItem;
+            const items = storedBreakdown?.items || [];
 
-            {/* Item Details */}
-            <div className="flex-1">
-              <h3 className="font-medium text-gray-900 mb-1">
-                {order.listing.title}
-              </h3>
-              <p className="text-sm text-gray-600 mb-2">
-                Item ID: {order.listing.itemId}
-              </p>
-              {/* Price Breakdown with Harris County Sales Tax */}
-              {(() => {
-                const subtotal = order.amount || 0;
-                const deliveryFee = deliveryCategory === "BULK" ? 100 : 50;
-                const promoDiscount = promoStatus?.valid
-                  ? promoStatus.discount
-                  : 0;
-                const taxedBase = Math.max(
-                  0,
-                  subtotal + deliveryFee - promoDiscount
-                );
-                const salesTax = subtotal * HARRIS_COUNTY_TAX_RATE;
-                const estimatedTotal =
-                  taxedBase + taxedBase * HARRIS_COUNTY_TAX_RATE;
-                return (
-                  <div className="text-sm text-gray-800">
-                    <div className="flex items-center justify-between py-0.5">
-                      <span className="text-gray-600">Subtotal</span>
-                      <span className="font-medium">
-                        {formatCurrency(subtotal)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between py-0.5">
-                      <span className="text-gray-600">
-                        Delivery (
-                        {deliveryCategory === "BULK" ? "Bulk" : "Normal"})
-                      </span>
-                      <span className="font-medium">
-                        {formatCurrency(deliveryFee)}
-                      </span>
-                    </div>
-                    {promoStatus?.valid && (
-                      <div className="flex items-center justify-between py-0.5 text-green-700">
-                        <span className="">Promo Discount</span>
-                        <span className="font-medium">
-                          - {formatCurrency(promoStatus.discount)}
-                        </span>
+            if (isMultiItem && items.length > 1) {
+              // Display multiple items
+              return (
+                <div className="space-y-4">
+                  <h3 className="font-medium text-gray-900 mb-3">
+                    Order Items ({items.length} items)
+                  </h3>
+                  <div className="space-y-3 max-h-60 overflow-y-auto">
+                    {items.map((item: any, index: number) => (
+                      <div
+                        key={index}
+                        className="flex gap-3 p-3 bg-gray-50 rounded-lg"
+                      >
+                        {item.photos?.hero && (
+                          <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                            <img
+                              src={item.photos.hero}
+                              alt={item.title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-gray-900 text-sm truncate">
+                            {item.title}
+                          </h4>
+                          <p className="text-xs text-gray-600 mb-1">
+                            ID: {item.listingItemId}
+                          </p>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-600">
+                              Qty: {item.quantity}
+                            </span>
+                            <span className="text-sm font-medium text-gray-900">
+                              ${item.itemTotal.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    )}
-                    <div className="flex items-center justify-between py-0.5">
-                      <span className="text-gray-600">
-                        Sales Tax ({(HARRIS_COUNTY_TAX_RATE * 100).toFixed(2)}%)
-                      </span>
-                      <span className="font-medium">
-                        {formatCurrency(taxedBase * HARRIS_COUNTY_TAX_RATE)}
-                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            } else {
+              // Display single item (original layout)
+              return (
+                <div className="flex gap-4">
+                  {/* Item Image */}
+                  {order.listing.photos?.hero && (
+                    <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                      <img
+                        src={order.listing.photos.hero}
+                        alt={order.listing.title}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
-                    <div className="flex items-center justify-between pt-1 mt-1 border-t">
-                      <span className="font-semibold">Estimated Total</span>
-                      <span className="text-[#D4AF3D] font-semibold">
-                        {formatCurrency(estimatedTotal)}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Tax shown is calculated at{" "}
-                      {(HARRIS_COUNTY_TAX_RATE * 100).toFixed(2)}%.
+                  )}
+
+                  {/* Item Details */}
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900 mb-1">
+                      {order.listing.title}
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-2">
+                      Item ID: {order.listing.itemId}
                     </p>
                   </div>
-                );
-              })()}
-            </div>
-          </div>
+                </div>
+              );
+            }
+          })()}
+
+          {/* Price Breakdown with Harris County Sales Tax */}
+          {(() => {
+            // Check if order has stored price breakdown (from cart checkout)
+            const storedBreakdown = (order as any).shippingAddress
+              ?.priceBreakdown;
+
+            if (storedBreakdown) {
+              // Use stored price breakdown from cart
+              const {
+                subtotal,
+                deliveryFee,
+                deliveryCategory: storedDeliveryCategory,
+                deliveryMethod: storedDeliveryMethod,
+                tax,
+                total,
+              } = storedBreakdown;
+              const promoDiscount = promoStatus?.valid
+                ? promoStatus.discount
+                : 0;
+              const finalTotal = total - promoDiscount;
+
+              return (
+                <div className="text-sm text-gray-800">
+                  <div className="flex items-center justify-between py-0.5">
+                    <span className="text-gray-600">Subtotal</span>
+                    <span className="font-medium">
+                      {formatCurrency(subtotal)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-0.5">
+                    <span className="text-gray-600">
+                      {storedDeliveryMethod === "pickup"
+                        ? "Pickup"
+                        : "Delivery"}
+                      {storedDeliveryMethod === "delivery" &&
+                        ` (${
+                          storedDeliveryCategory === "BULK" ? "Bulk" : "Normal"
+                        })`}
+                    </span>
+                    <span className="font-medium">
+                      {deliveryFee > 0 ? formatCurrency(deliveryFee) : "FREE"}
+                    </span>
+                  </div>
+                  {promoStatus?.valid && (
+                    <div className="flex items-center justify-between py-0.5 text-green-700">
+                      <span className="">Promo Discount</span>
+                      <span className="font-medium">
+                        - {formatCurrency(promoStatus.discount)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between py-0.5">
+                    <span className="text-gray-600">Sales Tax (8.25%)</span>
+                    <span className="font-medium">{formatCurrency(tax)}</span>
+                  </div>
+
+                  {/* Promo Code Input */}
+                  <div className="pt-2 mt-2 border-t">
+                    <label className="block text-sm text-gray-600 mb-2">
+                      Promo Code
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        value={promo}
+                        onChange={(e) => setPromo(e.target.value)}
+                        placeholder="Enter code"
+                        className="border rounded px-3 py-2 flex-1 text-sm"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(
+                              "/api/checkout/validate-promo",
+                              {
+                                method: "POST",
+                                headers: {
+                                  "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify({
+                                  code: promo,
+                                  subtotal: subtotal,
+                                }),
+                              }
+                            );
+                            const data = await res.json();
+                            if (data.valid)
+                              setPromoStatus({
+                                valid: true,
+                                discount: data.discount,
+                              });
+                            else setPromoStatus({ valid: false, discount: 0 });
+                          } catch {
+                            setPromoStatus({ valid: false, discount: 0 });
+                          }
+                        }}
+                      >
+                        Apply
+                      </Button>
+                    </div>
+                    {promoStatus && (
+                      <p
+                        className={`text-xs mt-1 ${
+                          promoStatus.valid ? "text-green-700" : "text-red-600"
+                        }`}
+                      >
+                        {promoStatus.valid
+                          ? `Promo applied: -$${promoStatus.discount.toFixed(
+                              2
+                            )}`
+                          : "Invalid promo code"}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 mt-2 border-t">
+                    <span className="font-semibold">Total</span>
+                    <span className="text-[#D4AF3D] font-semibold">
+                      {formatCurrency(finalTotal)}
+                    </span>
+                  </div>
+                </div>
+              );
+            } else {
+              // Fallback to original calculation for orders not from cart
+              const subtotal = order.amount || 0;
+              // Get delivery category from listing, default to NORMAL if not set
+              const listingDeliveryCategory =
+                (order.listing as any).deliveryCategory || "NORMAL";
+              const deliveryFee = listingDeliveryCategory === "BULK" ? 100 : 50;
+              const promoDiscount = promoStatus?.valid
+                ? promoStatus.discount
+                : 0;
+              const taxedBase = Math.max(
+                0,
+                subtotal + deliveryFee - promoDiscount
+              );
+              const salesTax = subtotal * HARRIS_COUNTY_TAX_RATE;
+              const estimatedTotal =
+                taxedBase + taxedBase * HARRIS_COUNTY_TAX_RATE;
+              return (
+                <div className="text-sm text-gray-800">
+                  <div className="flex items-center justify-between py-0.5">
+                    <span className="text-gray-600">Subtotal</span>
+                    <span className="font-medium">
+                      {formatCurrency(subtotal)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-0.5">
+                    <span className="text-gray-600">
+                      Delivery (
+                      {listingDeliveryCategory === "BULK" ? "Bulk" : "Normal"})
+                    </span>
+                    <span className="font-medium">
+                      {formatCurrency(deliveryFee)}
+                    </span>
+                  </div>
+                  {promoStatus?.valid && (
+                    <div className="flex items-center justify-between py-0.5 text-green-700">
+                      <span className="">Promo Discount</span>
+                      <span className="font-medium">
+                        - {formatCurrency(promoStatus.discount)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between py-0.5">
+                    <span className="text-gray-600">
+                      Sales Tax ({(HARRIS_COUNTY_TAX_RATE * 100).toFixed(2)}
+                      %)
+                    </span>
+                    <span className="font-medium">
+                      {formatCurrency(taxedBase * HARRIS_COUNTY_TAX_RATE)}
+                    </span>
+                  </div>
+
+                  {/* Promo Code Input */}
+                  <div className="pt-2 mt-2 border-t">
+                    <label className="block text-sm text-gray-600 mb-2">
+                      Promo Code
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        value={promo}
+                        onChange={(e) => setPromo(e.target.value)}
+                        placeholder="Enter code"
+                        className="border rounded px-3 py-2 flex-1 text-sm"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(
+                              "/api/checkout/validate-promo",
+                              {
+                                method: "POST",
+                                headers: {
+                                  "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify({
+                                  code: promo,
+                                  subtotal: subtotal,
+                                }),
+                              }
+                            );
+                            const data = await res.json();
+                            if (data.valid)
+                              setPromoStatus({
+                                valid: true,
+                                discount: data.discount,
+                              });
+                            else setPromoStatus({ valid: false, discount: 0 });
+                          } catch {
+                            setPromoStatus({ valid: false, discount: 0 });
+                          }
+                        }}
+                      >
+                        Apply
+                      </Button>
+                    </div>
+                    {promoStatus && (
+                      <p
+                        className={`text-xs mt-1 ${
+                          promoStatus.valid ? "text-green-700" : "text-red-600"
+                        }`}
+                      >
+                        {promoStatus.valid
+                          ? `Promo applied: -$${promoStatus.discount.toFixed(
+                              2
+                            )}`
+                          : "Invalid promo code"}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 mt-2 border-t">
+                    <span className="font-semibold">Estimated Total</span>
+                    <span className="text-[#D4AF3D] font-semibold">
+                      {formatCurrency(estimatedTotal)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Tax shown is calculated at{" "}
+                    {(HARRIS_COUNTY_TAX_RATE * 100).toFixed(2)}%.
+                  </p>
+                </div>
+              );
+            }
+          })()}
         </div>
 
         {/* Shipping Address Confirmation */}
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <MapPin className="w-5 h-5" />
-            Confirm Your Shipping Address
-          </h2>
-          <p className="text-gray-600 mb-4">
-            We'll use your profile shipping address. Please confirm it's correct
-            before proceeding to payment.
-          </p>
+          {(() => {
+            // Check if this is a pickup order
+            const storedBreakdown = (order as any).shippingAddress
+              ?.priceBreakdown;
+            const isPickupOrder = storedBreakdown?.deliveryMethod === "pickup";
 
-          {user?.zipCode && user?.addressLine1 ? (
-            <div className="space-y-4">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-600 mb-2">
-                      Your current shipping address:
+            if (isPickupOrder) {
+              return (
+                <>
+                  <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                    <MapPin className="w-5 h-5" />
+                    Pickup Instructions
+                  </h2>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-blue-800 font-medium mb-2">
+                      You've selected pickup for this order
                     </p>
-                    <div className="font-medium text-gray-900">
-                      <p>{user.addressLine1}</p>
-                      {user.addressLine2 && <p>{user.addressLine2}</p>}
-                      <p>
-                        {user.city}, {user.state} {user.zipCode}
-                      </p>
+                    <p className="text-blue-700 text-sm">
+                      No shipping address needed. You can proceed directly to
+                      payment. Pickup details will be provided after your
+                      purchase is confirmed.
+                    </p>
+                  </div>
+                </>
+              );
+            } else {
+              return (
+                <>
+                  <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                    <MapPin className="w-5 h-5" />
+                    Confirm Your Shipping Address
+                  </h2>
+                  <p className="text-gray-600 mb-4">
+                    We'll use your profile shipping address. Please confirm it's
+                    correct before proceeding to payment.
+                  </p>
+                </>
+              );
+            }
+          })()}
+
+          {(() => {
+            // Check if this is a pickup order
+            const storedBreakdown = (order as any).shippingAddress
+              ?.priceBreakdown;
+            const isPickupOrder = storedBreakdown?.deliveryMethod === "pickup";
+
+            // For pickup orders, don't show address form
+            if (isPickupOrder) {
+              return null;
+            }
+
+            // For delivery orders, show address form
+            if (user?.zipCode && user?.addressLine1) {
+              return (
+                <div className="space-y-4">
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-600 mb-2">
+                          Your current shipping address:
+                        </p>
+                        <div className="font-medium text-gray-900">
+                          <p>{user?.addressLine1}</p>
+                          {user?.addressLine2 && <p>{user?.addressLine2}</p>}
+                          <p>
+                            {user?.city}, {user?.state} {user?.zipCode}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Validation status moved to the right */}
+                      <div className="ml-4 flex-shrink-0">
+                        {zipCodeValid === null && (
+                          <div className="text-gray-500 text-sm flex items-center gap-2">
+                            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                            Address not yet validated
+                          </div>
+                        )}
+                        {zipCodeValid === true && (
+                          <div className="flex items-center gap-2 text-green-600">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-sm font-medium">
+                              ✓ Valid for delivery
+                            </span>
+                          </div>
+                        )}
+                        {zipCodeValid === false && (
+                          <div className="flex items-center gap-2 text-red-600">
+                            <AlertCircle className="w-4 h-4" />
+                            <span className="text-sm font-medium">
+                              Not in service area
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Validation status moved to the right */}
-                  <div className="ml-4 flex-shrink-0">
-                    {zipCodeValid === null && (
-                      <div className="text-gray-500 text-sm flex items-center gap-2">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                        Address not yet validated
-                      </div>
-                    )}
-                    {zipCodeValid === true && (
-                      <div className="flex items-center gap-2 text-green-600">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        <span className="text-sm font-medium">
-                          ✓ Valid for delivery
-                        </span>
-                      </div>
-                    )}
-                    {zipCodeValid === false && (
-                      <div className="flex items-center gap-2 text-red-600">
-                        <AlertCircle className="w-4 h-4" />
-                        <span className="text-sm font-medium">
-                          Not in service area
-                        </span>
-                      </div>
-                    )}
+                  <div className="flex items-center justify-between">
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => setShowAddressModal(true)}
+                        variant="outline"
+                        size="sm"
+                        className="text-[#D4AF3D] border-[#D4AF3D] hover:bg-[#D4AF3D] hover:text-white"
+                      >
+                        Change Address
+                      </Button>
+
+                      <Button
+                        onClick={handleCancel}
+                        variant="outline"
+                        size="sm"
+                        className="text-gray-600 border-gray-300 hover:bg-gray-50"
+                      >
+                        Cancel Purchase
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Confirm Address Button */}
+                  <div className="flex justify-center">
+                    <Button
+                      onClick={handleAddressConfirmation}
+                      disabled={zipCodeValid !== true || addressConfirmed}
+                      className="bg-[#D4AF3D] hover:bg-[#D4AF3D]/90 text-white font-semibold py-3 px-8"
+                    >
+                      <CheckCircle className="w-5 h-5 mr-2" />
+                      {addressConfirmed
+                        ? "Address Confirmed ✓"
+                        : "Confirm Shipping Address"}
+                    </Button>
+                  </div>
+
+                  {zipCodeValid === false && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                      <p className="text-sm text-red-700">
+                        Your shipping address is not in our service area. Please
+                        update your address to continue.
+                      </p>
+                    </div>
+                  )}
+
+                  {zipCodeValid === null && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-sm text-blue-700">
+                        Please confirm this is your correct shipping address.
+                        We'll validate your zip code before proceeding to
+                        payment.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            } else {
+              return (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                    <div>
+                      <p className="text-sm text-yellow-700 font-medium mb-1">
+                        Shipping Address Required
+                      </p>
+                      <p className="text-sm text-yellow-700 mb-3">
+                        To complete your purchase, please add your shipping
+                        address to your profile.
+                      </p>
+                      <Button
+                        onClick={handleUpdateAddress}
+                        size="sm"
+                        className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                      >
+                        Add Address to Profile
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => setShowAddressModal(true)}
-                    variant="outline"
-                    size="sm"
-                    className="text-[#D4AF3D] border-[#D4AF3D] hover:bg-[#D4AF3D] hover:text-white"
-                  >
-                    Change Address
-                  </Button>
-
-                  <Button
-                    onClick={handleCancel}
-                    variant="outline"
-                    size="sm"
-                    className="text-gray-600 border-gray-300 hover:bg-gray-50"
-                  >
-                    Cancel Purchase
-                  </Button>
-                </div>
-              </div>
-
-              {/* Confirm Address Button */}
-              <div className="flex justify-center">
-                <Button
-                  onClick={handleAddressConfirmation}
-                  disabled={zipCodeValid !== true || addressConfirmed}
-                  className="bg-[#D4AF3D] hover:bg-[#D4AF3D]/90 text-white font-semibold py-3 px-8"
-                >
-                  <CheckCircle className="w-5 h-5 mr-2" />
-                  {addressConfirmed
-                    ? "Address Confirmed ✓"
-                    : "Confirm Shipping Address"}
-                </Button>
-              </div>
-
-              {zipCodeValid === false && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                  <p className="text-sm text-red-700">
-                    Your shipping address is not in our service area. Please
-                    update your address to continue.
-                  </p>
-                </div>
-              )}
-
-              {zipCodeValid === null && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-sm text-blue-700">
-                    Please confirm this is your correct shipping address. We'll
-                    validate your zip code before proceeding to payment.
-                  </p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
-                <div>
-                  <p className="text-sm text-yellow-700 font-medium mb-1">
-                    Shipping Address Required
-                  </p>
-                  <p className="text-sm text-yellow-700 mb-3">
-                    To complete your purchase, please add your shipping address
-                    to your profile.
-                  </p>
-                  <Button
-                    onClick={handleUpdateAddress}
-                    size="sm"
-                    className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
-                  >
-                    Add Address to Profile
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Promo + Delivery Controls */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
-          <h2 className="text-lg font-semibold mb-3">Delivery & Promo</h2>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-            <div>
-              <label className="block text-sm text-gray-600 mb-1">
-                Delivery Type
-              </label>
-              <select
-                value={deliveryCategory}
-                onChange={(e) => setDeliveryCategory(e.target.value as any)}
-                className="border rounded px-3 py-2"
-              >
-                <option value="NORMAL">Normal ($50)</option>
-                <option value="BULK">Bulk ($100)</option>
-              </select>
-            </div>
-            <div className="flex-1">
-              <label className="block text-sm text-gray-600 mb-1">
-                Promo Code
-              </label>
-              <div className="flex gap-2">
-                <input
-                  value={promo}
-                  onChange={(e) => setPromo(e.target.value)}
-                  placeholder="Enter code"
-                  className="border rounded px-3 py-2 flex-1"
-                />
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    try {
-                      const res = await fetch("/api/checkout/validate-promo", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          code: promo,
-                          subtotal: order?.amount || 0,
-                        }),
-                      });
-                      const data = await res.json();
-                      if (data.valid)
-                        setPromoStatus({
-                          valid: true,
-                          discount: data.discount,
-                        });
-                      else setPromoStatus({ valid: false, discount: 0 });
-                    } catch {
-                      setPromoStatus({ valid: false, discount: 0 });
-                    }
-                  }}
-                >
-                  Apply
-                </Button>
-              </div>
-              {promoStatus && (
-                <p
-                  className={`text-sm mt-1 ${
-                    promoStatus.valid ? "text-green-700" : "text-red-600"
-                  }`}
-                >
-                  {promoStatus.valid
-                    ? `Promo applied: -$${promoStatus.discount.toFixed(2)}`
-                    : "Invalid promo code"}
-                </p>
-              )}
-            </div>
-          </div>
+              );
+            }
+          })()}
         </div>
 
         {/* Security Notice */}
@@ -1263,7 +1506,12 @@ export default function CheckoutPage() {
             className="flex-1"
             disabled={redirecting || validatingZip}
           >
-            Cancel
+            {(() => {
+              // Check if order came from cart
+              const storedBreakdown = (order as any).shippingAddress
+                ?.priceBreakdown;
+              return storedBreakdown ? "Cancel & Return to Cart" : "Cancel";
+            })()}
           </Button>
 
           <Button
@@ -1311,7 +1559,9 @@ export default function CheckoutPage() {
             ) : (
               (() => {
                 const now = new Date();
-                const orderExpiry = new Date(order.checkoutExpiresAt);
+                const orderExpiry = new Date(
+                  order?.checkoutExpiresAt || new Date()
+                );
                 const isExpired = now > orderExpiry;
 
                 if (isExpired) {
@@ -1391,19 +1641,21 @@ export default function CheckoutPage() {
           onAddressSelect={handleAddressChange}
           currentAddress={
             user
-              ? `${user.addressLine1}${
-                  user.addressLine2 ? ", " + user.addressLine2 : ""
-                }, ${user.city}, ${user.state} ${user.zipCode}`
+              ? `${user?.addressLine1 || ""}${
+                  user?.addressLine2 ? ", " + user.addressLine2 : ""
+                }, ${user?.city || ""}, ${user?.state || ""} ${
+                  user?.zipCode || ""
+                }`
               : ""
           }
           currentAddressData={
             user
               ? {
-                  streetAddress: user.addressLine1 || "",
-                  apartment: user.addressLine2 || "",
-                  city: user.city || "",
-                  state: user.state || "",
-                  postalCode: user.zipCode || "",
+                  streetAddress: user?.addressLine1 || "",
+                  apartment: user?.addressLine2 || "",
+                  city: user?.city || "",
+                  state: user?.state || "",
+                  postalCode: user?.zipCode || "",
                   country: "United States",
                 }
               : undefined

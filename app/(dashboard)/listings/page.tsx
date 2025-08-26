@@ -31,6 +31,7 @@ import {
   Shield,
   ExternalLink,
   Sparkles,
+  ShoppingCart,
 } from "lucide-react";
 import { getNeighborhoodName } from "../../lib/zipcodes";
 import { getDisplayPrice } from "../../lib/price-calculator";
@@ -39,11 +40,7 @@ import {
   getConditionColor,
   isNewCondition,
 } from "../../lib/condition-utils";
-import { usePurchaseService } from "../../lib/purchase-service";
-import {
-  getBuyNowButtonState,
-  getStatusOverlay,
-} from "../../lib/listing-button-utils";
+import { useCart } from "../../contexts/CartContext";
 import QuestionsDisplay from "../../components/QuestionsDisplay";
 import ImageCarousel from "../../components/ImageCarousel";
 import CustomQRCode from "../../components/CustomQRCode";
@@ -121,8 +118,7 @@ export default function ListingsPage() {
   const { data: session } = authClient.useSession();
   const isAuthenticated = !!session?.user;
   const currentUserId = session?.user?.id || null;
-  const { handleBuyNow: purchaseServiceBuyNow, confirmOwnPurchase } =
-    usePurchaseService(currentUserId);
+  const { addToCart, isLoading: cartLoading, cartItemCount } = useCart();
 
   // Function to check if user has complete address
   const isAddressComplete = (address: any) => {
@@ -173,16 +169,20 @@ export default function ListingsPage() {
         }
         const data = await response.json();
         if (data.success) {
-          // Debug: Log listing statuses to see what we have (commented out to reduce console spam)
-          // console.log(
-          //   "Listing statuses:",
-          //   data.listings.map((l: any) => ({ id: l.itemId, status: l.status }))
-          // );
-          // console.log("Total listings received:", data.listings.length);
+          // Debug: Check if listings have id field
+          console.log("First listing from API:", data.listings[0]);
+          console.log("First listing has id field:", !!data.listings[0]?.id);
+          console.log("First listing id value:", data.listings[0]?.id);
 
           // Transform API data to match the expected format
           const transformedListings = data.listings.map((listing: any) => {
+            console.log("Transforming listing:", {
+              hasId: !!listing.id,
+              id: listing.id,
+              itemId: listing.itemId,
+            });
             return {
+              id: listing.id, // Database ID needed for cart operations
               itemId: listing.itemId,
               seller_id: listing.userId,
               created_at: listing.createdAt,
@@ -490,6 +490,12 @@ export default function ListingsPage() {
   };
 
   const openModal = (listing: any) => {
+    console.log("Opening modal with listing:", {
+      hasId: !!listing.id,
+      id: listing.id,
+      itemId: listing.itemId,
+      title: listing.title,
+    });
     setSelectedListing(listing);
     setIsModalOpen(true);
   };
@@ -511,42 +517,60 @@ export default function ListingsPage() {
     );
   };
 
-  const handleBuyNow = async () => {
+  const handleAddToCart = async () => {
     if (!selectedListing || !isAuthenticated) {
       setAuthError(true);
       return;
     }
 
+    // Allow owners to add their own items to cart
+    // (removed restriction for testing/flexibility)
+
+    console.log("handleAddToCart called with selectedListing:", {
+      hasId: !!selectedListing.id,
+      id: selectedListing.id,
+      itemId: selectedListing.itemId,
+      title: selectedListing.title,
+      allKeys: Object.keys(selectedListing),
+    });
+
+    // Get listing ID for cart operations
+    const listingIdToUse = selectedListing.id;
+
+    if (!listingIdToUse) {
+      console.error("Cannot add to cart: No valid listing ID found");
+      alert("Error: Unable to add item to cart. Listing ID is missing.");
+      setLoadingPurchase(false);
+      return;
+    }
+
     setLoadingPurchase(true);
-    await purchaseServiceBuyNow(
-      selectedListing,
-      () => setOwnListingConfirmOpen(true), // onOwnerConfirmationRequired
-      (error) => {
-        alert(error);
-        setLoadingPurchase(false);
-      }, // onError
-      () => {
-        // onSuccess - loading will continue until redirect
+    try {
+      const success = await addToCart(listingIdToUse, 1);
+      if (success) {
+        // Show success message with option to view cart
+        const viewCart = confirm(
+          "✅ Item added to cart! Would you like to view your cart now?"
+        );
+        if (viewCart) {
+          router.push("/cart");
+        }
+      } else {
+        alert("Failed to add item to cart. Please try again.");
       }
-    );
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      alert("Failed to add item to cart. Please try again.");
+    } finally {
+      setLoadingPurchase(false);
+    }
   };
 
-  const confirmBuyOwnListing = async () => {
+  const confirmOwnListingEdit = async () => {
     if (!selectedListing) return;
 
     setOwnListingConfirmOpen(false);
-    setLoadingPurchase(true);
-
-    await confirmOwnPurchase(
-      selectedListing,
-      (error) => {
-        alert(error);
-        setLoadingPurchase(false);
-      }, // onError
-      () => {
-        // onSuccess - loading will continue until redirect
-      }
-    );
+    router.push(`/list-item/${selectedListing.itemId}/edit`);
   };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -1643,49 +1667,86 @@ export default function ListingsPage() {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex gap-3 mb-6">
+                  <div className="space-y-3 mb-6">
                     {isAuthenticated ? (
-                      (() => {
-                        const buttonState = getBuyNowButtonState({
-                          status: selectedListing?.status,
-                          isOwner: selectedListing?.user?.id === currentUserId,
-                          loadingPurchase,
-                        });
+                      <>
+                        {/* First Row - Primary Action */}
+                        <div className="flex gap-2">
+                          {selectedListing?.status === "active" ? (
+                            <Button
+                              className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                              onClick={handleAddToCart}
+                              disabled={loadingPurchase}
+                            >
+                              {loadingPurchase ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                  Adding to Cart...
+                                </>
+                              ) : (
+                                <>
+                                  <ShoppingCart className="h-4 w-4 mr-2" />
+                                  Add to Cart
+                                </>
+                              )}
+                            </Button>
+                          ) : (
+                            <Button
+                              className="flex-1 bg-gray-400 text-white cursor-not-allowed"
+                              disabled
+                            >
+                              {selectedListing?.status === "sold"
+                                ? "Sold"
+                                : "Not Available"}
+                            </Button>
+                          )}
+                        </div>
 
-                        return (
-                          <Button
-                            variant="default"
-                            className={buttonState.className}
-                            onClick={handleBuyNow}
-                            disabled={buttonState.disabled}
-                          >
-                            {buttonState.loading ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                {buttonState.text}
-                              </>
-                            ) : (
-                              buttonState.text
-                            )}
-                          </Button>
-                        );
-                      })()
+                        {/* Second Row - Secondary Actions */}
+                        <div className="flex gap-2">
+                          {cartItemCount > 0 ? (
+                            <Button
+                              variant="outline"
+                              className="flex-1 border-[#D4AF3D] text-[#D4AF3D] hover:bg-[#D4AF3D] hover:text-white"
+                              onClick={() => router.push("/cart")}
+                            >
+                              <ShoppingCart className="h-4 w-4 mr-2" />
+                              View Cart ({cartItemCount})
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              className="flex-1"
+                              onClick={() => router.push("/contact")}
+                            >
+                              Ask a Question
+                            </Button>
+                          )}
+                        </div>
+                      </>
                     ) : (
-                      <div className="flex gap-2 flex-1">
-                        <Button
-                          className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
-                          onClick={() => router.push("/login")}
-                        >
-                          Log In to Buy
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => router.push("/contact")}
-                        >
-                          Ask a Question
-                        </Button>
-                      </div>
+                      <>
+                        {/* First Row - Primary Action */}
+                        <div className="flex gap-2">
+                          <Button
+                            className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                            onClick={() => router.push("/login")}
+                          >
+                            Log In to Shop
+                          </Button>
+                        </div>
+
+                        {/* Second Row - Secondary Action */}
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            className="flex-1"
+                            onClick={() => router.push("/contact")}
+                          >
+                            Ask a Question
+                          </Button>
+                        </div>
+                      </>
                     )}
                     <Button
                       variant="outline"

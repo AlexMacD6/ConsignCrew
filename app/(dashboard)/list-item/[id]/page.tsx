@@ -19,6 +19,7 @@ import {
   User,
   Building,
   Eye,
+  ShoppingCart,
 } from "lucide-react";
 import QuestionsDisplay from "../../../components/QuestionsDisplay";
 import ImageCarousel from "../../../components/ImageCarousel";
@@ -31,11 +32,8 @@ import {
   isNewCondition,
   getConditionColor,
 } from "../../../lib/condition-utils";
-import { usePurchaseService } from "../../../lib/purchase-service";
-import {
-  getBuyNowButtonState,
-  getStatusOverlay,
-} from "../../../lib/listing-button-utils";
+import { getStatusOverlay } from "../../../lib/listing-button-utils";
+import { useCart } from "../../../contexts/CartContext";
 import {
   trackMetaPixelEvent,
   trackViewContent,
@@ -167,42 +165,14 @@ export default function ListingDetailPage() {
   const isAuthenticated = !!session?.user;
   const currentUserId = session?.user?.id || null;
   const [userOrganizations, setUserOrganizations] = useState<any[]>([]);
-  const { handleBuyNow: purchaseServiceBuyNow, confirmOwnPurchase } =
-    usePurchaseService(currentUserId);
-  const [loadingPurchase, setLoadingPurchase] = useState(false); // New state for purchase loading
-  const [ownListingConfirmOpen, setOwnListingConfirmOpen] = useState(false);
-  const [showAddressRequiredModal, setShowAddressRequiredModal] =
-    useState(false);
-  const [userAddress, setUserAddress] = useState<any>(null);
+  // Removed old purchase service as we now use cart-based checkout
+  const { addToCart, isLoading: cartLoading, cartItemCount } = useCart();
+  const [addingToCart, setAddingToCart] = useState(false);
+  const [showLoginRequiredModal, setShowLoginRequiredModal] = useState(false);
+  const [showOwnListingModal, setShowOwnListingModal] = useState(false);
+  // Removed address and confirmation modals as checkout now happens in cart
 
-  // Function to check if user has complete address
-  const isAddressComplete = (address: any) => {
-    if (!address) return false;
-    return !!(
-      address.addressLine1 &&
-      address.city &&
-      address.state &&
-      address.zipCode
-    );
-  };
-
-  // Function to fetch user profile data
-  const fetchUserProfile = async () => {
-    if (!isAuthenticated) return;
-
-    try {
-      const res = await fetch("/api/profile", {
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setUserAddress(data.user);
-      }
-    } catch (error) {
-      console.error("Error fetching user profile:", error);
-    }
-  };
+  // Removed address checking functions as checkout now happens in cart
 
   // Function to generate video URL from video record
   const generateVideoUrl = (videoRecord: any) => {
@@ -310,10 +280,9 @@ export default function ListingDetailPage() {
     }
   }, [listing]);
 
-  // Fetch user profile when authenticated
+  // Fetch user organizations when authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      fetchUserProfile();
       fetchUserOrganizations();
     }
   }, [isAuthenticated]);
@@ -507,49 +476,40 @@ export default function ListingDetailPage() {
     }
   };
 
-  const handleBuyNow = async () => {
+  const handleAddToCart = async () => {
     if (!listing || !isAuthenticated) {
       setAuthError(true);
       return;
     }
 
-    // Check if user has complete address before proceeding
-    if (!isAddressComplete(userAddress)) {
-      setShowAddressRequiredModal(true);
-      return;
+    // Allow owners to add their own items to cart
+    // (removed restriction for testing/flexibility)
+
+    // Add to cart logic
+
+    setAddingToCart(true);
+    try {
+      const success = await addToCart(listing.id, 1);
+      if (success) {
+        // Show success message with option to view cart
+        const viewCart = confirm(
+          "✅ Item added to cart! Would you like to view your cart now?"
+        );
+        if (viewCart) {
+          router.push("/cart");
+        }
+      } else {
+        alert("Failed to add item to cart. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      alert("Failed to add item to cart. Please try again.");
+    } finally {
+      setAddingToCart(false);
     }
-
-    setLoadingPurchase(true);
-    await purchaseServiceBuyNow(
-      listing,
-      () => setOwnListingConfirmOpen(true), // onOwnerConfirmationRequired
-      (error) => {
-        alert(error);
-        setLoadingPurchase(false);
-      }, // onError
-      () => {
-        // onSuccess - loading will continue until redirect
-      }
-    );
   };
 
-  const confirmBuyOwnListing = async () => {
-    if (!listing) return;
-
-    setOwnListingConfirmOpen(false);
-    setLoadingPurchase(true);
-
-    await confirmOwnPurchase(
-      listing,
-      (error) => {
-        alert(error);
-        setLoadingPurchase(false);
-      }, // onError
-      () => {
-        // onSuccess - loading will continue until redirect
-      }
-    );
-  };
+  // Removed old handleBuyNow function - checkout now happens through cart
 
   if (loading) {
     return (
@@ -957,42 +917,64 @@ export default function ListingDetailPage() {
               )}
               <div className="flex gap-3">
                 {isAuthenticated ? (
-                  (() => {
-                    const buttonState = getBuyNowButtonState({
-                      status: listing?.status,
-                      isOwner: listing?.user?.id === currentUserId,
-                      loadingPurchase,
-                    });
-
-                    return (
+                  <div className="flex gap-2 w-full">
+                    {listing?.status === "active" ? (
                       <Button
-                        className={buttonState.className}
-                        onClick={handleBuyNow}
-                        disabled={buttonState.disabled}
+                        className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                        onClick={handleAddToCart}
+                        disabled={addingToCart}
                       >
-                        {buttonState.loading ? (
+                        {addingToCart ? (
                           <>
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            {buttonState.text}
+                            Adding to Cart...
                           </>
                         ) : (
-                          buttonState.text
+                          <>
+                            <ShoppingCart className="h-4 w-4 mr-2" />
+                            Add to Cart
+                          </>
                         )}
                       </Button>
-                    );
-                  })()
+                    ) : (
+                      <Button
+                        className="flex-1 bg-gray-400 text-white cursor-not-allowed"
+                        disabled
+                      >
+                        {listing?.status === "sold" ? "Sold" : "Not Available"}
+                      </Button>
+                    )}
+                    {cartItemCount > 0 ? (
+                      <Button
+                        variant="outline"
+                        className="flex-1 border-[#D4AF3D] text-[#D4AF3D] hover:bg-[#D4AF3D] hover:text-white"
+                        onClick={() => router.push("/cart")}
+                      >
+                        <ShoppingCart className="h-4 w-4 mr-2" />
+                        View Cart ({cartItemCount})
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => router.push("/contact")}
+                      >
+                        Ask a Question
+                      </Button>
+                    )}
+                  </div>
                 ) : (
                   <div className="flex gap-2 w-full">
                     <Button
                       className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
                       onClick={() => router.push("/login")}
                     >
-                      Log In to Buy
+                      Log In to Shop
                     </Button>
                     <Button
                       variant="outline"
                       className="flex-1"
-                      onClick={() => router.push("/contact")}
+                      onClick={() => setShowLoginRequiredModal(true)}
                     >
                       Ask a Question
                     </Button>
@@ -1001,65 +983,36 @@ export default function ListingDetailPage() {
               </div>
             </div>
 
-            {/* Confirm purchase own listing modal */}
-            {ownListingConfirmOpen && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    This is your own listing
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-4">
-                    You are about to purchase your own item. Are you sure you
-                    want to continue?
-                  </p>
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => setOwnListingConfirmOpen(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
-                      onClick={confirmBuyOwnListing}
-                    >
-                      Yes, Continue
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Address Required Modal */}
-            {showAddressRequiredModal && (
+            {/* Login Required Modal */}
+            {showLoginRequiredModal && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                 <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
                   <div className="text-center">
                     <div className="mb-6">
                       <div className="w-16 h-16 bg-[#D4AF3D] rounded-full flex items-center justify-center mx-auto mb-4">
-                        <MapPin className="w-8 h-8 text-white" />
+                        <User className="w-8 h-8 text-white" />
                       </div>
                       <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                        Shipping Address Required
+                        Sign In Required
                       </h2>
                       <p className="text-gray-600 mb-6">
-                        To complete your purchase, please add your shipping
-                        address. This helps us ensure smooth delivery.
+                        Please sign in to your account to ask questions about
+                        this item. Our sellers are ready to help!
                       </p>
                     </div>
 
                     <div className="space-y-3">
                       <button
                         onClick={() => {
-                          setShowAddressRequiredModal(false);
-                          router.push("/profile");
+                          setShowLoginRequiredModal(false);
+                          router.push("/login");
                         }}
                         className="w-full bg-[#D4AF3D] text-white font-semibold py-3 px-6 rounded-lg hover:bg-[#c4a235] transition-colors"
                       >
-                        Add Address Now
+                        Sign In Now
                       </button>
                       <button
-                        onClick={() => setShowAddressRequiredModal(false)}
+                        onClick={() => setShowLoginRequiredModal(false)}
                         className="w-full bg-gray-100 text-gray-700 font-semibold py-3 px-6 rounded-lg hover:bg-gray-200 transition-colors"
                       >
                         Cancel
@@ -1067,7 +1020,64 @@ export default function ListingDetailPage() {
                     </div>
 
                     <p className="text-sm text-gray-500 mt-4">
-                      You can add your address from your profile page.
+                      Don't have an account?{" "}
+                      <span
+                        className="text-[#D4AF3D] cursor-pointer"
+                        onClick={() => router.push("/register")}
+                      >
+                        Sign up here
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Own Listing Modal */}
+            {showOwnListingModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+                  <div className="text-center">
+                    <div className="mb-6">
+                      <div className="w-16 h-16 bg-[#D4AF3D] rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Edit className="w-8 h-8 text-white" />
+                      </div>
+                      <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                        This is Your Listing!
+                      </h2>
+                      <p className="text-gray-600 mb-6">
+                        You can't add your own item to the cart, but you can
+                        edit it to make updates or changes.
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <button
+                        onClick={() => {
+                          setShowOwnListingModal(false);
+                          router.push(`/list-item/${params.id}/edit`);
+                        }}
+                        className="w-full bg-[#D4AF3D] text-white font-semibold py-3 px-6 rounded-lg hover:bg-[#c4a235] transition-colors"
+                      >
+                        <Edit className="w-4 h-4 inline mr-2" />
+                        Edit This Listing
+                      </button>
+                      <button
+                        onClick={() => setShowOwnListingModal(false)}
+                        className="w-full bg-gray-100 text-gray-700 font-semibold py-3 px-6 rounded-lg hover:bg-gray-200 transition-colors"
+                      >
+                        Close
+                      </button>
+                    </div>
+
+                    <p className="text-sm text-gray-500 mt-4">
+                      Need help?{" "}
+                      <span
+                        className="text-[#D4AF3D] cursor-pointer"
+                        onClick={() => router.push("/contact")}
+                      >
+                        Contact support
+                      </span>
                     </p>
                   </div>
                 </div>

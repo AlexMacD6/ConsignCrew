@@ -36,9 +36,37 @@ model user {
   buyerOrders      Order[]         @relation("BuyerOrders")
   sellerOrders     Order[]         @relation("SellerOrders")
   sessions         session[]
+  cart             Cart?
 
   @@index([email])
   @@index([zipCode])
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  items     CartItem[]
+  user      user       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("carts")
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  listingId String
+  quantity  Int      @default(1)
+  addedAt   DateTime @default(now())
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, listingId])
+  @@index([cartId])
+  @@index([listingId])
+  @@map("cart_items")
 }
 
 model Organization {
@@ -259,6 +287,7 @@ model Listing {
   inventoryItems         InventoryItem[]  @relation("InventoryItemToListing")
   inventoryLists         InventoryList[]  @relation("InventoryListToListing")
   videos                 Video[]          @relation("ListingToVideo")
+  cartItems              CartItem[]
 
   @@index([userId])
   @@index([status])

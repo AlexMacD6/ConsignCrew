@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
-import { Printer } from "lucide-react";
+import { Printer, FileText } from "lucide-react";
 
 interface CustomQRCodeProps {
   itemId: string;
@@ -20,6 +20,7 @@ export default function CustomQRCode({
   const [QRCodeComponent, setQRCodeComponent] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingLabel, setIsGeneratingLabel] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
 
   // Check if user belongs to TreasureHub organization or is an admin
@@ -175,14 +176,14 @@ export default function CustomQRCode({
       centerLogo.src = "/TreasureHub - Logo Black.png";
     });
 
-    // Calculate spacing: minimal margins to maximize QR code size
-    const margin = 20; // Further reduced to maximize QR code space
+    // Calculate spacing: proper margins to ensure printability within 2" x 3" label
+    const margin = 40; // Increased margin to prevent cut-off on printers
     const availableWidth = labelWidth - margin * 2;
     const availableHeight = labelHeight - margin * 2;
 
-    // Draw TreasureHub banner at the top
+    // Draw TreasureHub banner at the top - reduced size to fit better
     const bannerY = margin;
-    let bannerHeight = 100; // Much bigger banner (2.5x larger)
+    let bannerHeight = 70; // Reduced from 100px to ensure it fits
 
     if (useBannerLogo) {
       // Use the banner logo
@@ -193,9 +194,9 @@ export default function CustomQRCode({
       const bannerX = (labelWidth - bannerWidth) / 2;
       ctx.drawImage(bannerLogo, bannerX, bannerY, bannerWidth, bannerHeight);
     } else {
-      // Fallback to black text (scaled up for larger banner)
+      // Fallback to black text (reduced size to fit better)
       ctx.fillStyle = "#000000"; // Black ink only
-      ctx.font = "bold 64px Arial"; // Much larger font to match banner size
+      ctx.font = "bold 48px Arial"; // Reduced from 64px to fit better
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText("TreasureHub", labelWidth / 2, bannerY + bannerHeight / 2);
@@ -205,14 +206,14 @@ export default function CustomQRCode({
     const spacingBetweenElements = 5; // Minimal spacing to maximize QR code size
 
     // Calculate Item ID text dimensions first to size box appropriately
-    const itemIdFontSize = 90; // Bigger than previous 77px
+    const itemIdFontSize = 70; // Reduced from 90px to fit better
     ctx.font = `bold ${itemIdFontSize}px monospace`;
     const textMetrics = ctx.measureText(itemId);
     const textWidth = textMetrics.width;
     const textHeight = itemIdFontSize; // Approximate height based on font size
 
     // Create a snug-fitting black box around the text with padding
-    const textPadding = 15; // Padding around text
+    const textPadding = 12; // Reduced padding to save space
     const skuBoxWidth = textWidth + textPadding * 2;
     const skuBoxHeight = textHeight + textPadding * 2;
     const skuY = labelHeight - margin - skuBoxHeight;
@@ -261,15 +262,21 @@ export default function CustomQRCode({
 
     // Draw white text inside black box (bigger and centered in the snug box)
     ctx.fillStyle = "#ffffff";
-    ctx.font = `bold ${itemIdFontSize}px monospace`; // Use the calculated font size (90px)
+    ctx.font = `bold ${itemIdFontSize}px monospace`; // Use the calculated font size (70px)
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(itemId, labelWidth / 2, skuY + skuBoxHeight / 2);
 
-    // Add very bold black border around entire label
+    // Add border around entire label with proper margin to prevent cut-off
     ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 12; // Even much bolder border (2x previous)
-    ctx.strokeRect(6, 6, labelWidth - 12, labelHeight - 12);
+    ctx.lineWidth = 6; // Reduced border thickness
+    const borderMargin = 30; // Increased margin from edge to prevent cut-off
+    ctx.strokeRect(
+      borderMargin,
+      borderMargin,
+      labelWidth - borderMargin * 2,
+      labelHeight - borderMargin * 2
+    );
 
     // Convert canvas to PNG with embedded 300 DPI metadata
     console.log("Converting canvas to 300 DPI PNG with proper metadata...");
@@ -448,10 +455,226 @@ export default function CustomQRCode({
     console.log("300 DPI PNG with metadata download completed");
   };
 
+  const generatePrintablePDF = async (itemId: string, qrData: string) => {
+    console.log("Starting PDF generation", { itemId, qrData });
+
+    try {
+      // Import jsPDF
+      const { jsPDF } = await import("jspdf");
+
+      // Create a canvas with the same exact content as the PNG label
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      // 2" wide x 3" tall at 300 DPI = 600px x 900px
+      const labelWidth = 600;
+      const labelHeight = 900;
+      canvas.width = labelWidth;
+      canvas.height = labelHeight;
+
+      if (!ctx) {
+        throw new Error("Could not get canvas context");
+      }
+
+      // Set white background
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, labelWidth, labelHeight);
+
+      // Generate QR code with the same settings as PNG
+      const QRCode = (await import("qrcode")).default;
+      const qrCodeDataURL = await QRCode.toDataURL(qrData, {
+        errorCorrectionLevel: "H",
+        type: "image/png",
+        quality: 1,
+        margin: 4,
+        color: {
+          dark: "#000000",
+          light: "#ffffff",
+        },
+        width: 400,
+      });
+
+      // Load QR code image
+      const qrImage = new Image();
+      await new Promise((resolve, reject) => {
+        qrImage.onload = () => resolve(undefined);
+        qrImage.onerror = reject;
+        qrImage.src = qrCodeDataURL;
+      });
+
+      // Load logos (same as PNG generation)
+      const bannerLogo = new Image();
+      let useBannerLogo = false;
+      try {
+        await new Promise((resolve) => {
+          bannerLogo.onload = () => {
+            useBannerLogo = true;
+            resolve(undefined);
+          };
+          bannerLogo.onerror = () => resolve(undefined);
+          bannerLogo.src = "/TreasureHub - Banner - Label.png";
+        });
+      } catch (error) {
+        useBannerLogo = false;
+      }
+
+      const centerLogo = new Image();
+      await new Promise((resolve, reject) => {
+        centerLogo.onload = () => resolve(undefined);
+        centerLogo.onerror = reject;
+        centerLogo.src = "/TreasureHub - Logo Black.png";
+      });
+
+      // Use the EXACT same layout as PNG generation
+      const margin = 40; // Match the PNG generation margin
+      const availableWidth = labelWidth - margin * 2;
+      const availableHeight = labelHeight - margin * 2;
+
+      // Draw TreasureHub banner at the top
+      const bannerY = margin;
+      let bannerHeight = 70; // Match the PNG generation banner height
+
+      if (useBannerLogo) {
+        const bannerWidth = Math.min(
+          availableWidth,
+          bannerLogo.width * (bannerHeight / bannerLogo.height)
+        );
+        const bannerX = (labelWidth - bannerWidth) / 2;
+        ctx.drawImage(bannerLogo, bannerX, bannerY, bannerWidth, bannerHeight);
+      } else {
+        ctx.fillStyle = "#000000";
+        ctx.font = "bold 48px Arial"; // Match the PNG generation font size
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("TreasureHub", labelWidth / 2, bannerY + bannerHeight / 2);
+      }
+
+      // Calculate layout (exact same as PNG)
+      const spacingBetweenElements = 5;
+      const itemIdFontSize = 70; // Match the PNG generation font size
+      ctx.font = `bold ${itemIdFontSize}px monospace`;
+      const textMetrics = ctx.measureText(itemId);
+      const textWidth = textMetrics.width;
+      const textHeight = itemIdFontSize;
+
+      const textPadding = 12; // Match the PNG generation padding
+      const skuBoxWidth = textWidth + textPadding * 2;
+      const skuBoxHeight = textHeight + textPadding * 2;
+      const skuY = labelHeight - margin - skuBoxHeight;
+      const skuBoxX = (labelWidth - skuBoxWidth) / 2;
+
+      const qrStartY = bannerY + bannerHeight + spacingBetweenElements;
+      const qrEndY = skuY - spacingBetweenElements;
+      const maxQRHeight = qrEndY - qrStartY;
+      const maxQRWidth = availableWidth;
+
+      const qrSize = Math.min(maxQRHeight, maxQRWidth);
+      const qrX = (labelWidth - qrSize) / 2;
+      const qrY = qrStartY + (maxQRHeight - qrSize) / 2;
+
+      // Draw QR code
+      ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+
+      // Draw center logo with white background
+      const logoSize = Math.min(120, qrSize * 0.25);
+      const logoX = (labelWidth - logoSize) / 2;
+      const logoY = qrY + (qrSize - logoSize) / 2;
+
+      const excavationSize = logoSize + 20;
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(
+        logoX + logoSize / 2,
+        logoY + logoSize / 2,
+        excavationSize / 2,
+        0,
+        2 * Math.PI
+      );
+      ctx.fill();
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(centerLogo, logoX, logoY, logoSize, logoSize);
+
+      // Draw black box for SKU
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(skuBoxX, skuY, skuBoxWidth, skuBoxHeight);
+
+      // Draw white text inside black box
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `bold ${itemIdFontSize}px monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(itemId, labelWidth / 2, skuY + skuBoxHeight / 2);
+
+      // Add border around entire label with proper margin to prevent cut-off (match PNG)
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 6; // Match the PNG generation border
+      const borderMargin = 30; // Match the PNG generation border margin
+      ctx.strokeRect(
+        borderMargin,
+        borderMargin,
+        labelWidth - borderMargin * 2,
+        labelHeight - borderMargin * 2
+      );
+
+      // Convert canvas to image and add to PDF
+      const canvasDataURL = canvas.toDataURL("image/png", 1.0);
+
+      // Create PDF with 2" x 3" dimensions
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "in",
+        format: [2, 3],
+        compress: true,
+      });
+
+      // Add the canvas image to PDF with margin to prevent cut-off
+      const pdfMargin = 0.1; // 0.1 inch margin to ensure printability
+      pdf.addImage(
+        canvasDataURL,
+        "PNG",
+        pdfMargin,
+        pdfMargin,
+        2 - pdfMargin * 2,
+        3 - pdfMargin * 2
+      );
+
+      // Save the PDF
+      console.log("Saving PDF...");
+      pdf.save(`TreasureHub-Label-${itemId}.pdf`);
+      console.log("PDF generation completed");
+    } catch (error) {
+      console.error("Error in PDF generation:", error);
+      throw error;
+    }
+  };
+
+  const handlePrintToPDF = async () => {
+    console.log("Print to PDF clicked", { QRCodeComponent, itemId, qrData });
+
+    if (!QRCodeComponent) {
+      console.error("QRCodeComponent not loaded");
+      alert("QR code component not ready. Please wait and try again.");
+      return;
+    }
+
+    setIsGeneratingPDF(true);
+    try {
+      // Generate PDF using the same content as the label
+      await generatePrintablePDF(itemId, qrData);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Failed to generate PDF. Please try again.");
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
   return (
-    <div className={`relative inline-block ${className}`}>
+    <div className={`relative block ${className}`}>
       {/* QR Code */}
-      <div className="relative">
+      <div className="relative flex justify-center">
         {isLoading ? (
           <div
             className="bg-gray-100 rounded-lg p-4 text-center"
@@ -500,30 +723,53 @@ export default function CustomQRCode({
         <p className="text-xs text-gray-500">Scan to view listing</p>
       </div>
 
-      {/* TreasureHub Organization Print Label Button */}
+      {/* TreasureHub Organization Print Buttons */}
       {showPrintButton && isTreasureHubMember && !isLoading && (
         <div className="mt-4 text-center">
-          <button
-            onClick={handlePrintLabel}
-            disabled={isGeneratingLabel}
-            className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-              isGeneratingLabel
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                : "bg-[#D4AF3D] text-white hover:bg-[#c4a235]"
-            }`}
-          >
-            {isGeneratingLabel ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
-                Generating...
-              </>
-            ) : (
-              <>
-                <Printer className="h-4 w-4" />
-                Print Label
-              </>
-            )}
-          </button>
+          <div className="flex gap-2 justify-center">
+            <button
+              onClick={handlePrintLabel}
+              disabled={isGeneratingLabel || isGeneratingPDF}
+              className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                isGeneratingLabel || isGeneratingPDF
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-[#D4AF3D] text-white hover:bg-[#c4a235]"
+              }`}
+            >
+              {isGeneratingLabel ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Printer className="h-4 w-4" />
+                  Print Label
+                </>
+              )}
+            </button>
+            <button
+              onClick={handlePrintToPDF}
+              disabled={isGeneratingPDF || isGeneratingLabel}
+              className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                isGeneratingPDF || isGeneratingLabel
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-[#D4AF3D] text-white hover:bg-[#c4a235]"
+              }`}
+            >
+              {isGeneratingPDF ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <FileText className="h-4 w-4" />
+                  Print to PDF
+                </>
+              )}
+            </button>
+          </div>
         </div>
       )}
     </div>
