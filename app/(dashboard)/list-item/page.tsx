@@ -99,56 +99,7 @@ export default function ListItemPage() {
   } = useUserPermissions();
   const routerNavigation = useRouter();
 
-  // Early returns for permissions - must come immediately after hooks
-  if (permissionsLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-[#D4AF3D]" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Checking Your Permissions
-          </h2>
-          <p className="text-gray-600">
-            Please wait while we verify your access level...
-          </p>
-          <div className="mt-4 text-sm text-gray-500">
-            This may take a few seconds
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!canListItems) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Access Restricted
-          </h1>
-          <p className="text-gray-600 mb-4">
-            This feature is only available to sellers. You can browse and
-            purchase items instead.
-          </p>
-
-          <div className="space-y-3">
-            <Button onClick={() => routerNavigation.push("/listings")}>
-              Browse Items
-            </Button>
-            <Button
-              onClick={() => window.location.reload()}
-              variant="outline"
-              className="ml-2"
-            >
-              Retry Loading
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  // ALL STATE DECLARATIONS MUST BE BEFORE ANY CONDITIONAL RETURNS
   // Photo management with S3 integration
   const [photos, setPhotos] = useState<{
     hero: { file: File | null; key: string | null; url: string | null };
@@ -268,18 +219,36 @@ export default function ListItemPage() {
   const [videoData, setVideoData] = useState<{
     videoId: string | null;
     videoUrl: string | null;
-    thumbnailUrl: string | null;
-    frameUrls: string[];
+    processingStatus: string | null;
+    transcodeJobId: string | null;
+    uploadMethod: "direct" | "ai" | null;
+    uploadedAt: Date | null;
     duration: number | null;
+    fileSize: number | null;
+    format: string | null;
+    resolution: string | null;
+    thumbnailUrl: string | null;
+    hlsUrl: string | null;
+    dashUrl: string | null;
+    frameUrls: string[];
     processing: boolean;
     error: string | null;
-    uploaded: boolean; // Track if video was uploaded
+    uploaded: boolean;
   }>({
     videoId: null,
     videoUrl: null,
-    thumbnailUrl: null,
-    frameUrls: [],
+    processingStatus: null,
+    transcodeJobId: null,
+    uploadMethod: null,
+    uploadedAt: null,
     duration: null,
+    fileSize: null,
+    format: null,
+    resolution: null,
+    thumbnailUrl: null,
+    hlsUrl: null,
+    dashUrl: null,
+    frameUrls: [],
     processing: false,
     error: null,
     uploaded: false,
@@ -290,6 +259,7 @@ export default function ListItemPage() {
   const [bulkPhotos, setBulkPhotos] = useState<
     Array<{
       file: File;
+      url: string | null;
       preview: string;
       type?: "hero" | "back" | "proof" | "additional";
     }>
@@ -323,20 +293,20 @@ export default function ListItemPage() {
   const [stagedPhotoData, setStagedPhotoData] = useState<{
     referenceImageUrl: string;
     stagingPrompt: string;
-    desiredAspectRatio: string;
-    targetResolution: string;
-    postProcess: string;
+    processedImageUrl: string | null;
     generatedImageUrl?: string;
+    generating: boolean;
+    error: string | null;
   } | null>(null);
 
   // Form validation errors state
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
-  // Refs and other hooks
+  // Refs and other hooks (must be before early returns)
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  // Video upload handlers (memoized to prevent unnecessary re-renders) - MOVED BEFORE useEffect
+  // Video upload handlers (memoized to prevent unnecessary re-renders)
   const handleVideoUploaded = useCallback(
     async (data: {
       videoId: string;
@@ -354,7 +324,8 @@ export default function ListItemPage() {
         "https://dtlqyjbwka60p.cloudfront.net";
       const videoUrl = `${cdnDomain}/processed/videos/${data.videoId}.mp4`;
 
-      setVideoData({
+      setVideoData((prev) => ({
+        ...prev,
         videoId: data.videoId,
         videoUrl: videoUrl,
         thumbnailUrl: data.thumbnailUrl,
@@ -363,7 +334,7 @@ export default function ListItemPage() {
         processing: false,
         error: null,
         uploaded: true,
-      });
+      }));
 
       // Show a brief success message
       setTimeout(() => {
@@ -391,7 +362,7 @@ export default function ListItemPage() {
     }));
   }, []);
 
-  // Helper functions - moved here to be available for hooks
+  // Helper functions (need to be available for useEffect hooks)
   const hasMinimumPhotos = () => {
     return (
       (photos.hero?.file || photos.hero?.url) &&
@@ -409,7 +380,40 @@ export default function ListItemPage() {
     return price * 0.6; // 60% of list price
   };
 
-  // UseEffect hooks - placed after all state declarations to avoid hook order issues
+  // Load inventory items for modal
+  const loadInventoryItems = useCallback(async () => {
+    setIsLoadingInventory(true);
+    try {
+      const params = new URLSearchParams();
+      if (inventorySearchQuery) {
+        params.append("q", inventorySearchQuery);
+      }
+      params.append("page", String(inventoryPage));
+      params.append("limit", "25");
+      if (showAvailableOnly) {
+        params.append("availableOnly", "true");
+      }
+
+      const response = await fetch(
+        `/api/admin/inventory/items?${params.toString()}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setInventoryItems(data.items || []);
+        setInventoryTotalPages(data.pagination.totalPages || 1);
+      } else {
+        console.error("Failed to load inventory");
+        setInventoryItems([]);
+      }
+    } catch (error) {
+      console.error("Error loading inventory:", error);
+      setInventoryItems([]);
+    } finally {
+      setIsLoadingInventory(false);
+    }
+  }, [inventorySearchQuery, inventoryPage, showAvailableOnly]);
+
+  // UseEffect hooks - must come before early returns
   // Redirect users without listing permissions away from this page
   useEffect(() => {
     if (!permissionsLoading && !canListItems) {
@@ -479,50 +483,12 @@ export default function ListItemPage() {
     fetchUserZipCode();
   }, [zipCode]);
 
-  // Load inventory items for modal
-  const loadInventoryItems = async () => {
-    setIsLoadingInventory(true);
-    try {
-      const params = new URLSearchParams();
-      if (inventorySearchQuery) {
-        params.append("q", inventorySearchQuery);
-      }
-      params.append("page", String(inventoryPage));
-      params.append("limit", "25");
-      if (showAvailableOnly) {
-        params.append("availableOnly", "true");
-      }
-
-      const response = await fetch(
-        `/api/admin/inventory/items?${params.toString()}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setInventoryItems(data.items || []);
-        setInventoryTotalPages(data.pagination.totalPages || 1);
-      } else {
-        console.error("Failed to load inventory");
-        setInventoryItems([]);
-      }
-    } catch (error) {
-      console.error("Error loading inventory:", error);
-      setInventoryItems([]);
-    } finally {
-      setIsLoadingInventory(false);
-    }
-  };
-
   // Load inventory when modal opens or search query changes
   useEffect(() => {
     if (showInventoryModal) {
       loadInventoryItems();
     }
-  }, [
-    showInventoryModal,
-    inventorySearchQuery,
-    inventoryPage,
-    showAvailableOnly,
-  ]);
+  }, [showInventoryModal, loadInventoryItems]);
 
   // Cleanup modal state on component unmount
   useEffect(() => {
@@ -547,6 +513,63 @@ export default function ListItemPage() {
     }
   }, [showInventoryModal]);
 
+  // Sync Item ID display from inventory selection (read-only field)
+  useEffect(() => {
+    if (selectedInventoryItem?.itemNumber) {
+      setExternalItemId(selectedInventoryItem.itemNumber);
+    }
+  }, [selectedInventoryItem]);
+
+  // Early returns for permissions - must come after ALL hooks
+  if (permissionsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-[#D4AF3D]" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            Checking Your Permissions
+          </h2>
+          <p className="text-gray-600">
+            Please wait while we verify your access level...
+          </p>
+          <div className="mt-4 text-sm text-gray-500">
+            This may take a few seconds
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!canListItems) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Access Restricted
+          </h1>
+          <p className="text-gray-600 mb-4">
+            This feature is only available to sellers. You can browse and
+            purchase items instead.
+          </p>
+
+          <div className="space-y-3">
+            <Button onClick={() => routerNavigation.push("/listings")}>
+              Browse Items
+            </Button>
+            <Button
+              onClick={() => window.location.reload()}
+              variant="outline"
+              className="ml-2"
+            >
+              Retry Loading
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Helper function to get confidence color
   const getConfidenceColor = (level: string) => {
     switch (level?.toLowerCase()) {
@@ -560,15 +583,6 @@ export default function ListItemPage() {
         return "text-gray-600 bg-gray-100";
     }
   };
-
-  // Sync Item ID display from inventory selection (read-only field)
-  useEffect(() => {
-    if (selectedInventoryItem?.itemNumber) {
-      setExternalItemId(selectedInventoryItem.itemNumber);
-    }
-  }, [selectedInventoryItem]);
-
-  // (Removed duplicate GTIN sync effect; single instance lives near progressSteps)
 
   // TODO: Re-enable staged photo state in Phase 2
   // Staged photo state
@@ -719,6 +733,7 @@ export default function ListItemPage() {
     if (files.length > 0) {
       const newBulkPhotos = files.map((file) => ({
         file,
+        url: null, // Will be set after upload
         preview: URL.createObjectURL(file),
         type: undefined, // Will be auto-categorized later
       }));
