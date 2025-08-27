@@ -448,9 +448,8 @@ export default function CheckoutPage() {
       console.log("Checkout Page: Handling expired checkout session from API");
 
       // Cleanup the expired session
-      const response = await fetch("/api/checkout/cleanup-expired", {
+      const response = await fetch("/api/system/cleanup-expired-order", {
         method: "POST",
-        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
@@ -507,9 +506,8 @@ export default function CheckoutPage() {
       // Automatically cleanup the expired session
       console.log("Checkout Page: Automatically cleaning up expired session");
 
-      const response = await fetch("/api/checkout/cleanup-expired", {
+      const response = await fetch("/api/system/cleanup-expired-order", {
         method: "POST",
-        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
