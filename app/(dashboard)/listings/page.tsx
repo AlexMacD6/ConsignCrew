@@ -45,6 +45,7 @@ import QuestionsDisplay from "../../components/QuestionsDisplay";
 import ImageCarousel from "../../components/ImageCarousel";
 import CustomQRCode from "../../components/CustomQRCode";
 import TreasureBadge from "../../components/TreasureBadge";
+import AddToCartModal from "../../components/AddToCartModal";
 import {
   getFacebookCategories,
   mapToFacebookCategory,
@@ -110,6 +111,8 @@ export default function ListingsPage() {
   const [signupError, setSignupError] = useState(""); // Signup error message
   const [loadingPurchase, setLoadingPurchase] = useState(false); // Purchase loading state
   const [ownListingConfirmOpen, setOwnListingConfirmOpen] = useState(false); // Own listing confirmation modal
+  const [addToCartModalOpen, setAddToCartModalOpen] = useState(false); // Add to cart success modal
+  const [addedItemName, setAddedItemName] = useState(""); // Name of item added to cart
   const [showAddressRequiredModal, setShowAddressRequiredModal] =
     useState(false);
   const [userAddress, setUserAddress] = useState<any>(null);
@@ -548,13 +551,9 @@ export default function ListingsPage() {
     try {
       const success = await addToCart(listingIdToUse, 1);
       if (success) {
-        // Show success message with option to view cart
-        const viewCart = confirm(
-          "✅ Item added to cart! Would you like to view your cart now?"
-        );
-        if (viewCart) {
-          router.push("/cart");
-        }
+        // Show custom modal with option to view cart
+        setAddedItemName(selectedListing.title || "Item");
+        setAddToCartModalOpen(true);
       } else {
         alert("Failed to add item to cart. Please try again.");
       }
@@ -2046,6 +2045,21 @@ export default function ListingsPage() {
           </div>
         </div>
       )}
+
+      {/* Add to Cart Success Modal */}
+      <AddToCartModal
+        isOpen={addToCartModalOpen}
+        onClose={() => {
+          setAddToCartModalOpen(false);
+          setLoadingPurchase(false);
+        }}
+        onViewCart={() => {
+          setAddToCartModalOpen(false);
+          setLoadingPurchase(false);
+          router.push("/cart");
+        }}
+        itemName={addedItemName}
+      />
     </div>
   );
 }

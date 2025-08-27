@@ -51,6 +51,85 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }, { status: 410 });
     }
 
+    // Check if Stripe checkout session exists
+    if (!order.stripeCheckoutSessionId) {
+      console.log('Stripe URL endpoint: No Stripe session ID found, creating new session');
+      
+      try {
+        // Validate required data before creating session
+        if (!order.amount || order.amount <= 0) {
+          throw new Error(`Invalid order amount: ${order.amount}`);
+        }
+
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        console.log('Stripe URL endpoint: Creating session with data:', {
+          orderId: order.id,
+          amount: order.amount,
+          title: order.listing.title,
+          appUrl
+        });
+
+        // Create new Stripe checkout session
+        const stripeSession = await stripe.checkout.sessions.create({
+          mode: 'payment',
+          payment_method_types: ['card'],
+          line_items: [
+            {
+              price_data: {
+                currency: 'usd',
+                product_data: {
+                  name: order.listing.title,
+                  description: `Order #${order.id}`,
+                  images: [], // Remove images for now to avoid potential URL issues
+                  metadata: {
+                    listingId: order.listing.itemId,
+                    orderId: order.id,
+                  },
+                },
+                unit_amount: Math.round(order.amount * 100), // Convert to cents
+              },
+              quantity: 1,
+            },
+          ],
+          metadata: {
+            orderId: order.id,
+            listingId: order.listingId,
+            buyerId: session.user.id,
+          },
+          success_url: `${process.env.NEXT_PUBLIC_APP_URL}/order/${order.id}/success`,
+          cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/${order.id}`,
+          // Remove expires_at for now to avoid timestamp issues
+          // expires_at: Math.floor(new Date(order.checkoutExpiresAt).getTime() / 1000),
+        });
+
+        // Update order with new Stripe session ID
+        await prisma.order.update({
+          where: { id: order.id },
+          data: { stripeCheckoutSessionId: stripeSession.id },
+        });
+
+        console.log('Stripe URL endpoint: Created new Stripe session:', stripeSession.id);
+        
+        return NextResponse.json({ 
+          success: true, 
+          checkoutUrl: stripeSession.url,
+          sessionId: stripeSession.id
+        });
+      } catch (stripeError) {
+        console.error('Stripe URL endpoint: Error creating new Stripe session:', stripeError);
+        console.error('Stripe URL endpoint: Error details:', {
+          message: stripeError?.message,
+          type: stripeError?.type,
+          code: stripeError?.code,
+          param: stripeError?.param
+        });
+        return NextResponse.json({ 
+          error: `Failed to create payment session: ${stripeError?.message || 'Unknown error'}`,
+          code: 'STRIPE_CREATE_ERROR'
+        }, { status: 500 });
+      }
+    }
+
     // Get the existing Stripe checkout session
     try {
       console.log('Stripe URL endpoint: Retrieving Stripe session:', order.stripeCheckoutSessionId);

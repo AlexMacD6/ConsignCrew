@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
             itemId: true,
             title: true,
             photos: true,
+            estimatedRetailPrice: true,
             user: {
               select: {
                 name: true,
@@ -58,6 +59,7 @@ export async function GET(request: NextRequest) {
       trackingNumber: purchase.trackingNumber,
       deliveredAt: purchase.deliveredAt,
       photos: purchase.listing.photos,
+      estimatedRetailPrice: purchase.listing.estimatedRetailPrice,
     }));
 
     return NextResponse.json({

@@ -6,6 +6,11 @@ import { useCart } from "../contexts/CartContext";
 import { authClient } from "../lib/auth-client";
 import { getDisplayPrice } from "../lib/price-calculator";
 import {
+  calculateCartTotals,
+  formatCurrency,
+  getDeliveryFeeExplanation,
+} from "../../lib/cart-calculations";
+import {
   ArrowLeft,
   ShoppingCart,
   Plus,
@@ -20,6 +25,37 @@ import {
 export default function CartPage() {
   const router = useRouter();
   const { data: session } = authClient.useSession();
+
+  // Calculate fresh totals based on current cart items and delivery method
+  const calculateCurrentTotals = (
+    deliveryMethod: "delivery" | "pickup" = "delivery"
+  ) => {
+    if (!cart || !cart.items || cart.items.length === 0) {
+      return {
+        subtotal: 0,
+        deliveryFee: 0,
+        tax: 0,
+        total: 0,
+        hasBulkItems: false,
+        hasNormalItems: false,
+      };
+    }
+
+    // Transform cart items to match calculation function interface
+    const transformedItems = cart.items.map((item: any) => {
+      const currentPrice = getDisplayPrice(item.listing).price;
+      return {
+        id: item.id,
+        quantity: item.quantity,
+        listing: {
+          price: currentPrice,
+          bulkItem: item.listing.deliveryCategory === "BULK",
+        },
+      };
+    });
+
+    return calculateCartTotals(transformedItems, deliveryMethod);
+  };
   const isAuthenticated = !!session?.user;
   const [checkingOut, setCheckingOut] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -699,115 +735,94 @@ export default function CartPage() {
                   Order Summary
                 </h3>
 
-                <div className="space-y-3 mb-4">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">
-                      Subtotal (
-                      {cart.items.reduce(
-                        (total, item) => total + item.quantity,
-                        0
-                      )}{" "}
-                      items)
-                    </span>
-                    <span className="font-medium">
-                      ${cart.subtotal.toFixed(2)}
-                    </span>
-                  </div>
+                {(() => {
+                  // Calculate fresh totals based on current delivery method
+                  const calculations = calculateCurrentTotals(deliveryMethod);
 
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600 flex items-center gap-1">
-                      {deliveryMethod === "pickup"
-                        ? "Pickup Fee"
-                        : "Delivery Fee"}
+                  return (
+                    <div className="space-y-3 mb-4">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">
+                          Subtotal (
+                          {cart.items.reduce(
+                            (total, item) => total + item.quantity,
+                            0
+                          )}{" "}
+                          items)
+                        </span>
+                        <span className="font-medium">
+                          ${formatCurrency(calculations.subtotal)}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600 flex items-center gap-1">
+                          {deliveryMethod === "pickup"
+                            ? "Pickup Fee"
+                            : "Delivery Fee"}
+                          {calculations.deliveryFee > 0 && (
+                            <div className="group relative">
+                              <AlertCircle className="h-3 w-3 text-gray-400" />
+                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                                {getDeliveryFeeExplanation(
+                                  calculations,
+                                  deliveryMethod
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </span>
+                        <span className="font-medium">
+                          {calculations.deliveryFee > 0
+                            ? `$${formatCurrency(calculations.deliveryFee)}`
+                            : "FREE"}
+                        </span>
+                      </div>
+
+                      {/* Free Delivery Message */}
                       {deliveryMethod === "delivery" &&
-                        (() => {
-                          const deliveryFee =
-                            cart.subtotal >= 150
-                              ? 0
-                              : cart.hasBulkItems
-                              ? 100
-                              : 50;
-                          return deliveryFee > 0;
-                        })() && (
-                          <div className="group relative">
-                            <AlertCircle className="h-3 w-3 text-gray-400" />
-                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                              {cart.hasBulkItems && cart.subtotal < 150
-                                ? "$100 for bulk orders under $150"
-                                : cart.hasBulkItems && cart.subtotal >= 150
-                                ? "Free delivery for bulk orders over $150"
-                                : cart.subtotal < 150
-                                ? "$50 for orders under $150"
-                                : "Free delivery for orders over $150"}
+                        calculations.subtotal < 150 &&
+                        !calculations.hasBulkItems && (
+                          <div className="text-sm text-green-600 bg-green-50 border border-green-200 rounded-lg p-3 mt-2">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1">
+                                <Sparkles className="h-4 w-4 inline mr-1" />
+                                Add $
+                                {formatCurrency(
+                                  150 - calculations.subtotal
+                                )}{" "}
+                                more to your order to qualify for free delivery!
+                              </div>
+                              <Button
+                                onClick={() => router.push("/listings")}
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1 h-6 flex-shrink-0"
+                              >
+                                Continue Shopping
+                              </Button>
                             </div>
                           </div>
                         )}
-                    </span>
-                    <span className="font-medium">
-                      {(() => {
-                        if (deliveryMethod === "pickup") {
-                          return "FREE";
-                        } else {
-                          const deliveryFee =
-                            cart.subtotal >= 150
-                              ? 0
-                              : cart.hasBulkItems
-                              ? 100
-                              : 50;
-                          return deliveryFee > 0
-                            ? `$${deliveryFee.toFixed(2)}`
-                            : "FREE";
-                        }
-                      })()}
-                    </span>
-                  </div>
 
-                  {/* Free Delivery Message */}
-                  {deliveryMethod === "delivery" &&
-                    cart.subtotal < 150 &&
-                    !cart.hasBulkItems && (
-                      <div className="text-sm text-green-600 bg-green-50 border border-green-200 rounded-lg p-3 mt-2">
-                        <Sparkles className="h-4 w-4 inline mr-1" />
-                        Add ${(150 - cart.subtotal).toFixed(2)} more to your
-                        order to qualify for free delivery!
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Tax (8.25%)</span>
+                        <span className="font-medium">
+                          ${formatCurrency(calculations.tax)}
+                        </span>
                       </div>
-                    )}
 
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Tax (8.25%)</span>
-                    <span className="font-medium">
-                      ${cart.tax?.toFixed(2) || "0.00"}
-                    </span>
-                  </div>
-
-                  <div className="border-t border-gray-200 pt-3">
-                    <div className="flex justify-between font-semibold text-lg">
-                      <span>Total</span>
-                      <span>
-                        $
-                        {(() => {
-                          const subtotal = cart.subtotal;
-                          const tax = cart.tax || 0;
-                          let deliveryFee = 0;
-
-                          if (deliveryMethod === "delivery") {
-                            deliveryFee =
-                              cart.subtotal >= 150
-                                ? 0
-                                : cart.hasBulkItems
-                                ? 100
-                                : 50;
-                          }
-
-                          return (subtotal + deliveryFee + tax).toFixed(2);
-                        })()}
-                      </span>
+                      <div className="border-t border-gray-200 pt-3">
+                        <div className="flex justify-between font-semibold text-lg">
+                          <span>Total</span>
+                          <span>${formatCurrency(calculations.total)}</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  );
+                })()}
 
                 {/* Delivery Info */}
-                {cart.hasBulkItems && (
+                {calculateCurrentTotals(deliveryMethod).hasBulkItems && (
                   <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
                     <div className="flex items-start gap-2">
                       <AlertCircle className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />

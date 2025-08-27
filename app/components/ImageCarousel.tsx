@@ -186,8 +186,9 @@ export default function ImageCarousel({
             src={item.src}
             poster={item.poster}
             controls
-            className="w-full h-full object-cover rounded-lg"
+            className="w-full h-full object-cover rounded-lg relative z-20"
             preload="metadata"
+            style={{ pointerEvents: "auto" }}
           >
             Your browser does not support the video tag.
           </video>
@@ -197,9 +198,6 @@ export default function ImageCarousel({
               {(item.duration % 60).toString().padStart(2, "0")}
             </div>
           )}
-          <div className="absolute top-2 right-2 bg-black/70 text-white p-1 rounded">
-            <Play className="h-4 w-4" />
-          </div>
         </div>
       );
     }
@@ -249,11 +247,13 @@ export default function ImageCarousel({
                 </div>
               )}
 
-              {/* Click overlay for modal */}
-              <div
-                className="absolute inset-0 cursor-pointer"
-                onClick={openModal}
-              />
+              {/* Click overlay for modal - only for images */}
+              {currentItem.type === "image" && (
+                <div
+                  className="absolute inset-0 cursor-pointer"
+                  onClick={openModal}
+                />
+              )}
             </div>
           ) : (
             renderMediaItem(currentItem)
@@ -285,7 +285,7 @@ export default function ImageCarousel({
                   e.stopPropagation();
                   goToPrevious();
                 }}
-                className="absolute left-2 top-[calc(50%-20px)] bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all duration-200 opacity-0 group-hover:opacity-100 z-10"
+                className="absolute left-2 top-[calc(50%-20px)] bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all duration-200 opacity-0 group-hover:opacity-100 z-30"
                 aria-label="Previous media"
               >
                 <ChevronLeft className="h-5 w-5" />
@@ -297,7 +297,7 @@ export default function ImageCarousel({
                   e.stopPropagation();
                   goToNext();
                 }}
-                className="absolute right-2 top-[calc(50%-20px)] bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all duration-200 opacity-0 group-hover:opacity-100 z-10"
+                className="absolute right-2 top-[calc(50%-20px)] bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all duration-200 opacity-0 group-hover:opacity-100 z-30"
                 aria-label="Next media"
               >
                 <ChevronRight className="h-5 w-5" />
@@ -308,7 +308,7 @@ export default function ImageCarousel({
 
         {/* Dots Indicator */}
         {showDots && totalItems > 1 && (
-          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
+          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1 z-30">
             {mediaItems.map((item, index) => (
               <button
                 key={index}
@@ -327,20 +327,22 @@ export default function ImageCarousel({
           </div>
         )}
 
-        {/* Keyboard Navigation */}
-        <div
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "ArrowLeft") {
-              e.preventDefault();
-              goToPrevious();
-            } else if (e.key === "ArrowRight") {
-              e.preventDefault();
-              goToNext();
-            }
-          }}
-          className="outline-none"
-        />
+        {/* Keyboard Navigation - only for non-video items */}
+        {currentItem.type !== "video" && (
+          <div
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                goToPrevious();
+              } else if (e.key === "ArrowRight") {
+                e.preventDefault();
+                goToNext();
+              }
+            }}
+            className="outline-none"
+          />
+        )}
       </div>
 
       {/* Modal (only for images) */}

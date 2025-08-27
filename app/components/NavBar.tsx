@@ -130,6 +130,9 @@ export default function NavBar() {
             Treasure Hunt
           </Link>
         )}
+        <Link href="/appraisal" className="hover:text-[#D4AF3D] transition">
+          Quick Appraisal
+        </Link>
       </div>
 
       {/* Mobile Menu Button and Session-aware buttons (right) */}
@@ -319,6 +322,13 @@ export default function NavBar() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Our Origin
+              </Link>
+              <Link
+                href="/appraisal"
+                className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Quick Appraisal
               </Link>
               <Link
                 href="/seller-landing"

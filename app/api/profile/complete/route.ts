@@ -103,6 +103,7 @@ export async function GET(req: NextRequest) {
               itemId: true,
               title: true,
               photos: true,
+              estimatedRetailPrice: true,
               user: {
                 select: {
                   name: true
@@ -153,6 +154,7 @@ export async function GET(req: NextRequest) {
       title: purchase.listing.title,
       photos: purchase.listing.photos,
       sellerName: purchase.listing.user.name,
+      estimatedRetailPrice: purchase.listing.estimatedRetailPrice,
     }));
 
     console.log('Complete Profile API: Successfully compiled complete profile data');
