@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import { ConfidenceBadge } from "./ConfidenceIndicator";
+import { ConfidenceLevel } from "@/lib/ai-confidence-scorer";
 
 interface CategorySelectorProps {
   department: string;
@@ -11,9 +12,9 @@ interface CategorySelectorProps {
   setSubCategory: (value: string) => void;
   taxonomy: any;
   confidenceScores?: {
-    department?: { level: string };
-    category?: { level: string };
-    subCategory?: { level: string };
+    department?: { level: ConfidenceLevel };
+    category?: { level: ConfidenceLevel };
+    subCategory?: { level: ConfidenceLevel };
   };
   onCategoryChange?: (
     department: string,
@@ -68,11 +69,12 @@ export default function CategorySelector({
           required
         >
           <option value="">Select Department</option>
-          {Object.keys(taxonomy).map((dept) => (
-            <option key={dept} value={dept}>
-              {dept}
-            </option>
-          ))}
+          {taxonomy &&
+            Object.keys(taxonomy).map((dept) => (
+              <option key={dept} value={dept}>
+                {dept}
+              </option>
+            ))}
         </select>
       </div>
 
@@ -91,14 +93,15 @@ export default function CategorySelector({
           required
         >
           <option value="">Select Category</option>
-          {department && taxonomy[department]
+          {department && taxonomy && taxonomy[department]
             ? Object.keys(taxonomy[department]).map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}
                 </option>
               ))
             : // Show all categories when no department selected
-              (() => {
+            taxonomy
+            ? (() => {
                 const allCategories: JSX.Element[] = [];
                 Object.keys(taxonomy).forEach((dept) => {
                   const deptData = taxonomy[dept];
@@ -113,7 +116,8 @@ export default function CategorySelector({
                   }
                 });
                 return allCategories;
-              })()}
+              })()
+            : null}
         </select>
       </div>
 
@@ -134,6 +138,7 @@ export default function CategorySelector({
           <option value="">Select Sub-category</option>
           {category &&
           department &&
+          taxonomy &&
           taxonomy[department] &&
           taxonomy[department][category]
             ? (taxonomy[department][category] as string[]).map((sub) => (
@@ -142,7 +147,8 @@ export default function CategorySelector({
                 </option>
               ))
             : // Show all sub-categories when no category selected
-              (() => {
+            taxonomy
+            ? (() => {
                 const allSubCategories: JSX.Element[] = [];
                 Object.keys(taxonomy).forEach((dept) => {
                   const deptData = taxonomy[dept];
@@ -162,7 +168,8 @@ export default function CategorySelector({
                   }
                 });
                 return allSubCategories;
-              })()}
+              })()
+            : null}
         </select>
       </div>
     </>

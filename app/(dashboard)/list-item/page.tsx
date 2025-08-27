@@ -99,6 +99,56 @@ export default function ListItemPage() {
   } = useUserPermissions();
   const routerNavigation = useRouter();
 
+  // Early returns for permissions - must come immediately after hooks
+  if (permissionsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-[#D4AF3D]" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            Checking Your Permissions
+          </h2>
+          <p className="text-gray-600">
+            Please wait while we verify your access level...
+          </p>
+          <div className="mt-4 text-sm text-gray-500">
+            This may take a few seconds
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!canListItems) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Access Restricted
+          </h1>
+          <p className="text-gray-600 mb-4">
+            This feature is only available to sellers. You can browse and
+            purchase items instead.
+          </p>
+
+          <div className="space-y-3">
+            <Button onClick={() => routerNavigation.push("/listings")}>
+              Browse Items
+            </Button>
+            <Button
+              onClick={() => window.location.reload()}
+              variant="outline"
+              className="ml-2"
+            >
+              Retry Loading
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Photo management with S3 integration
   const [photos, setPhotos] = useState<{
     hero: { file: File | null; key: string | null; url: string | null };
@@ -278,6 +328,9 @@ export default function ListItemPage() {
     postProcess: string;
     generatedImageUrl?: string;
   } | null>(null);
+
+  // Form validation errors state
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   // Refs and other hooks
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -541,58 +594,6 @@ export default function ListItemPage() {
     setTags(tags.filter((tag) => tag !== tagToRemove));
   };
 
-  // Conditional logic - must come after all hooks
-  // Show loading while checking permissions
-  if (permissionsLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-blue-600" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Checking Your Permissions
-          </h2>
-          <p className="text-gray-600">
-            Please wait while we verify your access level...
-          </p>
-          <div className="mt-4 text-sm text-gray-500">
-            This may take a few seconds
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show access denied if user does not have permission to list items
-  if (!canListItems) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Access Restricted
-          </h1>
-          <p className="text-gray-600 mb-4">
-            This feature is only available to sellers. You can browse and
-            purchase items instead.
-          </p>
-
-          <div className="space-y-3">
-            <Button onClick={() => routerNavigation.push("/listings")}>
-              Browse Items
-            </Button>
-            <Button
-              onClick={() => window.location.reload()}
-              variant="outline"
-              className="ml-2"
-            >
-              Retry Loading
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const handleTagKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -800,11 +801,11 @@ export default function ListItemPage() {
         // Automatically trigger form field generation
         setTimeout(async () => {
           try {
-            console.log("ðŸ”„ Starting auto form generation...");
+            console.log("🚀 Starting auto form generation...");
             await generateFormFieldsData();
-            console.log("âœ… Auto form generation completed successfully");
+            console.log("✅ Auto form generation completed successfully");
           } catch (error) {
-            console.error("âŒ Auto form generation failed:", error);
+            console.error("❌ Auto form generation failed:", error);
             setComprehensiveError(
               "AI form generation failed. You can still fill out the form manually."
             );
@@ -969,18 +970,18 @@ export default function ListItemPage() {
         return url;
       });
 
-    console.log("ðŸ“¸ Photo URLs for AI analysis:", photoUrls);
-    console.log("ðŸ“¸ Photos object for AI:", {
+    console.log("🚀 Photo URLs for AI analysis:", photoUrls);
+    console.log("🚀 Photos object for AI:", {
       hero: { url: photoUrls[0] || null },
       back: { url: photoUrls[1] || null },
       proof: { url: photoUrls[2] || null },
       additional: photoUrls.slice(3).map((url) => ({ url })),
     });
-    console.log("ðŸ“¸ Raw photos state:", photos);
-    console.log("ðŸ“¸ Photo URLs array:", photoUrls);
-    console.log("ðŸŽ¥ Video data for AI:", videoData);
-    console.log("ðŸŽ¥ Video frame URLs:", videoData.frameUrls);
-    console.log("ðŸŽ¥ Video frame count:", videoData.frameUrls?.length || 0);
+    console.log("🚀 Raw photos state:", photos);
+    console.log("🚀 Photo URLs array:", photoUrls);
+    console.log("🚀 Video data for AI:", videoData);
+    console.log("🚀 Video frame URLs:", videoData.frameUrls);
+    console.log("🚀 Video frame count:", videoData.frameUrls?.length || 0);
 
     // Use the userInput state variable if available, otherwise use default values
     const aiUserInput = userInput || "Product description for AI analysis";
@@ -989,7 +990,7 @@ export default function ListItemPage() {
     setComprehensiveError(null);
 
     // Log what we're about to send to the API
-    console.log("ðŸš€ Sending to AI API:", {
+    console.log("🚀 Sending to AI API:", {
       userInput,
       photoUrls,
       videoData,
@@ -1004,7 +1005,7 @@ export default function ListItemPage() {
       additional: photoUrls.slice(3).map((url) => ({ url })),
     };
 
-    console.log("ðŸ“¸ Photos object being sent to API:", photosForApi);
+    console.log("🚀 Photos object being sent to API:", photosForApi);
 
     try {
       // Use unified comprehensive listing service
@@ -1066,20 +1067,20 @@ export default function ListItemPage() {
       }
 
       const data = await response.json();
-      console.log("ðŸŽ¯ Comprehensive Generation Complete:", data);
+      console.log("🎉 Comprehensive Generation Complete:", data);
 
       // DEBUG: Log model information received from API
       if (data.debug) {
-        console.log("ðŸ” DEBUG: Model Information from API");
-        console.log("ðŸ” Model Requested:", data.debug.modelRequested);
-        console.log("ðŸ” Model Actually Used:", data.debug.modelUsed);
+        console.log("🔍 DEBUG: Model Information from API");
+        console.log("🔍 Model Requested:", data.debug.modelRequested);
+        console.log("🔍 Model Actually Used:", data.debug.modelUsed);
         console.log(
-          "ðŸ” Model Match:",
-          data.debug.modelMatch ? "âœ… EXACT MATCH" : "âŒ MODEL MISMATCH"
+          "🔍 Model Match:",
+          data.debug.modelMatch ? "✅ EXACT MATCH" : "❌ MODEL MISMATCH"
         );
-        console.log("ðŸ” Full Debug Info:", data.debug);
+        console.log("🔍 Full Debug Info:", data.debug);
       } else {
-        console.log("âš ï¸ No debug information received from API");
+        console.log("💬 No debug information received from API");
       }
 
       setComprehensiveListing(data.listingData);
@@ -1087,14 +1088,14 @@ export default function ListItemPage() {
       // Extract confidence scores if available
       if (data.confidenceScores) {
         setConfidenceScores(data.confidenceScores);
-        console.log("ðŸŽ¯ Confidence scores set:", data.confidenceScores);
+        console.log("🎯 Confidence scores set:", data.confidenceScores);
       } else {
-        console.log("âš ï¸ No confidence scores found in response");
+        console.log("💬 No confidence scores found in response");
       }
 
       // Apply the form data to the form
       const listingData = data.listingData;
-      console.log("ðŸ“ Setting title to:", listingData.title);
+      console.log("🎉 Setting title to:", listingData.title);
       setTitle(listingData.title);
       setDescription(listingData.description);
 
@@ -1107,11 +1108,11 @@ export default function ListItemPage() {
         listingData.facebookSubCategory || listingData.subCategory;
 
       console.log(
-        "ðŸ” DEBUG: AI-Generated Facebook Categories (Before Validation)"
+        "🔍 DEBUG: AI-Generated Facebook Categories (Before Validation)"
       );
-      console.log("ðŸ” Department:", aiDepartment);
-      console.log("ðŸ” Category:", aiCategory);
-      console.log("ðŸ” Sub-Category:", aiSubCategory);
+      console.log("🔍 Department:", aiDepartment);
+      console.log("🔍 Category:", aiCategory);
+      console.log("🔍 Sub-Category:", aiSubCategory);
 
       // Validate and fix category hierarchy
       const validatedCategories = validateCategoryHierarchy(
@@ -1120,12 +1121,10 @@ export default function ListItemPage() {
         aiSubCategory || ""
       );
 
-      console.log(
-        "ðŸ” DEBUG: Validated Facebook Categories (After Validation)"
-      );
-      console.log("ðŸ” Department:", validatedCategories.department);
-      console.log("ðŸ” Category:", validatedCategories.category);
-      console.log("ðŸ” Sub-Category:", validatedCategories.subCategory);
+      console.log("🔍 DEBUG: Validated Facebook Categories (After Validation)");
+      console.log("🔍 Department:", validatedCategories.department);
+      console.log("🔍 Category:", validatedCategories.category);
+      console.log("🔍 Sub-Category:", validatedCategories.subCategory);
 
       setDepartment(validatedCategories.department as Department);
       setCategory(validatedCategories.category || "");
@@ -1163,9 +1162,9 @@ export default function ListItemPage() {
       setFacebookGtin(listingData.facebookGtin || "");
 
       // DEBUG: Log Google Product Categories received
-      console.log("ðŸ” DEBUG: Google Product Categories Received");
-      console.log("ðŸ” Primary:", listingData.googleProductCategoryPrimary);
-      console.log("ðŸ” Secondary:", listingData.googleProductCategorySecondary);
+      console.log("🔍 DEBUG: Google Product Categories Received");
+      console.log("🔍 Primary:", listingData.googleProductCategoryPrimary);
+      console.log("🔍 Secondary:", listingData.googleProductCategorySecondary);
 
       // Apply AI photo categorization if available
       if (
@@ -1173,7 +1172,7 @@ export default function ListItemPage() {
         listingData.photoCategorization.length > 0
       ) {
         console.log(
-          "ðŸ“¸ AI Photo Categorization:",
+          "🎨 AI Photo Categorization:",
           listingData.photoCategorization
         );
 
@@ -1239,12 +1238,12 @@ export default function ListItemPage() {
 
         setPhotos(categorizedPhotos);
         console.log(
-          "ðŸ“¸ Photos reorganized based on AI categorization:",
+          "🎨 Photos reorganized based on AI categorization:",
           categorizedPhotos
         );
       }
-      console.log("ðŸ” Tertiary:", listingData.googleProductCategoryTertiary);
-      console.log("ðŸ” Legacy Field:", listingData.googleProductCategory);
+      console.log("🔍 Tertiary:", listingData.googleProductCategoryTertiary);
+      console.log("🔍 Legacy Field:", listingData.googleProductCategory);
 
       // Set the new separated Google Product Category fields
       // If AI provides them, use those; otherwise, map from Facebook categories
@@ -1322,11 +1321,11 @@ export default function ListItemPage() {
 
       // Phase 2: Staged photo generation is currently paused
       // if (photos.hero?.url || photos.hero?.key) {
-      //   console.log("ðŸŽ¨ Phase 2 - Starting staged photo generation...");
+      //   console.log("�� Phase 2 - Starting staged photo generation...");
       //   // ... Phase 2 logic commented out ...
       // }
     } catch (error) {
-      console.error("âŒ Error generating form fields:", error);
+      console.error("❌ Error generating form fields:", error);
       setComprehensiveError(
         error instanceof Error
           ? error.message
@@ -1423,9 +1422,51 @@ export default function ListItemPage() {
     price &&
     description;
 
+  const validateForm = (): string[] => {
+    const errors: string[] = [];
+
+    if (!(photos.hero?.file || photos.hero?.url)) {
+      errors.push("Hero photo is required");
+    }
+    if (!(photos.back?.file || photos.back?.url)) {
+      errors.push("Back photo is required");
+    }
+    if (!(photos.proof?.file || photos.proof?.url)) {
+      errors.push("Proof photo is required");
+    }
+    if (!department) {
+      errors.push("Department is required");
+    }
+    if (!category) {
+      errors.push("Category is required");
+    }
+    if (!subCategory) {
+      errors.push("Sub-category is required");
+    }
+    if (!title) {
+      errors.push("Title is required");
+    }
+    if (!condition) {
+      errors.push("Condition is required");
+    }
+    if (!price) {
+      errors.push("List price is required");
+    }
+    if (!description) {
+      errors.push("Description is required");
+    }
+
+    return errors;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isFormValid) {
+
+    // Validate form and collect errors
+    const errors = validateForm();
+    setValidationErrors(errors);
+
+    if (errors.length === 0) {
       try {
         const formData = {
           photos: {
@@ -1706,7 +1747,7 @@ export default function ListItemPage() {
                           <div className="flex items-center justify-between">
                             <div>
                               <div className="font-medium text-gray-900">
-                                âœ“ Selected:{" "}
+                                ✓ Selected:{" "}
                                 {selectedInventoryItem.description ||
                                   "No description"}
                               </div>
@@ -1722,7 +1763,7 @@ export default function ListItemPage() {
                                   )}
                                   {selectedInventoryItem.category && (
                                     <>
-                                      {selectedInventoryItem.vendor && " â€¢ "}
+                                      {selectedInventoryItem.vendor && " • "}
                                       <span className="font-medium">
                                         Category:
                                       </span>{" "}
@@ -2238,17 +2279,15 @@ export default function ListItemPage() {
                         </p>
                         <p className="font-medium mt-3 mb-2">Shooting tips:</p>
                         <ul className="text-left space-y-1">
-                          <li>â€¢ Place on uncluttered surface or wall</li>
-                          <li>â€¢ Shoot straight-on (eye-level), not angled</li>
+                          <li>• Place on uncluttered surface or wall</li>
+                          <li>• Shoot straight-on (eye-level), not angled</li>
+                          <li>• Fill ~80% of frame—but leave clean margins</li>
                           <li>
-                            â€¢ Fill ~80% of frameâ€”but leave clean margins
-                          </li>
-                          <li>
-                            â€¢ Use daylight or neutral lamp; avoid window
+                            • Use daylight or neutral lamp; avoid window
                             back-glare
                           </li>
                           <li>
-                            â€¢ Remove cords, trash, personal items from scene
+                            • Remove cords, trash, personal items from scene
                           </li>
                         </ul>
                       </>
@@ -2263,14 +2302,12 @@ export default function ListItemPage() {
                         </p>
                         <p className="font-medium mt-3 mb-2">Shooting tips:</p>
                         <ul className="text-left space-y-1">
+                          <li>• Step back to capture the whole reverse side</li>
                           <li>
-                            â€¢ Step back to capture the whole reverse side
+                            • Flip small items face-down on a clean surface
                           </li>
-                          <li>
-                            â€¢ Flip small items face-down on a clean surface
-                          </li>
-                          <li>â€¢ Keep lighting consistent with Photo 1</li>
-                          <li>â€¢ Don't crop off feet, plugs, or vent areas</li>
+                          <li>• Keep lighting consistent with Photo 1</li>
+                          <li>• Don't crop off feet, plugs, or vent areas</li>
                         </ul>
                       </>
                     )}
@@ -2280,31 +2317,28 @@ export default function ListItemPage() {
                         <p>One of the following based on your item type:</p>
                         <ul className="text-left space-y-1 mb-3">
                           <li>
-                            â€¢ Electronics & Appliances: powered-on screen or
+                            • Electronics & Appliances: powered-on screen or
                             label plate with model + serial
                           </li>
+                          <li>• Luxury Bags / Shoes: logo stamp & date code</li>
                           <li>
-                            â€¢ Luxury Bags / Shoes: logo stamp & date code
-                          </li>
-                          <li>
-                            â€¢ Furniture: wood grain or tag showing brand +
+                            • Furniture: wood grain or tag showing brand +
                             fabric code
                           </li>
                           <li>
-                            â€¢ Collectibles: maker's mark, limited-edition
-                            number
+                            • Collectibles: maker's mark, limited-edition number
                           </li>
                         </ul>
                         <p className="font-medium mb-2">Shooting tips:</p>
                         <ul className="text-left space-y-1">
                           <li>
-                            â€¢ Fill frame with label or lit screenâ€”text must
-                            be legible
+                            • Fill frame with label or lit screen—text must be
+                            legible
                           </li>
-                          <li>â€¢ Use flash only if it doesn't blow out ink</li>
-                          <li>â€¢ Hold phone steady; tap focus on text</li>
+                          <li>• Use flash only if it doesn't blow out ink</li>
+                          <li>• Hold phone steady; tap focus on text</li>
                           <li>
-                            â€¢ For power shots, show full screenâ€”no standby
+                            • For power shots, show full screen—no standby
                             splash
                           </li>
                         </ul>
@@ -2321,11 +2355,11 @@ export default function ListItemPage() {
                         </p>
                         <p className="font-medium mt-3 mb-2">Guidance:</p>
                         <ul className="text-left space-y-1">
-                          <li>â€¢ Close-ups of any damage or wear</li>
-                          <li>â€¢ Different angles or perspectives</li>
-                          <li>â€¢ Included accessories or parts</li>
-                          <li>â€¢ Size comparison with common objects</li>
-                          <li>â€¢ Functionality demonstrations</li>
+                          <li>• Close-ups of any damage or wear</li>
+                          <li>• Different angles or perspectives</li>
+                          <li>• Included accessories or parts</li>
+                          <li>• Size comparison with common objects</li>
+                          <li>• Functionality demonstrations</li>
                         </ul>
                       </>
                     )}
@@ -2469,15 +2503,15 @@ export default function ListItemPage() {
                           setTimeout(async () => {
                             try {
                               console.log(
-                                "ðŸ”„ Starting auto form generation..."
+                                "🚀 Starting auto form generation..."
                               );
                               await generateFormFieldsData();
                               console.log(
-                                "âœ… Auto form generation completed successfully"
+                                "✅ Auto form generation completed successfully"
                               );
                             } catch (error) {
                               console.error(
-                                "âŒ Auto form generation failed:",
+                                "❌ Auto form generation failed:",
                                 error
                               );
                               // Show user-friendly error message
@@ -2863,6 +2897,99 @@ export default function ListItemPage() {
                       </p>
                     </div>
 
+                    {/* Item ID - Display Only */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-500 mb-2">
+                        Item ID
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={itemId || "Generating..."}
+                          disabled
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                        />
+                        <Lock className="h-4 w-4 text-gray-400" />
+                      </div>
+                    </div>
+
+                    {/* Unit Purchase Price - Display Only */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-500 mb-2">
+                        Unit Purchase Price
+                      </label>
+                      <input
+                        type="text"
+                        value={
+                          selectedInventoryItem?.unitPurchasePrice
+                            ? `$${selectedInventoryItem.unitPurchasePrice.toFixed(
+                                2
+                              )}`
+                            : "Not available"
+                        }
+                        disabled
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                      />
+                    </div>
+
+                    {/* Item Number - Display Only */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-500 mb-2">
+                        Item Number
+                      </label>
+                      <input
+                        type="text"
+                        value={
+                          selectedInventoryItem?.itemNumber || "Not available"
+                        }
+                        disabled
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">
+                        Internal inventory identifier (not GTIN/UPC)
+                      </p>
+                    </div>
+
+                    {/* Lot Number - Display Only */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-500 mb-2">
+                        Lot Number
+                      </label>
+                      <input
+                        type="text"
+                        value={
+                          selectedInventoryItem?.lotNumber || "Not available"
+                        }
+                        disabled
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">
+                        Auto-generated from inventory selection
+                      </p>
+                    </div>
+
+                    {/* QR Code - Display Only */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-500 mb-2">
+                        QR Code
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={
+                            generatedQRCode ||
+                            (itemId && generateQRCode
+                              ? generateQRCode(itemId)
+                              : "Generating...")
+                          }
+                          disabled
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed text-xs"
+                        />
+                        <Lock className="h-4 w-4 text-gray-400" />
+                      </div>
+                    </div>
+
+                    {/* Media Preview */}
                     <MediaPreview
                       photos={photos}
                       videoData={videoData}
@@ -2876,95 +3003,156 @@ export default function ListItemPage() {
                       goToPhotoType={goToPhotoType}
                       safeMap={safeMap}
                     />
-
-                    <FormSection
-                      department={department}
-                      setDepartment={setDepartment}
-                      category={category}
-                      setCategory={setCategory}
-                      subCategory={subCategory}
-                      setSubCategory={setSubCategory}
-                      title={title}
-                      setTitle={setTitle}
-                      price={price}
-                      setPrice={setPrice}
-                      description={description}
-                      setDescription={setDescription}
-                      brand={brand}
-                      setBrand={setBrand}
-                      condition={condition}
-                      setCondition={setCondition}
-                      height={height}
-                      setHeight={setHeight}
-                      width={width}
-                      setWidth={setWidth}
-                      depth={depth}
-                      setDepth={setDepth}
-                      dimensionsConfirmed={dimensionsConfirmed}
-                      setDimensionsConfirmed={setDimensionsConfirmed}
-                      reservePrice={reservePrice}
-                      setReservePrice={setReservePrice}
-                      serialNumber={serialNumber}
-                      setSerialNumber={setSerialNumber}
-                      modelNumber={modelNumber}
-                      setModelNumber={setModelNumber}
-                      estimatedRetailPrice={estimatedRetailPrice}
-                      setEstimatedRetailPrice={setEstimatedRetailPrice}
-                      discountSchedule={discountSchedule}
-                      setDiscountSchedule={setDiscountSchedule}
-                      facebookGtin={facebookGtin}
-                      setFacebookGtin={setFacebookGtin}
-                      setGtinEdited={setGtinEdited}
-                      deliveryCategory={deliveryCategory}
-                      setDeliveryCategory={setDeliveryCategory}
-                      selectedInventoryItem={selectedInventoryItem}
-                      discountSchedules={discountSchedules}
-                      generatedListingId={generatedListingId}
-                      itemId={itemId}
-                      generateQRCode={generateQRCode}
-                      generatedQRCode={generatedQRCode}
-                      confidenceScores={confidenceScores}
-                    />
                   </div>
+                </div>
+
+                {/* Right Column - Editable Fields */}
+                <div className="space-y-6">
+                  <FormSection
+                    department={department}
+                    setDepartment={setDepartment}
+                    category={category}
+                    setCategory={setCategory}
+                    subCategory={subCategory}
+                    setSubCategory={setSubCategory}
+                    title={title}
+                    setTitle={setTitle}
+                    price={price}
+                    setPrice={setPrice}
+                    brand={brand}
+                    setBrand={setBrand}
+                    condition={condition}
+                    setCondition={setCondition}
+                    height={height}
+                    setHeight={setHeight}
+                    width={width}
+                    setWidth={setWidth}
+                    depth={depth}
+                    setDepth={setDepth}
+                    dimensionsConfirmed={dimensionsConfirmed}
+                    setDimensionsConfirmed={setDimensionsConfirmed}
+                    reservePrice={reservePrice}
+                    setReservePrice={setReservePrice}
+                    serialNumber={serialNumber}
+                    setSerialNumber={setSerialNumber}
+                    modelNumber={modelNumber}
+                    setModelNumber={setModelNumber}
+                    estimatedRetailPrice={estimatedRetailPrice}
+                    setEstimatedRetailPrice={setEstimatedRetailPrice}
+                    discountSchedule={discountSchedule}
+                    setDiscountSchedule={setDiscountSchedule}
+                    facebookGtin={facebookGtin}
+                    setFacebookGtin={setFacebookGtin}
+                    setGtinEdited={setGtinEdited}
+                    deliveryCategory={deliveryCategory}
+                    setDeliveryCategory={setDeliveryCategory}
+                    selectedInventoryItem={selectedInventoryItem}
+                    discountSchedules={discountSchedules}
+                    generatedListingId={generatedListingId}
+                    itemId={itemId}
+                    generateQRCode={generateQRCode}
+                    generatedQRCode={generatedQRCode}
+                    confidenceScores={confidenceScores}
+                    taxonomy={taxonomy}
+                  />
                 </div>
               </div>
 
-              <FacebookShopIntegration
-                facebookShopEnabled={facebookShopEnabled}
-                setFacebookShopEnabled={setFacebookShopEnabled}
-              />
-
-              <ProductSpecifications
-                quantity={quantity}
-                setQuantity={setQuantity}
-                salePrice={salePrice}
-                setSalePrice={setSalePrice}
-                salePriceEffectiveDate={salePriceEffectiveDate}
-                setSalePriceEffectiveDate={setSalePriceEffectiveDate}
-                itemGroupId={itemGroupId}
-                setItemGroupId={setItemGroupId}
-                gender={gender}
-                setGender={setGender}
-                ageGroup={ageGroup}
-                setAgeGroup={setAgeGroup}
-                color={color}
-                setColor={setColor}
-                size={size}
-                setSize={setSize}
-                material={material}
-                setMaterial={setMaterial}
-                pattern={pattern}
-                setPattern={setPattern}
-                style={style}
-                setStyle={setStyle}
-                confidenceScores={confidenceScores}
-                genderOptions={GENDER_OPTIONS}
-                ageGroupOptions={AGE_GROUP_OPTIONS}
-                colorSuggestions={COLOR_SUGGESTIONS}
-                materialSuggestions={MATERIAL_SUGGESTIONS}
-                patternSuggestions={PATTERN_SUGGESTIONS}
-                styleSuggestions={STYLE_SUGGESTIONS}
-              />
+              {/* Product Specifications - Full Page Width */}
+              <div className="mt-6 bg-white rounded-xl shadow-lg p-8">
+                <h2 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
+                  <Edit className="h-5 w-5 text-[#D4AF3D]" />
+                  Product Specifications
+                </h2>
+                <ProductSpecifications
+                  quantity={quantity}
+                  setQuantity={setQuantity}
+                  salePrice={salePrice}
+                  setSalePrice={setSalePrice}
+                  salePriceEffectiveDate={salePriceEffectiveDate}
+                  setSalePriceEffectiveDate={setSalePriceEffectiveDate}
+                  itemGroupId={itemGroupId}
+                  setItemGroupId={setItemGroupId}
+                  gender={gender}
+                  setGender={setGender}
+                  ageGroup={ageGroup}
+                  setAgeGroup={setAgeGroup}
+                  color={color}
+                  setColor={setColor}
+                  size={size}
+                  setSize={setSize}
+                  material={material}
+                  setMaterial={setMaterial}
+                  pattern={pattern}
+                  setPattern={setPattern}
+                  style={style}
+                  setStyle={setStyle}
+                  tags={tags}
+                  setTags={setTags}
+                  tagInput={tagInput}
+                  setTagInput={setTagInput}
+                  addTag={addTag}
+                  removeTag={removeTag}
+                  handleTagKeyPress={handleTagKeyPress}
+                  confidenceScores={confidenceScores}
+                  genderOptions={["male", "female", "unisex"]}
+                  ageGroupOptions={[
+                    "newborn",
+                    "infant",
+                    "toddler",
+                    "kids",
+                    "adult",
+                  ]}
+                  colorSuggestions={[
+                    "Black",
+                    "White",
+                    "Red",
+                    "Blue",
+                    "Green",
+                    "Yellow",
+                    "Brown",
+                    "Gray",
+                    "Silver",
+                    "Gold",
+                  ]}
+                  materialSuggestions={[
+                    "Cotton",
+                    "Leather",
+                    "Wood",
+                    "Metal",
+                    "Plastic",
+                    "Glass",
+                    "Ceramic",
+                    "Fabric",
+                    "Paper",
+                    "Stone",
+                  ]}
+                  patternSuggestions={[
+                    "Solid",
+                    "Striped",
+                    "Floral",
+                    "Plaid",
+                    "Polka Dot",
+                    "Geometric",
+                    "Abstract",
+                    "Animal Print",
+                    "Tie Dye",
+                    "Ombre",
+                  ]}
+                  styleSuggestions={[
+                    "Modern",
+                    "Vintage",
+                    "Casual",
+                    "Formal",
+                    "Minimalist",
+                    "Bohemian",
+                    "Industrial",
+                    "Scandinavian",
+                    "Traditional",
+                    "Contemporary",
+                  ]}
+                />
+              </div>
 
               <TreasureDetection
                 isTreasure={isTreasure}

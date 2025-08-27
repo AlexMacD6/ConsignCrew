@@ -16,13 +16,6 @@ interface AdditionalFormFieldsProps {
   modelNumber: string;
   setModelNumber: (value: string) => void;
 
-  // Estimated Retail Price
-  estimatedRetailPrice: string;
-  setEstimatedRetailPrice: (value: string) => void;
-  selectedInventoryItem?: {
-    unitRetail?: number;
-  };
-
   // Discount Schedule
   discountSchedule: string;
   setDiscountSchedule: (value: string) => void;
@@ -48,9 +41,6 @@ export default function AdditionalFormFields({
   setSerialNumber,
   modelNumber,
   setModelNumber,
-  estimatedRetailPrice,
-  setEstimatedRetailPrice,
-  selectedInventoryItem,
   discountSchedule,
   setDiscountSchedule,
   discountSchedules,
@@ -95,12 +85,22 @@ export default function AdditionalFormFields({
             setFacebookGtin(e.target.value);
             setGtinEdited(true);
           }}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-          placeholder="e.g., 1234567890123"
-          maxLength={13}
+          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent ${
+            facebookGtin && !/^\d{14}$/.test(facebookGtin)
+              ? "border-red-300 focus:border-red-500"
+              : "border-gray-300"
+          }`}
+          placeholder="e.g., 12345678901234"
+          maxLength={14}
         />
+        {facebookGtin && !/^\d{14}$/.test(facebookGtin) && (
+          <p className="text-xs text-red-500 mt-1">
+            GTIN must be exactly 14 digits (e.g., 12345678901234)
+          </p>
+        )}
         <p className="text-xs text-gray-500 mt-1">
-          Global Trade Item Number or UPC code for better Facebook matching
+          Global Trade Item Number or UPC code for better Facebook matching.
+          Must be exactly 14 digits.
         </p>
       </div>
 
@@ -132,27 +132,6 @@ export default function AdditionalFormFields({
         />
       </div>
 
-      {/* Estimated Retail Price */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Estimated Retail Price
-        </label>
-        <input
-          type="number"
-          value={estimatedRetailPrice}
-          onChange={(e) => setEstimatedRetailPrice(e.target.value)}
-          min="0"
-          step="0.01"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-          placeholder="0.00"
-        />
-        <p className="text-xs text-gray-500 mt-1">
-          {typeof selectedInventoryItem?.unitRetail === "number"
-            ? `MSRP: $${selectedInventoryItem.unitRetail}`
-            : "Original retail price for comparison"}
-        </p>
-      </div>
-
       {/* Discount Schedule */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -172,50 +151,6 @@ export default function AdditionalFormFields({
           ))}
         </select>
       </div>
-
-      {/* QR Code (Read-only) */}
-      {(generatedListingId || itemId || generatedQRCode) && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            QR Code
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={
-                generatedQRCode ||
-                (itemId && generateQRCode
-                  ? generateQRCode(itemId)
-                  : "Generating...")
-              }
-              disabled
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 text-xs"
-            />
-            <Lock className="h-4 w-4 text-gray-400" />
-          </div>
-        </div>
-      )}
-
-      {/* Listing ID (Read-only) */}
-      {(generatedListingId || itemId) && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Listing ID
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={generatedListingId || itemId || "Generating..."}
-              disabled
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-            />
-            <Lock className="h-4 w-4 text-gray-400" />
-          </div>
-          <p className="text-xs text-gray-500 mt-1">
-            Unique identifier for this listing
-          </p>
-        </div>
-      )}
     </div>
   );
 }

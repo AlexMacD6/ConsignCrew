@@ -13,6 +13,8 @@ import {
   Trash2,
   AlertCircle,
   Sparkles,
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
 
 export default function CartPage() {
@@ -23,6 +25,9 @@ export default function CartPage() {
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [activeCheckouts, setActiveCheckouts] = useState<any[]>([]);
   const [loadingCheckouts, setLoadingCheckouts] = useState(false);
+  const [expiredOrders, setExpiredOrders] = useState<any[]>([]);
+  const [loadingExpired, setLoadingExpired] = useState(false);
+  const [restoringOrders, setRestoringOrders] = useState(false);
   const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "delivery">(
     "delivery"
   );
@@ -57,9 +62,69 @@ export default function CartPage() {
     }
   };
 
-  // Load active checkouts when page loads
+  // Load expired orders that can be restored
+  const loadExpiredOrders = async () => {
+    if (!isAuthenticated) return;
+
+    setLoadingExpired(true);
+    try {
+      const response = await fetch("/api/orders/expired", {
+        credentials: "include",
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setExpiredOrders(data.expiredOrders || []);
+      }
+    } catch (error) {
+      console.error("Error loading expired orders:", error);
+    } finally {
+      setLoadingExpired(false);
+    }
+  };
+
+  // Restore expired orders to cart
+  const handleRestoreExpiredOrders = async (orderIds: string[]) => {
+    setRestoringOrders(true);
+    try {
+      const response = await fetch("/api/orders/expired/restore", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ orderIds }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Refresh both expired orders and cart
+        await Promise.all([loadExpiredOrders(), refreshCart()]);
+
+        // Show success message
+        const message =
+          data.message ||
+          `${data.stats?.restored || orderIds.length} item(s) restored to cart`;
+        alert(message);
+      } else {
+        alert(data.error || "Failed to restore orders");
+      }
+    } catch (error) {
+      console.error("Error restoring expired orders:", error);
+      alert("Failed to restore orders. Please try again.");
+    } finally {
+      setRestoringOrders(false);
+    }
+  };
+
+  // Load active checkouts and expired orders when page loads
   useEffect(() => {
-    loadActiveCheckouts();
+    if (isAuthenticated) {
+      loadActiveCheckouts();
+      loadExpiredOrders();
+    }
   }, [isAuthenticated]);
 
   // Handle checkout
@@ -338,6 +403,130 @@ export default function CartPage() {
                       );
                     })}
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Expired Orders that can be restored */}
+        {expiredOrders.length > 0 && (
+          <div className="mb-8">
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <h3 className="font-medium text-orange-800 mb-2">
+                    You have {expiredOrders.length} expired order
+                    {expiredOrders.length > 1 ? "s" : ""} that can be restored
+                  </h3>
+                  <p className="text-sm text-orange-700 mb-3">
+                    These orders expired before payment was completed. You can
+                    restore them back to your cart to continue shopping.
+                  </p>
+                  <div className="space-y-2">
+                    {expiredOrders.map((expiredOrder) => {
+                      const hoursAgo = Math.floor(
+                        expiredOrder.expiredMinutesAgo / 60
+                      );
+                      const minutesAgo = expiredOrder.expiredMinutesAgo % 60;
+                      const timeAgoText =
+                        hoursAgo > 0
+                          ? `${hoursAgo}h ${minutesAgo}m ago`
+                          : `${minutesAgo}m ago`;
+
+                      return (
+                        <div
+                          key={expiredOrder.id}
+                          className="bg-white border border-orange-200 rounded-lg p-3"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3">
+                                {expiredOrder.isMultiItem ? (
+                                  <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                                    <ShoppingCart className="w-6 h-6 text-gray-400" />
+                                  </div>
+                                ) : (
+                                  expiredOrder.listing?.photos?.hero && (
+                                    <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden">
+                                      <img
+                                        src={expiredOrder.listing.photos.hero}
+                                        alt={expiredOrder.listing.title}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    </div>
+                                  )
+                                )}
+                                <div className="flex-1">
+                                  <h4 className="font-medium text-gray-900 text-sm">
+                                    {expiredOrder.isMultiItem
+                                      ? `${expiredOrder.itemCount} items (Cart Order)`
+                                      : expiredOrder.listing?.title}
+                                  </h4>
+                                  <p className="text-xs text-gray-600">
+                                    ${expiredOrder.amount.toFixed(2)} • Expired{" "}
+                                    {timeAgoText}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex gap-2 ml-4">
+                              <Button
+                                onClick={() =>
+                                  handleRestoreExpiredOrders([expiredOrder.id])
+                                }
+                                disabled={restoringOrders}
+                                size="sm"
+                                className="bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                              >
+                                {restoringOrders ? (
+                                  <>
+                                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                    Restoring...
+                                  </>
+                                ) : (
+                                  <>
+                                    <RefreshCw className="w-3 h-3 mr-1" />
+                                    Restore to Cart
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Restore All Button */}
+                  {expiredOrders.length > 1 && (
+                    <div className="mt-3 pt-3 border-t border-orange-200">
+                      <Button
+                        onClick={() =>
+                          handleRestoreExpiredOrders(
+                            expiredOrders.map((o) => o.id)
+                          )
+                        }
+                        disabled={restoringOrders}
+                        variant="outline"
+                        size="sm"
+                        className="border-orange-300 text-orange-700 hover:bg-orange-100"
+                      >
+                        {restoringOrders ? (
+                          <>
+                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                            Restoring All...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="w-3 h-3 mr-1" />
+                            Restore All {expiredOrders.length} Orders
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

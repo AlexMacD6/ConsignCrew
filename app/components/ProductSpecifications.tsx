@@ -29,18 +29,26 @@ interface ProductSpecificationsProps {
   setPattern: (value: string) => void;
   style: string;
   setStyle: (value: string) => void;
+  tags: string[];
+  setTags: (value: string[]) => void;
+  tagInput: string;
+  setTagInput: (value: string) => void;
+  addTag: () => void;
+  removeTag: (tag: string) => void;
+  handleTagKeyPress: (e: React.KeyboardEvent) => void;
   confidenceScores?: {
-    quantity?: { level: string };
-    salePrice?: { level: string };
-    salePriceEffectiveDate?: { level: string };
-    itemGroupId?: { level: string };
-    gender?: { level: string };
-    ageGroup?: { level: string };
-    color?: { level: string };
-    size?: { level: string };
-    material?: { level: string };
-    pattern?: { level: string };
-    style?: { level: string };
+    quantity?: { level: "low" | "medium" | "high" };
+    salePrice?: { level: "low" | "medium" | "high" };
+    salePriceEffectiveDate?: { level: "low" | "medium" | "high" };
+    itemGroupId?: { level: "low" | "medium" | "high" };
+    gender?: { level: "low" | "medium" | "high" };
+    ageGroup?: { level: "low" | "medium" | "high" };
+    color?: { level: "low" | "medium" | "high" };
+    size?: { level: "low" | "medium" | "high" };
+    material?: { level: "low" | "medium" | "high" };
+    pattern?: { level: "low" | "medium" | "high" };
+    style?: { level: "low" | "medium" | "high" };
+    tags?: { level: "low" | "medium" | "high" };
   };
   genderOptions: readonly string[];
   ageGroupOptions: readonly string[];
@@ -73,6 +81,13 @@ export default function ProductSpecifications({
   setPattern,
   style,
   setStyle,
+  tags,
+  setTags,
+  tagInput,
+  setTagInput,
+  addTag,
+  removeTag,
+  handleTagKeyPress,
   confidenceScores,
   genderOptions,
   ageGroupOptions,
@@ -329,6 +344,70 @@ export default function ProductSpecifications({
             )
           }
         />
+
+        {/* Tags */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+            Tags
+            {confidenceScores?.tags && (
+              <ConfidenceBadge level={confidenceScores.tags.level} />
+            )}
+            <div className="relative group">
+              <svg
+                className="w-4 h-4 text-gray-400 cursor-help"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
+                Keywords to help buyers find your item (e.g., "vintage",
+                "handmade", "eco-friendly")
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+              </div>
+            </div>
+          </label>
+          <div className="flex gap-2 mb-2">
+            <input
+              type="text"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyPress={handleTagKeyPress}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+              placeholder="Add a tag and press Enter"
+            />
+            <button
+              type="button"
+              onClick={addTag}
+              className="px-4 py-2 bg-[#D4AF3D] text-white rounded-lg hover:bg-[#b8932f] transition-colors"
+            >
+              Add
+            </button>
+          </div>
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag, index) => (
+                <span
+                  key={index}
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-[#D4AF3D] text-white text-sm rounded-full"
+                >
+                  {tag}
+                  <button
+                    type="button"
+                    onClick={() => removeTag(tag)}
+                    className="ml-1 text-white hover:text-gray-200 transition-colors"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

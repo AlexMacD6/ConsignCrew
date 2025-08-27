@@ -56,6 +56,13 @@ export async function GET(request: NextRequest) {
         createdAt: true,
         updatedAt: true,
         purchasePrice: true,
+        // Include listings to calculate available quantity
+        listings: {
+          select: {
+            id: true,
+            status: true
+          }
+        },
         // Exclude purchasePrice from selection
         list: {
           select: {
@@ -74,15 +81,29 @@ export async function GET(request: NextRequest) {
       take: limit,
     });
 
-    // Map to include unitPurchasePrice and hide purchasePrice
-    const items = rawItems.map((it: any) => ({
-      ...it,
-      unitPurchasePrice:
-        typeof it.purchasePrice === 'number' && typeof it.quantity === 'number' && it.quantity > 0
-          ? it.purchasePrice / it.quantity
-          : null,
-      purchasePrice: undefined,
-    }));
+    // Map to include unitPurchasePrice, available quantity, and hide purchasePrice
+    const items = rawItems.map((it: any) => {
+      // Only count active listings (not sold, cancelled, etc.)
+      const activeListings = it.listings?.filter((listing: any) => 
+        listing.status === 'active' || listing.status === 'processing'
+      ) || [];
+      const postedListings = activeListings.length;
+      const totalQuantity = it.quantity || 0;
+      const availableQuantity = Math.max(0, totalQuantity - postedListings);
+      
+      return {
+        ...it,
+        quantity: availableQuantity, // Override with available quantity for listing
+        totalQuantity, // Keep original quantity for reference
+        postedListings,
+        unitPurchasePrice:
+          typeof it.purchasePrice === 'number' && typeof totalQuantity === 'number' && totalQuantity > 0
+            ? it.purchasePrice / totalQuantity
+            : null,
+        purchasePrice: undefined,
+        listings: undefined, // Remove listings from response for cleaner data
+      };
+    });
 
     // Get unique values for filters
     const allItems = await prisma.inventoryItem.findMany({

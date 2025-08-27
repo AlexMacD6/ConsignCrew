@@ -2,6 +2,7 @@
 import React from "react";
 import { AlertCircle, CheckCircle } from "lucide-react";
 import { ConfidenceBadge } from "./ConfidenceIndicator";
+import { ConfidenceLevel } from "@/lib/ai-confidence-scorer";
 
 interface ProductDimensionsProps {
   height: string;
@@ -13,9 +14,9 @@ interface ProductDimensionsProps {
   dimensionsConfirmed: boolean;
   setDimensionsConfirmed: (value: boolean) => void;
   confidenceScores?: {
-    height?: { level: string };
-    width?: { level: string };
-    depth?: { level: string };
+    height?: { level: ConfidenceLevel };
+    width?: { level: ConfidenceLevel };
+    depth?: { level: ConfidenceLevel };
   };
 }
 

@@ -1,23 +1,26 @@
 "use client";
 import React from "react";
 import { ConfidenceBadge } from "./ConfidenceIndicator";
+import { ConfidenceLevel } from "@/lib/ai-confidence-scorer";
 
 interface BasicFormFieldsProps {
   title: string;
   setTitle: (value: string) => void;
   price: string;
   setPrice: (value: string) => void;
-  description: string;
-  setDescription: (value: string) => void;
   brand: string;
   setBrand: (value: string) => void;
   condition: string;
   setCondition: (value: string) => void;
+  estimatedRetailPrice: string;
+  setEstimatedRetailPrice: (value: string) => void;
+  selectedInventoryItem?: {
+    unitRetail?: number;
+  };
   confidenceScores?: {
-    title?: { level: string };
-    description?: { level: string };
-    brand?: { level: string };
-    facebookCondition?: { level: string };
+    title?: { level: ConfidenceLevel };
+    brand?: { level: ConfidenceLevel };
+    facebookCondition?: { level: ConfidenceLevel };
   };
 }
 
@@ -33,12 +36,13 @@ export default function BasicFormFields({
   setTitle,
   price,
   setPrice,
-  description,
-  setDescription,
   brand,
   setBrand,
   condition,
   setCondition,
+  estimatedRetailPrice,
+  setEstimatedRetailPrice,
+  selectedInventoryItem,
   confidenceScores,
 }: BasicFormFieldsProps) {
   return (
@@ -62,6 +66,28 @@ export default function BasicFormFields({
         />
         <p className="text-xs text-gray-500 mt-1">
           {title.length}/100 characters
+        </p>
+      </div>
+
+      {/* Estimated Retail Price */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Estimated Retail Price ($) *
+        </label>
+        <input
+          type="number"
+          value={estimatedRetailPrice}
+          onChange={(e) => setEstimatedRetailPrice(e.target.value)}
+          min="0"
+          step="0.01"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
+          placeholder="0.00"
+          required
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          {typeof selectedInventoryItem?.unitRetail === "number"
+            ? `MSRP: $${selectedInventoryItem.unitRetail}`
+            : "Original retail price for comparison"}
         </p>
       </div>
 
@@ -136,26 +162,7 @@ export default function BasicFormFields({
         </p>
       </div>
 
-      {/* Description - Full Width */}
-      <div className="md:col-span-2">
-        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-          Description *
-          {confidenceScores?.description && (
-            <ConfidenceBadge level={confidenceScores.description.level} />
-          )}
-        </label>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={6}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
-          placeholder="Describe your item in detail. Include features, condition, dimensions, and any relevant information that would help buyers understand your item..."
-          required
-        />
-        <p className="text-xs text-gray-500 mt-1">
-          {description.length}/2000 characters recommended
-        </p>
-      </div>
+
     </>
   );
 }

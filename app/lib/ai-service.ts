@@ -501,12 +501,17 @@ Generate Google Product Category:
 
 Analyze and populate product specifications:
 - gender: Determine from category, description, or visual analysis ("male", "female", "unisex")
-- color: Extract from visual analysis or description and CAPITALIZE (e.g., "Blue", "Black", "White", "Red")
+- color: Extract the actual VISIBLE COLOR from visual analysis and CAPITALIZE (e.g., "Black", "White", "Red", "Blue", "Silver"). For appliances, this is the color of the finish/exterior, NOT the material type.
 - size: Extract from visual analysis, description, or category (e.g., "S", "M", "L", "XL", "Small", "Large")
 - ageGroup: Determine target age ("adult", "kids", "infant") based on product type
-- material: Extract from visual analysis or description and CAPITALIZE (e.g., "Cotton", "Leather", "Wood", "Metal", "Plastic")
+- material: Extract the MATERIAL COMPOSITION from visual analysis and CAPITALIZE (e.g., "Stainless Steel", "Plastic", "Wood", "Metal", "Cotton", "Leather"). For appliances, this describes what the item is made of.
 - pattern: Extract from visual analysis or description and CAPITALIZE (e.g., "Solid", "Striped", "Floral", "Plaid")
 - style: Extract from visual analysis or description and CAPITALIZE (e.g., "Casual", "Formal", "Vintage", "Modern")
+
+CRITICAL: Do not confuse material and color for appliances:
+- A black stainless steel refrigerator has color="Black" and material="Stainless Steel"
+- A white plastic microwave has color="White" and material="Plastic"
+
 - tags: Generate relevant tags for search and categorization (e.g., ["furniture", "bedroom", "storage", "wooden"])
 - quantity: Default to 1 unless multiple items are visible
 - salePrice: Set to null (no sale price initially)
