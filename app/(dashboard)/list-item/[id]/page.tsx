@@ -34,6 +34,7 @@ import {
 } from "../../../lib/condition-utils";
 import { getStatusOverlay } from "../../../lib/listing-button-utils";
 import { useCart } from "../../../contexts/CartContext";
+import AddToCartModal from "../../../components/AddToCartModal";
 import {
   trackMetaPixelEvent,
   trackViewContent,
@@ -170,6 +171,8 @@ export default function ListingDetailPage() {
   const [addingToCart, setAddingToCart] = useState(false);
   const [showLoginRequiredModal, setShowLoginRequiredModal] = useState(false);
   const [showOwnListingModal, setShowOwnListingModal] = useState(false);
+  const [addToCartModalOpen, setAddToCartModalOpen] = useState(false); // Add to cart success modal
+  const [addedItemName, setAddedItemName] = useState(""); // Name of item added to cart
   // Removed address and confirmation modals as checkout now happens in cart
 
   // Removed address checking functions as checkout now happens in cart
@@ -212,6 +215,39 @@ export default function ListingDetailPage() {
     const url = `https://${bucketName}.s3.${region}.amazonaws.com/${videoKey}`;
     console.log("Generated S3 URL:", url);
     return url;
+  };
+
+  // Function to generate thumbnail URL from video record
+  const generateThumbnailUrl = (videoRecord: any) => {
+    if (!videoRecord) return null;
+
+    // If thumbnail key is available, use it
+    if (videoRecord.thumbnailKey) {
+      const cfDomain = process.env.NEXT_PUBLIC_CDN_URL;
+      if (cfDomain) {
+        const cleanDomain = cfDomain
+          .replace("https://", "")
+          .replace("http://", "");
+        return `https://${cleanDomain}/${videoRecord.thumbnailKey}`;
+      }
+      // Fallback to S3 URL
+      const bucketName = "consigncrew";
+      const region = "us-east-1";
+      return `https://${bucketName}.s3.${region}.amazonaws.com/${videoRecord.thumbnailKey}`;
+    }
+
+    // If no thumbnail key but we have a video ID, construct thumbnail URL
+    if (videoRecord.id) {
+      const cfDomain = process.env.NEXT_PUBLIC_CDN_URL;
+      if (cfDomain) {
+        const cleanDomain = cfDomain
+          .replace("https://", "")
+          .replace("http://", "");
+        return `https://${cleanDomain}/processed/thumbnails/${videoRecord.id}.jpg`;
+      }
+    }
+
+    return null;
   };
 
   useEffect(() => {
@@ -491,13 +527,9 @@ export default function ListingDetailPage() {
     try {
       const success = await addToCart(listing.id, 1);
       if (success) {
-        // Show success message with option to view cart
-        const viewCart = confirm(
-          "✅ Item added to cart! Would you like to view your cart now?"
-        );
-        if (viewCart) {
-          router.push("/cart");
-        }
+        // Show custom modal with option to view cart
+        setAddedItemName(listing.title || "Item");
+        setAddToCartModalOpen(true);
       } else {
         alert("Failed to add item to cart. Please try again.");
       }
@@ -803,10 +835,13 @@ export default function ListingDetailPage() {
               <ImageCarousel
                 images={allImages}
                 video={
-                  listing.videoUrl
+                  listing.videoUrl || generateVideoUrl(listing.video)
                     ? {
-                        src: listing.videoUrl,
-                        poster: listing.video?.thumbnailUrl,
+                        src:
+                          listing.videoUrl || generateVideoUrl(listing.video),
+                        poster:
+                          listing.video?.thumbnailUrl ||
+                          generateThumbnailUrl(listing.video),
                         duration: listing.video?.duration,
                       }
                     : undefined
@@ -1638,6 +1673,21 @@ export default function ListingDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Add to Cart Success Modal */}
+      <AddToCartModal
+        isOpen={addToCartModalOpen}
+        onClose={() => {
+          setAddToCartModalOpen(false);
+          setAddingToCart(false);
+        }}
+        onViewCart={() => {
+          setAddToCartModalOpen(false);
+          setAddingToCart(false);
+          router.push("/cart");
+        }}
+        itemName={addedItemName}
+      />
     </div>
   );
 }

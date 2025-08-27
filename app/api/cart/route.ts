@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "../../lib/auth";
 import { prisma } from "../../../lib/prisma";
 import { getDisplayPrice } from "../../lib/price-calculator";
+import { calculateCartTotals as calculateTotals } from "../../../lib/cart-calculations";
 
 // GET /api/cart - Get user's cart
 export async function GET(request: NextRequest) {
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate delivery fees and totals
-    const cartWithTotals = calculateCartTotals(cart);
+    const cartWithTotals = calculateCartTotalsForAPI(cart);
 
     return NextResponse.json({
       success: true,
@@ -170,55 +171,27 @@ export async function POST(request: NextRequest) {
 }
 
 // Helper function to calculate cart totals and delivery fees
-function calculateCartTotals(cart: any) {
-  let subtotal = 0;
-  let hasBulkItems = false;
-  let hasNormalItems = false;
-
-  // Calculate subtotal and check for bulk items
-  cart.items.forEach((item: any) => {
+function calculateCartTotalsForAPI(cart: any, deliveryMethod: 'delivery' | 'pickup' = 'delivery') {
+  // Transform cart items to match the interface expected by our calculation function
+  const transformedItems = cart.items.map((item: any) => {
     // Use the display price which includes sale pricing and discount schedules
     const currentPrice = getDisplayPrice(item.listing).price;
-    const itemTotal = currentPrice * item.quantity;
-    subtotal += itemTotal;
-
-    if (item.listing.deliveryCategory === "BULK") {
-      hasBulkItems = true;
-    } else {
-      hasNormalItems = true;
-    }
+    
+    return {
+      id: item.id,
+      quantity: item.quantity,
+      listing: {
+        price: currentPrice,
+        bulkItem: item.listing.deliveryCategory === "BULK"
+      }
+    };
   });
 
-  // Calculate delivery fee based on requirements:
-  // - $50 delivery fee on any orders less than $150
-  // - $100 on bulk orders less than $150
-  // - If it's more than $150 but still a bulk item, that cost gets dropped to $50
-  let deliveryFee = 0;
-
-  if (subtotal < 150) {
-    if (hasBulkItems) {
-      deliveryFee = 100; // $100 for bulk orders under $150
-    } else {
-      deliveryFee = 50; // $50 for normal orders under $150
-    }
-  } else if (subtotal >= 150 && hasBulkItems) {
-    deliveryFee = 50; // $50 for bulk orders over $150
-  }
-  // No delivery fee for normal orders over $150
-
-  // Calculate tax (8.25% - typical Texas rate)
-  const taxRate = 0.0825;
-  const tax = subtotal * taxRate;
+  // Use centralized calculation function
+  const calculations = calculateTotals(transformedItems, deliveryMethod);
   
-  const total = subtotal + deliveryFee + tax;
-
   return {
     ...cart,
-    subtotal,
-    deliveryFee,
-    tax,
-    total,
-    hasBulkItems,
-    hasNormalItems,
+    ...calculations,
   };
 }

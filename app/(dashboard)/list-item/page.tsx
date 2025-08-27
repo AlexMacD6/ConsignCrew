@@ -1550,6 +1550,7 @@ export default function ListItemPage() {
           itemId: generatedListingId || itemId,
           qrCodeUrl: generatedQRCode || generateQRCode(itemId),
           videoId: videoData.videoId || null, // Add video ID to link video to listing
+          videoUrl: videoData.videoUrl || null, // Add video URL for direct access
           // Inventory item relationship
           inventoryItemId: selectedInventoryItem?.id || null,
           inventoryListId: selectedInventoryItem?.list?.id || null,

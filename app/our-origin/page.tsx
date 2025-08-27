@@ -17,7 +17,7 @@ export default function OurOriginPage() {
             Our Origin
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Oilfield Precision. Garage-Sale Simplicity.
+            A Family Business Born from Everyday Frustrations.
           </p>
         </motion.div>
 
@@ -31,36 +31,40 @@ export default function OurOriginPage() {
             className="bg-white rounded-2xl shadow-xl p-8"
           >
             <div className="flex flex-col lg:flex-row gap-8 items-start">
-              {/* Headshot */}
+              {/* Family Photo */}
               <div className="flex-shrink-0">
                 <img
-                  src="/Headshot - Alex.jpg"
-                  alt="Alex MacDonald - Founder of TreasureHub"
-                  className="w-64 h-64 object-cover rounded-2xl shadow-lg"
+                  src="/MacDonald Family.jpg"
+                  alt="The MacDonald Family - Alex, Leanne, and Madeleine"
+                  className="w-80 h-64 object-cover rounded-2xl shadow-lg"
                 />
               </div>
 
               {/* Text Content */}
               <div className="flex-1">
                 <p className="text-lg text-gray-700 leading-relaxed mb-6">
-                  I'm Alex MacDonald. An oil-patch engineer who hates wasting my
-                  free time. Ten years of running drilling rigs taught me an
-                  important lesson: when every second costs big money, you
-                  obsess over making processes as simple as possible. That
-                  mindset is what drove me to build TreasureHub.
+                  We're the MacDonald family — Alex, Leanne, and our daughter
+                  Madeleine. As an oil-patch engineer, Alex spent ten years
+                  running drilling rigs where every second costs big money,
+                  learning to obsess over making processes as simple as
+                  possible. That mindset is what drove us to build TreasureHub
+                  together as a family business.
                 </p>
                 <p className="text-lg text-gray-700 leading-relaxed mb-6">
-                  Back at home, my garage keeps filling up with perfectly good
-                  gear through the years — a dresser, a pair of old skis, a set
-                  of spare rims for a car I no longer own, and a stack of
-                  dumbbells. How many of you can say the same?
+                  Like many families, our garage kept filling up with perfectly
+                  good gear through the years — furniture that no longer fits
+                  our space, toys Madeleine has outgrown, exercise equipment
+                  gathering dust, and that inevitable stack of items we keep
+                  meaning to sell. We knew other families faced the same
+                  challenge.
                 </p>
                 <p className="text-lg text-gray-700 leading-relaxed mb-6">
-                  Posting each item online meant fighting through which messages
-                  are bots or scams, then negotiating on price, arranging a
-                  meet-up, inviting strangers into your home, and praying the
-                  buyer actually showed up to not waste your free time. I kept
-                  thinking, why can't someone handle this process for me?
+                  The traditional process of selling items online became a
+                  family frustration: fighting through bot messages and scams,
+                  endless negotiations, coordinating meet-ups around work and
+                  family schedules, and hoping buyers would actually show up.
+                  Leanne and Alex kept asking, "Why can't someone just handle
+                  this entire process for busy families like us?"
                 </p>
               </div>
             </div>
@@ -270,8 +274,10 @@ export default function OurOriginPage() {
               </div>
             </div>
             <p className="text-lg text-gray-700 leading-relaxed mb-6">
-              That's the kind of efficiency any Dad with an over-stuffed garage
-              like me can get behind.
+              That's the kind of efficiency any family with an over-stuffed
+              garage like ours can get behind. We're building TreasureHub to
+              solve a problem we live with every day, and we believe other
+              families will benefit from the solution just as much as we will.
             </p>
           </motion.div>
 
@@ -289,7 +295,10 @@ export default function OurOriginPage() {
               Your invite to the August proof-of-concept is coming soon.
             </p>
             <div className="text-center">
-              <p className="text-lg font-semibold">— Alex</p>
+              <p className="text-lg font-semibold">— The MacDonald Family</p>
+              <p className="text-sm opacity-90 mt-1">
+                Alex, Leanne, and Madeleine
+              </p>
             </div>
           </motion.div>
         </div>

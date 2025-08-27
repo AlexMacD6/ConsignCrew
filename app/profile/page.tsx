@@ -144,7 +144,7 @@ export default function ProfilePage() {
   // Purchase management state
   const [purchases, setPurchases] = useState<any[]>([]);
   const [purchasesLoading, setPurchasesLoading] = useState(false);
-  const [purchasesFilter, setPurchasesFilter] = useState("all"); // all, pending, completed, cancelled
+  const [purchasesFilter, setPurchasesFilter] = useState("all"); // all, pending, completed
   const [purchasesSearch, setPurchasesSearch] = useState("");
 
   const router = useRouter();
@@ -1127,8 +1127,13 @@ export default function ProfilePage() {
                       </p>
                       <p className="text-2xl font-bold text-green-900">
                         {
-                          purchases.filter((p) => p.status === "completed")
-                            .length
+                          purchases.filter(
+                            (p) =>
+                              (p.status === "completed" ||
+                                p.status === "FINALIZED" ||
+                                p.status === "DELIVERED") &&
+                              p.status !== "cancelled"
+                          ).length
                         }
                       </p>
                     </div>
@@ -1142,22 +1147,39 @@ export default function ProfilePage() {
                         Pending
                       </p>
                       <p className="text-2xl font-bold text-yellow-900">
-                        {purchases.filter((p) => p.status === "pending").length}
+                        {
+                          purchases.filter(
+                            (p) =>
+                              (p.status === "pending" ||
+                                p.status === "PENDING" ||
+                                p.status === "PENDING_SCHEDULING" ||
+                                p.status === "SCHEDULED" ||
+                                p.status === "EN_ROUTE" ||
+                                p.status === "PAID") &&
+                              p.status !== "cancelled"
+                          ).length
+                        }
                       </p>
                     </div>
                   </div>
                 </div>
-                <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="bg-green-50 p-4 rounded-lg">
                   <div className="flex items-center">
-                    <DollarSign className="h-8 w-8 text-gray-600" />
+                    <DollarSign className="h-8 w-8 text-green-600" />
                     <div className="ml-3">
-                      <p className="text-sm font-medium text-gray-600">
-                        Total Spent
+                      <p className="text-sm font-medium text-green-600">
+                        Total Saved
                       </p>
-                      <p className="text-2xl font-bold text-gray-900">
+                      <p className="text-2xl font-bold text-green-900">
                         $
                         {purchases
-                          .reduce((sum, p) => sum + (p.total || 0), 0)
+                          .filter((p) => p.status !== "cancelled")
+                          .reduce((sum, p) => {
+                            const savings = p.estimatedRetailPrice
+                              ? p.estimatedRetailPrice - p.total
+                              : 0;
+                            return sum + Math.max(0, savings);
+                          }, 0)
                           .toFixed(2)}
                       </p>
                     </div>
@@ -1184,9 +1206,15 @@ export default function ProfilePage() {
                     className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
                   >
                     <option value="all">All Purchases</option>
-                    <option value="pending">Pending</option>
-                    <option value="completed">Completed</option>
-                    <option value="cancelled">Cancelled</option>
+                    <option value="pending">Pending Payment</option>
+                    <option value="PAID">Paid</option>
+                    <option value="PENDING_SCHEDULING">
+                      Pending Scheduling
+                    </option>
+                    <option value="SCHEDULED">Scheduled</option>
+                    <option value="EN_ROUTE">En Route</option>
+                    <option value="DELIVERED">Delivered</option>
+                    <option value="completed">Completed/Finalized</option>
                   </select>
                 </div>
               </div>
@@ -1217,6 +1245,9 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {purchases
                     .filter((purchase) => {
+                      // Exclude cancelled orders from display entirely
+                      if (purchase.status === "cancelled") return false;
+
                       const matchesSearch =
                         purchase.title
                           ?.toLowerCase()
@@ -1226,7 +1257,14 @@ export default function ProfilePage() {
                           .includes(purchasesSearch.toLowerCase());
                       const matchesFilter =
                         purchasesFilter === "all" ||
-                        purchase.status === purchasesFilter;
+                        purchase.status === purchasesFilter ||
+                        (purchasesFilter === "completed" &&
+                          (purchase.status === "completed" ||
+                            purchase.status === "FINALIZED" ||
+                            purchase.status === "DELIVERED")) ||
+                        (purchasesFilter === "pending" &&
+                          (purchase.status === "pending" ||
+                            purchase.status === "PENDING"));
                       return matchesSearch && matchesFilter;
                     })
                     .map((purchase) => (
@@ -1247,20 +1285,38 @@ export default function ProfilePage() {
                               <ShoppingCart className="h-12 w-12 text-gray-400" />
                             </div>
                           )}
-                          {/* Status Badge */}
-                          <div className="absolute top-2 right-2">
-                            <span
-                              className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                purchase.status === "completed"
-                                  ? "bg-green-100 text-green-800"
-                                  : purchase.status === "pending"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-red-100 text-red-800"
-                              }`}
-                            >
-                              {purchase.status.toUpperCase()}
-                            </span>
-                          </div>
+                          {/* Status Badge - Only show for non-cancelled orders */}
+                          {purchase.status !== "cancelled" && (
+                            <div className="absolute top-2 right-2">
+                              <span
+                                className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                  purchase.status === "completed" ||
+                                  purchase.status === "FINALIZED"
+                                    ? "bg-green-100 text-green-800"
+                                    : purchase.status === "pending" ||
+                                      purchase.status === "PENDING"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : purchase.status === "PENDING_SCHEDULING"
+                                    ? "bg-orange-100 text-orange-800"
+                                    : purchase.status === "SCHEDULED"
+                                    ? "bg-purple-100 text-purple-800"
+                                    : purchase.status === "EN_ROUTE"
+                                    ? "bg-indigo-100 text-indigo-800"
+                                    : purchase.status === "DELIVERED"
+                                    ? "bg-green-100 text-green-800"
+                                    : purchase.status === "PAID"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : "bg-gray-100 text-gray-800"
+                                }`}
+                              >
+                                {purchase.status === "PENDING_SCHEDULING"
+                                  ? "PENDING SCHEDULING"
+                                  : purchase.status
+                                      .toUpperCase()
+                                      .replace("_", " ")}
+                              </span>
+                            </div>
+                          )}
                         </div>
 
                         {/* Purchase Info */}
@@ -1318,11 +1374,7 @@ export default function ProfilePage() {
                             </Button>
                             <Button
                               onClick={() => {
-                                // TODO: Implement purchase details view
-                                console.log(
-                                  "View purchase details:",
-                                  purchase.id
-                                );
+                                router.push(`/order/${purchase.id}/success`);
                               }}
                               variant="outline"
                               size="sm"
