@@ -29,7 +29,7 @@
 - Keep the existing styling and animations
 
 ### Early Access Box Cleanup
-- Put "15% off Service Fee on first transaction" together on one line
+- Put "Free Delivery for the First Month" together on one line
 - Change "First 200 early access signups get" to "First 200 Early Access Sign-up Get: Only 200 Spots Remaining"
 - Improve the messaging clarity and urgency
 

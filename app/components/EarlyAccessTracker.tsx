@@ -67,7 +67,7 @@ export default function EarlyAccessTracker({
       <div className="bg-gradient-to-r from-treasure-500/10 to-treasure-600/10 border border-treasure-500/20 rounded-lg p-4 mb-6">
         <div className="text-center">
           <span className="text-sm text-gray-600">
-            Early access discount available for first 200 signups
+            Free delivery available for first 200 signups
           </span>
         </div>
       </div>
@@ -91,7 +91,7 @@ export default function EarlyAccessTracker({
             🎉 First 200 Early Access Sign-up Get:
           </span>
           <span className="text-sm font-bold text-treasure-600">
-            15% off Service Fee on first transaction
+            Free Delivery for the First Month
           </span>
         </div>
 

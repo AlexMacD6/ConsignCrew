@@ -11,7 +11,7 @@ import {
 } from "./ui/navigation-menu";
 import { ChevronDown, Menu, X, ShoppingCart } from "lucide-react";
 import { useState } from "react";
-import { useModal } from "../contexts/ModalContext";
+
 import { useUserPermissions } from "../hooks/useUserPermissions";
 import { useEarlyAuth } from "../hooks/useEarlyAuth";
 import { useCart } from "../contexts/CartContext";
@@ -30,8 +30,9 @@ export default function NavBar() {
   const { cartItemCount } = useCart();
 
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [sellerDropdownOpen, setSellerDropdownOpen] = useState(false);
+  const [originDropdownOpen, setOriginDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { openSignupModal } = useModal();
 
   const handleSignOut = async () => {
     await authClient.signOut();
@@ -79,49 +80,69 @@ export default function NavBar() {
             Home
           </Link>
         ) : (
-          // Logged out: Show individual landing page links
-          <>
-            <button
-              onClick={() => handleNavigation("how-it-works")}
-              className="hover:text-[#D4AF3D] transition"
-            >
-              How It Works
-            </button>
-            <button
-              onClick={() => handleNavigation("pricing")}
-              className="hover:text-[#D4AF3D] transition"
-            >
-              Pricing
-            </button>
-            <button
-              onClick={() => handleNavigation("why-treasurehub")}
-              className="hover:text-[#D4AF3D] transition"
-            >
-              Why TreasureHub
-            </button>
-            <button
-              onClick={() => handleNavigation("roadmap")}
-              className="hover:text-[#D4AF3D] transition"
-            >
-              Roadmap
-            </button>
-          </>
+          // Logged out: Show streamlined navigation
+          <button
+            onClick={() => handleNavigation("how-it-works")}
+            className="hover:text-[#D4AF3D] transition"
+          >
+            How It Works
+          </button>
         )}
         <Link href="/faq" className="hover:text-[#D4AF3D] transition">
           FAQ
         </Link>
-        <Link href="/contact" className="hover:text-[#D4AF3D] transition">
-          Contact
-        </Link>
-        <Link href="/our-origin" className="hover:text-[#D4AF3D] transition">
-          Our Origin
-        </Link>
-        <Link
-          href="/seller-landing"
-          className="hover:text-[#D4AF3D] transition"
-        >
-          Become a Seller
-        </Link>
+        <Popover open={originDropdownOpen} onOpenChange={setOriginDropdownOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-2 font-medium text-base text-[#222] hover:text-[#D4AF3D] transition h-auto p-0 hover:bg-transparent"
+            >
+              Our Origin <ChevronDown className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-48 p-3">
+            <Link
+              href="/our-origin"
+              className="block w-full px-4 py-2 text-sm hover:bg-accent rounded-md"
+              onClick={() => setOriginDropdownOpen(false)}
+            >
+              Our Origin
+            </Link>
+            <Link
+              href="/contact"
+              className="block w-full px-4 py-2 text-sm hover:bg-accent rounded-md mt-1"
+              onClick={() => setOriginDropdownOpen(false)}
+            >
+              Contact
+            </Link>
+          </PopoverContent>
+        </Popover>
+        <Popover open={sellerDropdownOpen} onOpenChange={setSellerDropdownOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-2 font-medium text-base text-[#222] hover:text-[#D4AF3D] transition h-auto p-0 hover:bg-transparent"
+            >
+              Become a Seller <ChevronDown className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-48 p-3">
+            <Link
+              href="/seller-landing"
+              className="block w-full px-4 py-2 text-sm hover:bg-accent rounded-md"
+              onClick={() => setSellerDropdownOpen(false)}
+            >
+              Seller Information
+            </Link>
+            <Link
+              href="/appraisal"
+              className="block w-full px-4 py-2 text-sm hover:bg-accent rounded-md mt-1"
+              onClick={() => setSellerDropdownOpen(false)}
+            >
+              Quick Appraisal
+            </Link>
+          </PopoverContent>
+        </Popover>
         {session?.user && (
           <Link
             href="/treasure-hunt"
@@ -130,9 +151,6 @@ export default function NavBar() {
             Treasure Hunt
           </Link>
         )}
-        <Link href="/appraisal" className="hover:text-[#D4AF3D] transition">
-          Quick Appraisal
-        </Link>
       </div>
 
       {/* Mobile Menu Button and Session-aware buttons (right) */}
@@ -202,12 +220,12 @@ export default function NavBar() {
             <Link href="/listings" className="btn btn-secondary btn-md">
               Listings
             </Link>
-            <button
-              onClick={openSignupModal}
-              className="btn btn-primary btn-md"
-            >
-              Get Early Access
-            </button>
+            <Link href="/login" className="btn btn-secondary btn-md">
+              Sign In
+            </Link>
+            <Link href="/register" className="btn btn-primary btn-md">
+              Register
+            </Link>
           </div>
         )}
       </div>
@@ -228,48 +246,16 @@ export default function NavBar() {
                   Home
                 </Link>
               ) : (
-                // Logged out: Show individual landing page links
-                <>
-                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-                    Landing Page
-                  </h3>
-                  <button
-                    onClick={() => {
-                      handleNavigation("how-it-works");
-                      setMobileMenuOpen(false);
-                    }}
-                    className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
-                  >
-                    How It Works
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleNavigation("pricing");
-                      setMobileMenuOpen(false);
-                    }}
-                    className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
-                  >
-                    Pricing
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleNavigation("why-treasurehub");
-                      setMobileMenuOpen(false);
-                    }}
-                    className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
-                  >
-                    Why TreasureHub
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleNavigation("roadmap");
-                      setMobileMenuOpen(false);
-                    }}
-                    className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
-                  >
-                    Roadmap
-                  </button>
-                </>
+                // Logged out: Show streamlined navigation
+                <button
+                  onClick={() => {
+                    handleNavigation("how-it-works");
+                    setMobileMenuOpen(false);
+                  }}
+                  className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+                >
+                  How It Works
+                </button>
               )}
             </div>
 
@@ -284,13 +270,6 @@ export default function NavBar() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 FAQ
-              </Link>
-              <Link
-                href="/contact"
-                className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Contact
               </Link>
               <Link
                 href="/listings"
@@ -316,12 +295,19 @@ export default function NavBar() {
                   )}
                 </Link>
               )}
+            </div>
+
+            {/* Seller Section */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                Seller
+              </h3>
               <Link
-                href="/our-origin"
+                href="/seller-landing"
                 className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Our Origin
+                Seller Information
               </Link>
               <Link
                 href="/appraisal"
@@ -329,13 +315,6 @@ export default function NavBar() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Quick Appraisal
-              </Link>
-              <Link
-                href="/seller-landing"
-                className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Become a Seller
               </Link>
               {session?.user && (
                 <Link
@@ -347,6 +326,49 @@ export default function NavBar() {
                 </Link>
               )}
             </div>
+
+            {/* Our Origin Section */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                Our Origin
+              </h3>
+              <Link
+                href="/our-origin"
+                className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Our Origin
+              </Link>
+              <Link
+                href="/contact"
+                className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Contact
+              </Link>
+            </div>
+
+            {/* Authentication Section for Non-Authenticated Users */}
+            {!session?.user && (
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <div className="space-y-3">
+                  <Link
+                    href="/login"
+                    className="block w-full text-center py-3 text-[#222] font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    href="/register"
+                    className="block w-full text-center py-3 bg-[#D4AF3D] text-white font-semibold rounded-lg hover:bg-[#b8932f] transition"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Register
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

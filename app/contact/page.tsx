@@ -184,8 +184,8 @@ export default function ContactPage() {
                 🎉 Early Access Available
               </h3>
               <p className="text-gray-600 mb-4">
-                Be among the first 200 to sign up and get 15% off your first
-                transaction service fee.
+                Be among the first 200 to sign up and get free delivery for your
+                first month.
               </p>
               <button
                 onClick={openSignupModal}
