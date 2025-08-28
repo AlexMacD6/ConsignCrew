@@ -228,7 +228,7 @@ model Listing {
   photos                 Json
   department             String
   category               String
-  subCategory            String
+  subCategory            String?
   title                  String
   price                  Float
   description            String
