@@ -44,6 +44,7 @@
     "clsx": "^2.1.1",
     "exceljs": "^4.4.0",
     "ffmpeg-static": "^5.2.0",
+    "ffprobe-static": "^3.1.0",
     "framer-motion": "^12.23.9",
     "jspdf": "^3.0.1",
     "leaflet": "^1.9.4",

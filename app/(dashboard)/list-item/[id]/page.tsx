@@ -195,9 +195,9 @@ export default function ListingDetailPage() {
       thumbnailKey: videoRecord.thumbnailKey,
     });
 
-    // Try to use processed video first, then raw video
-    // Make sure we're not using frameKeys which contain JPG images
-    const videoKey = videoRecord.processedVideoKey || videoRecord.rawVideoKey;
+    // Use raw video directly - no processing needed for simple video display
+    // Only fallback to processed video if raw video doesn't exist
+    const videoKey = videoRecord.rawVideoKey || videoRecord.processedVideoKey;
 
     if (!videoKey) {
       console.log("No processedVideoKey or rawVideoKey, returning null");
@@ -895,155 +895,186 @@ export default function ListingDetailPage() {
               })()}
             </div>
 
-            {/* Price Information */}
+            {/* Combined Title, Category, and Price Section */}
             <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  {(() => {
-                    const displayPrice = getDisplayPrice(listing);
+              {/* Title and Category */}
+              <div className="mb-6">
+                <h1 className="text-3xl font-bold text-gray-900 mb-4">
+                  {listing.title}
+                </h1>
+                <div className="text-sm text-gray-600 mb-4">
+                  <span className="font-medium">Category:</span>{" "}
+                  {listing.department} → {listing.category}
+                  {listing.subCategory &&
+                    listing.subCategory !== "null" &&
+                    ` → ${listing.subCategory}`}
+                </div>
 
-                    if (displayPrice.isDiscounted) {
-                      return (
-                        <>
+                {/* Brand */}
+                {listing.brand && (
+                  <div className="mt-3">
+                    <span className="text-sm font-medium text-gray-700">
+                      Brand:
+                    </span>
+                    <span className="ml-2 text-sm text-[#D4AF3D] font-medium">
+                      {listing.brand}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Price Information */}
+              <div className="border-t border-gray-100 pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    {(() => {
+                      const displayPrice = getDisplayPrice(listing);
+
+                      if (displayPrice.isDiscounted) {
+                        return (
+                          <>
+                            <span className="text-4xl font-bold text-gray-900">
+                              ${displayPrice.price.toFixed(2)}
+                            </span>
+                            <span className="text-2xl font-bold text-gray-400 line-through">
+                              ${displayPrice.originalPrice?.toFixed(2)}
+                            </span>
+                          </>
+                        );
+                      } else {
+                        return (
                           <span className="text-4xl font-bold text-gray-900">
                             ${displayPrice.price.toFixed(2)}
                           </span>
-                          <span className="text-2xl font-bold text-gray-400 line-through">
-                            ${displayPrice.originalPrice?.toFixed(2)}
-                          </span>
-                        </>
-                      );
-                    } else {
-                      return (
-                        <span className="text-4xl font-bold text-gray-900">
-                          ${displayPrice.price.toFixed(2)}
-                        </span>
-                      );
-                    }
-                  })()}
-                </div>
-                <div className="flex gap-2">
-                  {hasRecentPriceDrop(listing) && (
-                    <div className="text-sm bg-red-600 text-white px-3 py-1 rounded font-medium">
-                      Price Drop
-                    </div>
-                  )}
-                  {listing.list_price <= listing.reserve_price && (
-                    <div className="text-sm bg-green-100 text-green-800 px-3 py-1 rounded font-medium">
-                      Reserve Met
-                    </div>
-                  )}
-                  {listing.qualityChecked && (
-                    <div className="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded font-medium flex items-center gap-1">
-                      <Shield className="h-3 w-3" />
-                      Quality Checked
-                    </div>
-                  )}
-                </div>
-              </div>
-              {listing.isTreasure ? (
-                <div className="mb-4">
-                  <TreasureBadge
-                    isTreasure={listing.isTreasure}
-                    treasureReason={listing.treasureReason}
-                    showReason={true}
-                  />
-                  {listing.priceReasoning && (
-                    <div className="mt-2 text-sm text-gray-600">
-                      <span className="font-medium">
-                        Based on recent collector sales:
-                      </span>{" "}
-                      {listing.priceReasoning}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                listing.estimated_retail_price &&
-                isNewCondition(getStandardizedCondition(listing)) && (
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="text-lg text-gray-500 line-through">
-                      ${listing.estimated_retail_price.toFixed(2)}
-                    </span>
-                    <div className="flex items-center gap-2 text-sm text-red-600">
-                      <TrendingDown className="h-4 w-4" />
-                      <span className="font-medium">
-                        {Math.round(
-                          ((listing.estimated_retail_price -
-                            listing.list_price) /
-                            listing.estimated_retail_price) *
-                            100
-                        )}
-                        % Off Retail
-                      </span>
-                    </div>
+                        );
+                      }
+                    })()}
                   </div>
-                )
-              )}
-              <div className="flex gap-3">
-                {isAuthenticated ? (
-                  <div className="flex gap-2 w-full">
-                    {listing?.status === "active" ? (
-                      <Button
-                        className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
-                        onClick={handleAddToCart}
-                        disabled={addingToCart}
-                      >
-                        {addingToCart ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            Adding to Cart...
-                          </>
-                        ) : (
-                          <>
-                            <ShoppingCart className="h-4 w-4 mr-2" />
-                            Add to Cart
-                          </>
-                        )}
-                      </Button>
-                    ) : (
-                      <Button
-                        className="flex-1 bg-gray-400 text-white cursor-not-allowed"
-                        disabled
-                      >
-                        {listing?.status === "sold" ? "Sold" : "Not Available"}
-                      </Button>
+                  <div className="flex gap-2">
+                    {hasRecentPriceDrop(listing) && (
+                      <div className="text-sm bg-red-600 text-white px-3 py-1 rounded font-medium">
+                        Price Drop
+                      </div>
                     )}
-                    {cartItemCount > 0 ? (
-                      <Button
-                        variant="outline"
-                        className="flex-1 border-[#D4AF3D] text-[#D4AF3D] hover:bg-[#D4AF3D] hover:text-white"
-                        onClick={() => router.push("/cart")}
-                      >
-                        <ShoppingCart className="h-4 w-4 mr-2" />
-                        View Cart ({cartItemCount})
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() => router.push("/contact")}
-                      >
-                        Ask a Question
-                      </Button>
+                    {listing.list_price <= listing.reserve_price && (
+                      <div className="text-sm bg-green-100 text-green-800 px-3 py-1 rounded font-medium">
+                        Reserve Met
+                      </div>
+                    )}
+                    {listing.qualityChecked && (
+                      <div className="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded font-medium flex items-center gap-1">
+                        <Shield className="h-3 w-3" />
+                        Quality Checked
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {listing.isTreasure ? (
+                  <div className="mb-4">
+                    <TreasureBadge
+                      isTreasure={listing.isTreasure}
+                      treasureReason={listing.treasureReason}
+                      showReason={true}
+                    />
+                    {listing.priceReasoning && (
+                      <div className="mt-2 text-sm text-gray-600">
+                        <span className="font-medium">
+                          Based on recent collector sales:
+                        </span>{" "}
+                        {listing.priceReasoning}
+                      </div>
                     )}
                   </div>
                 ) : (
-                  <div className="flex gap-2 w-full">
-                    <Button
-                      className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
-                      onClick={() => router.push("/login")}
-                    >
-                      Log In to Shop
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => setShowLoginRequiredModal(true)}
-                    >
-                      Ask a Question
-                    </Button>
-                  </div>
+                  listing.estimated_retail_price &&
+                  isNewCondition(getStandardizedCondition(listing)) && (
+                    <div className="flex items-center gap-3 mb-4">
+                      <span className="text-lg text-gray-500 line-through">
+                        ${listing.estimated_retail_price.toFixed(2)}
+                      </span>
+                      <div className="flex items-center gap-2 text-sm text-red-600">
+                        <TrendingDown className="h-4 w-4" />
+                        <span className="font-medium">
+                          {Math.round(
+                            ((listing.estimated_retail_price -
+                              listing.list_price) /
+                              listing.estimated_retail_price) *
+                              100
+                          )}
+                          % Off Retail
+                        </span>
+                      </div>
+                    </div>
+                  )
                 )}
+                <div className="flex gap-3">
+                  {isAuthenticated ? (
+                    <div className="flex gap-2 w-full">
+                      {listing?.status === "active" ? (
+                        <Button
+                          className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                          onClick={handleAddToCart}
+                          disabled={addingToCart}
+                        >
+                          {addingToCart ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Adding to Cart...
+                            </>
+                          ) : (
+                            <>
+                              <ShoppingCart className="h-4 w-4 mr-2" />
+                              Add to Cart
+                            </>
+                          )}
+                        </Button>
+                      ) : (
+                        <Button
+                          className="flex-1 bg-gray-400 text-white cursor-not-allowed"
+                          disabled
+                        >
+                          {listing?.status === "sold"
+                            ? "Sold"
+                            : "Not Available"}
+                        </Button>
+                      )}
+                      {cartItemCount > 0 ? (
+                        <Button
+                          variant="outline"
+                          className="flex-1 border-[#D4AF3D] text-[#D4AF3D] hover:bg-[#D4AF3D] hover:text-white"
+                          onClick={() => router.push("/cart")}
+                        >
+                          <ShoppingCart className="h-4 w-4 mr-2" />
+                          View Cart ({cartItemCount})
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => router.push("/contact")}
+                        >
+                          Ask a Question
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 w-full">
+                      <Button
+                        className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
+                        onClick={() => router.push("/login")}
+                      >
+                        Log In to Shop
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => setShowLoginRequiredModal(true)}
+                      >
+                        Ask a Question
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1586,17 +1617,88 @@ export default function ListingDetailPage() {
             </div>
           </div>
 
-          {/* Right Column - Seller Info and Additional Details */}
+          {/* Right Column - Video, QR Code, and Additional Details */}
           <div className="lg:col-span-1">
-            {/* Item Title and Category */}
+            {/* Video Section (if available) - Moved to top */}
+            {(() => {
+              // Debug video data
+              console.log(
+                "Video section - listing.videoUrl:",
+                listing.videoUrl
+              );
+              console.log("Video section - listing.video:", listing.video);
+
+              // Always use the raw video directly - no processing needed
+              let videoSrc = null;
+
+              // First try to generate URL from video record (prioritizes raw video)
+              if (listing.video) {
+                console.log("🎬 Using raw video from video record");
+                videoSrc = generateVideoUrl(listing.video);
+              }
+
+              // Fallback to listing.videoUrl only if no video record available
+              if (!videoSrc && listing.videoUrl) {
+                const isValidVideoUrl =
+                  !listing.videoUrl.includes("/frames/") &&
+                  !listing.videoUrl.endsWith(".jpg") &&
+                  !listing.videoUrl.endsWith(".jpeg") &&
+                  !listing.videoUrl.endsWith(".png");
+
+                if (isValidVideoUrl) {
+                  console.log(
+                    "📺 Falling back to listing.videoUrl:",
+                    listing.videoUrl
+                  );
+                  videoSrc = listing.videoUrl;
+                } else {
+                  console.warn(
+                    "❌ listing.videoUrl contains frame/image URL, ignoring:",
+                    listing.videoUrl
+                  );
+                }
+              }
+              console.log("Video section - final video src:", videoSrc);
+
+              if (!videoSrc) {
+                console.log("No valid video source found");
+                return null;
+              }
+
+              return (
+                <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Video
+                  </h3>
+                  <VideoPlayer
+                    src={videoSrc}
+                    poster={
+                      listing.video?.thumbnailUrl ||
+                      generateThumbnailUrl(listing.video)
+                    }
+                    duration={listing.video?.duration}
+                    title={`Video: ${listing.title}`}
+                    className=""
+                    controls={true}
+                    autoPlay={false}
+                  />
+                </div>
+              );
+            })()}
+
+            {/* QR Code - Moved after video */}
             <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">
-                {listing.title}
-              </h1>
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Category:</span>{" "}
-                {listing.department} → {listing.category} →{" "}
-                {listing.subCategory}
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                QR Code
+              </h3>
+              <div className="text-center">
+                <CustomQRCode
+                  itemId={listing.itemId}
+                  size={150}
+                  className="mx-auto"
+                  showPrintButton={true}
+                  userOrganizations={userOrganizations}
+                />
               </div>
             </div>
 
@@ -1682,91 +1784,6 @@ export default function ListingDetailPage() {
                 )}
               </div>
             </div>
-
-            {/* QR Code */}
-            <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                QR Code
-              </h3>
-              <div className="text-center">
-                <CustomQRCode
-                  itemId={listing.itemId}
-                  size={150}
-                  className="mx-auto"
-                  showPrintButton={true}
-                  userOrganizations={userOrganizations}
-                />
-              </div>
-            </div>
-
-            {/* Video Section (if available) */}
-            {(() => {
-              // Debug video data
-              console.log(
-                "Video section - listing.videoUrl:",
-                listing.videoUrl
-              );
-              console.log("Video section - listing.video:", listing.video);
-
-              // Validate listing.videoUrl and prioritize it if it's a valid video file
-              let videoSrc = null;
-
-              // Check if listing.videoUrl is a valid video URL (not a frame/thumbnail)
-              if (listing.videoUrl) {
-                const isValidVideoUrl =
-                  !listing.videoUrl.includes("/frames/") &&
-                  !listing.videoUrl.endsWith(".jpg") &&
-                  !listing.videoUrl.endsWith(".jpeg") &&
-                  !listing.videoUrl.endsWith(".png");
-
-                if (isValidVideoUrl) {
-                  console.log(
-                    "✅ Using valid listing.videoUrl:",
-                    listing.videoUrl
-                  );
-                  videoSrc = listing.videoUrl;
-                } else {
-                  console.warn(
-                    "❌ listing.videoUrl contains frame/image URL, ignoring:",
-                    listing.videoUrl
-                  );
-                }
-              }
-
-              // Fallback to generating from video record if no valid direct URL
-              if (!videoSrc) {
-                console.log(
-                  "🔄 Falling back to generateVideoUrl from video record"
-                );
-                videoSrc = generateVideoUrl(listing.video);
-              }
-              console.log("Video section - final video src:", videoSrc);
-
-              if (!videoSrc) {
-                console.log("No valid video source found");
-                return null;
-              }
-
-              return (
-                <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                    Video
-                  </h3>
-                  <VideoPlayer
-                    src={videoSrc}
-                    poster={
-                      listing.video?.thumbnailUrl ||
-                      generateThumbnailUrl(listing.video)
-                    }
-                    duration={listing.video?.duration}
-                    title={`Video: ${listing.title}`}
-                    className="w-full h-64 rounded-lg"
-                    controls={true}
-                    autoPlay={false}
-                  />
-                </div>
-              );
-            })()}
 
             {/* History */}
             <ListingHistory

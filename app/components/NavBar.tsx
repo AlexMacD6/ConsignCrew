@@ -65,9 +65,13 @@ export default function NavBar() {
       <div className="flex items-center gap-3">
         <Link href="/">
           <img
-            src="/TreasureHub Banner Logo.png"
+            src="/TreasureHub - Banner - White.png"
             alt="TreasureHub logo"
             className="h-12 sm:h-16 w-auto object-contain drop-shadow-md cursor-pointer"
+            onError={(e) => {
+              console.log("NavBar logo failed to load, trying fallback");
+              e.currentTarget.src = "/TreasureHub - Logo.png";
+            }}
           />
         </Link>
       </div>
