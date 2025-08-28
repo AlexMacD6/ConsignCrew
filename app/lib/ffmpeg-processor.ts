@@ -5,19 +5,27 @@ import { join, dirname } from 'path';
 import { promisify } from 'util';
 import { pipeline } from 'stream';
 import ffmpegStatic from 'ffmpeg-static';
+import ffprobeStatic from 'ffprobe-static';
 
 // Alternative import for compatibility
 const ffmpegPath = ffmpegStatic || require('ffmpeg-static');
+const ffprobePathRaw = ffprobeStatic || require('ffprobe-static');
+
+// Extract the actual path from ffprobe-static (it returns an object with path property)
+const ffprobePath = typeof ffprobePathRaw === 'string' ? ffprobePathRaw : ffprobePathRaw?.path;
 
 /**
  * Check if FFmpeg is available on the system
  */
 export async function isFFmpegAvailable(): Promise<boolean> {
-  console.log('FFmpeg static path:', ffmpegPath);
-  console.log('FFmpeg static (direct):', ffmpegStatic);
+  console.log('🎬 FFmpeg Availability Check:');
+  console.log('  - FFmpeg static path:', ffmpegPath);
+  console.log('  - FFmpeg static (direct):', ffmpegStatic);
+  console.log('  - Node environment:', process.env.NODE_ENV);
+  console.log('  - Platform:', process.platform);
   
   if (!ffmpegPath) {
-    console.error('ffmpeg-static package did not provide a path');
+    console.error('❌ ffmpeg-static package did not provide a path');
     return false;
   }
   
@@ -44,16 +52,20 @@ export async function isFFmpegAvailable(): Promise<boolean> {
  * Check if FFprobe is available on the system
  */
 export async function isFFprobeAvailable(): Promise<boolean> {
-  console.log('FFprobe using ffmpeg static path:', ffmpegPath);
+  console.log('🔍 FFprobe Availability Check:');
+  console.log('  - FFprobe raw import:', ffprobePathRaw);
+  console.log('  - FFprobe extracted path:', ffprobePath);
+  console.log('  - FFprobe static (direct):', ffprobeStatic);
+  console.log('  - Node environment:', process.env.NODE_ENV);
+  console.log('  - Platform:', process.platform);
   
-  if (!ffmpegPath) {
-    console.error('ffmpeg-static package did not provide a path for ffprobe');
+  if (!ffprobePath) {
+    console.error('❌ ffprobe-static package did not provide a path');
     return false;
   }
   
   return new Promise((resolve) => {
-    // Use the same ffmpeg executable for ffprobe operations
-    const ffprobeProcess = spawn(ffmpegPath, ['-version']);
+    const ffprobeProcess = spawn(ffprobePath, ['-version']);
     
     ffprobeProcess.on('error', () => {
       resolve(false);
@@ -113,8 +125,8 @@ interface VideoMetadata {
  */
 export async function getVideoMetadata(inputPath: string): Promise<VideoMetadata> {
   return new Promise((resolve, reject) => {
-    // Use ffmpeg with -f ffprobe to get metadata (same as ffprobe)
-    const ffmpegProcess = spawn(ffmpegPath, [
+    // Use ffprobe to get metadata
+    const ffprobeProcess = spawn(ffprobePath, [
       '-v', 'quiet',
       '-print_format', 'json',
       '-show_format',
@@ -125,15 +137,15 @@ export async function getVideoMetadata(inputPath: string): Promise<VideoMetadata
     let output = '';
     let error = '';
 
-    ffmpegProcess.stdout.on('data', (data) => {
+    ffprobeProcess.stdout.on('data', (data) => {
       output += data.toString();
     });
 
-    ffmpegProcess.stderr.on('data', (data) => {
+    ffprobeProcess.stderr.on('data', (data) => {
       error += data.toString();
     });
 
-    ffmpegProcess.on('close', (code) => {
+    ffprobeProcess.on('close', (code) => {
       if (code !== 0) {
         reject(new Error(`FFmpeg metadata extraction failed: ${error}`));
         return;

@@ -318,23 +318,108 @@ export default function ListItemPage() {
       console.log("Data structure:", JSON.stringify(data, null, 2));
       console.log("Frame URLs received:", data.frameUrls);
       console.log("Frame count:", data.frameUrls?.length || 0);
+
       // Generate video URL from videoId using CloudFront domain
       const cdnDomain =
         process.env.NEXT_PUBLIC_CDN_URL ||
         "https://dtlqyjbwka60p.cloudfront.net";
       const videoUrl = `${cdnDomain}/processed/videos/${data.videoId}.mp4`;
 
-      setVideoData((prev) => ({
-        ...prev,
-        videoId: data.videoId,
-        videoUrl: videoUrl,
-        thumbnailUrl: data.thumbnailUrl,
-        frameUrls: data.frameUrls,
-        duration: data.duration,
-        processing: false,
-        error: null,
-        uploaded: true,
-      }));
+      // Check if the processed video actually exists before setting it
+      console.log("🔍 Checking if processed video exists at:", videoUrl);
+
+      try {
+        const response = await fetch(videoUrl, { method: "HEAD" });
+        if (response.ok) {
+          console.log("✅ Processed video exists and is accessible");
+          setVideoData((prev) => ({
+            ...prev,
+            videoId: data.videoId,
+            videoUrl: videoUrl,
+            thumbnailUrl: data.thumbnailUrl,
+            frameUrls: data.frameUrls,
+            duration: data.duration,
+            processing: false,
+            error: null,
+            uploaded: true,
+          }));
+        } else {
+          console.warn(
+            "❌ Processed video not found, checking video status..."
+          );
+
+          // Check video processing status
+          const statusResponse = await fetch(
+            `/api/upload/video/status/${data.videoId}`
+          );
+          if (statusResponse.ok) {
+            const statusData = await statusResponse.json();
+            console.log("📊 Video processing status:", statusData);
+
+            if (statusData.status === "failed") {
+              console.error("💥 Video processing failed:", statusData.error);
+              setVideoData((prev) => ({
+                ...prev,
+                videoId: data.videoId,
+                videoUrl: null, // Don't set a broken URL
+                thumbnailUrl: data.thumbnailUrl,
+                frameUrls: data.frameUrls,
+                duration: data.duration,
+                processing: false,
+                error: `Video processing failed: ${
+                  statusData.error || "Unknown error"
+                }`,
+                uploaded: true,
+              }));
+            } else if (
+              statusData.status === "processing" ||
+              statusData.status === "pending"
+            ) {
+              console.log("⏳ Video still processing, will retry...");
+              setVideoData((prev) => ({
+                ...prev,
+                videoId: data.videoId,
+                videoUrl: null,
+                thumbnailUrl: data.thumbnailUrl,
+                frameUrls: data.frameUrls,
+                duration: data.duration,
+                processing: true, // Keep processing state
+                error: null,
+                uploaded: true,
+              }));
+            } else {
+              // Status says completed but video not accessible
+              console.error(
+                "🤔 Status says completed but video not accessible"
+              );
+              setVideoData((prev) => ({
+                ...prev,
+                videoId: data.videoId,
+                videoUrl: null,
+                thumbnailUrl: data.thumbnailUrl,
+                frameUrls: data.frameUrls,
+                duration: data.duration,
+                processing: false,
+                error: "Video processed but not accessible",
+                uploaded: true,
+              }));
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error checking video availability:", error);
+        setVideoData((prev) => ({
+          ...prev,
+          videoId: data.videoId,
+          videoUrl: null, // Don't set a broken URL
+          thumbnailUrl: data.thumbnailUrl,
+          frameUrls: data.frameUrls,
+          duration: data.duration,
+          processing: false,
+          error: "Could not verify video availability",
+          uploaded: true,
+        }));
+      }
 
       // Show a brief success message
       setTimeout(() => {

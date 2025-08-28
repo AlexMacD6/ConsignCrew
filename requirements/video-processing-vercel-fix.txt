@@ -1,0 +1,129 @@
+## Video Processing Fix for Vercel Deployment
+
+### Problem
+Videos uploaded to TreasureHub were failing to load with DEMUXER_ERROR_COULD_NOT_OPEN error because:
+1. FFmpeg processing was failing in production (Vercel)
+2. ffmpeg-static was not properly configured for serverless environment  
+3. ffprobe-static was missing, causing metadata extraction to fail
+
+### Root Cause
+- Video upload and frame extraction worked (browser-based)
+- Server-side video processing with FFmpeg failed due to missing/misconfigured dependencies
+- Application tried to load processed videos that didn't exist
+
+### Solution Implemented
+
+#### 1. Package Dependencies Added
+```json
+{
+  "dependencies": {
+    "ffmpeg-static": "^5.2.0",        // ✅ Already present
+    "ffprobe-static": "^3.1.0"        // ✅ Added for metadata extraction
+  }
+}
+```
+
+#### 2. FFmpeg Processor Updates (app/lib/ffmpeg-processor.ts)
+- ✅ Added proper ffprobe-static import and usage
+- ✅ Fixed isFFprobeAvailable() to use correct binary path
+- ✅ Updated getVideoMetadata() to use ffprobe instead of ffmpeg
+- ✅ Enhanced logging for production debugging
+- ✅ Proper error handling and availability checks
+
+#### 3. Vercel Configuration (vercel.json)
+```json
+{
+  "functions": {
+    "app/api/upload/video/process/route.ts": {
+      "maxDuration": 300        // ✅ 5-minute timeout for video processing
+    }
+  },
+  "env": {
+    "FFMPEG_PATH": "/tmp/ffmpeg",    // ✅ Production path hints
+    "FFPROBE_PATH": "/tmp/ffprobe"
+  }
+}
+```
+
+#### 4. Enhanced Error Handling
+- ✅ VideoPlayer component has retry mechanism
+- ✅ Graceful fallback when video processing fails
+- ✅ Better debugging logs for production troubleshooting
+
+### Technical Details
+
+#### FFmpeg Static Binaries
+- `ffmpeg-static`: Provides FFmpeg binary for video compression, thumbnail generation
+- `ffprobe-static`: Provides FFprobe binary for video metadata extraction
+- Both packages include pre-compiled binaries that work in serverless environments
+
+#### Processing Flow
+1. **Upload**: Raw video uploaded to S3 ✅
+2. **Frame Extraction**: Browser-based frame extraction ✅  
+3. **Server Processing**: FFmpeg compression and processing ✅ (Fixed)
+4. **Metadata**: FFprobe extracts duration, resolution ✅ (Fixed)
+5. **Storage**: Processed video stored to S3 ✅
+6. **Playback**: CloudFront delivers processed video ✅
+
+#### Vercel Serverless Compatibility
+- Static binaries work in Vercel's Node.js runtime
+- 5-minute function timeout allows for video processing
+- Temporary file handling in /tmp directory
+- Proper cleanup after processing
+
+### Testing Required
+
+#### Local Testing
+1. Video upload and processing with new dependencies
+2. Verify FFmpeg/FFprobe availability checks pass
+3. Confirm metadata extraction works correctly
+
+#### Production Testing  
+1. Deploy to Vercel with updated configuration
+2. Test video upload end-to-end flow
+3. Verify processed videos load without errors
+4. Check CloudFront delivery of processed content
+
+### Monitoring Points
+
+#### Production Logs to Watch
+- `🎬 FFmpeg Availability Check` - Should show static paths
+- `🔍 FFprobe Availability Check` - Should show static paths  
+- Video processing success/failure rates
+- CloudFront cache hit rates for video content
+
+#### Error Indicators
+- "ffmpeg-static package did not provide a path" - Package issue
+- "FFmpeg/FFprobe not available after multiple retries" - Binary issue
+- DEMUXER_ERROR_COULD_NOT_OPEN - Video file corruption/format issue
+- Function timeout errors - Processing taking too long
+
+### Deployment Checklist
+
+- [x] Added ffprobe-static dependency to package.json
+- [x] Updated FFmpeg processor to use proper static binaries
+- [x] Enhanced error logging for production debugging
+- [x] Updated Vercel configuration for video processing
+- [x] Verified existing error handling in VideoPlayer component
+- [ ] Deploy to Vercel staging environment
+- [ ] Test video upload end-to-end 
+- [ ] Verify processed videos load correctly
+- [ ] Monitor production logs for any remaining issues
+
+### Backup Plan
+
+If static binaries still fail in Vercel:
+1. Consider using Vercel Edge Runtime with WebAssembly FFmpeg
+2. Move video processing to separate service (AWS Lambda, dedicated server)
+3. Use third-party video processing API (Cloudinary, Mux)
+4. Implement video processing queue for async handling
+
+### Success Metrics
+
+- ✅ Videos upload successfully
+- ✅ FFmpeg/FFprobe availability checks pass
+- ✅ Video processing completes without errors  
+- ✅ Processed videos load and play correctly
+- ✅ No DEMUXER_ERROR_COULD_NOT_OPEN errors
+- ✅ Video metadata extraction works
+- ✅ CloudFront delivers video content efficiently

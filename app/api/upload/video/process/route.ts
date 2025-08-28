@@ -66,10 +66,18 @@ export async function POST(request: NextRequest) {
     }
 
     if (video.status === 'completed') {
-      return NextResponse.json(
-        { error: 'Video has already been processed' },
-        { status: 400 }
-      );
+      console.log('🔍 Video marked as completed, checking if processed file exists...');
+      console.log('Processed video key:', video.processedVideoKey);
+      
+      // If no processed video key, allow reprocessing
+      if (!video.processedVideoKey) {
+        console.log('⚠️ Video marked completed but no processedVideoKey found, allowing reprocessing');
+      } else {
+        return NextResponse.json(
+          { error: 'Video has already been processed' },
+          { status: 400 }
+        );
+      }
     }
 
     // Update status to processing

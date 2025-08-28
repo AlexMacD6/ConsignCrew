@@ -1,5 +1,14 @@
 {
   "buildCommand": "prisma generate && next build",
   "installCommand": "npm install",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "functions": {
+    "app/api/upload/video/process/route.ts": {
+      "maxDuration": 300
+    }
+  },
+  "env": {
+    "FFMPEG_PATH": "/tmp/ffmpeg",
+    "FFPROBE_PATH": "/tmp/ffprobe"
+  }
 } 
