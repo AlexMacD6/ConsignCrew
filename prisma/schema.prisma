@@ -37,6 +37,8 @@ model user {
   sellerOrders     Order[]         @relation("SellerOrders")
   sessions         session[]
   cart             Cart?
+  savedListings    SavedListing[]
+  hiddenListings   HiddenListing[]
 
   @@index([email])
   @@index([zipCode])
@@ -288,6 +290,8 @@ model Listing {
   inventoryLists         InventoryList[]  @relation("InventoryListToListing")
   videos                 Video[]          @relation("ListingToVideo")
   cartItems              CartItem[]
+  savedByUsers           SavedListing[]   @relation("SavedListing")
+  hiddenByUsers          HiddenListing[]  @relation("HiddenListing")
 
   @@index([userId])
   @@index([status])
@@ -727,4 +731,32 @@ enum OrderStatus {
   PENDING_SCHEDULING
   SCHEDULED
   EN_ROUTE
+}
+
+model SavedListing {
+  id        String   @id @default(cuid())
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   Listing  @relation("SavedListing", fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId])
+  @@index([userId])
+  @@index([listingId])
+  @@map("saved_listings")
+}
+
+model HiddenListing {
+  id        String   @id @default(cuid())
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   Listing  @relation("HiddenListing", fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId])
+  @@index([userId])
+  @@index([listingId])
+  @@map("hidden_listings")
 }

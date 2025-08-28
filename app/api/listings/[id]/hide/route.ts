@@ -37,48 +37,38 @@ export async function POST(
       );
     }
 
-    // Check if already saved
-    const existingSave = await prisma.savedListing.findFirst({
+    // Check if already hidden
+    const existingHide = await prisma.hiddenListing.findFirst({
       where: {
         userId: session.user.id,
         listingId: listing.id
       }
     });
 
-    if (existingSave) {
+    if (existingHide) {
       return NextResponse.json(
-        { error: "Listing already saved" },
+        { error: "Listing already hidden" },
         { status: 400 }
       );
     }
 
-    // Save the listing
-    await prisma.savedListing.create({
+    // Hide the listing
+    await prisma.hiddenListing.create({
       data: {
         userId: session.user.id,
         listingId: listing.id
       }
     });
 
-    // Update the saves count on the listing
-    await prisma.listing.update({
-      where: { id: listing.id },
-      data: {
-        saves: {
-          increment: 1
-        }
-      }
-    });
-
     return NextResponse.json({
       success: true,
-      message: "Listing saved successfully"
+      message: "Listing hidden successfully"
     });
 
   } catch (error) {
-    console.error("Error saving listing:", error);
+    console.error("Error hiding listing:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to save listing" },
+      { error: error instanceof Error ? error.message : "Failed to hide listing" },
       { status: 500 }
     );
   }
@@ -119,47 +109,37 @@ export async function DELETE(
       );
     }
 
-    // Check if saved
-    const existingSave = await prisma.savedListing.findFirst({
+    // Check if hidden
+    const existingHide = await prisma.hiddenListing.findFirst({
       where: {
         userId: session.user.id,
         listingId: listing.id
       }
     });
 
-    if (!existingSave) {
+    if (!existingHide) {
       return NextResponse.json(
-        { error: "Listing not saved" },
+        { error: "Listing not hidden" },
         { status: 400 }
       );
     }
 
-    // Remove the save
-    await prisma.savedListing.delete({
+    // Remove the hide
+    await prisma.hiddenListing.delete({
       where: {
-        id: existingSave.id
-      }
-    });
-
-    // Update the saves count on the listing
-    await prisma.listing.update({
-      where: { id: listing.id },
-      data: {
-        saves: {
-          decrement: 1
-        }
+        id: existingHide.id
       }
     });
 
     return NextResponse.json({
       success: true,
-      message: "Listing unsaved successfully"
+      message: "Listing unhidden successfully"
     });
 
   } catch (error) {
-    console.error("Error unsaving listing:", error);
+    console.error("Error unhiding listing:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to unsave listing" },
+      { error: error instanceof Error ? error.message : "Failed to unhide listing" },
       { status: 500 }
     );
   }

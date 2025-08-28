@@ -119,6 +119,33 @@ export default function ListingsPage() {
 
   // Authentication state
   const { data: session } = authClient.useSession();
+
+  // Load saved and hidden listings for authenticated users
+  const loadUserPreferences = async () => {
+    if (!session?.user?.id) return;
+
+    try {
+      // Load saved listings
+      const savedResponse = await fetch("/api/user/saved-listings");
+      if (savedResponse.ok) {
+        const savedData = await savedResponse.json();
+        if (savedData.success) {
+          setSavedListings(new Set(savedData.savedListings));
+        }
+      }
+
+      // Load hidden listings
+      const hiddenResponse = await fetch("/api/user/hidden-listings");
+      if (hiddenResponse.ok) {
+        const hiddenData = await hiddenResponse.json();
+        if (hiddenData.success) {
+          setHiddenListings(new Set(hiddenData.hiddenListings));
+        }
+      }
+    } catch (error) {
+      console.error("Error loading user preferences:", error);
+    }
+  };
   const isAuthenticated = !!session?.user;
   const currentUserId = session?.user?.id || null;
   const { addToCart, isLoading: cartLoading, cartItemCount } = useCart();
@@ -156,6 +183,17 @@ export default function ListingsPage() {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Load user preferences when session becomes available
+  useEffect(() => {
+    if (session?.user?.id) {
+      loadUserPreferences();
+    } else {
+      // Clear preferences when user logs out
+      setSavedListings(new Set());
+      setHiddenListings(new Set());
+    }
+  }, [session?.user?.id]);
 
   // Fetch listings from API
   useEffect(() => {
@@ -443,15 +481,59 @@ export default function ListingsPage() {
   //   filteredCount: filteredListings.length,
   // });
 
-  const toggleSaved = (id: string) => {
-    setSavedListings((prev) => {
-      const newSet = new Set(prev);
-      const isCurrentlySaved = newSet.has(id);
+  const toggleSaved = async (id: string) => {
+    // Check if user is authenticated
+    if (!isAuthenticated) {
+      console.error("User must be signed in to save listings");
+      // You could show a modal here prompting user to sign in
+      setAuthError(true);
+      return;
+    }
 
+    const isCurrentlySaved = savedListings.has(id);
+
+    try {
       if (isCurrentlySaved) {
-        newSet.delete(id);
+        // Unsave the listing
+        const response = await fetch(`/api/listings/${id}/save`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          const errorData = await response.text();
+          console.error("Unsave API error:", response.status, errorData);
+          throw new Error("Failed to unsave listing");
+        }
+
+        setSavedListings((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(id);
+          return newSet;
+        });
       } else {
-        newSet.add(id);
+        // Save the listing
+        const response = await fetch(`/api/listings/${id}/save`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          const errorData = await response.text();
+          console.error("Save API error:", response.status, errorData);
+          throw new Error("Failed to save listing");
+        }
+
+        setSavedListings((prev) => {
+          const newSet = new Set(prev);
+          newSet.add(id);
+          return newSet;
+        });
 
         // Track AddToWishlist event when item is saved
         const listing = listings.find((l) => l.itemId === id);
@@ -475,21 +557,69 @@ export default function ListingsPage() {
           });
         }
       }
-
-      return newSet;
-    });
+    } catch (error) {
+      console.error("Error toggling saved status:", error);
+      // Optionally show a toast/notification to the user
+    }
   };
 
-  const toggleHidden = (id: string) => {
-    setHiddenListings((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
+  const toggleHidden = async (id: string) => {
+    // Check if user is authenticated
+    if (!isAuthenticated) {
+      console.error("User must be signed in to hide listings");
+      // You could show a modal here prompting user to sign in
+      setAuthError(true);
+      return;
+    }
+
+    const isCurrentlyHidden = hiddenListings.has(id);
+
+    try {
+      if (isCurrentlyHidden) {
+        // Unhide the listing
+        const response = await fetch(`/api/listings/${id}/hide`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          const errorData = await response.text();
+          console.error("Unhide API error:", response.status, errorData);
+          throw new Error("Failed to unhide listing");
+        }
+
+        setHiddenListings((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(id);
+          return newSet;
+        });
       } else {
-        newSet.add(id);
+        // Hide the listing
+        const response = await fetch(`/api/listings/${id}/hide`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          const errorData = await response.text();
+          console.error("Hide API error:", response.status, errorData);
+          throw new Error("Failed to hide listing");
+        }
+
+        setHiddenListings((prev) => {
+          const newSet = new Set(prev);
+          newSet.add(id);
+          return newSet;
+        });
       }
-      return newSet;
-    });
+    } catch (error) {
+      console.error("Error toggling hidden status:", error);
+      // Optionally show a toast/notification to the user
+    }
   };
 
   const openModal = (listing: any) => {
@@ -874,16 +1004,18 @@ export default function ListingsPage() {
           <p className="text-gray-600">
             Showing {filteredListings.length} of {listings.length} listings
           </p>
-          <div className="flex items-center gap-4 text-sm text-gray-600">
-            <span className="flex items-center gap-1">
-              <Bookmark className="h-4 w-4 text-[#D4AF3D]" />
-              {savedListings.size} saved
-            </span>
-            <span className="flex items-center gap-1">
-              <EyeOff className="h-4 w-4 text-gray-500" />
-              {hiddenListings.size} hidden
-            </span>
-          </div>
+          {isAuthenticated && (
+            <div className="flex items-center gap-4 text-sm text-gray-600">
+              <span className="flex items-center gap-1">
+                <Bookmark className="h-4 w-4 text-[#D4AF3D]" />
+                {savedListings.size} saved
+              </span>
+              <span className="flex items-center gap-1">
+                <EyeOff className="h-4 w-4 text-gray-500" />
+                {hiddenListings.size} hidden
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -988,11 +1120,6 @@ export default function ListingsPage() {
                         )
                       );
                     })()}
-
-                    {/* QR Code Badge */}
-                    <div className="absolute bottom-2 right-2 bg-white/90 p-1 rounded">
-                      <QrCode className="h-4 w-4 text-gray-600" />
-                    </div>
 
                     {/* Hidden Badge */}
                     {isHidden && (
@@ -1111,34 +1238,24 @@ export default function ListingsPage() {
                       </div>
                     )}
 
-                    {/* Condition & Location */}
-                    <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
-                      <span
-                        className={`px-2 py-1 rounded ${getConditionColor(
-                          getStandardizedCondition(listing)
-                        )}`}
-                      >
-                        {getStandardizedCondition(listing)}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {listing.location}
-                      </div>
-                    </div>
-
-                    {/* Brand & Dimensions */}
-                    {(listing.brand || listing.dimensions) && (
+                    {/* Brand, Dimensions, Condition & Item ID */}
+                    {(listing.brand ||
+                      listing.dimensions ||
+                      listing.itemId ||
+                      getStandardizedCondition(listing)) && (
                       <div className="text-xs text-gray-400 mb-3">
-                        {listing.brand && (
-                          <div className="flex items-center gap-1">
-                            <Tag className="h-3 w-3" />
-                            Brand: {listing.brand}
+                        {listing.brand && <div>Brand: {listing.brand}</div>}
+                        {listing.dimensions && <div>{listing.dimensions}</div>}
+                        {getStandardizedCondition(listing) && (
+                          <div>
+                            Condition: {getStandardizedCondition(listing)}
                           </div>
                         )}
-                        {listing.dimensions && (
-                          <div className="flex items-center gap-1">
-                            <Package className="h-3 w-3" />
-                            {listing.dimensions}
+                        {listing.itemId && (
+                          <div className="font-mono">
+                            ID:{" "}
+                            {listing.itemId?.slice(-8)?.toUpperCase() ||
+                              listing.itemId}
                           </div>
                         )}
                       </div>
@@ -1154,39 +1271,46 @@ export default function ListingsPage() {
                         View Details
                       </Button>
 
-                      {/* Save Button */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => toggleSaved(listing.itemId)}
-                        className={`px-3 transition-colors ${
-                          isSaved
-                            ? "bg-[#D4AF3D] text-white border-[#D4AF3D]"
-                            : "hover:bg-[#D4AF3D] hover:text-white hover:border-[#D4AF3D]"
-                        }`}
-                      >
-                        <Bookmark
-                          className={`h-4 w-4 ${isSaved ? "fill-current" : ""}`}
-                        />
-                      </Button>
+                      {/* Save & Hide Buttons - Only for authenticated users */}
+                      {isAuthenticated && (
+                        <>
+                          {/* Save Button */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => toggleSaved(listing.itemId)}
+                            className={`px-3 transition-colors ${
+                              isSaved
+                                ? "bg-[#D4AF3D] text-white border-[#D4AF3D]"
+                                : "hover:bg-[#D4AF3D] hover:text-white hover:border-[#D4AF3D]"
+                            }`}
+                          >
+                            <Bookmark
+                              className={`h-4 w-4 ${
+                                isSaved ? "fill-current" : ""
+                              }`}
+                            />
+                          </Button>
 
-                      {/* Hide Button */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => toggleHidden(listing.itemId)}
-                        className={`px-3 transition-colors ${
-                          isHidden
-                            ? "bg-gray-600 text-white border-gray-600"
-                            : "hover:bg-gray-600 hover:text-white hover:border-gray-600"
-                        }`}
-                      >
-                        <EyeOff
-                          className={`h-4 w-4 ${
-                            isHidden ? "fill-current" : ""
-                          }`}
-                        />
-                      </Button>
+                          {/* Hide Button */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => toggleHidden(listing.itemId)}
+                            className={`px-3 transition-colors ${
+                              isHidden
+                                ? "bg-gray-600 text-white border-gray-600"
+                                : "hover:bg-gray-600 hover:text-white hover:border-gray-600"
+                            }`}
+                          >
+                            <EyeOff
+                              className={`h-4 w-4 ${
+                                isHidden ? "fill-current" : ""
+                              }`}
+                            />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1438,37 +1562,44 @@ export default function ListingsPage() {
                 View Options
               </h4>
               <div className="space-y-2">
-                <Button
-                  variant={showSaved ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setShowSaved(!showSaved)}
-                  className={`w-full flex items-center justify-start gap-2 transition-colors ${
-                    showSaved
-                      ? "bg-[#D4AF3D] text-white border-[#D4AF3D] hover:bg-[#b8932f]"
-                      : "hover:bg-[#D4AF3D] hover:text-white hover:border-[#D4AF3D]"
-                  }`}
-                >
-                  <Bookmark
-                    className={`h-4 w-4 ${showSaved ? "fill-current" : ""}`}
-                  />
-                  {showSaved ? "Show All" : "Saved Only"}
-                </Button>
+                {/* Saved/Hidden filter buttons - Only for authenticated users */}
+                {isAuthenticated && (
+                  <>
+                    <Button
+                      variant={showSaved ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setShowSaved(!showSaved)}
+                      className={`w-full flex items-center justify-start gap-2 transition-colors ${
+                        showSaved
+                          ? "bg-[#D4AF3D] text-white border-[#D4AF3D] hover:bg-[#b8932f]"
+                          : "hover:bg-[#D4AF3D] hover:text-white hover:border-[#D4AF3D]"
+                      }`}
+                    >
+                      <Bookmark
+                        className={`h-4 w-4 ${showSaved ? "fill-current" : ""}`}
+                      />
+                      {showSaved ? "Show All" : "Saved Only"}
+                    </Button>
 
-                <Button
-                  variant={showHidden ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setShowHidden(!showHidden)}
-                  className={`w-full flex items-center justify-start gap-2 transition-colors ${
-                    showHidden
-                      ? "bg-gray-600 text-white border-gray-600 hover:bg-gray-700"
-                      : "hover:bg-gray-600 hover:text-white hover:border-gray-600"
-                  }`}
-                >
-                  <EyeOff
-                    className={`h-4 w-4 ${showHidden ? "fill-current" : ""}`}
-                  />
-                  {showHidden ? "Hide Hidden" : "Show Hidden"}
-                </Button>
+                    <Button
+                      variant={showHidden ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setShowHidden(!showHidden)}
+                      className={`w-full flex items-center justify-start gap-2 transition-colors ${
+                        showHidden
+                          ? "bg-gray-600 text-white border-gray-600 hover:bg-gray-700"
+                          : "hover:bg-gray-600 hover:text-white hover:border-gray-600"
+                      }`}
+                    >
+                      <EyeOff
+                        className={`h-4 w-4 ${
+                          showHidden ? "fill-current" : ""
+                        }`}
+                      />
+                      {showHidden ? "Hide Hidden" : "Show Hidden"}
+                    </Button>
+                  </>
+                )}
 
                 <Button
                   variant={showTreasures ? "default" : "outline"}

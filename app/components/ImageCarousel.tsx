@@ -4,11 +4,9 @@ import { ChevronLeft, ChevronRight, X, Maximize2, Play } from "lucide-react";
 import RobustImage from "./RobustImage";
 
 interface MediaItem {
-  type: "image" | "video";
+  type: "image";
   src: string;
   alt?: string;
-  poster?: string;
-  duration?: number;
 }
 
 interface ImageWithMetadata {
@@ -19,11 +17,6 @@ interface ImageWithMetadata {
 
 interface ImageCarouselProps {
   images: (string | ImageWithMetadata)[];
-  video?: {
-    src: string;
-    poster?: string;
-    duration?: number;
-  };
   alt: string;
   className?: string;
   showArrows?: boolean;
@@ -35,7 +28,6 @@ interface ImageCarouselProps {
 
 export default function ImageCarousel({
   images,
-  video,
   alt,
   className = "",
   showArrows = true,
@@ -50,53 +42,31 @@ export default function ImageCarousel({
   // Ensure images is an array and filter out empty items
   const validImages = Array.isArray(images) ? images : [];
 
-  // Create media items array: images first, then video if available
-  const mediaItems: (MediaItem & { label?: string | null })[] = [
-    ...validImages
-      .filter((item) => {
-        const src = typeof item === "string" ? item : item.src;
-        return src && src.trim() !== "";
-      }) // Filter out empty/undefined image sources
-      .map((item, index) => {
-        const src = typeof item === "string" ? item : item.src;
-        const label = typeof item === "string" ? null : item.label;
-        return {
-          type: "image" as const,
-          src,
-          alt: `${alt} - Image ${index + 1}`,
-
-          label,
-        };
-      }),
-    ...(video && video.src && video.src.trim() !== ""
-      ? [
-          {
-            type: "video" as const,
-            src: video.src,
-            poster: video.poster,
-            duration: video.duration,
-            alt: `${alt} - Video`,
-            label: null,
-          },
-        ]
-      : []),
-  ];
+  // Create media items array: images only
+  const mediaItems: (MediaItem & { label?: string | null })[] = validImages
+    .filter((item) => {
+      const src = typeof item === "string" ? item : item.src;
+      return src && src.trim() !== "";
+    }) // Filter out empty/undefined image sources
+    .map((item, index) => {
+      const src = typeof item === "string" ? item : item.src;
+      const label = typeof item === "string" ? null : item.label;
+      return {
+        type: "image" as const,
+        src,
+        alt: `${alt} - Image ${index + 1}`,
+        label,
+      };
+    });
 
   const totalItems = mediaItems.length;
 
-  // Auto-play functionality (only for images, not videos)
+  // Auto-play functionality
   React.useEffect(() => {
     if (!autoPlay || totalItems <= 1) return;
 
     const interval = setInterval(() => {
-      setCurrentIndex((prevIndex) => {
-        const nextIndex = (prevIndex + 1) % totalItems;
-        // Skip auto-play for video items
-        if (mediaItems[nextIndex]?.type === "video") {
-          return (nextIndex + 1) % totalItems;
-        }
-        return nextIndex;
-      });
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % totalItems);
     }, autoPlayInterval);
 
     return () => clearInterval(interval);
@@ -179,29 +149,6 @@ export default function ImageCarousel({
   }
 
   const renderMediaItem = (item: MediaItem & { label?: string | null }) => {
-    if (item.type === "video") {
-      return (
-        <div className="relative w-full h-full">
-          <video
-            src={item.src}
-            poster={item.poster}
-            controls
-            className="w-full h-full object-cover rounded-lg relative z-20"
-            preload="metadata"
-            style={{ pointerEvents: "auto" }}
-          >
-            Your browser does not support the video tag.
-          </video>
-          {item.duration && (
-            <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
-              {Math.floor(item.duration / 60)}:
-              {(item.duration % 60).toString().padStart(2, "0")}
-            </div>
-          )}
-        </div>
-      );
-    }
-
     // Use RobustImage for better error handling
     return (
       <div className="relative w-full h-full">
@@ -327,8 +274,8 @@ export default function ImageCarousel({
           </div>
         )}
 
-        {/* Keyboard Navigation - only for non-video items */}
-        {currentItem.type !== "video" && (
+        {/* Keyboard Navigation */}
+        {
           <div
             tabIndex={0}
             onKeyDown={(e) => {
@@ -342,7 +289,7 @@ export default function ImageCarousel({
             }}
             className="outline-none"
           />
-        )}
+        }
       </div>
 
       {/* Modal (only for images) */}

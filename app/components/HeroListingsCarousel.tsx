@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, DollarSign, MapPin } from "lucide-react";
 import Link from "next/link";
 import { getDisplayPrice } from "../lib/price-calculator";
@@ -38,19 +38,27 @@ export default function HeroListingsCarousel({
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Fetch actual listings
   useEffect(() => {
     const fetchListings = async () => {
+      let timeoutId: NodeJS.Timeout | null = null;
+
       try {
         setLoading(true);
         setError(null);
 
         console.log("Fetching listings from /api/listings...");
 
-        // Add timeout and better error handling
+        // Create and store abort controller
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        abortControllerRef.current = controller;
+
+        // Add timeout
+        timeoutId = setTimeout(() => {
+          controller.abort();
+        }, 30000); // 30 second timeout
 
         const response = await fetch("/api/listings?status=active&limit=20", {
           signal: controller.signal,
@@ -59,7 +67,11 @@ export default function HeroListingsCarousel({
           },
         });
 
-        clearTimeout(timeoutId);
+        // Clear timeout on successful response
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
         console.log("Response status:", response.status);
 
         if (!response.ok) {
@@ -155,7 +167,11 @@ export default function HeroListingsCarousel({
         // More specific error handling
         if (err instanceof Error) {
           if (err.name === "AbortError") {
-            setError("Request timed out. Please try again.");
+            console.log(
+              "Request was aborted (likely due to cleanup or timeout)"
+            );
+            // Don't set error state for AbortError during cleanup
+            return;
           } else if (err.message.includes("Failed to fetch")) {
             setError(
               "Network error. Please check your connection and try again."
@@ -167,6 +183,10 @@ export default function HeroListingsCarousel({
           setError("An unexpected error occurred while loading listings.");
         }
       } finally {
+        // Clean up resources
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
         setLoading(false);
       }
     };
@@ -175,6 +195,14 @@ export default function HeroListingsCarousel({
     if (typeof window !== "undefined") {
       fetchListings();
     }
+
+    // Cleanup function
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
   }, [maxListings]);
 
   // Auto-play functionality

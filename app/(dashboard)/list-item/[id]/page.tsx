@@ -26,6 +26,7 @@ import ImageCarousel from "../../../components/ImageCarousel";
 import ListingHistory from "../../../components/ListingHistory";
 import CustomQRCode from "../../../components/CustomQRCode";
 import TreasureBadge from "../../../components/TreasureBadge";
+import VideoPlayer from "../../../components/VideoPlayer";
 import { getDisplayPrice } from "../../../lib/price-calculator";
 import {
   getStandardizedCondition,
@@ -186,7 +187,16 @@ export default function ListingDetailPage() {
       return null;
     }
 
+    // Debug log all available keys
+    console.log("Available video keys:", {
+      processedVideoKey: videoRecord.processedVideoKey,
+      rawVideoKey: videoRecord.rawVideoKey,
+      frameKeys: videoRecord.frameKeys,
+      thumbnailKey: videoRecord.thumbnailKey,
+    });
+
     // Try to use processed video first, then raw video
+    // Make sure we're not using frameKeys which contain JPG images
     const videoKey = videoRecord.processedVideoKey || videoRecord.rawVideoKey;
 
     if (!videoKey) {
@@ -194,10 +204,41 @@ export default function ListingDetailPage() {
       return null;
     }
 
+    console.log("Checking video key:", videoKey);
+
+    // Validate that this is not a frame key (should not contain '/frames/' or end with .jpg)
+    if (
+      videoKey.includes("/frames/") ||
+      videoKey.endsWith(".jpg") ||
+      videoKey.endsWith(".jpeg") ||
+      videoKey.endsWith(".png")
+    ) {
+      console.warn(
+        "❌ Video key appears to be a frame/image URL, not a video:",
+        videoKey
+      );
+      console.warn("This indicates the video processing stored incorrect data");
+      return null;
+    }
+
+    // Additional validation - ensure it looks like a video file
+    const validVideoExtensions = [".mp4", ".mov", ".webm", ".avi", ".mkv"];
+    const hasValidExtension = validVideoExtensions.some((ext) =>
+      videoKey.toLowerCase().includes(ext)
+    );
+
+    if (!hasValidExtension) {
+      console.warn(
+        "⚠️ Video key doesn't contain a recognized video file extension:",
+        videoKey
+      );
+      console.warn("Expected extensions:", validVideoExtensions);
+      // Don't return null here, as the file might still be a video without extension
+    }
+
     // Use CloudFront domain if available, otherwise fallback to S3
     const cfDomain = process.env.NEXT_PUBLIC_CDN_URL;
     console.log("CloudFront domain:", cfDomain);
-    console.log("CloudFront domain type:", typeof cfDomain);
     console.log("Using video key:", videoKey);
 
     if (cfDomain) {
@@ -205,7 +246,7 @@ export default function ListingDetailPage() {
         .replace("https://", "")
         .replace("http://", "");
       const url = `https://${cleanDomain}/${videoKey}`;
-      console.log("Generated CloudFront URL:", url);
+      console.log("✅ Generated CloudFront URL:", url);
       return url;
     }
 
@@ -213,7 +254,7 @@ export default function ListingDetailPage() {
     const bucketName = "consigncrew"; // From env.example
     const region = "us-east-1"; // From env.example
     const url = `https://${bucketName}.s3.${region}.amazonaws.com/${videoKey}`;
-    console.log("Generated S3 URL:", url);
+    console.log("✅ Generated S3 URL:", url);
     return url;
   };
 
@@ -830,22 +871,10 @@ export default function ListingDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Images and Basic Info */}
           <div className="lg:col-span-2">
-            {/* Main Image Carousel */}
+            {/* Image Carousel */}
             <div className="mb-6 relative">
               <ImageCarousel
                 images={allImages}
-                video={
-                  listing.videoUrl || generateVideoUrl(listing.video)
-                    ? {
-                        src:
-                          listing.videoUrl || generateVideoUrl(listing.video),
-                        poster:
-                          listing.video?.thumbnailUrl ||
-                          generateThumbnailUrl(listing.video),
-                        duration: listing.video?.duration,
-                      }
-                    : undefined
-                }
                 alt={listing.title}
                 className="w-full h-96 rounded-lg"
                 showArrows={true}
@@ -1559,6 +1588,18 @@ export default function ListingDetailPage() {
 
           {/* Right Column - Seller Info and Additional Details */}
           <div className="lg:col-span-1">
+            {/* Item Title and Category */}
+            <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
+              <h1 className="text-2xl font-bold text-gray-900 mb-4">
+                {listing.title}
+              </h1>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Category:</span>{" "}
+                {listing.department} → {listing.category} →{" "}
+                {listing.subCategory}
+              </div>
+            </div>
+
             {/* Seller Information */}
             <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -1657,6 +1698,75 @@ export default function ListingDetailPage() {
                 />
               </div>
             </div>
+
+            {/* Video Section (if available) */}
+            {(() => {
+              // Debug video data
+              console.log(
+                "Video section - listing.videoUrl:",
+                listing.videoUrl
+              );
+              console.log("Video section - listing.video:", listing.video);
+
+              // Validate listing.videoUrl and prioritize it if it's a valid video file
+              let videoSrc = null;
+
+              // Check if listing.videoUrl is a valid video URL (not a frame/thumbnail)
+              if (listing.videoUrl) {
+                const isValidVideoUrl =
+                  !listing.videoUrl.includes("/frames/") &&
+                  !listing.videoUrl.endsWith(".jpg") &&
+                  !listing.videoUrl.endsWith(".jpeg") &&
+                  !listing.videoUrl.endsWith(".png");
+
+                if (isValidVideoUrl) {
+                  console.log(
+                    "✅ Using valid listing.videoUrl:",
+                    listing.videoUrl
+                  );
+                  videoSrc = listing.videoUrl;
+                } else {
+                  console.warn(
+                    "❌ listing.videoUrl contains frame/image URL, ignoring:",
+                    listing.videoUrl
+                  );
+                }
+              }
+
+              // Fallback to generating from video record if no valid direct URL
+              if (!videoSrc) {
+                console.log(
+                  "🔄 Falling back to generateVideoUrl from video record"
+                );
+                videoSrc = generateVideoUrl(listing.video);
+              }
+              console.log("Video section - final video src:", videoSrc);
+
+              if (!videoSrc) {
+                console.log("No valid video source found");
+                return null;
+              }
+
+              return (
+                <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Video
+                  </h3>
+                  <VideoPlayer
+                    src={videoSrc}
+                    poster={
+                      listing.video?.thumbnailUrl ||
+                      generateThumbnailUrl(listing.video)
+                    }
+                    duration={listing.video?.duration}
+                    title={`Video: ${listing.title}`}
+                    className="w-full h-64 rounded-lg"
+                    controls={true}
+                    autoPlay={false}
+                  />
+                </div>
+              );
+            })()}
 
             {/* History */}
             <ListingHistory

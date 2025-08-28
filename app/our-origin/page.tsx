@@ -235,12 +235,12 @@ export default function OurOriginPage() {
               <p className="text-gray-700">
                 Early access sign-ups earn a family and friends rate of{" "}
                 <span className="font-bold text-treasure-600">
-                  15% off the service fee
+                  free delivery for the first month
                 </span>{" "}
-                on their first transaction. They will have direct access to the
-                team building the application for any feedback or suggestions.
-                We'll tweak things until the process feels as friction-free as
-                hailing a rideshare.
+                for all transactions. They will have direct access to the team
+                building the application for any feedback or suggestions. We'll
+                tweak things until the process feels as friction-free as hailing
+                a rideshare.
               </p>
             </div>
           </motion.div>
