@@ -1,0 +1,44 @@
+## Sub-Category Field Made Optional - Implementation Summary
+
+### Problem
+Some Facebook Marketplace categories do not have sub-categories, making the sub-category field mandatory was preventing users from posting listings in those categories.
+
+### Solution
+Made the sub-category field optional throughout the application.
+
+### Changes Made
+
+#### 1. Database Schema (prisma/schema.prisma)
+- Changed `subCategory String` to `subCategory String?` in the Listing model
+- Applied changes using `npx prisma db push`
+
+#### 2. Frontend Validation (app/(dashboard)/list-item/page.tsx)
+- Commented out sub-category requirement in `validateForm()` function
+- Updated `isFormValid` calculation to not require sub-category
+- Added explanatory comments about the change
+
+#### 3. UI Components (app/components/CategorySelector.tsx)
+- Updated label from "Sub-category *" to "Sub-category (optional)"
+- Removed `required` attribute from the select element
+- Updated placeholder text from "Select Sub-category" to "Select Sub-category (optional)"
+
+#### 4. API Validation (app/api/listings/route.ts)
+- No changes needed - API validation already doesn't require sub-category
+
+### Benefits
+- Users can now post listings for categories without sub-categories
+- Better user experience - no confusing required fields for inapplicable categories
+- Maintains data integrity - sub-category is still captured when available
+- Backward compatible - existing listings with sub-categories remain unchanged
+
+### Testing
+- Verified database schema update successful
+- Confirmed no TypeScript/linting errors
+- Form validation now allows empty sub-category
+- UI clearly indicates field is optional
+
+### Related Files
+- prisma/schema.prisma
+- app/(dashboard)/list-item/page.tsx  
+- app/components/CategorySelector.tsx
+- app/api/listings/route.ts (no changes needed)

@@ -1431,7 +1431,7 @@ export default function ListItemPage() {
     (photos.proof?.file || photos.proof?.url) &&
     department &&
     category &&
-    subCategory &&
+    // subCategory is now optional since some categories don't have sub-categories
     title &&
     condition &&
     price &&
@@ -1455,9 +1455,10 @@ export default function ListItemPage() {
     if (!category) {
       errors.push("Category is required");
     }
-    if (!subCategory) {
-      errors.push("Sub-category is required");
-    }
+    // Sub-category is now optional since some categories don't have sub-categories
+    // if (!subCategory) {
+    //   errors.push("Sub-category is required");
+    // }
     if (!title) {
       errors.push("Title is required");
     }
