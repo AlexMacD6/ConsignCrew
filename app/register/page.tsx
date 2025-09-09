@@ -81,33 +81,16 @@ export default function RegisterPage() {
 
     if (result.success) {
       setSuccess(true);
-      // Automatically sign in the user and redirect to profile
-      try {
-        console.log("Registration successful, attempting automatic login...");
+      console.log("Registration successful! Email verification required.");
 
-        // Use Better Auth's signIn.email method to automatically log in the user
-        const signInResult = await authClient.signIn.email({
-          email,
-          password,
-        });
-
-        if (signInResult.data && !signInResult.error) {
-          console.log("Automatic login successful, redirecting to profile...");
-          router.push("/profile");
-        } else {
-          console.log("Automatic login failed, redirecting to login page...");
-          setError(
-            "Registration succeeded, but automatic login failed. Please log in manually."
-          );
-          setTimeout(() => router.push("/login"), 2000);
-        }
-      } catch (err) {
-        console.error("Error during automatic login:", err);
-        setError(
-          "Registration succeeded, but automatic login failed. Please log in manually."
+      // Since email verification is required, redirect to login page with success message
+      // Don't attempt automatic login as it will fail for unverified users
+      setTimeout(() => {
+        router.push(
+          "/login?message=registration-success&email=" +
+            encodeURIComponent(email)
         );
-        setTimeout(() => router.push("/login"), 2000);
-      }
+      }, 2000);
     } else {
       setError(result.error || "Registration failed. Please try again.");
     }
@@ -302,7 +285,8 @@ export default function RegisterPage() {
             {/* Success Display */}
             {success && (
               <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-600 text-sm">
-                Registration successful! Logging you in...
+                ✅ Registration successful! Please check your email to verify
+                your account, then sign in.
               </div>
             )}
 

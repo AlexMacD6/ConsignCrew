@@ -134,8 +134,8 @@ export async function registerUser(data: RegistrationData) {
         
         const { sendEmail } = await import('../../lib/ses-server');
         
-        // Generate verification URL using Better Auth's correct format
-        const baseUrl = process.env.BETTER_AUTH_URL || 'http://localhost:3000';
+        // Generate verification URL using public domain for cross-device access
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL || 'https://treasurehub.club';
         
         // Instead of manually creating the verification URL, let's trigger Better Auth's 
         // built-in email verification which will generate the proper token
@@ -168,6 +168,7 @@ export async function registerUser(data: RegistrationData) {
           });
           
           const verificationUrl = `${baseUrl}/api/auth/verify?token=${verificationToken}`;
+          console.log('🌐 Verification URL for cross-device access:', verificationUrl);
         
         const subject = 'Verify your TreasureHub account';
         const html = `
