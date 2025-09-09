@@ -1340,13 +1340,20 @@ export default function CheckoutPage() {
           })()}
 
           {(() => {
-            // Check if this is a pickup order
+            // Check if this is a pickup order - multiple ways to detect
             const storedBreakdown = (order as any).shippingAddress
               ?.priceBreakdown;
-            const isPickupOrder = storedBreakdown?.deliveryMethod === "pickup";
+            const isPickupOrder =
+              storedBreakdown?.deliveryMethod === "pickup" ||
+              (order as any)?.deliveryMethod === "pickup" ||
+              (order as any)?.shippingAddress?.deliveryMethod === "pickup";
+
+            console.log("🔍 DEBUG: Pickup Detection (Address Form)");
+            console.log("🔍 Is Pickup Order:", isPickupOrder);
 
             // For pickup orders, don't show address form
             if (isPickupOrder) {
+              console.log("🔍 Hiding address form for pickup order");
               return null;
             }
 
@@ -1488,9 +1495,19 @@ export default function CheckoutPage() {
             <div className="text-blue-800">
               <p className="font-medium mb-1">Secure Checkout Process</p>
               <p className="text-sm">
-                After confirming your shipping address, you'll be redirected to
-                our secure payment processor (Stripe) to complete your purchase
-                safely.
+                {(() => {
+                  // Check if this is a pickup order
+                  const storedBreakdown = (order as any).shippingAddress
+                    ?.priceBreakdown;
+                  const isPickupOrder =
+                    storedBreakdown?.deliveryMethod === "pickup";
+
+                  if (isPickupOrder) {
+                    return "You'll be redirected to our secure payment processor (Stripe) to complete your purchase safely. Pickup details will be provided after payment.";
+                  } else {
+                    return "After confirming your shipping address, you'll be redirected to our secure payment processor (Stripe) to complete your purchase safely.";
+                  }
+                })()}
               </p>
             </div>
           </div>
@@ -1515,47 +1532,76 @@ export default function CheckoutPage() {
           <Button
             onClick={handleContinueToPayment}
             className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white"
-            disabled={
-              redirecting ||
-              validatingZip ||
-              !user?.zipCode ||
-              !user?.addressLine1 ||
-              zipCodeValid === false ||
-              !addressConfirmed
-            }
+            disabled={(() => {
+              // Check if this is a pickup order - multiple ways to detect
+              const storedBreakdown = (order as any).shippingAddress
+                ?.priceBreakdown;
+              const isPickupOrder =
+                storedBreakdown?.deliveryMethod === "pickup" ||
+                (order as any)?.deliveryMethod === "pickup" ||
+                (order as any)?.shippingAddress?.deliveryMethod === "pickup";
+
+              console.log("🔍 DEBUG: Pickup Detection (Button Disabled)");
+              console.log("🔍 Order:", order);
+              console.log("🔍 Stored Breakdown:", storedBreakdown);
+              console.log(
+                "🔍 Delivery Method (breakdown):",
+                storedBreakdown?.deliveryMethod
+              );
+              console.log(
+                "🔍 Delivery Method (order):",
+                (order as any)?.deliveryMethod
+              );
+              console.log(
+                "🔍 Delivery Method (shipping):",
+                (order as any)?.shippingAddress?.deliveryMethod
+              );
+              console.log("🔍 Is Pickup Order:", isPickupOrder);
+
+              if (isPickupOrder) {
+                // For pickup orders, only check for redirecting state
+                console.log(
+                  "🔍 Pickup order detected - button should be enabled"
+                );
+                return redirecting;
+              } else {
+                // For delivery orders, check all address requirements
+                console.log(
+                  "🔍 Delivery order detected - checking address requirements"
+                );
+                return (
+                  redirecting ||
+                  validatingZip ||
+                  !user?.zipCode ||
+                  !user?.addressLine1 ||
+                  zipCodeValid === false ||
+                  !addressConfirmed
+                );
+              }
+            })()}
           >
-            {redirecting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                Redirecting to Payment...
-              </>
-            ) : validatingZip ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                Validating Address...
-              </>
-            ) : !user?.zipCode || !user?.addressLine1 ? (
-              <>
-                <MapPin className="w-4 h-4 mr-2" />
-                Add Shipping Address
-              </>
-            ) : zipCodeValid === false ? (
-              <>
-                <AlertCircle className="w-4 h-4 mr-2" />
-                Address Not in Service Area
-              </>
-            ) : zipCodeValid === null ? (
-              <>
-                <MapPin className="w-4 h-4 mr-2" />
-                Confirm Address & Continue
-              </>
-            ) : !addressConfirmed ? (
-              <>
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Confirm Address First
-              </>
-            ) : (
-              (() => {
+            {(() => {
+              // Check if this is a pickup order - multiple ways to detect
+              const storedBreakdown = (order as any).shippingAddress
+                ?.priceBreakdown;
+              const isPickupOrder =
+                storedBreakdown?.deliveryMethod === "pickup" ||
+                (order as any)?.deliveryMethod === "pickup" ||
+                (order as any)?.shippingAddress?.deliveryMethod === "pickup";
+
+              console.log("🔍 DEBUG: Pickup Detection (Button Text)");
+
+              if (redirecting) {
+                return (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Redirecting to Payment...
+                  </>
+                );
+              }
+
+              if (isPickupOrder) {
+                // For pickup orders, check if session is expired
                 const now = new Date();
                 const orderExpiry = new Date(
                   order?.checkoutExpiresAt || new Date()
@@ -1576,8 +1622,67 @@ export default function CheckoutPage() {
                     Continue to Payment
                   </>
                 );
-              })()
-            )}
+              } else {
+                // For delivery orders, check all address requirements
+                if (validatingZip) {
+                  return (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Validating Address...
+                    </>
+                  );
+                } else if (!user?.zipCode || !user?.addressLine1) {
+                  return (
+                    <>
+                      <MapPin className="w-4 h-4 mr-2" />
+                      Add Shipping Address
+                    </>
+                  );
+                } else if (zipCodeValid === false) {
+                  return (
+                    <>
+                      <AlertCircle className="w-4 h-4 mr-2" />
+                      Address Not in Service Area
+                    </>
+                  );
+                } else if (zipCodeValid === null) {
+                  return (
+                    <>
+                      <MapPin className="w-4 h-4 mr-2" />
+                      Confirm Address & Continue
+                    </>
+                  );
+                } else if (!addressConfirmed) {
+                  return (
+                    <>
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Confirm Address First
+                    </>
+                  );
+                } else {
+                  const now = new Date();
+                  const orderExpiry = new Date(
+                    order?.checkoutExpiresAt || new Date()
+                  );
+                  const isExpired = now > orderExpiry;
+
+                  if (isExpired) {
+                    return (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Refresh Session & Continue
+                      </>
+                    );
+                  }
+                  return (
+                    <>
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Continue to Payment
+                    </>
+                  );
+                }
+              }
+            })()}
           </Button>
         </div>
 

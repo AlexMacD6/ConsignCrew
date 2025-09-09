@@ -1,0 +1,51 @@
+Pickup Checkout Address Removal Requirements
+
+## Problem
+When customers choose the pick-up option during checkout, they are still required to confirm their delivery address, which is unnecessary since they will be picking up the item rather than having it delivered to their house.
+
+## Solution
+Remove the delivery address confirmation step from the checkout screen when customers select the pick-up option.
+
+## Implementation Details
+
+### 1. Address Form Hiding (Already Implemented)
+- The address form is already hidden for pickup orders in the checkout page
+- Logic: `if (isPickupOrder) { return null; }`
+
+### 2. Security Notice Update
+- **File**: `app/checkout/[orderId]/page.tsx`
+- **Change**: Update security notice text to be conditional based on delivery method
+- **Pickup Text**: "You'll be redirected to our secure payment processor (Stripe) to complete your purchase safely. Pickup details will be provided after payment."
+- **Delivery Text**: "After confirming your shipping address, you'll be redirected to our secure payment processor (Stripe) to complete your purchase safely."
+
+### 3. Payment Button Logic Update
+- **File**: `app/checkout/[orderId]/page.tsx`
+- **Change**: Update payment button disabled condition to not require address confirmation for pickup orders
+- **Pickup Requirements**: Only check for `redirecting` state
+- **Delivery Requirements**: Check all address requirements (zipCode, addressLine1, zipCodeValid, addressConfirmed)
+
+### 4. Payment Button Text Update
+- **File**: `app/checkout/[orderId]/page.tsx`
+- **Change**: Update button text logic to skip address-related states for pickup orders
+- **Pickup Flow**: redirecting → session expired check → "Continue to Payment"
+- **Delivery Flow**: redirecting → validating address → add address → address not in service area → confirm address → confirm address first → session expired check → "Continue to Payment"
+
+## Expected Behavior
+
+### For Pickup Orders:
+1. ✅ Address form is hidden (already working)
+2. ✅ Security notice mentions pickup details instead of shipping address
+3. ✅ Payment button is enabled immediately (no address confirmation required)
+4. ✅ Button text shows "Continue to Payment" without address-related states
+
+### For Delivery Orders:
+1. ✅ Address form is shown (existing behavior)
+2. ✅ Security notice mentions shipping address confirmation
+3. ✅ Payment button requires address confirmation before enabling
+4. ✅ Button text shows appropriate address-related states
+
+## Testing
+- Test pickup order flow: should skip address confirmation entirely
+- Test delivery order flow: should require address confirmation as before
+- Verify security notice text changes appropriately
+- Verify payment button behavior for both delivery methods
