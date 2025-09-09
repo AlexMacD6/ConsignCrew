@@ -40,6 +40,16 @@ export default function HeroListingsCarousel({
   const [error, setError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // Fisher-Yates shuffle algorithm to randomize array
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
   // Fetch actual listings
   useEffect(() => {
     const fetchListings = async () => {
@@ -111,7 +121,7 @@ export default function HeroListingsCarousel({
           }
 
           // Filter listings that have hero photos and are truly active (not sold or processing)
-          const validListings = data.listings
+          const filteredListings: Listing[] = data.listings
             .filter((listing: any) => {
               const hasHeroPhoto = listing.photos?.hero;
               const isActiveStatus =
@@ -144,7 +154,6 @@ export default function HeroListingsCarousel({
                 hasHeroPhoto && isActiveStatus && isNotSold && isNotProcessing
               );
             })
-            .slice(0, maxListings)
             .map((listing: any) => ({
               itemId: listing.itemId,
               title: listing.title,
@@ -163,7 +172,20 @@ export default function HeroListingsCarousel({
               facebookCondition: listing.facebookCondition,
             }));
 
-          console.log("Valid listings with hero photos:", validListings.length);
+          // Randomize the listings and take only the number we need
+          const randomizedListings = shuffleArray(filteredListings).slice(
+            0,
+            maxListings
+          );
+
+          console.log(
+            "Valid listings with hero photos:",
+            filteredListings.length
+          );
+          console.log(
+            "Randomized listings selected:",
+            randomizedListings.length
+          );
 
           // Check if request was aborted before setting state
           if (abortControllerRef.current?.signal.aborted) {
@@ -171,9 +193,9 @@ export default function HeroListingsCarousel({
             return;
           }
 
-          setListings(validListings);
+          setListings(randomizedListings);
 
-          if (validListings.length === 0) {
+          if (randomizedListings.length === 0) {
             setError("No listings with photos available yet");
           }
         } else {
