@@ -20,15 +20,26 @@ export async function GET(request: NextRequest) {
     
     console.log('🔍 Looking up verification token in database...');
     // Find the verification token in the database
-    const verificationToken = await prisma.verificationToken.findUnique({
-      where: { token }
-    });
+    let verificationToken;
+    try {
+      verificationToken = await prisma.verificationToken.findUnique({
+        where: { token }
+      });
+    } catch (dbError) {
+      console.error('❌ Database error during token lookup:', dbError);
+      throw new Error(`Database error during token lookup: ${dbError.message}`);
+    }
     
     console.log('🔍 Database lookup result:', verificationToken ? 'Found' : 'Not found');
     
     if (!verificationToken) {
+      console.log('❌ Token not found in database');
       return NextResponse.json({ error: 'Invalid or expired verification token' }, { status: 400 });
     }
+    
+    console.log('🔍 Token found, checking expiration...');
+    console.log('🔍 Token expires:', verificationToken.expires);
+    console.log('🔍 Current time:', new Date());
     
     // Check if token has expired
     if (verificationToken.expires < new Date()) {
@@ -39,13 +50,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Verification token has expired' }, { status: 400 });
     }
     
+    console.log('🔍 Token is valid, looking up user...');
+    console.log('🔍 Looking for user with email:', verificationToken.identifier);
+    
     // Find the user by email (identifier)
     const user = await prisma.user.findUnique({
       where: { email: verificationToken.identifier }
     });
     
+    console.log('🔍 User lookup result:', user ? `Found user: ${user.email}` : 'User not found');
+    
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      console.log('❌ User not found for email:', verificationToken.identifier);
+      // Clean up the orphaned verification token
+      await prisma.verificationToken.delete({
+        where: { token }
+      });
+      return NextResponse.json({ 
+        error: 'User account not found. The verification link may be invalid or the account may have been removed.',
+        email: verificationToken.identifier
+      }, { status: 404 });
     }
     
     // Check if user is already verified
@@ -55,7 +79,17 @@ export async function GET(request: NextRequest) {
         where: { token }
       });
       
-      // Redirect to login with already verified message
+      // For debugging, return JSON instead of redirect
+      if (process.env.NODE_ENV === 'development') {
+        return NextResponse.json({ 
+          success: true, 
+          message: 'Email already verified',
+          user: user.email,
+          redirectTo: '/login?verified=already'
+        });
+      }
+      
+      // Redirect to login with already verified message (production only)
       const baseUrl = new URL(request.url).origin;
       const redirectUrl = new URL('/login?verified=already', baseUrl);
       console.log('🔄 Redirecting (already verified) to:', redirectUrl.toString());
@@ -66,7 +100,7 @@ export async function GET(request: NextRequest) {
     await prisma.user.update({
       where: { id: user.id },
       data: { 
-        emailVerified: new Date() 
+        emailVerified: true 
       }
     });
     
@@ -75,9 +109,19 @@ export async function GET(request: NextRequest) {
       where: { token }
     });
     
-    console.log('Email verification successful for user:', user.email);
+    console.log('✅ Email verification successful for user:', user.email);
     
-    // Redirect to login with success message
+    // For debugging, return JSON instead of redirect
+    if (process.env.NODE_ENV === 'development') {
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Email verified successfully',
+        user: user.email,
+        redirectTo: '/login?verified=success'
+      });
+    }
+    
+    // Redirect to login with success message (production only)
     const baseUrl = new URL(request.url).origin;
     const redirectUrl = new URL('/login?verified=success', baseUrl);
     console.log('🔄 Redirecting to:', redirectUrl.toString());
