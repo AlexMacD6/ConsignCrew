@@ -13,6 +13,8 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
+    // Add redirect configuration for email verification
+    verifyEmailRedirectTo: '/login?verified=success',
     sendVerificationEmail: async ({ user, url, token }: { user: any, url: string, token: string }) => {
       console.log('BetterAuth - Sending verification email to:', user.email);
       console.log('BetterAuth - Verification URL:', url);
