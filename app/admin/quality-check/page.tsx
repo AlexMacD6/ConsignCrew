@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "../../lib/auth-client";
+import { formatDateWithOrdinal } from "../../lib/date-utils";
 import { Shield, Search, CheckCircle, XCircle } from "lucide-react";
 
 interface Listing {
@@ -340,7 +341,7 @@ export default function QualityCheckManagementPage() {
                 </p>
                 <p>
                   <span className="font-medium">Listed:</span>{" "}
-                  {new Date(listing.createdAt).toLocaleDateString()}
+                  {formatDateWithOrdinal(listing.createdAt)}
                 </p>
               </div>
 

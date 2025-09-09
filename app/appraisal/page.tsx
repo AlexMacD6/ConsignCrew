@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState, useRef, useCallback } from "react";
-import { Camera, Upload, Loader2, ArrowLeft, Table, Eye } from "lucide-react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
+import { Camera, Upload, Loader2, ArrowLeft, Table, Eye, User, Lock } from "lucide-react";
 import { Button } from "../components/ui/button";
+import { authClient } from "../lib/auth-client";
+import { useRouter } from "next/navigation";
 
 interface AppraisalResult {
   id: string;
@@ -41,10 +43,72 @@ interface AppraisalResult {
 }
 
 export default function AppraisalPage() {
+  const router = useRouter();
+  const { data: session, isPending } = authClient.useSession();
   const [currentTab, setCurrentTab] = useState<"camera" | "table">("camera");
   const [appraisals, setAppraisals] = useState<AppraisalResult[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Check authentication on component mount
+  useEffect(() => {
+    if (!isPending && !session?.user) {
+      // Redirect to login if not authenticated
+      router.push("/login?redirectTo=/appraisal");
+    }
+  }, [session, isPending, router]);
+
+  // Show loading state while checking authentication
+  if (isPending) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#D4AF3D]" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show authentication required screen if not logged in
+  if (!session?.user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="max-w-md mx-auto text-center p-6">
+          <div className="bg-white rounded-2xl shadow-lg p-8">
+            <div className="w-16 h-16 bg-[#D4AF3D] rounded-full flex items-center justify-center mx-auto mb-6">
+              <Lock className="w-8 h-8 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Authentication Required
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Please sign in to your TreasureHub account to access the appraisal feature. 
+              Our AI-powered appraisal tool helps you quickly estimate the value of your items.
+            </p>
+            <div className="space-y-3">
+              <Button
+                onClick={() => router.push("/login?redirectTo=/appraisal")}
+                className="w-full bg-[#D4AF3D] hover:bg-[#c4a235] text-white"
+              >
+                Sign In
+              </Button>
+              <Button
+                onClick={() => router.push("/register?redirectTo=/appraisal")}
+                variant="outline"
+                className="w-full"
+              >
+                Create Account
+              </Button>
+            </div>
+            <p className="text-sm text-gray-500 mt-4">
+              Don't have an account? Registration is free and takes less than a minute.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleTakePhoto = useCallback(() => {
     fileInputRef.current?.click();
@@ -79,6 +143,7 @@ export default function AppraisalPage() {
         const response = await fetch("/api/appraisal/analyze", {
           method: "POST",
           body: formData,
+          credentials: "include", // Include session cookies
         });
 
         if (!response.ok) {
@@ -145,9 +210,14 @@ export default function AppraisalPage() {
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="px-4 py-3 flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-gray-900">
-            Quick Appraisal
-          </h1>
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900">
+              Quick Appraisal
+            </h1>
+            <p className="text-sm text-gray-500">
+              Welcome, {session.user.name || session.user.email}
+            </p>
+          </div>
           <Button
             variant="outline"
             size="sm"
@@ -324,7 +394,12 @@ export default function AppraisalPage() {
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
-          <h1 className="text-xl font-semibold text-gray-900">All Results</h1>
+          <div className="text-center">
+            <h1 className="text-xl font-semibold text-gray-900">All Results</h1>
+            <p className="text-sm text-gray-500">
+              {session.user.name || session.user.email}
+            </p>
+          </div>
           <div className="w-16" />
         </div>
       </div>

@@ -219,7 +219,45 @@ export async function PUT(
       // Treasure fields
       isTreasure,
       treasureReason,
+      
+      // Video fields
+      videoIds,
     } = body;
+
+    // Debug video IDs
+    console.log("🎬 PUT request received videoIds:", videoIds);
+    console.log("🎬 VideoIds type:", typeof videoIds, "Array:", Array.isArray(videoIds));
+    if (videoIds && Array.isArray(videoIds)) {
+      console.log("🎬 VideoIds length:", videoIds.length);
+      console.log("🎬 VideoIds content:", videoIds);
+      
+      // Validate that all video IDs exist in the database
+      const existingVideos = await prisma.video.findMany({
+        where: {
+          id: {
+            in: videoIds
+          }
+        },
+        select: {
+          id: true
+        }
+      });
+      
+      console.log("🎬 Found existing videos:", existingVideos.length);
+      console.log("🎬 Existing video IDs:", existingVideos.map(v => v.id));
+      
+      const existingVideoIds = existingVideos.map(v => v.id);
+      const missingVideoIds = videoIds.filter(id => !existingVideoIds.includes(id));
+      
+      if (missingVideoIds.length > 0) {
+        console.error("🚨 Missing video IDs:", missingVideoIds);
+        return NextResponse.json({
+          error: `Video records not found: ${missingVideoIds.join(', ')}`,
+          missingIds: missingVideoIds,
+          existingIds: existingVideoIds
+        }, { status: 400 });
+      }
+    }
 
     // Validate required fields
     if (!title || !price || !facebookCondition || !description) {
@@ -291,6 +329,21 @@ export async function PUT(
         isTreasure: isTreasure || false,
         treasureReason: treasureReason || null,
         updatedAt: new Date(),
+        
+        // Video relationships - connect multiple videos if provided
+        ...(videoIds && Array.isArray(videoIds) && videoIds.length > 0 && {
+          videos: {
+            set: [], // Clear existing connections first
+            connect: videoIds
+              .filter((videoId: string) => {
+                // Only connect videos that we've already validated exist
+                const exists = videoId && typeof videoId === 'string' && videoId.trim() !== '';
+                console.log("🎬 Connecting video ID:", videoId, exists ? "✅" : "❌ (invalid)");
+                return exists;
+              })
+              .map((videoId: string) => ({ id: videoId }))
+          }
+        }),
       },
       include: {
         user: {
@@ -300,8 +353,15 @@ export async function PUT(
             email: true,
           },
         },
+        videos: true, // Include connected videos in response
       },
     });
+
+    // Debug the updated listing's videos
+    console.log("🎬 Updated listing videos:", updatedListing.videos?.length || 0);
+    if (updatedListing.videos && updatedListing.videos.length > 0) {
+      console.log("🎬 Connected video IDs:", updatedListing.videos.map(v => v.id));
+    }
 
     // Auto-sync to Facebook catalog if enabled
     if (updatedListing.facebookShopEnabled) {

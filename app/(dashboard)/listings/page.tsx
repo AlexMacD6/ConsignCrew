@@ -2,6 +2,7 @@
 import { FACEBOOK_TAXONOMY } from "@/lib/facebook-taxonomy";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { formatDateWithTime } from "../../lib/date-utils";
 import { authClient } from "../../lib/auth-client";
 import { Button } from "../../components/ui/button";
 import {
@@ -847,14 +848,9 @@ export default function ListingsPage() {
     }
   };
 
+  // Use shared date formatting utility with time
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return formatDateWithTime(dateString);
   };
 
   // Calculate time until next price drop based on discount schedule

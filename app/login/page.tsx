@@ -22,6 +22,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/profile";
   const successMessage = searchParams.get("message");
+  const verificationStatus = searchParams.get("verified");
 
   /**
    * Handle email/password login using Better Auth
@@ -340,6 +341,20 @@ function LoginForm() {
             }`}
           >
             {resetMessage}
+          </div>
+        )}
+
+        {/* Email Verification Messages */}
+        {verificationStatus === "success" && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-600 text-sm">
+            ✅ Your email has been successfully verified! You can now sign in to
+            your account.
+          </div>
+        )}
+
+        {verificationStatus === "already" && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-600 text-sm">
+            ℹ️ Your email is already verified. You can sign in to your account.
           </div>
         )}
 

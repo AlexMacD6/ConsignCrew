@@ -1,126 +1,135 @@
 "use client";
 
 import React, { useState } from "react";
-import VideoUpload from "./VideoUpload";
+import BulkVideoUpload from "./BulkVideoUpload";
+import VideoCarousel from "./VideoCarousel";
+import { Button } from "./ui/button";
 
 interface VideoData {
-  videoId: string;
-  frameUrls: string[];
-  thumbnailUrl: string;
-  duration: number;
+  id: string;
+  src: string;
+  poster?: string;
+  duration?: number;
+  title?: string;
 }
 
+/**
+ * Example component showing how to use BulkVideoUpload and VideoCarousel together
+ * This can be used in listing creation/editing forms
+ */
 export default function VideoUploadExample() {
-  const [videoData, setVideoData] = useState<VideoData | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [uploadedVideos, setUploadedVideos] = useState<VideoData[]>([]);
+  const [showUpload, setShowUpload] = useState(true);
 
-  const handleVideoUploaded = (data: VideoData) => {
-    setVideoData(data);
-    setError(null);
-    console.log("Video uploaded successfully:", data);
-
-    // Here you would typically:
-    // 1. Store the video data in your form state
-    // 2. Pass the frame URLs to your AI analysis
-    // 3. Update the UI to show the video thumbnail
+  const handleVideosUploaded = (videos: VideoData[]) => {
+    setUploadedVideos(videos);
+    setShowUpload(false);
   };
 
-  const handleVideoError = (errorMessage: string) => {
-    setError(errorMessage);
-    setVideoData(null);
-    console.error("Video upload error:", errorMessage);
+  const handleReset = () => {
+    setUploadedVideos([]);
+    setShowUpload(true);
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <h2 className="text-2xl font-bold mb-6">Video Upload Example</h2>
-
-      {/* Video Upload Component */}
-      <div className="mb-6">
-        <VideoUpload
-          onVideoUploaded={handleVideoUploaded}
-          onError={handleVideoError}
-        />
+    <div className="w-full max-w-6xl mx-auto p-6">
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          Multi-Video Upload & Carousel Example
+        </h2>
+        <p className="text-gray-600">
+          This example shows how to use the bulk video upload and video carousel
+          components for listings that require multiple videos.
+        </p>
       </div>
 
-      {/* Error Display */}
-      {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-red-600">{error}</p>
+      {showUpload ? (
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            Step 1: Upload Multiple Videos
+          </h3>
+          <BulkVideoUpload
+            onVideosUploaded={handleVideosUploaded}
+            maxVideos={5}
+            maxFileSizeMB={100}
+            listingId="example-listing-id" // Optional: associate with listing
+          />
         </div>
-      )}
-
-      {/* Video Preview */}
-      {videoData && (
-        <div className="border rounded-lg p-4 bg-gray-50">
-          <h3 className="text-lg font-medium mb-4">Uploaded Video</h3>
-
-          {/* Thumbnail */}
-          <div className="mb-4">
-            <img
-              src={videoData.thumbnailUrl}
-              alt="Video thumbnail"
-              className="w-full max-w-md rounded-lg shadow-md"
-            />
+      ) : (
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Step 2: Video Carousel Preview
+            </h3>
+            <Button onClick={handleReset} variant="outline" className="text-sm">
+              Upload Different Videos
+            </Button>
           </div>
 
-          {/* Video Details */}
-          <div className="space-y-2 text-sm text-gray-600">
-            <p>
-              <strong>Video ID:</strong> {videoData.videoId}
-            </p>
-            <p>
-              <strong>Duration:</strong> {Math.round(videoData.duration)}{" "}
-              seconds
-            </p>
-            <p>
-              <strong>Frames extracted:</strong> {videoData.frameUrls.length}
-            </p>
-          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Video Carousel */}
+            <div>
+              <h4 className="text-md font-medium text-gray-700 mb-4">
+                Interactive Video Carousel
+              </h4>
+              <VideoCarousel
+                videos={uploadedVideos}
+                controls={true}
+                showCustomControls={false}
+                autoPlay={false}
+              />
+            </div>
 
-          {/* Frame URLs for AI Analysis */}
-          <div className="mt-4">
-            <h4 className="font-medium mb-2">AI Analysis Frames:</h4>
-            <div className="grid grid-cols-5 gap-2">
-              {videoData.frameUrls.map((frameUrl, index) => (
-                <div key={index} className="text-center">
-                  <img
-                    src={frameUrl}
-                    alt={`Frame ${index}`}
-                    className="w-16 h-16 object-cover rounded border"
-                  />
-                  <p className="text-xs mt-1">Frame {index}</p>
-                </div>
-              ))}
+            {/* Video Information */}
+            <div>
+              <h4 className="text-md font-medium text-gray-700 mb-4">
+                Uploaded Videos ({uploadedVideos.length})
+              </h4>
+              <div className="space-y-3">
+                {uploadedVideos.map((video, index) => (
+                  <div
+                    key={video.id}
+                    className="bg-gray-50 rounded-lg p-4 border"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h5 className="font-medium text-gray-900">
+                          Video {index + 1}
+                        </h5>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {video.title}
+                        </p>
+                        {video.duration && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Duration: {Math.round(video.duration)}s
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        ID: {video.id.slice(0, 8)}...
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                <h5 className="font-medium text-blue-900 mb-2">
+                  Integration Notes:
+                </h5>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• Videos are uploaded to AWS S3</li>
+                  <li>• Thumbnails are auto-generated</li>
+                  <li>• Carousel supports navigation & thumbnails</li>
+                  <li>• iPhone 9:16 aspect ratio optimized</li>
+                  <li>• Click-to-load saves bandwidth</li>
+                  <li>• Default muted for better UX</li>
+                </ul>
+              </div>
             </div>
           </div>
-
-          {/* Integration with AI Analysis */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-md">
-            <h4 className="font-medium text-blue-900 mb-2">
-              AI Analysis Integration
-            </h4>
-            <p className="text-sm text-blue-700">
-              The video frames above will be automatically included in the AI
-              analysis when generating comprehensive listings. The AI will
-              analyze both photos and video frames to provide enhanced product
-              insights.
-            </p>
-          </div>
         </div>
       )}
-
-      {/* Usage Instructions */}
-      <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-        <h3 className="font-medium mb-2">Integration Instructions</h3>
-        <ol className="text-sm text-gray-600 space-y-1 list-decimal list-inside">
-          <li>Import the VideoUpload component</li>
-          <li>Add it to your form with onVideoUploaded and onError handlers</li>
-          <li>Store the video data in your form state</li>
-          <li>Pass frame URLs to your AI analysis service</li>
-          <li>Include video metadata in your listing submission</li>
-        </ol>
-      </div>
     </div>
   );
 }

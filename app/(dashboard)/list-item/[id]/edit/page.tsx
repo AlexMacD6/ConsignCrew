@@ -21,6 +21,8 @@ import {
   Play,
 } from "lucide-react";
 import VideoUpload from "../../../../components/VideoUpload";
+import VideoCarousel from "../../../../components/VideoCarousel";
+
 import { ConfidenceBadge } from "../../../../components/ConfidenceIndicator";
 import HybridInput from "../../../../components/HybridInput";
 import {
@@ -45,6 +47,7 @@ import {
   getCategories,
   getSubCategories,
 } from "../../../../lib/facebook-taxonomy";
+import { cachedFetch, apiCache } from "../../../../lib/api-cache";
 // ZIP code validation now handled via API endpoint
 
 const discountSchedules = ["Turbo-30", "Classic-60"] as const;
@@ -155,7 +158,7 @@ export default function EditListingPage() {
   const [draggedPhoto, setDraggedPhoto] = useState<string | null>(null);
   const [photoOrder, setPhotoOrder] = useState<string[]>([]);
 
-  // Video state
+  // Video state - support for multiple videos
   const [videoData, setVideoData] = useState<{
     videoId: string | null;
     frameUrls: string[];
@@ -174,15 +177,30 @@ export default function EditListingPage() {
     error: null,
   });
 
+  // Multiple videos state
+  const [videos, setVideos] = useState<
+    Array<{
+      id: string;
+      src: string;
+      poster?: string;
+      duration?: number;
+      title?: string;
+    }>
+  >([]);
+
   // Load existing listing data and user profile
   useEffect(() => {
     const fetchListingAndUserData = async () => {
       try {
         setLoading(true);
 
-        // Fetch listing data
+        // Fetch listing data with caching
         console.log("Fetching listing with ID:", params.id);
-        const response = await fetch(`/api/listings/${params.id}`);
+        const response = await cachedFetch(
+          `/api/listings/${params.id}`,
+          {},
+          60000
+        ); // Cache for 1 minute
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -261,8 +279,22 @@ export default function EditListingPage() {
             additional: listingData.photos?.additional || [],
           });
 
-          // Set video data
-          if (listingData.videoUrl) {
+          // Set video data - handle both single video and multiple videos
+          const existingVideos = [];
+          const processedVideoIds = new Set<string>(); // Track processed video IDs to avoid duplicates
+
+          // Handle legacy single video (videoUrl) - only if no modern videos exist
+          if (
+            listingData.videoUrl &&
+            !listingData.videos?.length &&
+            !listingData.video
+          ) {
+            existingVideos.push({
+              id: "legacy-video",
+              src: listingData.videoUrl,
+              title: `Video: ${listingData.title}`,
+            });
+            processedVideoIds.add("legacy-video");
             setVideoData({
               videoId: null,
               frameUrls: [],
@@ -273,6 +305,121 @@ export default function EditListingPage() {
               error: null,
             });
           }
+
+          // Prioritize multiple videos array over single video object
+          if (
+            listingData.videos &&
+            Array.isArray(listingData.videos) &&
+            listingData.videos.length > 0
+          ) {
+            listingData.videos.forEach((video: any, index: number) => {
+              // Skip if we've already processed this video ID
+              if (processedVideoIds.has(video.id)) {
+                return;
+              }
+
+              const cdnUrl =
+                process.env.NEXT_PUBLIC_CDN_URL ||
+                "https://dtlqyjbwka60p.cloudfront.net";
+              console.log("🎬 Using CDN URL:", cdnUrl, "for video:", video.id);
+
+              const videoKey = video.rawVideoKey || video.processedVideoKey;
+              let videoSrc = null;
+
+              if (videoKey && cdnUrl) {
+                const cleanDomain = cdnUrl
+                  .replace("https://", "")
+                  .replace("http://", "");
+                videoSrc = `https://${cleanDomain}/${videoKey}`;
+              }
+
+              console.log("🎬 Generated video URL:", videoSrc);
+
+              if (videoSrc) {
+                console.log("🎬 Video data for", video.id, ":", {
+                  thumbnailUrl: video.thumbnailUrl,
+                  duration: video.duration,
+                  rawVideoKey: video.rawVideoKey,
+                  processedVideoKey: video.processedVideoKey,
+                });
+
+                existingVideos.push({
+                  id: video.id,
+                  src: videoSrc,
+                  poster: video.thumbnailUrl || undefined,
+                  duration: video.duration || undefined,
+                  title: `${listingData.title} - Video ${index + 1}`,
+                });
+                processedVideoIds.add(video.id);
+              }
+            });
+          }
+          // Fallback to single video object only if no videos array exists
+          else if (
+            listingData.video &&
+            !processedVideoIds.has(listingData.video.id)
+          ) {
+            const cdnUrl =
+              process.env.NEXT_PUBLIC_CDN_URL ||
+              "https://dtlqyjbwka60p.cloudfront.net";
+            console.log(
+              "🎬 Using CDN URL:",
+              cdnUrl,
+              "for single video:",
+              listingData.video.id
+            );
+
+            const videoKey =
+              listingData.video.rawVideoKey ||
+              listingData.video.processedVideoKey;
+            let videoSrc = null;
+
+            if (videoKey && cdnUrl) {
+              const cleanDomain = cdnUrl
+                .replace("https://", "")
+                .replace("http://", "");
+              videoSrc = `https://${cleanDomain}/${videoKey}`;
+            }
+
+            console.log("🎬 Generated single video URL:", videoSrc);
+
+            if (videoSrc) {
+              existingVideos.push({
+                id: listingData.video.id,
+                src: videoSrc,
+                poster: listingData.video.thumbnailUrl || undefined,
+                duration: listingData.video.duration || undefined,
+                title: `Video: ${listingData.title}`,
+              });
+              processedVideoIds.add(listingData.video.id);
+            }
+          }
+
+          console.log(
+            "🎬 Processed videos:",
+            existingVideos.length,
+            "unique videos"
+          );
+          console.log(
+            "🎬 Video details:",
+            existingVideos.map((v) => ({
+              id: v.id,
+              title: v.title,
+              src: v.src.substring(0, 50) + "...",
+            }))
+          );
+          console.log("🎬 Final videos being set:", existingVideos.length);
+          existingVideos.forEach((video, index) => {
+            console.log(`🎬 Final video ${index}:`, {
+              id: video.id,
+              hasPoster: !!video.poster,
+              posterUrl: video.poster,
+              duration: video.duration,
+              title: video.title,
+            });
+          });
+
+          setVideos(existingVideos);
 
           // Initialize photo order - ensure safe access to photos
           const order = [];
@@ -400,6 +547,16 @@ export default function EditListingPage() {
       processing: false,
       error: null,
     });
+
+    // Add to videos array
+    const newVideo = {
+      id: data.videoId,
+      src: data.thumbnailUrl, // This will be the actual video URL from the upload
+      poster: data.thumbnailUrl,
+      duration: data.duration,
+      title: `Video: ${title || "New Video"}`,
+    };
+    setVideos((prev) => [...prev, newVideo]);
   };
 
   const handleVideoError = (error: string) => {
@@ -418,6 +575,155 @@ export default function EditListingPage() {
       processing: true,
       error: null,
     }));
+  };
+
+  // Function to refresh listing data (useful after video uploads)
+  const refreshListingData = async () => {
+    try {
+      console.log("🔄 Refreshing listing data after video upload");
+      const response = await cachedFetch(`/api/listings/${params.id}`, {}, 0); // No cache for refresh
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          const listingData = data.listing;
+
+          // Update the videos state with fresh data from the server
+          const existingVideos: Array<{
+            id: string;
+            src: string;
+            poster?: string;
+            duration?: number;
+            title?: string;
+          }> = [];
+          const processedVideoIds = new Set<string>();
+
+          // Process videos array
+          if (
+            listingData.videos &&
+            Array.isArray(listingData.videos) &&
+            listingData.videos.length > 0
+          ) {
+            listingData.videos.forEach((video: any, index: number) => {
+              if (processedVideoIds.has(video.id)) return;
+
+              const cdnUrl =
+                process.env.NEXT_PUBLIC_CDN_URL ||
+                "https://dtlqyjbwka60p.cloudfront.net";
+              const videoKey = video.rawVideoKey || video.processedVideoKey;
+              let videoSrc = null;
+
+              if (videoKey && cdnUrl) {
+                const cleanDomain = cdnUrl
+                  .replace("https://", "")
+                  .replace("http://", "");
+                videoSrc = `https://${cleanDomain}/${videoKey}`;
+              }
+
+              if (videoSrc) {
+                existingVideos.push({
+                  id: video.id,
+                  src: videoSrc,
+                  poster: video.thumbnailUrl || undefined,
+                  duration: video.duration || undefined,
+                  title: `${listingData.title} - Video ${index + 1}`,
+                });
+                processedVideoIds.add(video.id);
+              }
+            });
+          }
+
+          // Process single video if not already included
+          if (
+            listingData.video &&
+            !processedVideoIds.has(listingData.video.id)
+          ) {
+            const cdnUrl =
+              process.env.NEXT_PUBLIC_CDN_URL ||
+              "https://dtlqyjbwka60p.cloudfront.net";
+            const videoKey =
+              listingData.video.rawVideoKey ||
+              listingData.video.processedVideoKey;
+            let videoSrc = null;
+
+            if (videoKey && cdnUrl) {
+              const cleanDomain = cdnUrl
+                .replace("https://", "")
+                .replace("http://", "");
+              videoSrc = `https://${cleanDomain}/${videoKey}`;
+            }
+
+            if (videoSrc) {
+              existingVideos.push({
+                id: listingData.video.id,
+                src: videoSrc,
+                poster: listingData.video.thumbnailUrl || undefined,
+                duration: listingData.video.duration || undefined,
+                title: `${listingData.title} - Original Video`,
+              });
+            }
+          }
+
+          console.log("🔄 Refreshed videos:", existingVideos.length);
+          setVideos(existingVideos);
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing listing data:", error);
+    }
+  };
+
+  // Remove video handler
+  const handleRemoveVideo = (videoId: string) => {
+    setVideos((prev) => prev.filter((video) => video.id !== videoId));
+
+    // If removing the single uploaded video, reset video data
+    if (videoData.videoId === videoId) {
+      setVideoData({
+        videoId: null,
+        frameUrls: [],
+        thumbnailUrl: null,
+        duration: null,
+        uploaded: false,
+        processing: false,
+        error: null,
+      });
+    }
+  };
+
+  // Drag and drop handlers for video reordering
+  const handleVideoDragStart = (e: React.DragEvent, index: number) => {
+    e.dataTransfer.setData("text/plain", index.toString());
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleVideoDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleVideoDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    const dragIndex = parseInt(e.dataTransfer.getData("text/plain"));
+
+    if (dragIndex === dropIndex) return;
+
+    setVideos((prev) => {
+      const newVideos = [...prev];
+      const draggedVideo = newVideos[dragIndex];
+
+      // Remove the dragged video
+      newVideos.splice(dragIndex, 1);
+
+      // Insert it at the new position
+      newVideos.splice(dropIndex, 0, draggedVideo);
+
+      console.log(
+        "🎬 Videos reordered:",
+        newVideos.map((v, i) => `${i + 1}: ${v.title}`)
+      );
+      return newVideos;
+    });
   };
 
   // Calculate reserve price (minimum acceptable price)
@@ -606,17 +912,65 @@ export default function EditListingPage() {
           treasureReason: treasureReason || null,
           photos,
           videoUrl: videoData.uploaded ? videoData.thumbnailUrl : null,
+          // Include video IDs for multi-video support
+          videoIds: (() => {
+            console.log("🎬 Videos in state before filtering:", videos.length);
+            videos.forEach((video, index) => {
+              console.log(`🎬 Video ${index}:`, {
+                id: video.id,
+                src: video.src?.substring(0, 50) + "...",
+              });
+            });
+
+            return videos
+              .map((video) => video.id)
+              .filter((id) => {
+                // Filter out invalid, empty, or placeholder video IDs
+                const isValid =
+                  id &&
+                  typeof id === "string" &&
+                  id.trim() !== "" &&
+                  id !== "legacy-video" &&
+                  id !== "single-video" &&
+                  id !== "fallback-video" &&
+                  !id.startsWith("video-"); // Remove generic video-N IDs
+
+                console.log(
+                  "🎬 Frontend filtering video ID:",
+                  id,
+                  isValid ? "✅ valid" : "❌ invalid"
+                );
+                return isValid;
+              });
+          })(),
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error("🚨 Update listing failed:", errorData);
+
+        // Show specific error message for video-related errors
+        if (
+          errorData.missingIds ||
+          errorData.error?.includes("Video records not found")
+        ) {
+          throw new Error(
+            `Some videos could not be found in the database: ${
+              errorData.missingIds?.join(", ") || "Unknown video IDs"
+            }`
+          );
+        }
+
         throw new Error(errorData.error || "Failed to update listing");
       }
 
       const data = await response.json();
 
       if (data.success) {
+        // Invalidate cache for this listing
+        apiCache.invalidate(`/api/listings/${params.id}`);
+
         // Redirect to the listing detail page
         router.push(`/list-item/${params.id}`);
       } else {
@@ -1700,74 +2054,166 @@ export default function EditListingPage() {
             </div>
           </div>
 
-          {/* Video Upload */}
+          {/* Video Management */}
           <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Product Video (Optional)
-            </h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Add a video to showcase your item in action. This helps buyers
-              better understand the product.
-            </p>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Product Videos {videos.length > 0 && `(${videos.length})`}
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Add videos to showcase your item in action. This helps buyers
+                  better understand the product.
+                </p>
+              </div>
+            </div>
 
-            <div className="w-full">
-              {!videoData.uploaded ? (
-                <>
+            {/* Video Preview Section */}
+            {videos.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-md font-medium text-gray-700 mb-4">
+                  Current Videos
+                </h3>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Video Carousel */}
+                  <div>
+                    <VideoCarousel
+                      videos={videos}
+                      controls={true}
+                      autoPlay={false}
+                      className=""
+                    />
+                  </div>
+
+                  {/* Video List with Remove Options */}
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-3">
+                      Manage Videos ({videos.length})
+                      {videos.length > 1 && (
+                        <span className="text-xs text-gray-500 ml-2">
+                          • Drag to reorder
+                        </span>
+                      )}
+                    </h4>
+                    <div className="space-y-3 max-h-64 overflow-y-auto">
+                      {videos.map((video, index) => (
+                        <div
+                          key={`${video.id}-${index}`}
+                          draggable
+                          onDragStart={(e) => handleVideoDragStart(e, index)}
+                          onDragOver={handleVideoDragOver}
+                          onDrop={(e) => handleVideoDrop(e, index)}
+                          className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border cursor-move hover:bg-gray-100 transition-colors"
+                        >
+                          {/* Drag Handle */}
+                          <div className="flex-shrink-0 flex items-center">
+                            <GripVertical className="h-4 w-4 text-gray-400" />
+                          </div>
+
+                          <div className="flex-shrink-0 w-16 h-12 bg-gray-200 rounded overflow-hidden">
+                            {video.poster ? (
+                              <img
+                                src={video.poster}
+                                alt={`Video ${index + 1}`}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  console.log(
+                                    "Thumbnail failed to load:",
+                                    video.poster
+                                  );
+                                  e.currentTarget.style.display = "none";
+                                  const parent = e.currentTarget.parentElement;
+                                  if (
+                                    parent &&
+                                    !parent.querySelector(".fallback-icon")
+                                  ) {
+                                    const fallback =
+                                      document.createElement("div");
+                                    fallback.className =
+                                      "fallback-icon w-full h-full flex items-center justify-center";
+                                    fallback.innerHTML =
+                                      '<svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h8m2 4H7a2 2 0 01-2-2V8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2z"></path></svg>';
+                                    parent.appendChild(fallback);
+                                  }
+                                }}
+                                onLoad={() => {
+                                  console.log(
+                                    "Thumbnail loaded successfully:",
+                                    video.poster
+                                  );
+                                }}
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Play className="h-4 w-4 text-gray-400" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h5 className="text-sm font-medium text-gray-900 truncate">
+                              Video {index + 1}
+                            </h5>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {video.duration &&
+                                `${Math.round(video.duration)}s • `}
+                              {video.title}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveVideo(video.id)}
+                            className="text-red-500 hover:text-red-700 transition-colors"
+                            title="Remove video"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Upload Section */}
+            {videos.length === 0 && (
+              <div className="border-t border-gray-200 pt-6">
+                <div className="mb-6">
+                  <h3 className="text-md font-medium text-gray-700 mb-4">
+                    Upload Your First Video
+                  </h3>
                   <VideoUpload
                     onVideoUploaded={handleVideoUploaded}
                     onError={handleVideoError}
                     onStarted={handleVideoStarted}
                     disabled={videoData.processing}
                   />
-
                   {videoData.error && (
                     <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
                       <p className="text-red-800">{videoData.error}</p>
                     </div>
                   )}
-                </>
-              ) : (
-                <div className="text-center">
-                  <div className="mb-6">
-                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <CheckCircleIcon className="w-8 h-8 text-green-600" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-green-800 mb-2">
-                      Video Uploaded Successfully
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Your video has been uploaded and processed.
-                    </p>
-                    {videoData.thumbnailUrl && (
-                      <div className="mt-4">
-                        <img
-                          src={videoData.thumbnailUrl}
-                          alt="Video thumbnail"
-                          className="w-32 h-20 object-cover rounded-lg mx-auto"
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setVideoData({
-                        videoId: null,
-                        frameUrls: [],
-                        thumbnailUrl: null,
-                        duration: null,
-                        uploaded: false,
-                        processing: false,
-                        error: null,
-                      })
-                    }
-                    className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
-                  >
-                    Remove Video
-                  </button>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+
+            {/* Upload Options for Empty State */}
+            {videos.length === 0 && !videoData.processing && (
+              <div className="mt-6 text-center">
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+                  <div className="text-gray-500 mb-4">
+                    <Play className="h-12 w-12 mx-auto opacity-50" />
+                  </div>
+                  <h3 className="text-sm font-medium text-gray-900 mb-2">
+                    No videos yet
+                  </h3>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Upload videos to showcase your item in action. For multiple
+                    videos, use the bulk upload feature during listing creation.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Submit Button */}

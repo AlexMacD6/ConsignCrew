@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { headers } from "next/headers";
 
 export type RegistrationData = {
@@ -152,7 +153,21 @@ export async function registerUser(data: RegistrationData) {
           console.error('registerUser - Better Auth verification failed, using manual approach:', verificationError);
           
           // Fallback to manual verification URL generation if Better Auth fails
-          const verificationUrl = `${baseUrl}/api/auth/[...betterauth]?action=verifyEmail&token=${result.user.id}&identifier=${encodeURIComponent(result.user.email)}`;
+          // Generate a proper verification token
+          const crypto = await import('crypto');
+          const verificationToken = crypto.randomBytes(32).toString('hex');
+          const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+          
+          // Store the verification token in the database
+          await prisma.verificationToken.create({
+            data: {
+              identifier: result.user.email,
+              token: verificationToken,
+              expires: expires
+            }
+          });
+          
+          const verificationUrl = `${baseUrl}/api/auth/verify?token=${verificationToken}`;
         
         const subject = 'Verify your TreasureHub account';
         const html = `

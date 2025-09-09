@@ -266,6 +266,22 @@ export default function ListItemPage() {
   >([]);
   const [bulkUploading, setBulkUploading] = useState(false);
 
+  // Video upload method selection
+  const [videoUploadMethod, setVideoUploadMethod] = useState<"single" | "bulk">(
+    "single"
+  );
+  const [bulkVideos, setBulkVideos] = useState<
+    Array<{
+      file: File;
+      url: string | null;
+      preview: string;
+      duration?: number;
+    }>
+  >([]);
+  const [bulkVideoUploading, setBulkVideoUploading] = useState(false);
+  const [bulkVideosUploaded, setBulkVideosUploaded] = useState(false);
+  const [bulkVideoProcessing, setBulkVideoProcessing] = useState(false);
+
   // AI analysis state (legacy - keeping for staged photo)
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [aiAnalysisError, setAiAnalysisError] = useState<string | null>(null);
@@ -319,19 +335,59 @@ export default function ListItemPage() {
       console.log("Frame URLs received:", data.frameUrls);
       console.log("Frame count:", data.frameUrls?.length || 0);
 
-      // Generate video URL from videoId using CloudFront domain
-      const cdnDomain =
-        process.env.NEXT_PUBLIC_CDN_URL ||
-        "https://dtlqyjbwka60p.cloudfront.net";
-      const videoUrl = `${cdnDomain}/processed/videos/${data.videoId}.mp4`;
-
-      // Check if the processed video actually exists before setting it
-      console.log("🔍 Checking if processed video exists at:", videoUrl);
-
       try {
-        const response = await fetch(videoUrl, { method: "HEAD" });
-        if (response.ok) {
-          console.log("✅ Processed video exists and is accessible");
+        // Get the video record from the database to get the correct raw video key
+        console.log(
+          "🔍 Fetching video record from database for videoId:",
+          data.videoId
+        );
+
+        const videoResponse = await fetch(
+          `/api/upload/video/status/${data.videoId}`
+        );
+        if (!videoResponse.ok) {
+          throw new Error("Failed to fetch video record");
+        }
+
+        const videoRecord = await videoResponse.json();
+        console.log("📊 Video record from database:", videoRecord);
+
+        // Generate video URLs using CloudFront domain
+        const cdnDomain =
+          process.env.NEXT_PUBLIC_CDN_URL ||
+          "https://dtlqyjbwka60p.cloudfront.net";
+        const cleanDomain = cdnDomain
+          .replace("https://", "")
+          .replace("http://", "");
+
+        let videoUrl = null;
+
+        // Try processed video first if it exists
+        if (videoRecord.processedVideoKey) {
+          const processedVideoUrl = `https://${cleanDomain}/${videoRecord.processedVideoKey}`;
+          console.log("🔍 Checking processed video at:", processedVideoUrl);
+
+          const response = await fetch(processedVideoUrl, { method: "HEAD" });
+          if (response.ok) {
+            console.log("✅ Processed video exists and is accessible");
+            videoUrl = processedVideoUrl;
+          }
+        }
+
+        // Fallback to raw video if processed doesn't exist
+        if (!videoUrl && videoRecord.rawVideoKey) {
+          const rawVideoUrl = `https://${cleanDomain}/${videoRecord.rawVideoKey}`;
+          console.log("🔍 Checking raw video at:", rawVideoUrl);
+
+          const response = await fetch(rawVideoUrl, { method: "HEAD" });
+          if (response.ok) {
+            console.log("✅ Raw video exists and is accessible");
+            videoUrl = rawVideoUrl;
+          }
+        }
+
+        if (videoUrl) {
+          console.log("✅ Video found and accessible at:", videoUrl);
           setVideoData((prev) => ({
             ...prev,
             videoId: data.videoId,
@@ -344,66 +400,58 @@ export default function ListItemPage() {
             uploaded: true,
           }));
         } else {
-          console.warn(
-            "❌ Processed video not found, checking video status..."
-          );
+          console.warn("❌ No accessible video found");
 
-          // Check video processing status
-          const statusResponse = await fetch(
-            `/api/upload/video/status/${data.videoId}`
-          );
-          if (statusResponse.ok) {
-            const statusData = await statusResponse.json();
-            console.log("📊 Video processing status:", statusData);
-
-            if (statusData.status === "failed") {
-              console.error("💥 Video processing failed:", statusData.error);
-              setVideoData((prev) => ({
-                ...prev,
-                videoId: data.videoId,
-                videoUrl: null, // Don't set a broken URL
-                thumbnailUrl: data.thumbnailUrl,
-                frameUrls: data.frameUrls,
-                duration: data.duration,
-                processing: false,
-                error: `Video processing failed: ${
-                  statusData.error || "Unknown error"
-                }`,
-                uploaded: true,
-              }));
-            } else if (
-              statusData.status === "processing" ||
-              statusData.status === "pending"
-            ) {
-              console.log("⏳ Video still processing, will retry...");
-              setVideoData((prev) => ({
-                ...prev,
-                videoId: data.videoId,
-                videoUrl: null,
-                thumbnailUrl: data.thumbnailUrl,
-                frameUrls: data.frameUrls,
-                duration: data.duration,
-                processing: true, // Keep processing state
-                error: null,
-                uploaded: true,
-              }));
-            } else {
-              // Status says completed but video not accessible
-              console.error(
-                "🤔 Status says completed but video not accessible"
-              );
-              setVideoData((prev) => ({
-                ...prev,
-                videoId: data.videoId,
-                videoUrl: null,
-                thumbnailUrl: data.thumbnailUrl,
-                frameUrls: data.frameUrls,
-                duration: data.duration,
-                processing: false,
-                error: "Video processed but not accessible",
-                uploaded: true,
-              }));
-            }
+          // Check the video status to provide appropriate feedback
+          if (videoRecord.status === "failed") {
+            console.error("💥 Video processing failed:", videoRecord.error);
+            setVideoData((prev) => ({
+              ...prev,
+              videoId: data.videoId,
+              videoUrl: null,
+              thumbnailUrl: data.thumbnailUrl,
+              frameUrls: data.frameUrls,
+              duration: data.duration,
+              processing: false,
+              error: `Video processing failed: ${
+                videoRecord.error || "Unknown error"
+              }`,
+              uploaded: true,
+            }));
+          } else if (
+            videoRecord.status === "processing" ||
+            videoRecord.status === "pending"
+          ) {
+            console.log(
+              "⏳ Video still processing, will continue in background..."
+            );
+            setVideoData((prev) => ({
+              ...prev,
+              videoId: data.videoId,
+              videoUrl: null,
+              thumbnailUrl: data.thumbnailUrl,
+              frameUrls: data.frameUrls,
+              duration: data.duration,
+              processing: true, // Keep processing state
+              error: null,
+              uploaded: true,
+            }));
+          } else {
+            // Video record exists but no accessible video files
+            console.error(
+              "🤔 Video record exists but no accessible video files found"
+            );
+            setVideoData((prev) => ({
+              ...prev,
+              videoId: data.videoId,
+              videoUrl: null,
+              thumbnailUrl: data.thumbnailUrl,
+              frameUrls: data.frameUrls,
+              duration: data.duration,
+              processing: false,
+              error: "Video uploaded but not yet accessible",
+              uploaded: true,
+            }));
           }
         }
       } catch (error) {
@@ -1001,6 +1049,234 @@ export default function ListItemPage() {
 
   const removeBulkPhoto = (index: number) => {
     setBulkPhotos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Bulk video upload handlers
+  const handleBulkVideoSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      const newBulkVideos = files.map((file) => ({
+        file,
+        url: null, // Will be set after upload
+        preview: URL.createObjectURL(file),
+        duration: undefined, // Will be extracted during upload
+      }));
+
+      // Add to existing videos instead of replacing them
+      setBulkVideos((prev) => {
+        const combined = [...prev, ...newBulkVideos];
+        // Limit to maximum 5 videos
+        return combined.slice(0, 5);
+      });
+    }
+
+    // Clear the input so the same file can be selected again if needed
+    e.target.value = "";
+  };
+
+  const handleBulkVideoUpload = async () => {
+    if (bulkVideos.length === 0) return;
+
+    try {
+      setBulkVideoUploading(true);
+      setUploadError(null);
+
+      // Use stored itemId for S3 key
+      const uploadItemId = itemId || generateItemId();
+
+      // Store uploaded video data for AI analysis
+      const uploadedVideoData = [];
+
+      // Upload each video
+      for (const video of bulkVideos) {
+        const formData = new FormData();
+        formData.append("video", video.file);
+        formData.append("listingId", uploadItemId);
+
+        const response = await fetch("/api/upload/video/bulk", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to upload video");
+        }
+
+        const result = await response.json();
+
+        // Extract keyframes for AI analysis (similar to single video upload)
+        try {
+          console.log("🎬 Starting keyframe extraction for AI analysis...");
+
+          // Extract frames using browser Canvas API
+          const { extractVideoFrames, uploadFramesToS3, uploadThumbnailToS3 } =
+            await import("@/lib/browser-video-processor");
+
+          console.log("🎬 Extracting frames from video file...");
+          const frameData = await extractVideoFrames(video.file, 5);
+          console.log("🎬 Extracted frames:", frameData);
+
+          // Upload frames to S3
+          console.log("🎬 Uploading frames to S3...");
+          const uploadedFrameUrls = await uploadFramesToS3(
+            frameData.frameUrls,
+            result.videoId
+          );
+          console.log("🎬 Uploaded frame URLs:", uploadedFrameUrls);
+
+          // Upload thumbnail to S3
+          console.log("🎬 Uploading thumbnail to S3...");
+          const uploadedThumbnailUrl = await uploadThumbnailToS3(
+            frameData.thumbnailUrl,
+            result.videoId
+          );
+          console.log("🎬 Uploaded thumbnail URL:", uploadedThumbnailUrl);
+
+          // Update video record with frame information
+          const updateResponse = await fetch(
+            `/api/upload/video/status/${result.videoId}`,
+            {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                status: "completed",
+                frameUrls: uploadedFrameUrls,
+                frameCount: uploadedFrameUrls.length,
+                duration: frameData.duration,
+                thumbnailUrl: uploadedThumbnailUrl || frameData.thumbnailUrl,
+              }),
+            }
+          );
+
+          if (updateResponse.ok) {
+            console.log("🎬 Video processing completed for:", result.videoId);
+
+            // Store video data for AI analysis
+            uploadedVideoData.push({
+              videoId: result.videoId,
+              frameUrls: uploadedFrameUrls,
+              thumbnailUrl: uploadedThumbnailUrl || frameData.thumbnailUrl,
+              duration: frameData.duration,
+            });
+          }
+        } catch (frameError) {
+          console.error("🎬 Keyframe extraction failed:", frameError);
+          // Still store basic video data even if keyframe extraction fails
+          uploadedVideoData.push({
+            videoId: result.videoId,
+            frameUrls: [],
+            thumbnailUrl: result.thumbnailUrl,
+            duration: 0,
+          });
+        }
+
+        // Update the video in our state with the uploaded URL
+        setBulkVideos((prev) =>
+          prev.map((v) =>
+            v.file === video.file
+              ? {
+                  ...v,
+                  url: result.videoUrl,
+                }
+              : v
+          )
+        );
+      }
+
+      // Update videoData state with bulk video information for AI analysis
+      if (uploadedVideoData.length > 0) {
+        // For now, use the first video's data (we can enhance this later to handle multiple videos)
+        const firstVideo = uploadedVideoData[0];
+        setVideoData((prev) => ({
+          ...prev,
+          videoId: firstVideo.videoId,
+          videoUrl: null, // Will be set when video is accessible
+          processingStatus: "completed",
+          frameUrls: firstVideo.frameUrls,
+          thumbnailUrl: firstVideo.thumbnailUrl,
+          duration: firstVideo.duration,
+          uploadMethod: "ai",
+          uploadedAt: new Date(),
+          processing: false,
+          error: null,
+          uploaded: true,
+        }));
+      }
+
+      // Clear bulk videos and set processing states
+      setBulkVideos([]);
+      setBulkVideosUploaded(true);
+      setBulkVideoProcessing(true);
+
+      // Show success flash
+      setShowFlash(true);
+      setTimeout(() => {
+        setShowFlash(false);
+      }, 800);
+    } catch (error) {
+      console.error("Error uploading bulk videos:", error);
+      setUploadError(
+        error instanceof Error ? error.message : "Bulk video upload failed"
+      );
+    } finally {
+      setBulkVideoUploading(false);
+    }
+  };
+
+  const validateBulkVideos = () => {
+    return bulkVideos.length >= 1; // Need at least one video
+  };
+
+  const clearBulkVideos = () => {
+    setBulkVideos([]);
+  };
+
+  const removeBulkVideo = (index: number) => {
+    setBulkVideos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Drag and drop handlers for bulk video upload
+  const handleBulkVideoDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleBulkVideoDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleBulkVideoDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleBulkVideoDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const files = Array.from(e.dataTransfer.files).filter((file) =>
+      file.type.startsWith("video/")
+    );
+
+    if (files.length > 0) {
+      const newBulkVideos = files.map((file) => ({
+        file,
+        url: null,
+        preview: URL.createObjectURL(file),
+        duration: undefined,
+      }));
+
+      // Add to existing videos instead of replacing them
+      setBulkVideos((prev) => {
+        const combined = [...prev, ...newBulkVideos];
+        // Limit to maximum 5 videos
+        return combined.slice(0, 5);
+      });
+    }
   };
 
   // Legacy AI analysis function - removed in favor of comprehensive AI workflow
@@ -1744,39 +2020,276 @@ export default function ListItemPage() {
               product insights.
             </p>
 
-            <div className="w-full max-w-2xl">
-              {!videoData.uploaded ? (
-                <>
-                  <VideoUpload
-                    onVideoUploaded={handleVideoUploaded}
-                    onError={handleVideoError}
-                    onStarted={handleVideoStarted}
-                    disabled={videoData.processing}
-                  />
-
-                  {videoData.error && (
-                    <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
-                      <p className="text-red-800">{videoData.error}</p>
+            {/* Video Upload Method Selection */}
+            <div className="w-full max-w-2xl mb-8">
+              <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
+                  Choose Your Upload Method
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Single Video Upload Option */}
+                  <label className="relative cursor-pointer">
+                    <input
+                      type="radio"
+                      name="videoUploadMethod"
+                      value="single"
+                      checked={videoUploadMethod === "single"}
+                      onChange={(e) =>
+                        setVideoUploadMethod(
+                          e.target.value as "single" | "bulk"
+                        )
+                      }
+                      className="sr-only"
+                    />
+                    <div className="border-2 rounded-lg p-4 transition-colors hover:border-[#D4AF3D] hover:bg-[#D4AF3D]/5">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
+                            videoUploadMethod === "single"
+                              ? "border-[#D4AF3D] bg-[#D4AF3D]"
+                              : "border-gray-300"
+                          }`}
+                        >
+                          {videoUploadMethod === "single" && (
+                            <div className="w-2 h-2 bg-white rounded-full"></div>
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">
+                            Single Video Upload
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            Upload one video with processing
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </>
-              ) : (
+                  </label>
+
+                  {/* Bulk Video Upload Option */}
+                  <label className="relative cursor-pointer">
+                    <input
+                      type="radio"
+                      name="videoUploadMethod"
+                      value="bulk"
+                      checked={videoUploadMethod === "bulk"}
+                      onChange={(e) =>
+                        setVideoUploadMethod(
+                          e.target.value as "single" | "bulk"
+                        )
+                      }
+                      className="sr-only"
+                    />
+                    <div className="border-2 rounded-lg p-4 transition-colors hover:border-[#D4AF3D] hover:bg-[#D4AF3D]/5">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
+                            videoUploadMethod === "bulk"
+                              ? "border-[#D4AF3D] bg-[#D4AF3D]"
+                              : "border-gray-300"
+                          }`}
+                        >
+                          {videoUploadMethod === "bulk" && (
+                            <div className="w-2 h-2 bg-white rounded-full"></div>
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">
+                            Bulk Video Upload
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            Upload multiple videos at once
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Single Video Upload Interface */}
+            {videoUploadMethod === "single" && (
+              <div className="w-full max-w-2xl">
+                {!videoData.uploaded ? (
+                  <>
+                    <VideoUpload
+                      onVideoUploaded={handleVideoUploaded}
+                      onError={handleVideoError}
+                      onStarted={handleVideoStarted}
+                      disabled={videoData.processing}
+                    />
+
+                    {videoData.error && (
+                      <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                        <p className="text-red-800">{videoData.error}</p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center">
+                    <div className="mb-6">
+                      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <CheckCircle className="w-8 h-8 text-green-600" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-green-800 mb-2">
+                        Video Processing Started
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Your video is being processed in the background. You can
+                        continue to photos now.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Bulk Video Upload Interface */}
+            {videoUploadMethod === "bulk" && (
+              <>
+                {/* Bulk Video Selection */}
+                <div className="w-full max-w-2xl mb-8">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-blue-900 mb-4 text-center">
+                      Bulk Video Upload
+                    </h3>
+                    <p className="text-sm text-blue-700 mb-4 text-center">
+                      Add videos one by one or select multiple at once. You can
+                      browse different folders and keep adding videos until
+                      you're ready to upload them all together.
+                    </p>
+
+                    {/* Drag & Drop Area */}
+                    <div
+                      className="border-2 border-dashed border-blue-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors"
+                      onDragEnter={handleBulkVideoDragEnter}
+                      onDragLeave={handleBulkVideoDragLeave}
+                      onDragOver={handleBulkVideoDragOver}
+                      onDrop={handleBulkVideoDrop}
+                    >
+                      <input
+                        type="file"
+                        multiple
+                        accept="video/*"
+                        onChange={handleBulkVideoSelection}
+                        className="hidden"
+                        id="bulk-video-input"
+                        disabled={bulkVideos.length >= 5}
+                      />
+                      <label
+                        htmlFor="bulk-video-input"
+                        className="cursor-pointer"
+                      >
+                        <div className="flex flex-col items-center gap-3">
+                          <Upload className="w-12 h-12 text-blue-500" />
+                          <div>
+                            <p className="text-lg font-medium text-blue-900">
+                              {bulkVideos.length > 0
+                                ? `${bulkVideos.length} video${
+                                    bulkVideos.length !== 1 ? "s" : ""
+                                  } selected - Click to add more`
+                                : "Click to select videos or drag & drop"}
+                            </p>
+                            <p className="text-sm text-blue-600">
+                              {bulkVideos.length >= 5
+                                ? "Maximum reached (5 videos, 100MB each)"
+                                : "Maximum 5 videos, 100MB each"}
+                            </p>
+                          </div>
+                        </div>
+                      </label>
+                    </div>
+
+                    {/* Selected Videos Preview */}
+                    {bulkVideos.length > 0 && (
+                      <div className="mt-6">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-medium text-blue-900">
+                            Selected Videos ({bulkVideos.length})
+                          </h4>
+                          <button
+                            onClick={clearBulkVideos}
+                            className="text-sm text-red-600 hover:text-red-700 font-medium"
+                          >
+                            Clear All
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {bulkVideos.map((video, index) => (
+                            <div key={index} className="relative group">
+                              <video
+                                src={video.preview}
+                                className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                                muted
+                              />
+                              <button
+                                onClick={() => removeBulkVideo(index)}
+                                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                ×
+                              </button>
+                              <div className="absolute bottom-1 left-1 right-1 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                                {video.file.name}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Upload Button */}
+                        <div className="mt-6 text-center">
+                          <button
+                            onClick={handleBulkVideoUpload}
+                            disabled={
+                              !validateBulkVideos() || bulkVideoUploading
+                            }
+                            className={`px-8 py-3 rounded-lg font-medium transition-colors ${
+                              validateBulkVideos() && !bulkVideoUploading
+                                ? "bg-[#D4AF3D] text-white hover:bg-[#b8932f]"
+                                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                            }`}
+                          >
+                            {bulkVideoUploading ? (
+                              <span className="flex items-center gap-2">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Uploading Videos...
+                              </span>
+                            ) : (
+                              `Upload ${bulkVideos.length} Video${
+                                bulkVideos.length !== 1 ? "s" : ""
+                              }`
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Bulk Video Processing Success */}
+            {videoUploadMethod === "bulk" && bulkVideosUploaded && (
+              <div className="w-full max-w-2xl">
                 <div className="text-center">
                   <div className="mb-6">
                     <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                       <CheckCircle className="w-8 h-8 text-green-600" />
                     </div>
                     <h3 className="text-lg font-semibold text-green-800 mb-2">
-                      Video Processing Started
+                      Videos Processing Started
                     </h3>
                     <p className="text-sm text-gray-600">
-                      Your video is being processed in the background. You can
+                      Your videos are being processed in the background. You can
                       continue to photos now.
                     </p>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
+            <div className="w-full max-w-2xl">
               {/* Inventory Selection Section */}
               <div className="mt-8 w-full max-w-2xl">
                 <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-lg p-6">
@@ -2150,11 +2663,15 @@ export default function ListItemPage() {
               </div>
             </div>
 
-            {videoData.processing && (
+            {(videoData.processing || bulkVideoProcessing) && (
               <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <div className="flex items-center gap-2 text-sm text-blue-700">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Video processing in background...</span>
+                  <span>
+                    {bulkVideoProcessing
+                      ? "Videos processing in background..."
+                      : "Video processing in background..."}
+                  </span>
                 </div>
               </div>
             )}
@@ -2582,10 +3099,10 @@ export default function ListItemPage() {
                     {hasMinimumPhotos() ? (
                       <button
                         type="button"
-                        disabled={videoData.processing}
+                        disabled={videoData.processing || bulkVideoProcessing}
                         onClick={async () => {
                           // Don't proceed if video is still processing
-                          if (videoData.processing) {
+                          if (videoData.processing || bulkVideoProcessing) {
                             console.log(
                               "Cannot proceed - video is still processing"
                             );
@@ -2625,15 +3142,17 @@ export default function ListItemPage() {
                           }, 1000); // Increased delay to ensure form is fully rendered
                         }}
                         className={`px-6 py-3 rounded-lg transition-colors font-medium ${
-                          videoData.processing
+                          videoData.processing || bulkVideoProcessing
                             ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                             : "bg-[#D4AF3D] text-white hover:bg-[#b8932f]"
                         }`}
                       >
-                        {videoData.processing ? (
+                        {videoData.processing || bulkVideoProcessing ? (
                           <span className="flex items-center gap-2">
                             <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
-                            Processing Video...
+                            {bulkVideoProcessing
+                              ? "Processing Videos..."
+                              : "Processing Video..."}
                           </span>
                         ) : (
                           "Generate Form Fields"
