@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 /**
  * GET /api/auth/verify?token=xxx
@@ -9,17 +7,24 @@ const prisma = new PrismaClient();
  */
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔍 Email verification request received');
     const { searchParams } = new URL(request.url);
     const token = searchParams.get('token');
     
+    console.log('🔍 Token from URL:', token ? `${token.substring(0, 10)}...` : 'null');
+    
     if (!token) {
+      console.log('❌ No token provided');
       return NextResponse.json({ error: 'Verification token is required' }, { status: 400 });
     }
     
+    console.log('🔍 Looking up verification token in database...');
     // Find the verification token in the database
     const verificationToken = await prisma.verificationToken.findUnique({
       where: { token }
     });
+    
+    console.log('🔍 Database lookup result:', verificationToken ? 'Found' : 'Not found');
     
     if (!verificationToken) {
       return NextResponse.json({ error: 'Invalid or expired verification token' }, { status: 400 });
@@ -77,9 +82,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
     
   } catch (error) {
-    console.error('Error in email verification:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
+    console.error('❌ Error in email verification:', error);
+    console.error('❌ Error name:', error.name);
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error stack:', error.stack);
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    }, { status: 500 });
   }
 }

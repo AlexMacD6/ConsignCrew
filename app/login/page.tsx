@@ -358,6 +358,14 @@ function LoginForm() {
           </div>
         )}
 
+        {/* Registration Success Message */}
+        {successMessage === "registration-success" && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-600 text-sm">
+            ✅ Registration successful! Please check your email to verify your
+            account before signing in.
+          </div>
+        )}
+
         {/* Password Reset Success Message */}
         {successMessage === "password-reset-success" && (
           <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-600 text-sm">
