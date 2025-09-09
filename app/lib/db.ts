@@ -13,7 +13,20 @@ function getPrismaClient(): PrismaClient {
   const databaseUrl = process.env.DATABASE_URL
   
   if (!databaseUrl) {
-    throw new Error('DATABASE_URL environment variable is required')
+    // Only throw error on server-side, not client-side
+    if (typeof window === 'undefined') {
+      throw new Error('DATABASE_URL environment variable is required')
+    } else {
+      // On client-side, return a dummy client that will never be used
+      console.warn('Database client initialized on client-side - this should not happen in production')
+      return new PrismaClient({
+        datasources: {
+          db: {
+            url: 'postgresql://dummy:dummy@localhost:5432/dummy'
+          }
+        }
+      })
+    }
   }
   
   const client = new PrismaClient({
@@ -35,10 +48,6 @@ function getPrismaClient(): PrismaClient {
 // Initialize the client immediately to ensure it's available during build
 export const db = getPrismaClient()
 
-// Helper function to check if database is available
-export function isDatabaseAvailable(): boolean {
-  return !!process.env.DATABASE_URL
-}
 
 // Helper function to safely execute database operations
 export async function safeDbOperation<T>(

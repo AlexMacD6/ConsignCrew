@@ -168,7 +168,6 @@ export async function registerUser(data: RegistrationData) {
           });
           
           const verificationUrl = `${baseUrl}/api/auth/verify?token=${verificationToken}`;
-          console.log('🌐 Verification URL for cross-device access:', verificationUrl);
         
         const subject = 'Verify your TreasureHub account';
         const html = `
