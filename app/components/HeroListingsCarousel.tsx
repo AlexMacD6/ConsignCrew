@@ -58,9 +58,9 @@ export default function HeroListingsCarousel({
         // Add timeout
         timeoutId = setTimeout(() => {
           controller.abort();
-        }, 30000); // 30 second timeout
+        }, 10000); // 10 second timeout
 
-        const response = await fetch("/api/listings?status=active&limit=20", {
+        const response = await fetch("/api/listings?status=active&limit=10", {
           signal: controller.signal,
           headers: {
             "Content-Type": "application/json",
@@ -82,8 +82,20 @@ export default function HeroListingsCarousel({
           );
         }
 
+        // Check if request was aborted before processing data
+        if (abortControllerRef.current?.signal.aborted) {
+          console.log("Request was aborted before processing data");
+          return;
+        }
+
         const data = await response.json();
         console.log("API Response data:", data);
+
+        // Check again after JSON parsing
+        if (abortControllerRef.current?.signal.aborted) {
+          console.log("Request was aborted after JSON parsing");
+          return;
+        }
 
         if (data.success && data.listings) {
           console.log("Total listings received:", data.listings.length);
@@ -152,6 +164,13 @@ export default function HeroListingsCarousel({
             }));
 
           console.log("Valid listings with hero photos:", validListings.length);
+
+          // Check if request was aborted before setting state
+          if (abortControllerRef.current?.signal.aborted) {
+            console.log("Request was aborted before setting state");
+            return;
+          }
+
           setListings(validListings);
 
           if (validListings.length === 0) {
@@ -159,6 +178,13 @@ export default function HeroListingsCarousel({
           }
         } else {
           console.log("API response missing success or listings:", data);
+
+          // Check if request was aborted before setting error state
+          if (abortControllerRef.current?.signal.aborted) {
+            console.log("Request was aborted before setting error state");
+            return;
+          }
+
           setError("No listings available");
         }
       } catch (err) {
@@ -166,7 +192,10 @@ export default function HeroListingsCarousel({
 
         // More specific error handling
         if (err instanceof Error) {
-          if (err.name === "AbortError") {
+          if (
+            err.name === "AbortError" ||
+            abortControllerRef.current?.signal.aborted
+          ) {
             console.log(
               "Request was aborted (likely due to cleanup or timeout)"
             );

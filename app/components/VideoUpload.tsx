@@ -348,6 +348,7 @@ export default function VideoUpload({
               </div>
             </div>
             <button
+              type="button"
               onClick={handleRemoveVideo}
               className="text-red-500 hover:text-red-700"
               disabled={isUploading || isProcessing}
@@ -424,6 +425,7 @@ export default function VideoUpload({
             !isProcessing &&
             videoStatus?.status !== "completed" && (
               <button
+                type="button"
                 onClick={uploadVideo}
                 disabled={disabled}
                 className="mt-4 w-full bg-treasure-500 text-white py-2 px-4 rounded-md hover:bg-treasure-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"

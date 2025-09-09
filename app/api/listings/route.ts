@@ -440,45 +440,38 @@ export async function GET(request: NextRequest) {
             name: true,
             email: true,
             zipCode: true,
-            members: {
-              include: {
-                organization: {
-                  select: {
-                    id: true,
-                    name: true,
-                    slug: true,
-                  },
-                },
-              },
-            },
+            // Removed nested members/organizations for performance
           },
         },
-        priceHistory: {
-          orderBy: {
-            createdAt: "desc",
-          },
-          take: 10, // Get last 10 price changes
-        },
+        // Removed priceHistory for performance - can be loaded separately if needed
       },
       orderBy: {
         createdAt: 'desc',
       },
-      take: limit,
+      take: Math.min(limit, 50), // Cap at 50 for performance
       skip: offset,
     });
 
     console.log('Listings API: Found', listings.length, 'listings');
     console.log('Listings API: Statuses:', listings.map(l => ({ id: l.itemId, status: l.status })));
 
-    // Fetch zip code data for all unique zip codes
+    // Fetch zip code data for all unique zip codes (optimized)
     const uniqueZipCodes = [...new Set(listings.map(listing => listing.user.zipCode).filter((zipCode): zipCode is string => zipCode !== null))];
-    const zipCodeData = await prisma.zipCode.findMany({
+    
+    // Only fetch zip codes if we have any and limit the query
+    const zipCodeData = uniqueZipCodes.length > 0 ? await prisma.zipCode.findMany({
       where: {
         code: {
-          in: uniqueZipCodes,
+          in: uniqueZipCodes.slice(0, 50), // Limit to 50 zip codes for performance
         },
       },
-    });
+      select: {
+        code: true,
+        area: true,
+        type: true,
+        // Only select needed fields
+      }
+    }) : [];
 
     // Create a map for quick lookup
     const zipCodeMap = new Map(zipCodeData.map(zip => [zip.code, zip.area]));

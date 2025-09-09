@@ -20,13 +20,14 @@ import {
   Building,
   Eye,
   ShoppingCart,
+  Download,
 } from "lucide-react";
 import QuestionsDisplay from "../../../components/QuestionsDisplay";
 import ImageCarousel from "../../../components/ImageCarousel";
 import ListingHistory from "../../../components/ListingHistory";
 import CustomQRCode from "../../../components/CustomQRCode";
 import TreasureBadge from "../../../components/TreasureBadge";
-import VideoPlayer from "../../../components/VideoPlayer";
+import VideoCarousel from "../../../components/VideoCarousel";
 import { getDisplayPrice } from "../../../lib/price-calculator";
 import {
   getStandardizedCondition,
@@ -46,24 +47,12 @@ import ProductStructuredData from "../../../components/ProductStructuredData";
 
 // Import the time calculation function
 import { getTimeUntilNextDrop } from "../../../lib/price-calculator";
+// Import date formatting utilities
+import { formatDateWithOrdinal } from "../../../lib/date-utils";
+import { cachedFetch, debounce } from "../../../lib/api-cache";
 
-// Helper function to format dates
-const formatDate = (dateString: string | Date | null | undefined): string => {
-  if (!dateString) return "Unknown";
-
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return "Invalid Date";
-
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  } catch (error) {
-    return "Invalid Date";
-  }
-};
+// Use the shared date formatting function
+const formatDate = formatDateWithOrdinal;
 
 // Mock data for transportation history
 const transportationHistory = [
@@ -296,7 +285,28 @@ export default function ListingDetailPage() {
       try {
         setLoading(true);
 
-        const response = await fetch(`/api/listings/${params.id}`);
+        // Use cached fetch for listing data with fallback
+        let response;
+        try {
+          console.log(`🔍 Fetching listing data for ID: ${params.id}`);
+          response = await cachedFetch(`/api/listings/${params.id}`, {}, 30000);
+        } catch (fetchError) {
+          console.error(
+            "🚨 Cached fetch failed, trying direct fetch:",
+            fetchError
+          );
+          // Fallback to direct fetch if cached fetch fails
+          try {
+            response = await fetch(`/api/listings/${params.id}`);
+          } catch (directFetchError) {
+            console.error("🚨 Direct fetch also failed:", directFetchError);
+            const errorMessage =
+              directFetchError instanceof Error
+                ? directFetchError.message
+                : "Unknown error";
+            throw new Error(`Failed to fetch listing: ${errorMessage}`);
+          }
+        }
 
         if (!response.ok) {
           if (response.status === 401) {
@@ -315,18 +325,29 @@ export default function ListingDetailPage() {
           console.log("Listing itemId:", data.listing.itemId); // Debug log
           setListing(data.listing);
 
-          // Track view count increment
-          try {
-            await fetch(`/api/listings/${params.id}/view`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-            });
-          } catch (error) {
-            console.error("Error tracking view:", error);
-            // Don't fail the page load if view tracking fails
-          }
+          // Debounced view tracking to prevent rapid successive calls
+          const trackView = debounce(() => {
+            // Only track views if we're in a browser environment
+            if (typeof window !== "undefined") {
+              fetch(`/api/listings/${params.id}/view`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }).catch((error) => {
+                console.error("🚨 Error tracking view:", error);
+                console.error("🚨 View tracking error details:", {
+                  message: error.message,
+                  stack: error.stack,
+                  url: `/api/listings/${params.id}/view`,
+                  online: navigator.onLine,
+                });
+                // Don't fail the page load if view tracking fails
+              });
+            }
+          }, 5000); // Only track once per 5 seconds
+
+          trackView();
         } else {
           console.error("API response missing listing:", data); // Debug log
           throw new Error(data.error || "Failed to fetch listing");
@@ -579,6 +600,129 @@ export default function ListingDetailPage() {
       alert("Failed to add item to cart. Please try again.");
     } finally {
       setAddingToCart(false);
+    }
+  };
+
+  // Download all photos function (admin only)
+  const handleDownloadAllPhotos = async () => {
+    if (!isTreasureHubMember || !allImages || allImages.length === 0) {
+      console.log("📸 Download blocked:", {
+        isTreasureHubMember,
+        hasImages: !!allImages,
+        imageCount: allImages?.length,
+      });
+      return;
+    }
+
+    try {
+      console.log("📸 Starting photo download process...");
+      console.log("📸 Total images found:", allImages.length);
+      console.log("📸 All images data:", allImages);
+
+      // Extract photo URLs from allImages
+      const photoUrls = allImages
+        .map((image) => {
+          if (typeof image === "string") {
+            console.log("📸 String image:", image);
+            return image;
+          } else if (image && typeof image === "object" && image.src) {
+            console.log("📸 Object image:", image.src);
+            return image.src;
+          }
+          console.log("📸 Invalid image format:", image);
+          return null;
+        })
+        .filter(Boolean);
+
+      console.log("📸 Extracted photo URLs:", photoUrls);
+
+      if (photoUrls.length === 0) {
+        console.error("📸 No valid photo URLs found");
+        alert("No photos found to download.");
+        return;
+      }
+
+      console.log("📸 Validating URLs with API...");
+      // Validate URLs with the API
+      const response = await fetch("/api/admin/download-photos", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ photoUrls }),
+      });
+
+      console.log("📸 API response status:", response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("📸 API error response:", errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { error: errorText };
+        }
+        throw new Error(errorData.error || `API error: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      console.log("📸 API response data:", responseData);
+      const { photoUrls: validUrls } = responseData;
+
+      console.log("📸 Starting individual photo downloads...");
+      // Download each photo individually through our API
+      for (let i = 0; i < validUrls.length; i++) {
+        const url = validUrls[i];
+        console.log(`📸 Processing photo ${i + 1}/${validUrls.length}:`, url);
+
+        try {
+          // Extract filename from URL or create one
+          const urlParts = url.split("/");
+          const originalFilename = urlParts[urlParts.length - 1];
+          const filename = originalFilename.includes(".")
+            ? `${listing.title || "photo"}-${i + 1}-${originalFilename}`
+            : `${listing.title || "photo"}-${i + 1}.jpg`;
+
+          console.log(`📸 Generated filename:`, filename);
+
+          // Create download URL through our API
+          const downloadUrl = `/api/admin/download-photos?photoUrl=${encodeURIComponent(
+            url
+          )}&filename=${encodeURIComponent(filename)}`;
+          console.log(`📸 Download URL:`, downloadUrl);
+
+          // Create a temporary link for each photo
+          const link = document.createElement("a");
+          link.href = downloadUrl;
+          link.download = filename;
+
+          console.log(`📸 Triggering download for photo ${i + 1}...`);
+          // Add to DOM, click, and remove
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          // Small delay between downloads to avoid overwhelming the browser
+          if (i < validUrls.length - 1) {
+            console.log(`📸 Waiting 800ms before next download...`);
+            await new Promise((resolve) => setTimeout(resolve, 800));
+          }
+        } catch (downloadError) {
+          console.error(`📸 Error downloading photo ${i + 1}:`, downloadError);
+        }
+      }
+
+      console.log(
+        `📸 Successfully initiated download of ${validUrls.length} photos`
+      );
+    } catch (error) {
+      console.error("📸 Fatal error in download process:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
+      alert(
+        `Failed to download photos: ${errorMessage}. Please check the console for details.`
+      );
     }
   };
 
@@ -881,6 +1025,20 @@ export default function ListingDetailPage() {
                 showDots={true}
                 autoPlay={false}
               />
+
+              {/* Admin Download All Photos Button */}
+              {isTreasureHubMember && allImages && allImages.length > 0 && (
+                <div className="mt-4 flex justify-center">
+                  <button
+                    onClick={handleDownloadAllPhotos}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[#D4AF3D] hover:bg-[#B8941F] rounded-lg transition-colors shadow-sm"
+                    title="Download all photos (Admin only)"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download All Photos ({allImages.length})
+                  </button>
+                </div>
+              )}
 
               {/* Status Overlay */}
               {(() => {
@@ -1627,18 +1785,73 @@ export default function ListingDetailPage() {
                 listing.videoUrl
               );
               console.log("Video section - listing.video:", listing.video);
+              console.log("Video section - listing.videos:", listing.videos);
 
-              // Always use the raw video directly - no processing needed
-              let videoSrc = null;
+              const videos = [];
+              const processedVideoIds = new Set<string>();
 
-              // First try to generate URL from video record (prioritizes raw video)
-              if (listing.video) {
-                console.log("🎬 Using raw video from video record");
-                videoSrc = generateVideoUrl(listing.video);
+              // Check for multiple videos in listing.videos array FIRST
+              if (
+                listing.videos &&
+                Array.isArray(listing.videos) &&
+                listing.videos.length > 0
+              ) {
+                console.log(
+                  "🎬 Processing multiple videos from videos array:",
+                  listing.videos.length
+                );
+                listing.videos.forEach((video: any, index: number) => {
+                  if (processedVideoIds.has(video.id)) {
+                    console.log(`⏭️ Skipping duplicate video ID: ${video.id}`);
+                    return;
+                  }
+
+                  const videoSrc = generateVideoUrl(video);
+                  if (videoSrc) {
+                    videos.push({
+                      id: video.id || `video-${index}`,
+                      src: videoSrc,
+                      poster: video.thumbnailUrl || generateThumbnailUrl(video),
+                      duration: video.duration,
+                      title: `${listing.title} - Video ${index + 1}`,
+                    });
+                    processedVideoIds.add(video.id);
+                    console.log(`✅ Added video ${index + 1}:`, videoSrc);
+                  } else {
+                    console.warn(
+                      `❌ Could not generate URL for video ${index + 1}:`,
+                      video
+                    );
+                  }
+                });
               }
 
-              // Fallback to listing.videoUrl only if no video record available
-              if (!videoSrc && listing.videoUrl) {
+              // ALSO check single video from listing.video (don't skip if we already have videos)
+              if (listing.video && !processedVideoIds.has(listing.video.id)) {
+                console.log("🎬 Processing single video from video record");
+                const videoSrc = generateVideoUrl(listing.video);
+                if (videoSrc) {
+                  videos.push({
+                    id: listing.video.id || "single-video",
+                    src: videoSrc,
+                    poster:
+                      listing.video.thumbnailUrl ||
+                      generateThumbnailUrl(listing.video),
+                    duration: listing.video.duration,
+                    title: `${listing.title} - Original Video`,
+                  });
+                  processedVideoIds.add(listing.video.id);
+                  console.log("✅ Added single video:", videoSrc);
+                } else {
+                  console.warn(
+                    "❌ Could not generate URL for single video:",
+                    listing.video
+                  );
+                }
+              }
+
+              // Final fallback to listing.videoUrl (only if no other videos found)
+              if (videos.length === 0 && listing.videoUrl) {
                 const isValidVideoUrl =
                   !listing.videoUrl.includes("/frames/") &&
                   !listing.videoUrl.endsWith(".jpg") &&
@@ -1650,7 +1863,11 @@ export default function ListingDetailPage() {
                     "📺 Falling back to listing.videoUrl:",
                     listing.videoUrl
                   );
-                  videoSrc = listing.videoUrl;
+                  videos.push({
+                    id: "fallback-video",
+                    src: listing.videoUrl,
+                    title: `Video: ${listing.title}`,
+                  });
                 } else {
                   console.warn(
                     "❌ listing.videoUrl contains frame/image URL, ignoring:",
@@ -1658,29 +1875,32 @@ export default function ListingDetailPage() {
                   );
                 }
               }
-              console.log("Video section - final video src:", videoSrc);
 
-              if (!videoSrc) {
-                console.log("No valid video source found");
+              console.log("Video section - final videos:", videos);
+              console.log("🎬 VideoCarousel will receive:", {
+                videoCount: videos.length,
+                videoIds: videos.map((v) => v.id),
+                videoTitles: videos.map((v) => v.title),
+                hasNavigation: videos.length > 1,
+              });
+
+              if (videos.length === 0) {
+                console.log("No valid video sources found");
                 return null;
               }
 
               return (
                 <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                    Video
+                    {videos.length > 1 ? `Videos (${videos.length})` : "Video"}
                   </h3>
-                  <VideoPlayer
-                    src={videoSrc}
-                    poster={
-                      listing.video?.thumbnailUrl ||
-                      generateThumbnailUrl(listing.video)
-                    }
-                    duration={listing.video?.duration}
-                    title={`Video: ${listing.title}`}
+                  <VideoCarousel
+                    videos={videos}
                     className=""
                     controls={true}
                     autoPlay={false}
+                    showCustomControls={false}
+                    isAdmin={isTreasureHubMember}
                   />
                 </div>
               );

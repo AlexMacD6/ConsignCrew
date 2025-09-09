@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       }
     });
     
-    // Send verification email
+    // Send verification email using our custom verify endpoint
     const verificationUrl = `${process.env.BETTER_AUTH_URL || 'http://localhost:3000'}/api/auth/verify?token=${token}`;
     const subject = 'Verify your TreasureHub account';
     const html = `
