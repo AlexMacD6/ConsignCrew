@@ -9,9 +9,12 @@ function getPrismaClient(): PrismaClient {
     return globalForPrisma.prisma
   }
 
-  // During build time or when DATABASE_URL is not available, 
-  // create a client with a mock URL to prevent build errors
-  const databaseUrl = process.env.DATABASE_URL || 'postgresql://mock:mock@localhost:5432/mock'
+  // Require DATABASE_URL to be set - no fallback to mock database
+  const databaseUrl = process.env.DATABASE_URL
+  
+  if (!databaseUrl) {
+    throw new Error('DATABASE_URL environment variable is required')
+  }
   
   const client = new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['info', 'warn', 'error'] : ['error'],

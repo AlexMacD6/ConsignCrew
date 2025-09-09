@@ -55,9 +55,10 @@ export async function GET(request: NextRequest) {
         where: { token }
       });
       
-      // Redirect to login with success message
-      const redirectUrl = new URL('/login', request.url);
-      redirectUrl.searchParams.set('verified', 'already');
+      // Redirect to login with already verified message
+      const baseUrl = new URL(request.url).origin;
+      const redirectUrl = new URL('/login?verified=already', baseUrl);
+      console.log('🔄 Redirecting (already verified) to:', redirectUrl.toString());
       return NextResponse.redirect(redirectUrl);
     }
     
@@ -77,8 +78,9 @@ export async function GET(request: NextRequest) {
     console.log('Email verification successful for user:', user.email);
     
     // Redirect to login with success message
-    const redirectUrl = new URL('/login', request.url);
-    redirectUrl.searchParams.set('verified', 'success');
+    const baseUrl = new URL(request.url).origin;
+    const redirectUrl = new URL('/login?verified=success', baseUrl);
+    console.log('🔄 Redirecting to:', redirectUrl.toString());
     return NextResponse.redirect(redirectUrl);
     
   } catch (error) {
