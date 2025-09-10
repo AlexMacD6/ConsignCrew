@@ -499,8 +499,8 @@ export default function ListItemPage() {
   const hasMinimumPhotos = () => {
     return (
       (photos.hero?.file || photos.hero?.url) &&
-      (photos.back?.file || photos.back?.url) &&
-      (photos.proof?.file || photos.proof?.url)
+      (photos.back?.file || photos.back?.url)
+      // proof photo is now optional - only hero and back are required
     );
   };
 
@@ -1325,6 +1325,7 @@ export default function ListItemPage() {
     const photoUrls = [
       photos.hero?.url || photos.hero?.key,
       photos.back?.url || photos.back?.key,
+      photos.proof?.url || photos.proof?.key,
       ...(photos.additional
         ? photos.additional.map((p) => p.url || p.key).filter(Boolean)
         : []),
@@ -1702,6 +1703,18 @@ export default function ListItemPage() {
       // }
     } catch (error) {
       console.error("❌ Error generating form fields:", error);
+      console.error(
+        "❌ Error stack:",
+        error instanceof Error ? error.stack : "No stack trace"
+      );
+      console.error(
+        "❌ Error name:",
+        error instanceof Error ? error.name : "Unknown"
+      );
+      console.error(
+        "❌ Error message:",
+        error instanceof Error ? error.message : String(error)
+      );
       setComprehensiveError(
         error instanceof Error
           ? error.message
@@ -1789,7 +1802,7 @@ export default function ListItemPage() {
   const isFormValid =
     (photos.hero?.file || photos.hero?.url) &&
     (photos.back?.file || photos.back?.url) &&
-    (photos.proof?.file || photos.proof?.url) &&
+    // proof photo is now optional - only hero and back are required
     department &&
     category &&
     // subCategory is now optional since some categories don't have sub-categories
@@ -1807,9 +1820,10 @@ export default function ListItemPage() {
     if (!(photos.back?.file || photos.back?.url)) {
       errors.push("Back photo is required");
     }
-    if (!(photos.proof?.file || photos.proof?.url)) {
-      errors.push("Proof photo is required");
-    }
+    // Proof photo is now optional
+    // if (!(photos.proof?.file || photos.proof?.url)) {
+    //   errors.push("Proof photo is required");
+    // }
     if (!department) {
       errors.push("Department is required");
     }
@@ -1986,7 +2000,8 @@ export default function ListItemPage() {
     {
       id: 2,
       title: "Photo Upload",
-      description: "Upload required photos (Front, Back, Proof)",
+      description:
+        "Upload required photos (Front, Back) + optional Proof photo",
       status: "pending",
       required: true,
     },
@@ -2560,6 +2575,17 @@ export default function ListItemPage() {
                 >
                   Next Photo
                 </button>
+
+                {/* Skip button for optional proof photo */}
+                {currentPhotoType === "proof" && (
+                  <button
+                    type="button"
+                    onClick={goToNextPhoto}
+                    className="px-4 py-2 rounded-lg bg-gray-300 text-gray-700 hover:bg-gray-400 transition-colors"
+                  >
+                    Skip (Optional)
+                  </button>
+                )}
               </div>
             </div>
 
@@ -2883,7 +2909,7 @@ export default function ListItemPage() {
                     {currentPhotoType === "back" &&
                       "Photo #2: Full Back / Underside"}
                     {currentPhotoType === "proof" &&
-                      "Photo #3: Proof / Identification"}
+                      "Photo #3: Proof / Identification (Optional)"}
                     {currentPhotoType === "additional" &&
                       "Additional Photos (Optional)"}
                   </h2>

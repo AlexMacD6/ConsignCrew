@@ -401,7 +401,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') || 'active';
     const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
+    const page = parseInt(searchParams.get('page') || '1');
+    const offset = (page - 1) * limit;
     const userOnly = searchParams.get('userOnly') === 'true';
 
     // Check authentication for user-specific requests
@@ -421,15 +422,39 @@ export async function GET(request: NextRequest) {
     } else {
       // For public listings, show ACTIVE, PROCESSING, and SOLD
       if (status === 'active') {
-        whereClause.status = {
-          in: ['active', 'processing', 'sold']
-        };
+        // TEMPORARY DEBUG: Show all listings regardless of status
+        // whereClause.status = {
+        //   in: ['active', 'processing', 'sold']
+        // };
+        console.log('DEBUG: Temporarily showing all listings regardless of status');
       } else {
         whereClause.status = status;
       }
     }
 
     console.log('Listings API: Where clause:', JSON.stringify(whereClause, null, 2));
+    console.log('Listings API: Pagination params - page:', page, 'limit:', limit, 'offset:', offset);
+    
+    // Get total count for pagination
+    const totalCount = await prisma.listing.count({
+      where: whereClause,
+    });
+    
+    console.log('Listings API: Total count from database:', totalCount);
+    
+    // If no listings found with the current filter, let's debug by checking all listings
+    if (totalCount === 0) {
+      const allListingsCount = await prisma.listing.count();
+      console.log('DEBUG: Total listings in database (no filter):', allListingsCount);
+      
+      if (allListingsCount > 0) {
+        const statusCounts = await prisma.listing.groupBy({
+          by: ['status'],
+          _count: { id: true }
+        });
+        console.log('DEBUG: Listings by status:', statusCounts);
+      }
+    }
     
     const listings = await prisma.listing.findMany({
       where: whereClause,
@@ -448,7 +473,7 @@ export async function GET(request: NextRequest) {
       orderBy: {
         createdAt: 'desc',
       },
-      take: Math.min(limit, 50), // Cap at 50 for performance
+      take: Math.min(limit, 100), // Increased cap to 100 for better UX
       skip: offset,
     });
 
@@ -490,6 +515,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       listings: transformedListings,
+      pagination: {
+        page,
+        limit,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+        hasNextPage: page < Math.ceil(totalCount / limit),
+        hasPreviousPage: page > 1,
+      },
     });
 
   } catch (error) {
