@@ -83,8 +83,12 @@ export default function ProductStructuredData({
     }
 
     return product.all_images
-      .filter((img) => img.src && img.src.trim() !== "")
-      .map((img) => img.src);
+      .filter((img) => {
+        // Handle both string URLs and objects with src property
+        const src = typeof img === "string" ? img : img?.src;
+        return src && typeof src === "string" && src.trim() !== "";
+      })
+      .map((img) => (typeof img === "string" ? img : img.src));
   };
 
   // Get the price - handle both old and new field names
