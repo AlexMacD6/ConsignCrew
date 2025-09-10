@@ -122,7 +122,14 @@ export default function ListingsPage() {
   const [submitSuccess, setSubmitSuccess] = useState(false); // Signup success state
   const [signupError, setSignupError] = useState(""); // Signup error message
   const [loadingPurchase, setLoadingPurchase] = useState(false); // Purchase loading state
-  const [ownListingConfirmOpen, setOwnListingConfirmOpen] = useState(false); // Own listing confirmation modal
+  const [ownListingConfirmOpen, setOwnListingConfirmOpen] = useState(false);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(50);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loading, setLoading] = useState(false);
   const [addToCartModalOpen, setAddToCartModalOpen] = useState(false); // Add to cart success modal
   const [addedItemName, setAddedItemName] = useState(""); // Name of item added to cart
   const [showAddressRequiredModal, setShowAddressRequiredModal] =
@@ -211,7 +218,10 @@ export default function ListingsPage() {
   useEffect(() => {
     const fetchListings = async () => {
       try {
-        const response = await fetch("/api/listings");
+        setLoading(true);
+        const response = await fetch(
+          `/api/listings?page=${currentPage}&limit=${itemsPerPage}`
+        );
         if (!response.ok) {
           if (response.status === 401) {
             setAuthError(true);
@@ -221,7 +231,16 @@ export default function ListingsPage() {
           throw new Error("Failed to fetch listings");
         }
         const data = await response.json();
+        console.log("Listings API Response:", data);
         if (data.success) {
+          // Update pagination metadata
+          if (data.pagination) {
+            console.log("Pagination data:", data.pagination);
+            setTotalItems(data.pagination.total);
+            setTotalPages(data.pagination.totalPages);
+          } else {
+            console.warn("No pagination data in response");
+          }
           // Debug: Check if listings have id field
           console.log("First listing from API:", data.listings[0]);
           console.log("First listing has id field:", !!data.listings[0]?.id);
@@ -292,11 +311,13 @@ export default function ListingsPage() {
         console.error("Error fetching listings:", error);
         // Set empty array if API fails - no fallback to mock data
         setListings([]);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchListings();
-  }, []);
+  }, [currentPage, itemsPerPage]);
 
   // Update time calculations every minute
   useEffect(() => {
@@ -1016,7 +1037,12 @@ export default function ListingsPage() {
       <div className="px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex items-center justify-between">
           <p className="text-gray-600">
-            Showing {filteredListings.length} of {listings.length} listings
+            Showing {filteredListings.length} of {totalItems} listings
+            {totalItems > itemsPerPage && (
+              <span className="ml-2 text-sm">
+                (Page {currentPage} of {totalPages})
+              </span>
+            )}
           </p>
           {isAuthenticated && (
             <div className="flex items-center gap-4 text-sm text-gray-600">
@@ -1338,6 +1364,76 @@ export default function ListingsPage() {
               );
             })}
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && !loading && (
+            <div className="flex items-center justify-between mt-8 px-4">
+              <div className="flex items-center gap-2">
+                <label htmlFor="itemsPerPage" className="text-sm text-gray-600">
+                  Items per page:
+                </label>
+                <select
+                  id="itemsPerPage"
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1); // Reset to first page when changing items per page
+                  }}
+                  className="border border-gray-300 rounded px-2 py-1 text-sm"
+                >
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  First
+                </button>
+                <button
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+
+                <span className="px-4 py-1 text-sm text-gray-600">
+                  Page {currentPage} of {totalPages}
+                </span>
+
+                <button
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+                <button
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Last
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Loading State */}
+          {loading && (
+            <div className="flex items-center justify-center py-16">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#D4AF3D] mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading listings...</p>
+              </div>
+            </div>
+          )}
 
           {/* No Results or Coming Soon */}
           {filteredListings.length === 0 && authError && (
