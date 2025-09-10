@@ -149,11 +149,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Tax at fixed 8.25%
+    // Tax at fixed 8.25% - calculated on subtotal + delivery fee
     const TAX_RATE = 0.0825;
-    const taxable = Math.max(0, finalPrice + deliveryFee - promoDiscount);
-    const salesTax = taxable * TAX_RATE;
-    const orderTotal = taxable + salesTax;
+    const taxableAmount = finalPrice + deliveryFee;
+    const salesTax = taxableAmount * TAX_RATE;
+    
+    // Apply promo discount to final total (for fixed amount/percentage promos)
+    // Note: This API doesn't handle free shipping promos yet - needs update to new promo system
+    const subtotalAfterPromo = Math.max(0, finalPrice - promoDiscount);
+    const orderTotal = subtotalAfterPromo + deliveryFee + salesTax;
 
     // Hold the item for 10 minutes during checkout (like StubHub)
     const holdDuration = 10 * 60 * 1000; // 10 minutes in milliseconds

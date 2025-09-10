@@ -19,9 +19,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse request body to get delivery method
+    // Parse request body to get delivery method and promo code
     const body = await request.json();
     const deliveryMethod = body.deliveryMethod || "delivery"; // default to delivery
+    const promoCode = body.promoCode;
+    const promoDiscount = body.promoDiscount;
 
     // Get user's cart
     const cart = await prisma.cart.findUnique({
@@ -110,11 +112,25 @@ export async function POST(request: NextRequest) {
       }
       // If pickup, deliveryFee remains 0
 
-      // Tax at fixed 8.25%
+      // Apply promo code discounts
+      let promoDiscountAmount = 0;
+      if (promoDiscount) {
+        if (promoDiscount.type === 'free_shipping') {
+          promoDiscountAmount = deliveryFee;
+          deliveryFee = 0;
+        } else {
+          promoDiscountAmount = promoDiscount.amount || 0;
+        }
+      }
+
+      // Tax at fixed 8.25% - calculated on subtotal + delivery fee
       const TAX_RATE = 0.0825;
-      const taxable = finalPrice + deliveryFee;
-      const salesTax = taxable * TAX_RATE;
-      const orderTotal = taxable + salesTax;
+      const taxableAmount = finalPrice + deliveryFee;
+      const salesTax = taxableAmount * TAX_RATE;
+      
+      // Calculate final total: subtotal + delivery fee (after promo) + tax
+      // Note: For free shipping promos, deliveryFee is already set to 0 above
+      const orderTotal = finalPrice + deliveryFee + salesTax;
 
       // Hold the item for 10 minutes during checkout
       const holdDuration = 10 * 60 * 1000; // 10 minutes in milliseconds
@@ -153,6 +169,9 @@ export async function POST(request: NextRequest) {
               taxRate: TAX_RATE,
               total: orderTotal,
               isMultiItem: false,
+              promoCode: promoCode,
+              promoDiscount: promoDiscountAmount,
+              promoDiscountType: promoDiscount?.type,
               items: [{
                 listingId: listing.id,
                 listingItemId: listing.itemId,
@@ -233,11 +252,25 @@ export async function POST(request: NextRequest) {
       }
       // If pickup, deliveryFee remains 0
 
-      // Tax at fixed 8.25%
+      // Apply promo code discounts
+      let promoDiscountAmount = 0;
+      if (promoDiscount) {
+        if (promoDiscount.type === 'free_shipping') {
+          promoDiscountAmount = deliveryFee;
+          deliveryFee = 0;
+        } else {
+          promoDiscountAmount = promoDiscount.amount || 0;
+        }
+      }
+
+      // Tax at fixed 8.25% - calculated on subtotal + delivery fee
       const TAX_RATE = 0.0825;
-      const taxable = subtotal + deliveryFee;
-      const salesTax = taxable * TAX_RATE;
-      const orderTotal = taxable + salesTax;
+      const taxableAmount = subtotal + deliveryFee;
+      const salesTax = taxableAmount * TAX_RATE;
+      
+      // Calculate final total: subtotal + delivery fee (after promo) + tax
+      // Note: For free shipping promos, deliveryFee is already set to 0 above
+      const orderTotal = subtotal + deliveryFee + salesTax;
 
       // Hold all items for 10 minutes during checkout
       const holdDuration = 10 * 60 * 1000; // 10 minutes in milliseconds
@@ -281,6 +314,9 @@ export async function POST(request: NextRequest) {
               taxRate: TAX_RATE,
               total: orderTotal,
               isMultiItem: true,
+              promoCode: promoCode,
+              promoDiscount: promoDiscountAmount,
+              promoDiscountType: promoDiscount?.type,
               items: cartItems.map(item => ({
                 listingId: item.listing.id,
                 listingItemId: item.listing.itemId,

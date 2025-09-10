@@ -1059,11 +1059,23 @@ export default function CheckoutPage() {
                 deliveryMethod: storedDeliveryMethod,
                 tax,
                 total,
+                promoCode: storedPromoCode,
+                promoDiscount: storedPromoDiscount,
+                promoDiscountType: storedPromoDiscountType,
               } = storedBreakdown;
-              const promoDiscount = promoStatus?.valid
+
+              // Use stored promo data if available, otherwise use manual input
+              const hasStoredPromo = storedPromoCode && storedPromoDiscount > 0;
+              const effectivePromoDiscount = hasStoredPromo
+                ? storedPromoDiscount
+                : promoStatus?.valid
                 ? promoStatus.discount
                 : 0;
-              const finalTotal = total - promoDiscount;
+
+              // Recalculate total with correct tax logic (subtotal + delivery + tax on both)
+              const taxableAmount = subtotal + deliveryFee;
+              const correctTax = taxableAmount * HARRIS_COUNTY_TAX_RATE;
+              const finalTotal = subtotal + deliveryFee + correctTax;
 
               return (
                 <div className="text-sm text-gray-800">
@@ -1082,83 +1094,112 @@ export default function CheckoutPage() {
                         ` (${
                           storedDeliveryCategory === "BULK" ? "Bulk" : "Normal"
                         })`}
+                      {hasStoredPromo &&
+                        storedPromoDiscountType === "free_shipping" && (
+                          <span className="text-xs text-green-600 ml-1">
+                            - {storedPromoCode} Applied
+                          </span>
+                        )}
                     </span>
                     <span className="font-medium">
                       {deliveryFee > 0 ? formatCurrency(deliveryFee) : "FREE"}
                     </span>
                   </div>
-                  {promoStatus?.valid && (
+                  {/* Only show promo discount line for non-free-shipping promos */}
+                  {((hasStoredPromo &&
+                    storedPromoDiscountType !== "free_shipping") ||
+                    promoStatus?.valid) && (
                     <div className="flex items-center justify-between py-0.5 text-green-700">
-                      <span className="">Promo Discount</span>
+                      <span className="">
+                        Promo Discount
+                        {hasStoredPromo && (
+                          <span className="text-xs text-gray-500 ml-1">
+                            ({storedPromoCode})
+                          </span>
+                        )}
+                      </span>
                       <span className="font-medium">
-                        - {formatCurrency(promoStatus.discount)}
+                        - {formatCurrency(effectivePromoDiscount)}
                       </span>
                     </div>
                   )}
                   <div className="flex items-center justify-between py-0.5">
                     <span className="text-gray-600">Sales Tax (8.25%)</span>
-                    <span className="font-medium">{formatCurrency(tax)}</span>
+                    <span className="font-medium">
+                      {formatCurrency(correctTax)}
+                    </span>
                   </div>
 
-                  {/* Promo Code Input */}
-                  <div className="pt-2 mt-2 border-t">
-                    <label className="block text-sm text-gray-600 mb-2">
-                      Promo Code
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        value={promo}
-                        onChange={(e) => setPromo(e.target.value)}
-                        placeholder="Enter code"
-                        className="border rounded px-3 py-2 flex-1 text-sm"
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          try {
-                            const res = await fetch(
-                              "/api/checkout/validate-promo",
-                              {
-                                method: "POST",
-                                headers: {
-                                  "Content-Type": "application/json",
-                                },
-                                body: JSON.stringify({
-                                  code: promo,
-                                  subtotal: subtotal,
-                                }),
-                              }
-                            );
-                            const data = await res.json();
-                            if (data.valid)
-                              setPromoStatus({
-                                valid: true,
-                                discount: data.discount,
-                              });
-                            else setPromoStatus({ valid: false, discount: 0 });
-                          } catch {
-                            setPromoStatus({ valid: false, discount: 0 });
-                          }
-                        }}
-                      >
-                        Apply
-                      </Button>
+                  {/* Promo Code Input - Only show if no stored promo code */}
+                  {!hasStoredPromo && (
+                    <div className="pt-2 mt-2 border-t">
+                      <label className="block text-sm text-gray-600 mb-2">
+                        Promo Code
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          value={promo}
+                          onChange={(e) => {
+                            // Only allow uppercase letters and numbers, no spaces
+                            const sanitized = e.target.value
+                              .replace(/[^A-Z0-9]/g, "") // Remove any non-alphanumeric characters
+                              .toUpperCase();
+                            setPromo(sanitized);
+                          }}
+                          placeholder="EARLYACCESS"
+                          className="border rounded px-3 py-2 flex-1 text-sm font-mono"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              const res = await fetch(
+                                "/api/checkout/validate-promo",
+                                {
+                                  method: "POST",
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                  },
+                                  body: JSON.stringify({
+                                    code: promo,
+                                    subtotal: subtotal,
+                                  }),
+                                }
+                              );
+                              const data = await res.json();
+                              if (data.valid)
+                                setPromoStatus({
+                                  valid: true,
+                                  discount: data.discount,
+                                });
+                              else
+                                setPromoStatus({ valid: false, discount: 0 });
+                            } catch {
+                              setPromoStatus({ valid: false, discount: 0 });
+                            }
+                          }}
+                        >
+                          Apply
+                        </Button>
+                      </div>
+                      {promoStatus && (
+                        <p
+                          className={`text-xs mt-1 ${
+                            promoStatus.valid
+                              ? "text-green-700"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {promoStatus.valid
+                            ? `Promo applied: -$${promoStatus.discount.toFixed(
+                                2
+                              )}`
+                            : "Invalid promo code"}
+                        </p>
+                      )}
                     </div>
-                    {promoStatus && (
-                      <p
-                        className={`text-xs mt-1 ${
-                          promoStatus.valid ? "text-green-700" : "text-red-600"
-                        }`}
-                      >
-                        {promoStatus.valid
-                          ? `Promo applied: -$${promoStatus.discount.toFixed(
-                              2
-                            )}`
-                          : "Invalid promo code"}
-                      </p>
-                    )}
-                  </div>
+                  )}
 
                   <div className="flex items-center justify-between pt-2 mt-2 border-t">
                     <span className="font-semibold">Total</span>

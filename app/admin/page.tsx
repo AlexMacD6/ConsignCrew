@@ -32,6 +32,7 @@ import {
   Loader2,
   Info,
   Star,
+  Tag,
 } from "lucide-react";
 import QuestionManagement from "../components/QuestionManagement";
 
@@ -410,6 +411,15 @@ export default function AdminDashboard() {
       href: "/admin/quality-check",
       color: "bg-green-600",
       stats: "Manage",
+    },
+    {
+      title: "Promo Code Management",
+      description:
+        "Create and manage promotional codes for discounts and special offers",
+      icon: Tag,
+      href: "/admin/promo-codes",
+      color: "bg-purple-600",
+      stats: "Manage Codes",
     },
   ];
 
