@@ -137,26 +137,47 @@ export async function POST(request: NextRequest) {
 
     // Delivery fee based on deliveryCategory
     const deliveryCategory = (listing as any).deliveryCategory || 'NORMAL';
-    const deliveryFee = deliveryCategory === 'BULK' ? 100 : 50;
+    let deliveryFee = deliveryCategory === 'BULK' ? 100 : 50;
 
-    // Promo code
+    // Promo code handling (updated to support new promo system)
     let promoDiscount = 0;
+    let promoDiscountType = null;
+    let validPromo = null;
+    
     if (promoCode) {
-      const promo = await (prisma as any).promoCode.findFirst({ where: { code: promoCode.toUpperCase(), isActive: true } });
-      if (promo && (!promo.expiresAt || new Date(promo.expiresAt) > new Date()) && (!promo.maxRedemptions || promo.timesRedeemed < promo.maxRedemptions)) {
-        if (promo.discountType === 'PERCENT') promoDiscount = Math.max(0, Math.min(finalPrice, (promo.value / 100) * finalPrice));
-        else promoDiscount = Math.max(0, Math.min(finalPrice, promo.value));
+      const promo = await (prisma as any).promoCode.findFirst({ 
+        where: { 
+          code: promoCode.toUpperCase(), 
+          isActive: true 
+        } 
+      });
+      
+      if (promo && 
+          (!promo.startDate || new Date(promo.startDate) <= new Date()) &&
+          (!promo.endDate || new Date(promo.endDate) > new Date()) && 
+          (!promo.usageLimit || promo.usageCount < promo.usageLimit)) {
+        
+        validPromo = promo;
+        promoDiscountType = promo.type;
+        
+        if (promo.type === 'percentage') {
+          promoDiscount = Math.max(0, Math.min(finalPrice, (promo.value / 100) * finalPrice));
+        } else if (promo.type === 'fixed_amount') {
+          promoDiscount = Math.max(0, Math.min(finalPrice, promo.value));
+        } else if (promo.type === 'free_shipping') {
+          // For free shipping, set delivery fee to 0 and track the discount amount
+          promoDiscount = deliveryFee; // Track how much we're saving
+          deliveryFee = 0; // Make delivery free
+        }
       }
     }
 
-    // Tax at fixed 8.25% - calculated on subtotal + delivery fee
+    // Tax at fixed 8.25% - calculated on subtotal + delivery fee (after promo applied)
     const TAX_RATE = 0.0825;
-    const taxableAmount = finalPrice + deliveryFee;
+    const subtotalAfterPromo = Math.max(0, finalPrice - (promoDiscountType === 'free_shipping' ? 0 : promoDiscount));
+    const taxableAmount = subtotalAfterPromo + deliveryFee;
     const salesTax = taxableAmount * TAX_RATE;
     
-    // Apply promo discount to final total (for fixed amount/percentage promos)
-    // Note: This API doesn't handle free shipping promos yet - needs update to new promo system
-    const subtotalAfterPromo = Math.max(0, finalPrice - promoDiscount);
     const orderTotal = subtotalAfterPromo + deliveryFee + salesTax;
 
     // Hold the item for 10 minutes during checkout (like StubHub)
@@ -199,14 +220,43 @@ export async function POST(request: NextRequest) {
         stripeCheckoutSessionId: checkoutSession.id,
         checkoutExpiresAt: holdExpiry,
         isHeld: true,
-        // Store breakdown
+        // NEW: Populate dedicated pricing fields
+        subtotal: finalPrice,
+        deliveryFee: deliveryFee,
+        taxAmount: salesTax,
+        taxRate: TAX_RATE,
+        deliveryMethod: 'delivery', // This is direct checkout, always delivery
+        deliveryCategory: deliveryCategory,
+        promoCode: validPromo?.code || null,
+        promoDiscountAmount: promoDiscountType === 'free_shipping' ? 0 : promoDiscount,
+        promoDiscountType: promoDiscountType,
+        isMultiItem: false,
+        
+        // Keep JSON for backward compatibility and item details
         shippingAddress: {
-          deliveryCategory,
-          deliveryFee,
-          promoCode: promoCode || null,
-          promoDiscount,
-          taxRate: TAX_RATE,
-          salesTax,
+          priceBreakdown: {
+            subtotal: finalPrice, // Original item price before any discounts
+            deliveryFee: deliveryFee, // Will be 0 if free shipping applied
+            deliveryCategory: deliveryCategory,
+            deliveryMethod: 'delivery', // This is direct checkout, always delivery
+            tax: salesTax,
+            taxRate: TAX_RATE,
+            total: orderTotal,
+            isMultiItem: false,
+            promoCode: validPromo?.code || null,
+            promoDiscount: promoDiscountType === 'free_shipping' ? 0 : promoDiscount, // For free shipping, discount is applied to delivery, not item
+            promoDiscountType: promoDiscountType,
+            items: [{
+              listingId: listing.id,
+              listingItemId: listing.itemId,
+              title: listing.title,
+              quantity: 1,
+              itemPrice: finalPrice, // Original item price
+              itemTotal: finalPrice, // Original item price
+              photos: listing.photos,
+              deliveryCategory: listing.deliveryCategory
+            }]
+          }
         } as any
       },
     });

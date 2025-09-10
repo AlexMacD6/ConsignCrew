@@ -53,6 +53,11 @@ export default function HeroListingsCarousel({
   // Fetch actual listings
   useEffect(() => {
     const fetchListings = async () => {
+      // Prevent multiple concurrent requests
+      if (loading) {
+        return;
+      }
+
       let timeoutId: NodeJS.Timeout | null = null;
 
       try {
@@ -65,10 +70,10 @@ export default function HeroListingsCarousel({
         const controller = new AbortController();
         abortControllerRef.current = controller;
 
-        // Add timeout
+        // Add timeout - increased to handle slow database responses
         timeoutId = setTimeout(() => {
           controller.abort();
-        }, 10000); // 10 second timeout
+        }, 30000); // 30 second timeout
 
         const response = await fetch("/api/listings?status=active&limit=10", {
           signal: controller.signal,
@@ -210,27 +215,25 @@ export default function HeroListingsCarousel({
           setError("No listings available");
         }
       } catch (err) {
-        console.error("Error fetching listings:", err);
-
         // More specific error handling
         if (err instanceof Error) {
           if (
             err.name === "AbortError" ||
             abortControllerRef.current?.signal.aborted
           ) {
-            console.log(
-              "Request was aborted (likely due to cleanup or timeout)"
-            );
-            // Don't set error state for AbortError during cleanup
+            // Silently handle AbortError - this is expected during cleanup or timeout
             return;
           } else if (err.message.includes("Failed to fetch")) {
+            console.error("Network error fetching listings:", err.message);
             setError(
               "Network error. Please check your connection and try again."
             );
           } else {
+            console.error("Error fetching listings:", err);
             setError(`Failed to load listings: ${err.message}`);
           }
         } else {
+          console.error("Unexpected error fetching listings:", err);
           setError("An unexpected error occurred while loading listings.");
         }
       } finally {

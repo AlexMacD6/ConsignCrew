@@ -1,8 +1,15 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import CustomQRCode from "../../components/CustomQRCode";
 import CheckoutAddressModal from "../../components/CheckoutAddressModal";
+import DisputeResolutionSection from "./DisputeResolutionSection";
 import {
   Calendar,
   Clock,
@@ -54,6 +61,24 @@ interface Order {
   deliveryNotes?: string;
   deliveryAttempts: number;
   lastDeliveryAttempt?: string;
+  enRouteAt?: string;
+  deliveredAt?: string;
+  finalizedAt?: string;
+  deliveryPhotos?: string[] | null;
+  contestPeriodExpiresAt?: string;
+  disputeReason?: string;
+  disputeCreatedAt?: string;
+  disputeResolvedAt?: string;
+  disputeResolution?: string;
+  disputeAdminComments?: string;
+  confirmedDeliverySlot?: {
+    date: string;
+    windowId: string;
+    windowLabel: string;
+    startTime: string;
+    endTime: string;
+    selectedAt?: string;
+  } | null;
   createdAt: string;
   statusUpdatedAt?: string;
   statusUpdatedBy?: string;
@@ -111,17 +136,76 @@ const statusConfig = {
     icon: CheckCircle,
     description: "Orders finalized after 24+ hours post-delivery",
   },
+  DISPUTED: {
+    label: "Disputed",
+    color: "bg-red-100 text-red-800",
+    icon: AlertCircle,
+    description: "Customer has filed a dispute",
+  },
 };
+
+interface DeliveryStats {
+  pendingScheduling: number;
+  scheduled: number;
+  enRoute: number;
+  delivered: number;
+  finalized: number;
+  disputed: number;
+  total: number;
+}
 
 export default function DeliverySchedulerPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
+
+  // Define delivery windows (shared across components)
+  const deliveryWindows = [
+    {
+      id: "morning",
+      label: "Morning (8:00 AM - 12:00 PM)",
+      startTime: "08:00",
+      endTime: "12:00",
+    },
+    {
+      id: "afternoon",
+      label: "Afternoon (12:00 PM - 4:00 PM)",
+      startTime: "12:00",
+      endTime: "16:00",
+    },
+    {
+      id: "evening",
+      label: "Evening (4:00 PM - 8:00 PM)",
+      startTime: "16:00",
+      endTime: "20:00",
+    },
+  ];
+
+  // Generate next 7 days for selection
+  const getNextSevenDays = () => {
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() + i);
+      days.push({
+        value: date.toISOString().split("T")[0],
+        label: date.toLocaleDateString("en-US", {
+          weekday: "long",
+          month: "short",
+          day: "numeric",
+        }),
+      });
+    }
+    return days;
+  };
+
+  const availableDays = getNextSevenDays();
   const [stats, setStats] = useState<DeliveryStats>({
     pendingScheduling: 0,
     scheduled: 0,
     enRoute: 0,
     delivered: 0,
     finalized: 0,
+    disputed: 0,
     total: 0,
   });
   const [loading, setLoading] = useState(true);
@@ -137,9 +221,22 @@ export default function DeliverySchedulerPage() {
     new Set()
   );
   const [assignedSlots, setAssignedSlots] = useState<Set<string>>(new Set());
+  const [editingEnRouteTime, setEditingEnRouteTime] = useState<string | null>(
+    null
+  );
+  const [newEnRouteTime, setNewEnRouteTime] = useState<string>("");
+  const [editingDeliveredTime, setEditingDeliveredTime] = useState<
+    string | null
+  >(null);
+  const [newDeliveredTime, setNewDeliveredTime] = useState<string>("");
+  const [uploadingPhotos, setUploadingPhotos] = useState<string | null>(null);
+  const [deliveryPhotos, setDeliveryPhotos] = useState<
+    Record<string, string[]>
+  >({});
   const [waitingForCustomer, setWaitingForCustomer] = useState<Set<string>>(
     new Set()
   );
+
   const [showAssignSlotModal, setShowAssignSlotModal] = useState(false);
   const [orderSlotSelections, setOrderSlotSelections] = useState<{
     [orderId: string]: Array<{ date: string; window: string }>;
@@ -213,6 +310,7 @@ export default function DeliverySchedulerPage() {
             new Date(o.statusUpdatedAt) > twentyFourHoursAgo)
       ).length,
       finalized: finalizedOrders.length,
+      disputed: orderList.filter((o) => o.status === "DISPUTED").length,
       total: orderList.length,
     };
     setStats(stats);
@@ -239,6 +337,9 @@ export default function DeliverySchedulerPage() {
       } else if (selectedStatus === "PAID") {
         // Only show orders with PAID status
         filtered = filtered.filter((order) => order.status === "PAID");
+      } else if (selectedStatus === "DISPUTED") {
+        // Only show orders with DISPUTED status
+        filtered = filtered.filter((order) => order.status === "DISPUTED");
       } else {
         // For DELIVERED status, exclude orders that should be finalized
         if (selectedStatus === "DELIVERED") {
@@ -362,13 +463,209 @@ export default function DeliverySchedulerPage() {
 
   const handleResendLink = async (orderId: string) => {
     try {
-      // TODO: Implement resend functionality
-      alert("Resend link functionality will be implemented");
+      // Find the order
+      const order = orders.find((o) => o.id === orderId);
+      if (!order) {
+        alert("Order not found");
+        return;
+      }
+
+      // Get the previously assigned time slots for this order
+      const previousSlots = orderSlotSelections[orderId];
+      if (!previousSlots || previousSlots.length === 0) {
+        alert("No previous time slots found for this order");
+        return;
+      }
+
+      // Convert selected slots to detailed format for email (same as original assignment)
+      const detailedSlots = previousSlots.map((slot) => {
+        const window = deliveryWindows.find((w) => w.id === slot.window);
+        const dayLabel = availableDays.find(
+          (d) => d.value === slot.date
+        )?.label;
+        return {
+          date: slot.date,
+          dateLabel: dayLabel,
+          windowId: slot.window,
+          windowLabel: window?.label,
+          startTime: window?.startTime,
+          endTime: window?.endTime,
+        };
+      });
+
+      // Prepare email data (same format as original assignment)
+      const emailData = {
+        orderId: order.id,
+        customerEmail: order.buyer.email,
+        customerName: order.buyer.name,
+        timeSlots: detailedSlots,
+        itemTitle: order.listing.title,
+        itemId: order.listing.itemId,
+      };
+
+      // Send email via SES API (same endpoint as original)
+      const emailResponse = await fetch(
+        "/api/admin/delivery-scheduler/send-timeslots",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(emailData),
+        }
+      );
+
+      if (!emailResponse.ok) {
+        const errorData = await emailResponse.json();
+        throw new Error(errorData.error || "Failed to resend email");
+      }
+
+      const emailResult = await emailResponse.json();
+      alert(`Delivery slot email resent successfully to ${order.buyer.email}`);
     } catch (error) {
       console.error("Error resending link:", error);
       alert("Failed to resend link. Please try again.");
     }
   };
+
+  const handleUpdateEnRouteTime = async (orderId: string) => {
+    try {
+      if (!newEnRouteTime) {
+        alert("Please select a valid date and time");
+        return;
+      }
+
+      const response = await fetch(`/api/admin/orders/${orderId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "EN_ROUTE",
+          enRouteAt: new Date(newEnRouteTime).toISOString(),
+        }),
+      });
+
+      if (response.ok) {
+        setEditingEnRouteTime(null);
+        setNewEnRouteTime("");
+        fetchOrders(); // Refresh the data
+        alert("En Route time updated successfully");
+      } else {
+        throw new Error("Failed to update En Route time");
+      }
+    } catch (error) {
+      console.error("Error updating En Route time:", error);
+      alert("Failed to update En Route time. Please try again.");
+    }
+  };
+
+  const handleUpdateDeliveredTime = async (orderId: string) => {
+    try {
+      if (!newDeliveredTime) {
+        alert("Please select a valid date and time");
+        return;
+      }
+
+      const response = await fetch(`/api/admin/orders/${orderId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "DELIVERED",
+          deliveredAt: new Date(newDeliveredTime).toISOString(),
+          deliveryPhotos: deliveryPhotos[orderId] || [],
+        }),
+      });
+
+      if (response.ok) {
+        setEditingDeliveredTime(null);
+        setNewDeliveredTime("");
+        fetchOrders(); // Refresh the data
+        alert("Delivered time updated successfully");
+      } else {
+        throw new Error("Failed to update delivered time");
+      }
+    } catch (error) {
+      console.error("Error updating delivered time:", error);
+      alert("Failed to update delivered time. Please try again.");
+    }
+  };
+
+  const handlePhotoUpload = async (orderId: string, files: FileList) => {
+    try {
+      setUploadingPhotos(orderId);
+      const uploadedUrls: string[] = [];
+
+      for (const file of Array.from(files)) {
+        // Create a simple data URL for demo purposes
+        // In production, you'd upload to a cloud storage service
+        const reader = new FileReader();
+        const dataUrl = await new Promise<string>((resolve) => {
+          reader.onload = (e) => resolve(e.target?.result as string);
+          reader.readAsDataURL(file);
+        });
+        uploadedUrls.push(dataUrl);
+      }
+
+      setDeliveryPhotos((prev) => ({
+        ...prev,
+        [orderId]: [...(prev[orderId] || []), ...uploadedUrls],
+      }));
+
+      alert(`${uploadedUrls.length} photo(s) uploaded successfully`);
+    } catch (error) {
+      console.error("Error uploading photos:", error);
+      alert("Failed to upload photos. Please try again.");
+    } finally {
+      setUploadingPhotos(null);
+    }
+  };
+
+  const handleResolveDispute = useCallback(
+    async (orderId: string, resolution: string, comments: string) => {
+      try {
+        console.log("Resolving dispute:", { orderId, resolution, comments });
+
+        const response = await fetch(
+          `/api/admin/orders/${orderId}/resolve-dispute`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              resolution,
+              adminComments: comments,
+            }),
+          }
+        );
+
+        console.log("Response status:", response.status);
+
+        if (response.ok) {
+          // Refresh orders to show updated status
+          fetchOrders();
+          alert(`Dispute resolved as ${resolution.toLowerCase()}`);
+        } else {
+          let errorData;
+          try {
+            errorData = await response.json();
+          } catch (parseError) {
+            errorData = {
+              error: `HTTP ${response.status}: ${response.statusText}`,
+            };
+          }
+          console.error("API Error:", errorData);
+          throw new Error(
+            errorData.error || `HTTP ${response.status}: ${response.statusText}`
+          );
+        }
+      } catch (error) {
+        console.error("Error resolving dispute:", error);
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error occurred";
+        alert(`Failed to resolve dispute: ${errorMessage}`);
+        throw error; // Re-throw so the component can handle it
+      }
+    },
+    []
+  );
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -377,6 +674,21 @@ export default function DeliverySchedulerPage() {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  const formatTimeRange = (startTime: string, endTime: string) => {
+    const formatTime = (time: string) => {
+      const [hours, minutes] = time.split(":").map(Number);
+      const date = new Date();
+      date.setHours(hours, minutes, 0, 0);
+      return date.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+    };
+
+    return `${formatTime(startTime)} - ${formatTime(endTime)}`;
   };
 
   const getNextStatus = (currentStatus: string) => {
@@ -903,14 +1215,267 @@ export default function DeliverySchedulerPage() {
           </div>
         )}
 
-        {order.estimatedDeliveryTime && (
+        {(order.confirmedDeliverySlot || order.estimatedDeliveryTime) && (
           <div className="mb-3 p-2 bg-gray-50 rounded text-sm">
             <div className="flex items-center gap-1 text-gray-600 mb-1">
               <Truck className="h-3 w-3" />
-              Estimated Delivery
+              {order.confirmedDeliverySlot
+                ? "Confirmed Delivery"
+                : "Estimated Delivery"}
             </div>
             <div className="font-medium">
-              {formatDate(order.estimatedDeliveryTime)}
+              {order.confirmedDeliverySlot ? (
+                <>
+                  {new Date(
+                    order.confirmedDeliverySlot.date
+                  ).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  })}
+                  {", "}
+                  {formatTimeRange(
+                    order.confirmedDeliverySlot.startTime,
+                    order.confirmedDeliverySlot.endTime
+                  )}
+                </>
+              ) : (
+                formatDate(order.estimatedDeliveryTime!)
+              )}
+            </div>
+          </div>
+        )}
+
+        {order.enRouteAt && order.status === "EN_ROUTE" && (
+          <div className="mb-3 p-2 bg-indigo-50 rounded text-sm">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-1 text-indigo-600">
+                <Truck className="h-3 w-3" />
+                En Route Since
+              </div>
+              <button
+                onClick={() => setEditingEnRouteTime(order.id)}
+                className="text-xs text-indigo-600 hover:text-indigo-800 underline"
+                title="Edit En Route time"
+              >
+                Edit
+              </button>
+            </div>
+            <div className="font-medium text-indigo-800">
+              {editingEnRouteTime === order.id ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="datetime-local"
+                    value={new Date(order.enRouteAt).toISOString().slice(0, 16)}
+                    onChange={(e) => setNewEnRouteTime(e.target.value)}
+                    className="text-xs border rounded px-2 py-1"
+                  />
+                  <button
+                    onClick={() => handleUpdateEnRouteTime(order.id)}
+                    className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setEditingEnRouteTime(null)}
+                    className="text-xs bg-gray-500 text-white px-2 py-1 rounded hover:bg-gray-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                formatDate(order.enRouteAt)
+              )}
+            </div>
+          </div>
+        )}
+
+        {order.status === "DELIVERED" && (
+          <div className="mb-3 p-2 bg-green-50 rounded text-sm">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-1 text-green-600">
+                <CheckCircle className="h-3 w-3" />
+                Delivered
+              </div>
+              <button
+                onClick={() => setEditingDeliveredTime(order.id)}
+                className="text-xs text-green-600 hover:text-green-800 underline"
+                title="Edit delivered time"
+              >
+                Edit
+              </button>
+            </div>
+            <div className="font-medium text-green-800">
+              {editingDeliveredTime === order.id ? (
+                <div className="flex items-center gap-2 mb-2">
+                  <input
+                    type="datetime-local"
+                    value={
+                      order.statusUpdatedAt
+                        ? new Date(order.statusUpdatedAt)
+                            .toISOString()
+                            .slice(0, 16)
+                        : ""
+                    }
+                    onChange={(e) => setNewDeliveredTime(e.target.value)}
+                    className="text-xs border rounded px-2 py-1"
+                  />
+                  <button
+                    onClick={() => handleUpdateDeliveredTime(order.id)}
+                    className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setEditingDeliveredTime(null)}
+                    className="text-xs bg-gray-500 text-white px-2 py-1 rounded hover:bg-gray-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div className="mb-2">
+                  {order.statusUpdatedAt
+                    ? formatDate(order.statusUpdatedAt)
+                    : "Not recorded"}
+                </div>
+              )}
+
+              {/* Photo Upload Section */}
+              <div className="mt-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs text-green-600">
+                    Delivery Photos:
+                  </span>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={(e) =>
+                      e.target.files &&
+                      handlePhotoUpload(order.id, e.target.files)
+                    }
+                    className="text-xs"
+                    disabled={uploadingPhotos === order.id}
+                  />
+                  {uploadingPhotos === order.id && (
+                    <span className="text-xs text-gray-500">Uploading...</span>
+                  )}
+                </div>
+
+                {/* Display uploaded photos */}
+                {(order.deliveryPhotos || deliveryPhotos[order.id]) && (
+                  <div className="flex gap-1 flex-wrap">
+                    {[
+                      ...(order.deliveryPhotos || []),
+                      ...(deliveryPhotos[order.id] || []),
+                    ].map((photo, index) => (
+                      <img
+                        key={index}
+                        src={photo}
+                        alt={`Delivery photo ${index + 1}`}
+                        className="w-12 h-12 object-cover rounded border"
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Disputed Order Section */}
+        {order.status === "DISPUTED" && (
+          <DisputeResolutionSection
+            order={order}
+            onResolveDispute={handleResolveDispute}
+          />
+        )}
+
+        {/* Dispute History Section for Finalized Orders */}
+        {order.status === "FINALIZED" && order.disputeReason && (
+          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <h4 className="font-semibold text-yellow-800 mb-3 flex items-center">
+              <svg
+                className="w-4 h-4 mr-2"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              Dispute History (Resolved)
+            </h4>
+
+            <div className="space-y-3">
+              {/* Timeline */}
+              <div className="text-sm">
+                <div className="font-medium text-gray-700 mb-2">Timeline:</div>
+                <div className="space-y-1 text-gray-600">
+                  {order.deliveredAt && (
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                      <span className="font-medium">Delivered:</span>
+                      <span className="ml-2">
+                        {formatDate(order.deliveredAt)}
+                      </span>
+                    </div>
+                  )}
+                  {order.disputeCreatedAt && (
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
+                      <span className="font-medium">Disputed:</span>
+                      <span className="ml-2">
+                        {formatDate(order.disputeCreatedAt)}
+                      </span>
+                    </div>
+                  )}
+                  {order.disputeResolvedAt && (
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                      <span className="font-medium">
+                        Resolved as {order.disputeResolution}:
+                      </span>
+                      <span className="ml-2">
+                        {formatDate(order.disputeResolvedAt)}
+                      </span>
+                    </div>
+                  )}
+                  {order.finalizedAt && (
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 bg-gray-500 rounded-full mr-2"></div>
+                      <span className="font-medium">Finalized:</span>
+                      <span className="ml-2">
+                        {formatDate(order.finalizedAt)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Dispute Details */}
+              <div className="text-sm">
+                <div className="font-medium text-gray-700">
+                  Customer Dispute Reason:
+                </div>
+                <div className="text-gray-600 bg-white p-2 rounded border mt-1">
+                  {order.disputeReason}
+                </div>
+              </div>
+
+              {/* Admin Resolution */}
+              {order.disputeAdminComments && (
+                <div className="text-sm">
+                  <div className="font-medium text-gray-700">
+                    Admin Resolution Comments:
+                  </div>
+                  <div className="text-gray-600 bg-white p-2 rounded border mt-1">
+                    {order.disputeAdminComments}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -2037,27 +2602,7 @@ export default function DeliverySchedulerPage() {
 
     if (!order || !isOpen) return null;
 
-    // Define delivery windows
-    const deliveryWindows = [
-      {
-        id: "morning",
-        label: "Morning (8:00 AM - 12:00 PM)",
-        startTime: "08:00",
-        endTime: "12:00",
-      },
-      {
-        id: "afternoon",
-        label: "Afternoon (12:00 PM - 4:00 PM)",
-        startTime: "12:00",
-        endTime: "16:00",
-      },
-      {
-        id: "evening",
-        label: "Evening (4:00 PM - 8:00 PM)",
-        startTime: "16:00",
-        endTime: "20:00",
-      },
-    ];
+    // Delivery windows are now defined in main component scope
 
     // Function to get occupied slots for a date/window (will be replaced with real API call)
     const getOccupiedSlots = (date: string, windowId: string): number => {
@@ -2072,25 +2617,7 @@ export default function DeliverySchedulerPage() {
       return Math.max(0, maxCapacity - occupied);
     };
 
-    // Generate next 7 days for selection
-    const getNextSevenDays = () => {
-      const days = [];
-      for (let i = 0; i < 7; i++) {
-        const date = new Date();
-        date.setDate(date.getDate() + i);
-        days.push({
-          value: date.toISOString().split("T")[0],
-          label: date.toLocaleDateString("en-US", {
-            weekday: "long",
-            month: "short",
-            day: "numeric",
-          }),
-        });
-      }
-      return days;
-    };
-
-    const availableDays = getNextSevenDays();
+    // Available days are now defined in main component scope
 
     const orderShortId = order.id.slice(-8).toUpperCase();
 
@@ -2957,6 +3484,21 @@ export default function DeliverySchedulerPage() {
             count={stats.finalized}
             onClick={() => setSelectedStatus("FINALIZED")}
           />
+
+          {/* Disputed Orders Button */}
+          {stats.disputed > 0 && (
+            <button
+              onClick={() => setSelectedStatus("DISPUTED")}
+              className={`ml-4 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+                selectedStatus === "DISPUTED"
+                  ? "bg-red-600 text-white"
+                  : "bg-red-100 text-red-800 hover:bg-red-200"
+              }`}
+            >
+              <AlertCircle className="h-4 w-4" />
+              Disputed ({stats.disputed})
+            </button>
+          )}
         </div>
 
         {/* Controls */}

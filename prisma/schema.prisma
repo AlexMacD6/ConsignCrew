@@ -603,33 +603,56 @@ model Order {
   currency                String      @default("usd")
   status                  OrderStatus @default(PENDING)
   shippingAddress         Json?
-  trackingNumber          String?
-  deliveredAt             DateTime?
-  finalizedAt             DateTime?
-  createdAt               DateTime    @default(now())
-  updatedAt               DateTime    @updatedAt
-  disputeReason           String?
-  disputeCreatedAt        DateTime?
-  checkoutExpiresAt       DateTime?
-  isHeld                  Boolean     @default(false)
-  deliveryAttempts        Int         @default(0)
-  deliveryDriverId        String?
-  deliveryNotes           String?
-  estimatedDeliveryTime   DateTime?
-  lastDeliveryAttempt     DateTime?
-  pickupTimeSlot          String?
-  scheduledPickupTime     DateTime?
-  statusUpdatedAt         DateTime?
-  statusUpdatedBy         String?
-  buyer                   user        @relation("BuyerOrders", fields: [buyerId], references: [id])
-  listing                 Listing     @relation(fields: [listingId], references: [id])
-  seller                  user        @relation("SellerOrders", fields: [sellerId], references: [id])
+
+  // NEW PRICING FIELDS - Proper database fields instead of JSON storage
+  subtotal            Float? // Item price(s) before delivery/tax
+  deliveryFee         Float? // Delivery fee (0 if free shipping)
+  taxAmount           Float? // Sales tax amount
+  taxRate             Float? // Tax rate used (e.g., 0.0825)
+  deliveryMethod      String? // 'delivery', 'pickup'
+  deliveryCategory    String? // 'NORMAL', 'BULK', 'large'
+  promoCode           String? // Applied promo code
+  promoDiscountAmount Float? // Discount amount
+  promoDiscountType   String? // 'fixed_amount', 'percentage', 'free_shipping'
+  isMultiItem         Boolean @default(false) // Single item vs cart checkout
+
+  trackingNumber         String?
+  deliveredAt            DateTime?
+  deliveryPhotos         Json? // Array of photo URLs for delivery confirmation
+  finalizedAt            DateTime?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  disputeReason          String?
+  disputeCreatedAt       DateTime?
+  disputeResolvedAt      DateTime? // When the dispute was resolved
+  disputeResolution      String? // RETURNED, REFUNDED, FINALIZED
+  disputeAdminComments   String? // Admin comments about the dispute resolution
+  contestPeriodExpiresAt DateTime? // When the 24-hour contest period expires
+  checkoutExpiresAt      DateTime?
+  isHeld                 Boolean            @default(false)
+  deliveryAttempts       Int                @default(0)
+  deliveryDriverId       String?
+  deliveryNotes          String?
+  estimatedDeliveryTime  DateTime?
+  lastDeliveryAttempt    DateTime?
+  pickupTimeSlot         String?
+  scheduledPickupTime    DateTime?
+  enRouteAt              DateTime? // Timestamp when order was marked as En Route
+  statusUpdatedAt        DateTime?
+  statusUpdatedBy        String?
+  buyer                  user               @relation("BuyerOrders", fields: [buyerId], references: [id])
+  listing                Listing            @relation(fields: [listingId], references: [id])
+  seller                 user               @relation("SellerOrders", fields: [sellerId], references: [id])
+  deliveryTimeSlots      DeliveryTimeSlot[]
 
   @@index([listingId])
   @@index([buyerId])
   @@index([sellerId])
   @@index([status])
   @@index([createdAt])
+  @@index([promoCode]) // NEW: For promo code queries
+  @@index([deliveryMethod]) // NEW: For delivery method filtering
+  @@index([subtotal]) // NEW: For pricing queries
   @@map("orders")
 }
 
@@ -730,6 +753,7 @@ enum OrderStatus {
   CANCELLED
   REFUNDED
   PENDING_SCHEDULING
+  AWAITING_DELIVERY_SCHEDULING
   SCHEDULED
   EN_ROUTE
 }
@@ -784,4 +808,35 @@ model PromoCode {
   @@index([startDate])
   @@index([endDate])
   @@map("promo_codes")
+}
+
+model DeliveryTimeSlot {
+  id          String                 @id @default(cuid())
+  orderId     String
+  token       String? // Token for this delivery assignment (shared across slots)
+  version     Int                    @default(1) // Version number for tracking
+  date        DateTime               @db.Date
+  windowId    String // 'morning', 'afternoon', 'evening'
+  windowLabel String // 'Morning (8:00 AM - 12:00 PM)'
+  startTime   String // '08:00'
+  endTime     String // '12:00'
+  status      DeliveryTimeSlotStatus @default(PENDING_SELECTION)
+  isActive    Boolean                @default(true) // False when superseded by newer assignment
+  createdAt   DateTime               @default(now())
+  selectedAt  DateTime?
+  expiresAt   DateTime? // Optional expiration time
+  order       Order                  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([token])
+  @@index([date])
+  @@index([status])
+  @@index([isActive])
+  @@map("delivery_time_slots")
+}
+
+enum DeliveryTimeSlotStatus {
+  PENDING_SELECTION
+  CONFIRMED
+  CANCELLED
 }

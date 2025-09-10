@@ -205,53 +205,35 @@ export default function OrderSuccessPage() {
                             Total:
                           </span>
                           <span className="font-bold text-lg text-[#D4AF3D]">
-                            ${formatCurrency(priceBreakdown.total)}
+                            ${formatCurrency(order.amount)}
                           </span>
                         </div>
                       </div>
                     );
                   } else {
-                    // Fallback - calculate breakdown from order total (backwards calculation)
-                    // This ensures we always show the breakdown even if priceBreakdown is missing
-                    const total = order.amount;
-                    const TAX_RATE = 0.0825; // 8.25%
-
-                    // Work backwards: total = (itemPrice + deliveryFee) * (1 + taxRate)
-                    // Assume standard $50 delivery fee and calculate item price
-                    const deliveryFee = 50.0;
-                    const subtotalWithDelivery = total / (1 + TAX_RATE);
-                    const itemPrice = subtotalWithDelivery - deliveryFee;
-                    const tax = subtotalWithDelivery * TAX_RATE;
-
+                    // Simple fallback - just show the total that was actually charged
+                    // No complex calculations needed since the order is already processed
                     return (
                       <div className="space-y-1">
                         <div className="flex justify-between">
                           <span className="text-gray-600">Item Price:</span>
                           <span className="font-medium">
-                            ${formatCurrency(itemPrice)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Delivery Fee:</span>
-                          <span className="font-medium">
-                            ${formatCurrency(deliveryFee)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">
-                            Sales Tax (8.25%):
-                          </span>
-                          <span className="font-medium">
-                            ${formatCurrency(tax)}
+                            ${formatCurrency(order.listing.price)}
                           </span>
                         </div>
                         <div className="flex justify-between pt-1 mt-1 border-t">
                           <span className="text-gray-800 font-semibold">
-                            Total:
+                            Total Charged:
                           </span>
                           <span className="font-bold text-lg text-[#D4AF3D]">
-                            ${formatCurrency(total)}
+                            ${formatCurrency(order.amount)}
                           </span>
+                        </div>
+                        <div className="mt-2 text-sm text-gray-500">
+                          <p>
+                            * Includes delivery fee, tax, and any applicable
+                            discounts
+                          </p>
                         </div>
                       </div>
                     );

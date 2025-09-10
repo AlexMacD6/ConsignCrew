@@ -157,27 +157,83 @@ function OrderThanksContent() {
                   </span>
                 </div>
                 {(() => {
-                  const TAX_RATE = 0.0825; // 8.25%
-                  const subtotal = order.amount || 0;
-                  const tax = subtotal * TAX_RATE;
-                  const total = subtotal + tax;
+                  // Use the stored price breakdown from the order instead of recalculating
+                  const priceBreakdown = (order as any).shippingAddress
+                    ?.priceBreakdown;
                   const fmt = (n: number) => `$${n.toFixed(2)}`;
-                  return (
-                    <div className="space-y-1">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Subtotal:</span>
-                        <span className="font-medium">{fmt(subtotal)}</span>
+
+                  if (priceBreakdown) {
+                    // Use the actual prices that were charged
+                    return (
+                      <div className="space-y-1">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Item Price:</span>
+                          <span className="font-medium">
+                            {fmt(priceBreakdown.subtotal)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Delivery Fee:</span>
+                          <span className="font-medium">
+                            {priceBreakdown.deliveryFee > 0
+                              ? fmt(priceBreakdown.deliveryFee)
+                              : "FREE"}
+                            {priceBreakdown.promoCode &&
+                              priceBreakdown.promoDiscountType ===
+                                "free_shipping" && (
+                                <span className="text-xs text-green-600 ml-1">
+                                  - {priceBreakdown.promoCode} Applied
+                                </span>
+                              )}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">
+                            Sales Tax (8.25%):
+                          </span>
+                          <span className="font-medium">
+                            {fmt(priceBreakdown.tax)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between pt-1 mt-1 border-t">
+                          <span className="text-gray-800 font-semibold">
+                            Total:
+                          </span>
+                          <span className="font-bold text-lg text-[#D4AF3D]">
+                            {fmt(order.amount)}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Sales Tax (8.25%):</span>
-                        <span className="font-medium">{fmt(tax)}</span>
+                    );
+                  } else {
+                    // Simple fallback - just show the total that was actually charged
+                    // No complex calculations needed since the order is already processed
+
+                    return (
+                      <div className="space-y-1">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Item Price:</span>
+                          <span className="font-medium">
+                            {fmt(order.listing.price)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between pt-1 mt-1 border-t">
+                          <span className="text-gray-800 font-semibold">
+                            Total Charged:
+                          </span>
+                          <span className="font-bold text-lg text-[#D4AF3D]">
+                            {fmt(order.amount)}
+                          </span>
+                        </div>
+                        <div className="mt-2 text-sm text-gray-500">
+                          <p>
+                            * Includes delivery fee, tax, and any applicable
+                            discounts
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex justify-between pt-1 mt-1 border-t">
-                        <span className="text-gray-800 font-semibold">Total:</span>
-                        <span className="font-bold text-lg text-[#D4AF3D]">{fmt(total)}</span>
-                      </div>
-                    </div>
-                  );
+                    );
+                  }
                 })()}
                 <div className="flex justify-between">
                   <span className="text-gray-600">Status:</span>

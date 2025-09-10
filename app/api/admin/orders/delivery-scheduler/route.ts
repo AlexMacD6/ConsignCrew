@@ -45,7 +45,8 @@ export async function GET(request: NextRequest) {
       'SCHEDULED', 
       'EN_ROUTE', 
       'DELIVERED', 
-      'FINALIZED'
+      'FINALIZED',
+      'DISPUTED'
     ];
 
     const orders = await prisma.order.findMany({
@@ -76,6 +77,20 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             name: true
+          }
+        },
+        deliveryTimeSlots: {
+          where: {
+            status: "CONFIRMED",
+            isActive: true
+          },
+          select: {
+            date: true,
+            windowId: true,
+            windowLabel: true,
+            startTime: true,
+            endTime: true,
+            selectedAt: true
           }
         }
       },
@@ -116,6 +131,24 @@ export async function GET(request: NextRequest) {
       deliveryNotes: order.deliveryNotes,
       deliveryAttempts: order.deliveryAttempts,
       lastDeliveryAttempt: order.lastDeliveryAttempt?.toISOString(),
+      enRouteAt: order.enRouteAt?.toISOString(),
+      deliveredAt: order.deliveredAt?.toISOString(),
+      finalizedAt: order.finalizedAt?.toISOString(),
+      deliveryPhotos: order.deliveryPhotos as string[] || null,
+      contestPeriodExpiresAt: order.contestPeriodExpiresAt?.toISOString(),
+      disputeReason: order.disputeReason,
+      disputeCreatedAt: order.disputeCreatedAt?.toISOString(),
+      disputeResolvedAt: order.disputeResolvedAt?.toISOString(),
+      disputeResolution: order.disputeResolution,
+      disputeAdminComments: order.disputeAdminComments,
+      confirmedDeliverySlot: order.deliveryTimeSlots.length > 0 ? {
+        date: order.deliveryTimeSlots[0].date.toISOString(),
+        windowId: order.deliveryTimeSlots[0].windowId,
+        windowLabel: order.deliveryTimeSlots[0].windowLabel,
+        startTime: order.deliveryTimeSlots[0].startTime,
+        endTime: order.deliveryTimeSlots[0].endTime,
+        selectedAt: order.deliveryTimeSlots[0].selectedAt?.toISOString()
+      } : null,
       createdAt: order.createdAt.toISOString(),
       statusUpdatedAt: order.statusUpdatedAt?.toISOString(),
       statusUpdatedBy: order.statusUpdatedBy

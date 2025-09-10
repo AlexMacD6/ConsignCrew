@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+import { sendEmail } from "@/lib/ses-server";
+import { PrismaClient } from "@prisma/client";
 
-// Initialize SES client
-const sesClient = new SESClient({
-  region: process.env.AWS_REGION || "us-east-1",
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  },
-});
+const prisma = new PrismaClient();
 
 interface TimeSlot {
   date: string;
@@ -40,40 +34,81 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate the selection URL (you'll need to create this page)
-    const selectionUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://treasurehub.store"}/delivery-schedule/${emailData.orderId}`;
+    // Generate token for this delivery assignment (shared across all slots)
+    const timestamp = Date.now();
+    const randomPart = Math.random().toString(36).substring(2);
+    const extraRandom = Math.random().toString(36).substring(2);
+    const deliveryToken = `delivery_${timestamp}_${randomPart}_${extraRandom}`;
+    
+    // Store the time slots in the database with token-based system
+    await prisma.$transaction(async (tx) => {
+      // First, deactivate any existing active time slots for this order
+      await tx.deliveryTimeSlot.updateMany({
+        where: {
+          orderId: emailData.orderId,
+          isActive: true,
+        },
+        data: {
+          isActive: false,
+          status: "CANCELLED",
+        },
+      });
+
+      // Get the next version number
+      const lastVersion = await tx.deliveryTimeSlot.findFirst({
+        where: { orderId: emailData.orderId },
+        orderBy: { version: "desc" },
+        select: { version: true },
+      });
+      
+      const nextVersion = (lastVersion?.version || 0) + 1;
+
+      // Create new time slots with the token
+      const timeSlotData = emailData.timeSlots.map((slot) => ({
+        orderId: emailData.orderId,
+        token: deliveryToken,
+        version: nextVersion,
+        date: new Date(slot.date),
+        windowId: slot.windowId,
+        windowLabel: slot.windowLabel,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        status: "PENDING_SELECTION" as const,
+        isActive: true,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+      }));
+
+      await tx.deliveryTimeSlot.createMany({
+        data: timeSlotData,
+      });
+
+      // Update order status to awaiting delivery scheduling
+      await tx.order.update({
+        where: { id: emailData.orderId },
+        data: {
+          status: "AWAITING_DELIVERY_SCHEDULING",
+          statusUpdatedAt: new Date(),
+          statusUpdatedBy: "ADMIN_TIME_SLOTS_SENT",
+        },
+      });
+    });
+
+    // Generate the selection URL using the token
+    const selectionUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/select-delivery/${deliveryToken}`;
 
     // Create HTML email template
     const htmlBody = generateEmailHTML(emailData, selectionUrl);
     const textBody = generateEmailText(emailData, selectionUrl);
 
-    // Configure SES email parameters
-    const emailParams = {
-      Source: process.env.SES_FROM_EMAIL || process.env.AWS_SES_VERIFIED_EMAIL || "your-verified-email@gmail.com",
-      Destination: {
-        ToAddresses: [emailData.customerEmail],
-      },
-      Message: {
-        Subject: {
-          Data: `Choose Your Delivery Time - Order #${emailData.orderId.slice(-8).toUpperCase()}`,
-          Charset: "UTF-8",
-        },
-        Body: {
-          Html: {
-            Data: htmlBody,
-            Charset: "UTF-8",
-          },
-          Text: {
-            Data: textBody,
-            Charset: "UTF-8",
-          },
-        },
-      },
-    };
-
-    // Send email via SES
-    const command = new SendEmailCommand(emailParams);
-    const result = await sesClient.send(command);
+    // Send email using the SES utility
+    const subject = `Choose Your Delivery Time - Order #${emailData.orderId.slice(-8).toUpperCase()}`;
+    const result = await sendEmail(
+      emailData.customerEmail,
+      subject,
+      htmlBody,
+      undefined, // no reply-to
+      textBody
+    );
 
     return NextResponse.json({
       success: true,
@@ -84,7 +119,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("Error sending time slot email:", error);
     
-    // Handle specific SES errors
+    // Handle specific errors
     let errorMessage = "Failed to send email";
     let statusCode = 500;
     
@@ -96,13 +131,16 @@ export async function POST(request: NextRequest) {
     } else if (error?.name === "InvalidParameterValue") {
       errorMessage = "Invalid email parameters. Please check email addresses.";
       statusCode = 400;
+    } else if (error?.code === "P2002") {
+      errorMessage = "Database constraint error. Please try again.";
+      statusCode = 409;
     }
     
     return NextResponse.json(
       { 
         error: errorMessage,
         details: error.message,
-        sesError: error?.name || "Unknown"
+        errorCode: error?.code || error?.name || "Unknown"
       },
       { status: statusCode }
     );
@@ -142,10 +180,14 @@ function generateEmailHTML(emailData: EmailData, selectionUrl: string): string {
             padding-bottom: 20px;
         }
         .logo {
-            font-size: 24px;
-            font-weight: bold;
-            color: #6366f1;
+            text-align: center;
             margin-bottom: 10px;
+        }
+        .logo img {
+            max-width: 300px;
+            height: auto;
+            display: block;
+            margin: 0 auto;
         }
         .order-info {
             background-color: #f8fafc;
@@ -162,8 +204,8 @@ function generateEmailHTML(emailData: EmailData, selectionUrl: string): string {
             transition: all 0.3s ease;
         }
         .time-slot:hover {
-            border-color: #6366f1;
-            background-color: #f0f4ff;
+            border-color: #D4AF3D;
+            background-color: #fffbe6;
         }
         .slot-day {
             font-weight: bold;
@@ -176,7 +218,7 @@ function generateEmailHTML(emailData: EmailData, selectionUrl: string): string {
         }
         .cta-button {
             display: inline-block;
-            background-color: #6366f1;
+            background-color: #D4AF3D;
             color: white;
             padding: 15px 30px;
             text-decoration: none;
@@ -184,6 +226,10 @@ function generateEmailHTML(emailData: EmailData, selectionUrl: string): string {
             font-weight: bold;
             text-align: center;
             margin: 20px 0;
+            transition: background-color 0.3s ease;
+        }
+        .cta-button:hover {
+            background-color: #b8932f;
         }
         .footer {
             margin-top: 30px;
@@ -205,7 +251,11 @@ function generateEmailHTML(emailData: EmailData, selectionUrl: string): string {
 <body>
     <div class="email-container">
         <div class="header">
-            <div class="logo">🏪 TreasureHub</div>
+            <div class="logo">
+                <img src="${process.env.NEXT_PUBLIC_SITE_URL || 'https://treasurehub.club'}/TreasureHub%20Banner%20Logo.png" 
+                     alt="TreasureHub" 
+                     style="max-width: 300px; height: auto; margin-bottom: 20px;" />
+            </div>
             <h1>Choose Your Delivery Time</h1>
             <p>We're ready to deliver your treasure!</p>
         </div>
@@ -242,7 +292,8 @@ function generateEmailHTML(emailData: EmailData, selectionUrl: string): string {
 
         <div style="margin-top: 25px;">
             <h4>📞 Need Help?</h4>
-            <p>If you have any questions or need to discuss alternative arrangements, please don't hesitate to contact us.</p>
+            <p>If you have any questions or need to discuss alternative arrangements, please don't hesitate to contact us:</p>
+            <p><strong>Phone:</strong> <a href="tel:+17138993656" style="color: #D4AF3D; text-decoration: none;">(713) 899-3656</a></p>
         </div>
 
         <div class="footer">
@@ -279,7 +330,8 @@ ${selectionUrl}
 🚚 IMPORTANT: Please respond within 24 hours to secure your preferred time slot. Delivery windows are limited and assigned on a first-come, first-served basis.
 
 📞 NEED HELP?
-If you have any questions or need to discuss alternative arrangements, please don't hesitate to contact us.
+If you have any questions or need to discuss alternative arrangements, please don't hesitate to contact us:
+Phone: (713) 899-3656
 
 ---
 © ${new Date().getFullYear()} TreasureHub. All rights reserved.
