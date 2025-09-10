@@ -46,7 +46,7 @@ export default function ImageCarousel({
   const mediaItems: (MediaItem & { label?: string | null })[] = validImages
     .filter((item) => {
       const src = typeof item === "string" ? item : item.src;
-      return src && src.trim() !== "";
+      return src && typeof src === "string" && src.trim() !== "";
     }) // Filter out empty/undefined image sources
     .map((item, index) => {
       const src = typeof item === "string" ? item : item.src;
