@@ -20,7 +20,9 @@ import {
   Sparkles,
   Loader2,
   RefreshCw,
+  Tag,
 } from "lucide-react";
+import PromoCodeInput from "../components/PromoCodeInput";
 
 export default function CartPage() {
   const router = useRouter();
@@ -38,6 +40,7 @@ export default function CartPage() {
         total: 0,
         hasBulkItems: false,
         hasNormalItems: false,
+        promoDiscount: 0,
       };
     }
 
@@ -54,7 +57,36 @@ export default function CartPage() {
       };
     });
 
-    return calculateCartTotals(transformedItems, deliveryMethod);
+    const baseTotals = calculateCartTotals(transformedItems, deliveryMethod);
+
+    // Apply promo code discount
+    let promoDiscount = 0;
+    let adjustedDeliveryFee = baseTotals.deliveryFee;
+
+    if (cart.promoDiscount) {
+      if (cart.promoDiscount.type === "free_shipping") {
+        promoDiscount = baseTotals.deliveryFee;
+        adjustedDeliveryFee = 0;
+      } else {
+        promoDiscount = cart.promoDiscount.amount;
+      }
+    }
+
+    // Recalculate tax on the correct taxable amount (subtotal + adjusted delivery fee)
+    const taxableAmount = baseTotals.subtotal + adjustedDeliveryFee;
+    const adjustedTax = taxableAmount * 0.0825; // 8.25% tax rate
+
+    // Calculate final total with correct tax
+    const adjustedTotal =
+      baseTotals.subtotal + adjustedDeliveryFee + adjustedTax;
+
+    return {
+      ...baseTotals,
+      deliveryFee: adjustedDeliveryFee,
+      tax: adjustedTax,
+      total: adjustedTotal,
+      promoDiscount,
+    };
   };
   const isAuthenticated = !!session?.user;
   const [checkingOut, setCheckingOut] = useState(false);
@@ -74,6 +106,8 @@ export default function CartPage() {
     updateQuantity,
     clearCart,
     refreshCart,
+    applyPromoCode,
+    removePromoCode,
   } = useCart();
 
   // Load active checkout sessions
@@ -179,6 +213,8 @@ export default function CartPage() {
         },
         body: JSON.stringify({
           deliveryMethod: deliveryMethod,
+          promoCode: cart.promoCode?.code,
+          promoDiscount: cart.promoDiscount,
         }),
       });
 
@@ -760,6 +796,12 @@ export default function CartPage() {
                           {deliveryMethod === "pickup"
                             ? "Pickup Fee"
                             : "Delivery Fee"}
+                          {cart.promoDiscount?.type === "free_shipping" &&
+                            calculations.deliveryFee === 0 && (
+                              <span className="text-xs text-green-600 ml-1">
+                                - {cart.promoCode?.code} Applied
+                              </span>
+                            )}
                           {calculations.deliveryFee > 0 && (
                             <div className="group relative">
                               <AlertCircle className="h-3 w-3 text-gray-400" />
@@ -779,10 +821,11 @@ export default function CartPage() {
                         </span>
                       </div>
 
-                      {/* Free Delivery Message */}
+                      {/* Free Delivery Message - Hide when free shipping promo is applied */}
                       {deliveryMethod === "delivery" &&
                         calculations.subtotal < 150 &&
-                        !calculations.hasBulkItems && (
+                        !calculations.hasBulkItems &&
+                        !(cart.promoDiscount?.type === "free_shipping") && (
                           <div className="text-sm text-green-600 bg-green-50 border border-green-200 rounded-lg p-3 mt-2">
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1">
@@ -804,6 +847,20 @@ export default function CartPage() {
                           </div>
                         )}
 
+                      {/* Promo Code Discount - Only show for non-free-shipping promos */}
+                      {calculations.promoDiscount > 0 &&
+                        cart.promoDiscount?.type !== "free_shipping" && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600 flex items-center gap-1">
+                              <Tag className="h-3 w-3" />
+                              Promo Code Discount
+                            </span>
+                            <span className="font-medium text-green-600">
+                              -${formatCurrency(calculations.promoDiscount)}
+                            </span>
+                          </div>
+                        )}
+
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Tax (8.25%)</span>
                         <span className="font-medium">
@@ -820,6 +877,17 @@ export default function CartPage() {
                     </div>
                   );
                 })()}
+
+                {/* Promo Code Input */}
+                <div className="border-t border-gray-200 pt-4 mb-4">
+                  <PromoCodeInput
+                    onApply={applyPromoCode}
+                    onRemove={removePromoCode}
+                    appliedCode={cart?.promoCode}
+                    discount={cart?.promoDiscount}
+                    disabled={isLoading}
+                  />
+                </div>
 
                 {/* Delivery Info */}
                 {calculateCurrentTotals(deliveryMethod).hasBulkItems && (

@@ -29,6 +29,21 @@ interface CartItem {
   };
 }
 
+interface PromoCode {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  type: 'percentage' | 'fixed_amount' | 'free_shipping';
+  value: number;
+}
+
+interface PromoDiscount {
+  amount: number;
+  type: string;
+  description: string;
+}
+
 interface Cart {
   id: string;
   userId: string;
@@ -41,6 +56,8 @@ interface Cart {
   total: number;
   hasBulkItems: boolean;
   hasNormalItems: boolean;
+  promoCode?: PromoCode;
+  promoDiscount?: PromoDiscount;
 }
 
 interface CartContextType {
@@ -52,6 +69,9 @@ interface CartContextType {
   clearCart: () => Promise<boolean>;
   refreshCart: () => Promise<void>;
   cartItemCount: number;
+  applyPromoCode: (code: string) => Promise<{ success: boolean; error?: string }>;
+  removePromoCode: () => Promise<boolean>;
+  validatePromoCode: (code: string) => Promise<{ valid: boolean; error?: string; discount?: PromoDiscount }>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -251,6 +271,107 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [isAuthenticated]);
 
+  // Validate promo code
+  const validatePromoCode = useCallback(async (code: string) => {
+    if (!isAuthenticated || !cart) {
+      return { valid: false, error: "Cart not available" };
+    }
+
+    try {
+      const response = await fetch("/api/promo-codes/validate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          code: code.toUpperCase(),
+          orderTotal: cart.subtotal
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.valid) {
+        return {
+          valid: true,
+          discount: data.discount
+        };
+      } else {
+        return {
+          valid: false,
+          error: data.error || "Invalid promo code"
+        };
+      }
+    } catch (error) {
+      console.error("Error validating promo code:", error);
+      return {
+        valid: false,
+        error: "Failed to validate promo code"
+      };
+    }
+  }, [isAuthenticated, cart]);
+
+  // Apply promo code
+  const applyPromoCode = useCallback(async (code: string) => {
+    if (!isAuthenticated || !cart) {
+      return { success: false, error: "Cart not available" };
+    }
+
+    try {
+      // First validate the promo code
+      const validation = await validatePromoCode(code);
+      if (!validation.valid) {
+        return { success: false, error: validation.error };
+      }
+
+      // Apply the promo code to the cart state
+      const promoCodeData = {
+        id: 'temp-id', // This would come from the API response
+        code: code.toUpperCase(),
+        name: validation.discount?.description || code,
+        type: validation.discount?.type as any || 'percentage',
+        value: 0 // This would come from the API response
+      };
+
+      setCart(prevCart => {
+        if (!prevCart) return prevCart;
+        return {
+          ...prevCart,
+          promoCode: promoCodeData,
+          promoDiscount: validation.discount
+        };
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error("Error applying promo code:", error);
+      return { success: false, error: "Failed to apply promo code" };
+    }
+  }, [isAuthenticated, cart, validatePromoCode]);
+
+  // Remove promo code
+  const removePromoCode = useCallback(async () => {
+    if (!isAuthenticated || !cart) {
+      return false;
+    }
+
+    try {
+      setCart(prevCart => {
+        if (!prevCart) return prevCart;
+        return {
+          ...prevCart,
+          promoCode: undefined,
+          promoDiscount: undefined
+        };
+      });
+
+      return true;
+    } catch (error) {
+      console.error("Error removing promo code:", error);
+      return false;
+    }
+  }, [isAuthenticated, cart]);
+
   const value: CartContextType = {
     cart,
     isLoading,
@@ -260,6 +381,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
     clearCart,
     refreshCart,
     cartItemCount,
+    applyPromoCode,
+    removePromoCode,
+    validatePromoCode,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

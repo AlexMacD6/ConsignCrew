@@ -57,9 +57,10 @@ export function calculateCartTotals(
   }
   // No delivery fee for pickup
 
-  // Calculate tax (8.25% - typical Texas rate)
+  // Calculate tax (8.25% - typical Texas rate) on subtotal + delivery fee
   const taxRate = 0.0825;
-  const tax = subtotal * taxRate;
+  const taxableAmount = subtotal + deliveryFee;
+  const tax = taxableAmount * taxRate;
   
   // Calculate total
   const total = subtotal + deliveryFee + tax;

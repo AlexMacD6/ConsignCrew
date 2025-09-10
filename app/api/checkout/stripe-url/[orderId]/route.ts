@@ -56,15 +56,29 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       console.log('Stripe URL endpoint: No Stripe session ID found, creating new session');
       
       try {
+        // Recalculate the correct amount using the stored price breakdown
+        const storedBreakdown = (order as any).shippingAddress?.priceBreakdown;
+        let correctAmount = order.amount; // fallback to stored amount
+        
+        if (storedBreakdown) {
+          const { subtotal, deliveryFee } = storedBreakdown;
+          // Tax at fixed 8.25% - calculated on subtotal + delivery fee
+          const TAX_RATE = 0.0825;
+          const taxableAmount = subtotal + deliveryFee;
+          const salesTax = taxableAmount * TAX_RATE;
+          correctAmount = subtotal + deliveryFee + salesTax;
+        }
+
         // Validate required data before creating session
-        if (!order.amount || order.amount <= 0) {
-          throw new Error(`Invalid order amount: ${order.amount}`);
+        if (!correctAmount || correctAmount <= 0) {
+          throw new Error(`Invalid order amount: ${correctAmount}`);
         }
 
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
         console.log('Stripe URL endpoint: Creating session with data:', {
           orderId: order.id,
-          amount: order.amount,
+          amount: correctAmount,
+          originalStoredAmount: order.amount,
           title: order.listing.title,
           appUrl
         });
@@ -86,7 +100,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                     orderId: order.id,
                   },
                 },
-                unit_amount: Math.round(order.amount * 100), // Convert to cents
+                unit_amount: Math.round(correctAmount * 100), // Convert to cents
               },
               quantity: 1,
             },
