@@ -48,6 +48,11 @@ function getPrismaClient(): PrismaClient {
 // Initialize the client immediately to ensure it's available during build
 export const db = getPrismaClient()
 
+// Helper function to check if database is available
+export function isDatabaseAvailable(): boolean {
+  const databaseUrl = process.env.DATABASE_URL
+  return !!databaseUrl && databaseUrl !== 'postgresql://dummy:dummy@localhost:5432/dummy'
+}
 
 // Helper function to safely execute database operations
 export async function safeDbOperation<T>(
