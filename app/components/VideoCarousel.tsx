@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Play,
   Pause,
@@ -132,13 +132,40 @@ export default function VideoCarousel({
     }
   };
 
-  const goToVideo = (index: number) => {
-    console.log("🎬 Going to video:", index);
+  // State to track if we should auto-play when video loads
+  const [shouldAutoPlay, setShouldAutoPlay] = useState(false);
+
+  const goToVideo = (index: number, autoPlay: boolean = false) => {
+    console.log("🎬 Going to video:", index, autoPlay ? "(auto-play)" : "");
     setCurrentVideoIndex(index);
-    setShowVideo(false); // Reset to overlay for new video
-    setIsPlaying(false);
+
+    if (autoPlay) {
+      // If auto-play is requested, load the video and mark for auto-play
+      setShowVideo(true);
+      setShouldAutoPlay(true);
+    } else {
+      // Default behavior - reset to overlay for new video
+      setShowVideo(false);
+      setIsPlaying(false);
+      setShouldAutoPlay(false);
+    }
+
     setPosterError(false); // Reset poster error state
   };
+
+  // Auto-play effect when video loads
+  useEffect(() => {
+    if (shouldAutoPlay && showVideo && videoRef.current) {
+      console.log("🎬 Auto-playing video");
+      videoRef.current
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+          setShouldAutoPlay(false); // Reset flag
+        })
+        .catch(console.error);
+    }
+  }, [shouldAutoPlay, showVideo, currentVideoIndex]);
 
   // Video event handlers
   const handlePlay = () => setIsPlaying(true);
@@ -419,69 +446,97 @@ export default function VideoCarousel({
             )}
           </>
         )}
+        {/* Overlay Navigation Arrows - Similar to Image Carousel */}
+        {videos.length > 1 && (
+          <>
+            {/* Left Arrow */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                goToPrevious();
+              }}
+              disabled={currentVideoIndex === 0}
+              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all duration-200 opacity-0 group-hover:opacity-100 z-30 disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="Previous video"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+
+            {/* Right Arrow */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                goToNext();
+              }}
+              disabled={currentVideoIndex === videos.length - 1}
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all duration-200 opacity-0 group-hover:opacity-100 z-30 disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="Next video"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+
+            {/* Video Counter Overlay */}
+            <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+              {currentVideoIndex + 1} / {videos.length}
+            </div>
+
+            {/* Dots Indicator - Similar to Image Carousel */}
+            <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              {videos.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goToVideo(index, true); // Auto-play when clicking dots
+                  }}
+                  className={`w-2 h-2 rounded-full transition-colors duration-200 ${
+                    index === currentVideoIndex ? "bg-white" : "bg-white/50"
+                  }`}
+                  aria-label={`Go to video ${index + 1}`}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Navigation Controls - Always show if multiple videos */}
-      {videos.length > 1 && (
-        <div className="mt-4">
-          {console.log(
+      {videos.length > 1 &&
+        (() => {
+          console.log(
             "🎬 Rendering navigation controls for",
             videos.length,
             "videos"
-          )}
-          {/* Previous/Next buttons */}
-          <div className="flex items-center justify-between mb-3">
-            <button
-              onClick={goToPrevious}
-              disabled={currentVideoIndex === 0}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Previous
-            </button>
+          );
+          return (
+            <div className="mt-4">
+              {/* Previous/Next buttons */}
+              <div className="flex items-center justify-between mb-3">
+                <button
+                  onClick={goToPrevious}
+                  disabled={currentVideoIndex === 0}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </button>
 
-            <span className="text-sm text-gray-600 font-medium">
-              {currentVideoIndex + 1} of {videos.length}
-            </span>
+                <span className="text-sm text-gray-600 font-medium">
+                  {currentVideoIndex + 1} of {videos.length}
+                </span>
 
-            <button
-              onClick={goToNext}
-              disabled={currentVideoIndex === videos.length - 1}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
-            >
-              Next
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Video thumbnails */}
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            {videos.map((video, index) => (
-              <button
-                key={`${video.id}-${index}`}
-                onClick={() => goToVideo(index)}
-                className={`flex-shrink-0 w-16 h-12 bg-gray-200 rounded-lg overflow-hidden border-2 transition-all ${
-                  index === currentVideoIndex
-                    ? "border-[#D4AF3D] ring-2 ring-[#D4AF3D]/30"
-                    : "border-gray-300 hover:border-gray-400"
-                }`}
-              >
-                {video.poster ? (
-                  <img
-                    src={video.poster}
-                    alt={`Video ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
-                    <Play className="h-4 w-4 text-white opacity-75" />
-                  </div>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+                <button
+                  onClick={goToNext}
+                  disabled={currentVideoIndex === videos.length - 1}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          );
+        })()}
 
       {/* Admin Download Button */}
       {isAdmin && (

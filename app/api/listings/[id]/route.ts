@@ -77,7 +77,7 @@ export async function GET(
           orderBy: {
             createdAt: "desc",
           },
-          take: 1, // Get the most recent video
+          // Get ALL videos, not just one
         },
       },
     });
@@ -117,8 +117,9 @@ export async function GET(
         organization: listing.user.members[0]?.organization || null,
         organizations: listing.user.members.map(member => member.organization),
       },
-      // Get the first (most recent) video from the videos array
-      video: listing.videos[0] || null,
+      // Only include singular video if there's exactly one video and no videoUrl
+      // If there are multiple videos, don't include the singular video field
+      video: (listing.videos.length === 1 && !listing.videoUrl) ? listing.videos[0] : null,
     };
 
     return NextResponse.json({
@@ -305,7 +306,8 @@ export async function PUT(
         estimatedRetailPrice: estimatedRetailPrice ? parseFloat(estimatedRetailPrice) : null,
         discountSchedule: discountSchedule || { type: "Classic-60" },
         photos: photos || {},
-        videoUrl: videoUrl || null,
+        // Clear videoUrl if we have multiple videos, otherwise use the provided videoUrl
+        videoUrl: (videoIds && Array.isArray(videoIds) && videoIds.length > 0) ? null : (videoUrl || null),
         // Facebook Shop Integration Fields
         facebookShopEnabled: facebookShopEnabled ?? true,
         facebookBrand: facebookBrand || null,

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   Upload,
   X,
@@ -41,6 +41,7 @@ interface BulkVideoUploadProps {
   maxFileSizeMB?: number;
   className?: string;
   listingId?: string;
+  autoSubmit?: boolean; // Auto-submit videos after upload
 }
 
 export default function BulkVideoUpload({
@@ -49,6 +50,7 @@ export default function BulkVideoUpload({
   maxFileSizeMB = 100,
   className = "",
   listingId,
+  autoSubmit = false,
 }: BulkVideoUploadProps) {
   const [videos, setVideos] = useState<UploadedVideo[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -303,6 +305,7 @@ export default function BulkVideoUpload({
               v.id === videoData.id
                 ? {
                     ...v,
+                    id: result.videoId, // Update to use the database ID returned from API
                     status: "completed",
                     uploadedUrl: result.videoUrl,
                     thumbnailUrl:
@@ -327,6 +330,7 @@ export default function BulkVideoUpload({
             v.id === videoData.id
               ? {
                   ...v,
+                  id: result.videoId, // Update to use the database ID returned from API
                   status: "completed",
                   uploadedUrl: result.videoUrl,
                   thumbnailUrl: result.thumbnailUrl || v.preview,
@@ -391,8 +395,32 @@ export default function BulkVideoUpload({
         frameUrls: v.frameUrls || [], // Include frame URLs for AI analysis
       }));
 
+    console.log(
+      "🎬 Submitting completed videos to listing:",
+      completedVideos.length
+    );
     onVideosUploaded(completedVideos);
+
+    // Clear videos after submission
+    setVideos([]);
   };
+
+  // Auto-submit when all videos are completed (if autoSubmit is enabled)
+  useEffect(() => {
+    if (autoSubmit && videos.length > 0) {
+      const completedCount = videos.filter(
+        (v) => v.status === "completed"
+      ).length;
+      const errorCount = videos.filter((v) => v.status === "error").length;
+      const totalProcessed = completedCount + errorCount;
+
+      // If all videos are processed and we have at least one completed video
+      if (totalProcessed === videos.length && completedCount > 0) {
+        console.log("🎬 Auto-submitting completed videos:", completedCount);
+        setTimeout(() => handleSubmit(), 1000); // Small delay to show completion state
+      }
+    }
+  }, [videos, autoSubmit]);
 
   // Drag and drop handlers
   const handleDragEnter = (e: React.DragEvent) => {
@@ -497,16 +525,26 @@ export default function BulkVideoUpload({
             <h4 className="text-lg font-semibold text-gray-900">
               Uploaded Videos ({videos.length}/{maxVideos})
             </h4>
-            {canSubmit && (
-              <Button
-                type="button"
-                onClick={handleSubmit}
-                className="bg-green-600 hover:bg-green-700 text-white"
-              >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Use {completedVideosCount} Video
-                {completedVideosCount !== 1 ? "s" : ""}
-              </Button>
+            {canSubmit && !autoSubmit && (
+              <div className="flex flex-col items-end gap-2">
+                <div className="text-sm text-gray-600">
+                  Click to add videos to your listing
+                </div>
+                <Button
+                  type="button"
+                  onClick={handleSubmit}
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 text-base shadow-lg hover:shadow-xl transition-all duration-200"
+                >
+                  <CheckCircle className="h-5 w-5 mr-2" />
+                  Add {completedVideosCount} Video
+                  {completedVideosCount !== 1 ? "s" : ""} to Listing
+                </Button>
+              </div>
+            )}
+            {autoSubmit && completedVideosCount > 0 && (
+              <div className="text-sm text-green-600 font-medium">
+                ✅ Videos will be added automatically
+              </div>
             )}
           </div>
 

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import VideoUpload from "../../../../components/VideoUpload";
 import VideoCarousel from "../../../../components/VideoCarousel";
+import BulkVideoUpload from "../../../../components/BulkVideoUpload";
 
 import { ConfidenceBadge } from "../../../../components/ConfidenceIndicator";
 import HybridInput from "../../../../components/HybridInput";
@@ -187,6 +188,26 @@ export default function EditListingPage() {
       title?: string;
     }>
   >([]);
+
+  // Bulk video upload state
+  const [videoUploadMethod, setVideoUploadMethod] = useState<"single" | "bulk">(
+    "single"
+  );
+  const [bulkVideos, setBulkVideos] = useState<
+    Array<{
+      id: string;
+      file: File;
+      preview: string;
+      status: "uploading" | "completed" | "error";
+      progress: number;
+      errorMessage?: string;
+      uploadedUrl?: string;
+      thumbnailUrl?: string;
+      duration?: number;
+      frameUrls?: string[];
+    }>
+  >([]);
+  const [bulkVideoUploading, setBulkVideoUploading] = useState(false);
 
   // Load existing listing data and user profile
   useEffect(() => {
@@ -577,6 +598,49 @@ export default function EditListingPage() {
     }));
   };
 
+  // Bulk video upload handlers
+  const handleBulkVideosUploaded = async (
+    uploadedVideos: Array<{
+      id: string;
+      src: string;
+      poster?: string;
+      duration?: number;
+      title?: string;
+      frameUrls?: string[];
+    }>
+  ) => {
+    console.log("🎬 Bulk videos uploaded:", uploadedVideos.length);
+
+    // Add uploaded videos to the videos state
+    const newVideos = uploadedVideos.map((video, index) => ({
+      id: video.id,
+      src: video.src,
+      poster: video.poster,
+      duration: video.duration,
+      title: video.title || `${title || "Video"} ${videos.length + index + 1}`,
+    }));
+
+    setVideos((prev) => [...prev, ...newVideos]);
+    setBulkVideoUploading(false);
+
+    console.log(
+      "🎬 Videos added to state. Total videos now:",
+      videos.length + newVideos.length
+    );
+    console.log(
+      "🎬 New video IDs:",
+      newVideos.map((v) => v.id)
+    );
+
+    // Don't refresh listing data here - it will overwrite our local state
+    // The videos will be connected to the listing when the user saves
+  };
+
+  const handleBulkVideoError = (error: string) => {
+    console.error("Bulk video upload error:", error);
+    setBulkVideoUploading(false);
+  };
+
   // Function to refresh listing data (useful after video uploads)
   const refreshListingData = async () => {
     try {
@@ -844,110 +908,171 @@ export default function EditListingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    console.log("Form submission started");
-    console.log("Current state:", {
+    console.log("🚀 Form submission started");
+    console.log("🚀 Current state:", {
       zipCode,
       saving,
       photos: photos.hero,
     });
 
+    // Prevent double submission
+    if (saving) {
+      console.log("🚫 Already saving, preventing double submission");
+      return;
+    }
+
     if (!photos.hero) {
-      console.log("No hero photo");
+      console.log("❌ No hero photo");
       setError("Please upload a hero photo");
       return;
     }
 
-    console.log("All validations passed, proceeding with submission");
+    console.log("✅ All validations passed, proceeding with submission");
     setSaving(true);
     setError(null);
 
     try {
+      const requestBody = {
+        department,
+        category,
+        subCategory,
+        title,
+        condition,
+        price: parseFloat(price),
+        description,
+
+        brand: brand || null,
+        height: height || null,
+        width: width || null,
+        depth: depth || null,
+        serialNumber: serialNumber || null,
+        modelNumber: modelNumber || null,
+        estimatedRetailPrice: estimatedRetailPrice
+          ? parseFloat(estimatedRetailPrice)
+          : null,
+        reservePrice: reservePrice ? parseFloat(reservePrice) : null,
+        discountSchedule: { type: discountSchedule },
+        // Facebook Shop Integration Fields
+        facebookShopEnabled,
+        facebookBrand: facebookBrand || null,
+        facebookCondition: facebookCondition || null,
+        facebookGtin: facebookGtin || null,
+        // Product Specifications (Facebook Shop Fields)
+        quantity: parseInt(quantity) || 1,
+        itemGroupId: itemGroupId || null,
+        ...processProductSpecs({
+          gender,
+          ageGroup,
+          color,
+          size,
+          material,
+          pattern,
+          style,
+          itemGroupId,
+        }),
+        tags: tags || [],
+
+        // Treasure fields
+        isTreasure: isTreasure || false,
+        treasureReason: treasureReason || null,
+        photos,
+        // Only send videoUrl if we don't have multiple videos
+        videoUrl: (() => {
+          const hasMultipleVideos = videos.length > 0;
+          if (hasMultipleVideos) {
+            return null; // Clear single video when we have multiple videos
+          }
+          return videoData.uploaded ? videoData.thumbnailUrl : null;
+        })(),
+        // Include video IDs for multi-video support
+        videoIds: (() => {
+          console.log("🎬 Videos in state before filtering:", videos.length);
+          videos.forEach((video, index) => {
+            console.log(`🎬 Video ${index}:`, {
+              id: video.id,
+              src: video.src?.substring(0, 50) + "...",
+            });
+          });
+
+          return videos
+            .map((video) => video.id)
+            .filter((id) => {
+              // Filter out invalid, empty, or placeholder video IDs
+              const isValid =
+                id &&
+                typeof id === "string" &&
+                id.trim() !== "" &&
+                id !== "legacy-video" &&
+                id !== "single-video" &&
+                id !== "fallback-video" &&
+                !id.startsWith("video-"); // Remove generic video-N IDs
+
+              console.log(
+                "🎬 Frontend filtering video ID:",
+                id,
+                isValid ? "✅ valid" : "❌ invalid"
+              );
+              return isValid;
+            });
+        })(),
+      };
+
+      const finalVideoIds = videos
+        .map((video) => video.id)
+        .filter((id) => {
+          const isValid =
+            id &&
+            typeof id === "string" &&
+            id.trim() !== "" &&
+            id !== "legacy-video" &&
+            id !== "single-video" &&
+            id !== "fallback-video" &&
+            !id.startsWith("video-");
+          return isValid;
+        });
+
+      console.log("🚀 Final request payload:", {
+        videoIds: finalVideoIds,
+        videosCount: videos.length,
+        title,
+        department,
+        category,
+        url: `/api/listings/${params.id}`,
+        method: "PUT",
+      });
+
+      console.log("📡 Sending request...");
+
       const response = await fetch(`/api/listings/${params.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          department,
-          category,
-          subCategory,
-          title,
-          condition,
-          price: parseFloat(price),
-          description,
-
-          brand: brand || null,
-          height: height || null,
-          width: width || null,
-          depth: depth || null,
-          serialNumber: serialNumber || null,
-          modelNumber: modelNumber || null,
-          estimatedRetailPrice: estimatedRetailPrice
-            ? parseFloat(estimatedRetailPrice)
-            : null,
-          reservePrice: reservePrice ? parseFloat(reservePrice) : null,
-          discountSchedule: { type: discountSchedule },
-          // Facebook Shop Integration Fields
-          facebookShopEnabled,
-          facebookBrand: facebookBrand || null,
-          facebookCondition: facebookCondition || null,
-          facebookGtin: facebookGtin || null,
-          // Product Specifications (Facebook Shop Fields)
-          quantity: parseInt(quantity) || 1,
-          itemGroupId: itemGroupId || null,
-          ...processProductSpecs({
-            gender,
-            ageGroup,
-            color,
-            size,
-            material,
-            pattern,
-            style,
-            itemGroupId,
-          }),
-          tags: tags || [],
-
-          // Treasure fields
-          isTreasure: isTreasure || false,
-          treasureReason: treasureReason || null,
-          photos,
-          videoUrl: videoData.uploaded ? videoData.thumbnailUrl : null,
-          // Include video IDs for multi-video support
-          videoIds: (() => {
-            console.log("🎬 Videos in state before filtering:", videos.length);
-            videos.forEach((video, index) => {
-              console.log(`🎬 Video ${index}:`, {
-                id: video.id,
-                src: video.src?.substring(0, 50) + "...",
-              });
-            });
-
-            return videos
-              .map((video) => video.id)
-              .filter((id) => {
-                // Filter out invalid, empty, or placeholder video IDs
-                const isValid =
-                  id &&
-                  typeof id === "string" &&
-                  id.trim() !== "" &&
-                  id !== "legacy-video" &&
-                  id !== "single-video" &&
-                  id !== "fallback-video" &&
-                  !id.startsWith("video-"); // Remove generic video-N IDs
-
-                console.log(
-                  "🎬 Frontend filtering video ID:",
-                  id,
-                  isValid ? "✅ valid" : "❌ invalid"
-                );
-                return isValid;
-              });
-          })(),
-        }),
+        body: JSON.stringify(requestBody),
       });
 
+      console.log("📡 Request sent, waiting for response...");
+      console.log("🔍 Response status:", response.status);
+      console.log(
+        "🔍 Response headers:",
+        Object.fromEntries(response.headers.entries())
+      );
+
       if (!response.ok) {
-        const errorData = await response.json();
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (jsonError) {
+          // If response is not JSON, get the text content
+          const textResponse = await response.text();
+          console.error(
+            "🚨 Response is not JSON:",
+            textResponse.substring(0, 500)
+          );
+          throw new Error(
+            `Server returned ${response.status}: ${response.statusText}`
+          );
+        }
         console.error("🚨 Update listing failed:", errorData);
 
         // Show specific error message for video-related errors
@@ -965,24 +1090,61 @@ export default function EditListingPage() {
         throw new Error(errorData.error || "Failed to update listing");
       }
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        // If response is not JSON, get the text content
+        const textResponse = await response.text();
+        console.error(
+          "🚨 Success response is not JSON:",
+          textResponse.substring(0, 500)
+        );
+        throw new Error(
+          `Server returned non-JSON response: ${response.status}`
+        );
+      }
 
       if (data.success) {
+        console.log("✅ Listing updated successfully, redirecting...");
+
         // Invalidate cache for this listing
         apiCache.invalidate(`/api/listings/${params.id}`);
 
         // Redirect to the listing detail page
         router.push(`/list-item/${params.id}`);
+
+        console.log("🔄 Redirect initiated to /list-item/" + params.id);
       } else {
         throw new Error(data.error || "Failed to update listing");
       }
     } catch (error) {
-      console.error("Error updating listing:", error);
-      setError(
-        `Failed to update listing: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
+      console.error("🚨 Update listing failed:", error);
+      console.error("🚨 Error type:", typeof error);
+      console.error("🚨 Error constructor:", error?.constructor?.name);
+      console.error("🚨 Error details:", {
+        message: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined,
+        errorObject: error,
+        stringified: JSON.stringify(error, null, 2),
+        keys: error ? Object.keys(error) : [],
+      });
+
+      // Try to get more specific error information
+      let errorMessage = "Unknown error occurred";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === "string") {
+        errorMessage = error;
+      } else if (error && typeof error === "object") {
+        const errorObj = error as any;
+        errorMessage =
+          errorObj.message || errorObj.error || JSON.stringify(error);
+      }
+
+      console.error("🚨 Final error message:", errorMessage);
+
+      setError(`Failed to update listing: ${errorMessage}`);
     } finally {
       setSaving(false);
     }
@@ -2175,45 +2337,100 @@ export default function EditListingPage() {
               </div>
             )}
 
-            {/* Upload Section */}
-            {videos.length === 0 && (
-              <div className="border-t border-gray-200 pt-6">
-                <div className="mb-6">
-                  <h3 className="text-md font-medium text-gray-700 mb-4">
-                    Upload Your First Video
-                  </h3>
+            {/* Video Upload Section */}
+            <div className="border-t border-gray-200 pt-6">
+              <div className="mb-6">
+                <h3 className="text-md font-medium text-gray-700 mb-4">
+                  {videos.length === 0 ? "Upload Videos" : "Add More Videos"}
+                </h3>
+
+                {/* Show notification if videos were uploaded but not saved */}
+                {videos.length > 0 && (
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <svg
+                          className="h-5 w-5 text-blue-400"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm text-blue-700">
+                          <strong>
+                            {videos.length} video
+                            {videos.length !== 1 ? "s" : ""} ready to save.
+                          </strong>{" "}
+                          Click "Save Changes" below to add them to your
+                          listing.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload Method Selection */}
+                <div className="mb-4">
+                  <div className="flex space-x-4">
+                    <button
+                      type="button"
+                      onClick={() => setVideoUploadMethod("single")}
+                      className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                        videoUploadMethod === "single"
+                          ? "bg-blue-100 text-blue-700 border border-blue-300"
+                          : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
+                      }`}
+                    >
+                      Single Video
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setVideoUploadMethod("bulk")}
+                      className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                        videoUploadMethod === "bulk"
+                          ? "bg-blue-100 text-blue-700 border border-blue-300"
+                          : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
+                      }`}
+                    >
+                      Multiple Videos
+                    </button>
+                  </div>
+                </div>
+
+                {/* Single Video Upload */}
+                {videoUploadMethod === "single" && (
                   <VideoUpload
                     onVideoUploaded={handleVideoUploaded}
                     onError={handleVideoError}
                     onStarted={handleVideoStarted}
                     disabled={videoData.processing}
                   />
-                  {videoData.error && (
-                    <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
-                      <p className="text-red-800">{videoData.error}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+                )}
 
-            {/* Upload Options for Empty State */}
-            {videos.length === 0 && !videoData.processing && (
-              <div className="mt-6 text-center">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
-                  <div className="text-gray-500 mb-4">
-                    <Play className="h-12 w-12 mx-auto opacity-50" />
+                {/* Bulk Video Upload */}
+                {videoUploadMethod === "bulk" && (
+                  <BulkVideoUpload
+                    onVideosUploaded={handleBulkVideosUploaded}
+                    maxVideos={5}
+                    maxFileSizeMB={100}
+                    listingId={params.id as string}
+                    autoSubmit={true}
+                  />
+                )}
+
+                {videoData.error && (
+                  <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                    <p className="text-red-800">{videoData.error}</p>
                   </div>
-                  <h3 className="text-sm font-medium text-gray-900 mb-2">
-                    No videos yet
-                  </h3>
-                  <p className="text-sm text-gray-500 mb-4">
-                    Upload videos to showcase your item in action. For multiple
-                    videos, use the bulk upload feature during listing creation.
-                  </p>
-                </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
 
           {/* Submit Button */}
