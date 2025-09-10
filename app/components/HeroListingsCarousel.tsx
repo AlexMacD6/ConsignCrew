@@ -53,11 +53,6 @@ export default function HeroListingsCarousel({
   // Fetch actual listings
   useEffect(() => {
     const fetchListings = async () => {
-      // Prevent multiple concurrent requests
-      if (loading) {
-        return;
-      }
-
       let timeoutId: NodeJS.Timeout | null = null;
 
       try {
@@ -88,10 +83,19 @@ export default function HeroListingsCarousel({
           timeoutId = null;
         }
         console.log("Response status:", response.status);
+        console.log(
+          "Response headers:",
+          Object.fromEntries(response.headers.entries())
+        );
 
         if (!response.ok) {
           const errorText = await response.text();
           console.error("API Error Response:", errorText);
+          console.error(
+            "Response status:",
+            response.status,
+            response.statusText
+          );
           throw new Error(
             `Failed to fetch listings: ${response.status} ${response.statusText}`
           );

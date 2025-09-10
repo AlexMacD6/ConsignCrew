@@ -55,7 +55,7 @@ import {
   trackCompleteRegistration,
 } from "../../lib/meta-pixel-client";
 
-// Helper function to convert S3 keys to CloudFront URLs
+// Helper function to convert S3 keys to CloudFront URLs with S3 fallback
 function getPhotoUrl(photoData: any): string | null {
   if (!photoData) return null;
 
@@ -80,6 +80,18 @@ function getPhotoUrl(photoData: any): string | null {
   }
 
   return null;
+}
+
+// Helper function to get S3 fallback URL for images
+function getS3FallbackUrl(photoData: any): string | null {
+  if (!photoData || typeof photoData !== "string" || !photoData.includes("/")) {
+    return null;
+  }
+
+  // Generate direct S3 URL as fallback
+  const bucketName = process.env.S3_BUCKET || "consigncrew";
+  const region = process.env.AWS_REGION || "us-east-1";
+  return `https://${bucketName}.s3.${region}.amazonaws.com/${photoData}`;
 }
 
 export default function ListingsPage() {
