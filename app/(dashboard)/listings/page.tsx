@@ -431,12 +431,14 @@ export default function ListingsPage() {
           if (!aIsNew) return 1; // b comes first
           if (!bIsNew) return -1; // a comes first
 
+          const aDisplayPrice = getDisplayPrice(a);
+          const bDisplayPrice = getDisplayPrice(b);
           const aPercentOff =
-            ((a.estimated_retail_price - a.list_price) /
+            ((a.estimated_retail_price - aDisplayPrice.price) /
               a.estimated_retail_price) *
             100;
           const bPercentOff =
-            ((b.estimated_retail_price - b.list_price) /
+            ((b.estimated_retail_price - bDisplayPrice.price) /
               b.estimated_retail_price) *
             100;
           return bPercentOff - aPercentOff; // Largest % off first
@@ -1035,7 +1037,7 @@ export default function ListingsPage() {
               return (
                 <div
                   key={listing.itemId}
-                  className={`bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden ${
+                  className={`bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden flex flex-col h-full ${
                     isHidden ? "opacity-60" : ""
                   } ${listing.status === "sold" ? "opacity-75" : ""}`}
                 >
@@ -1148,7 +1150,7 @@ export default function ListingsPage() {
                   </div>
 
                   {/* Content */}
-                  <div className="p-3">
+                  <div className="p-3 flex flex-col flex-grow">
                     {/* Title */}
                     <h3
                       className="font-semibold text-gray-900 text-sm line-clamp-2 mb-1 hover:text-[#D4AF3D] cursor-pointer"
@@ -1157,73 +1159,80 @@ export default function ListingsPage() {
                       {listing.title}
                     </h3>
 
-                    {/* Display Price (Sales Price or List Price) */}
-                    <div className="flex items-center gap-2 mb-1">
-                      {(() => {
-                        const displayPrice = getDisplayPrice(listing);
+                    {/* Display Price (Sales Price or List Price) - Hide for sold items */}
+                    {listing.status !== "sold" && (
+                      <div className="flex items-center gap-2 mb-1">
+                        {(() => {
+                          const displayPrice = getDisplayPrice(listing);
 
-                        if (displayPrice.isDiscounted) {
-                          return (
-                            <>
-                              <span className="text-lg font-bold text-green-600">
-                                ${displayPrice.price.toFixed(2)}
-                              </span>
-                              <span className="text-sm text-gray-500 line-through">
-                                ${displayPrice.originalPrice?.toFixed(2)}
-                              </span>
-                              <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded font-medium">
-                                Sale
-                              </span>
-                            </>
-                          );
-                        } else {
-                          return (
-                            <>
-                              <span className="text-lg font-bold text-gray-900">
-                                ${displayPrice.price.toFixed(2)}
-                              </span>
-                              {listing.list_price <= listing.reserve_price && (
-                                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded font-medium">
-                                  Reserve Met
+                          if (displayPrice.isDiscounted) {
+                            return (
+                              <>
+                                <span className="text-lg font-bold text-green-600">
+                                  ${displayPrice.price.toFixed(2)}
                                 </span>
-                              )}
-                            </>
-                          );
-                        }
-                      })()}
-                    </div>
-
-                    {/* Treasure Badge or Estimated Retail Price */}
-                    {listing.isTreasure ? (
-                      <div className="mb-2">
-                        <TreasureBadge
-                          isTreasure={listing.isTreasure}
-                          treasureReason={listing.treasureReason}
-                          showReason={false}
-                        />
+                                <span className="text-sm text-gray-500 line-through">
+                                  ${displayPrice.originalPrice?.toFixed(2)}
+                                </span>
+                                <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded font-medium">
+                                  Sale
+                                </span>
+                              </>
+                            );
+                          } else {
+                            return (
+                              <>
+                                <span className="text-lg font-bold text-gray-900">
+                                  ${displayPrice.price.toFixed(2)}
+                                </span>
+                                {listing.list_price <=
+                                  listing.reserve_price && (
+                                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded font-medium">
+                                    Reserve Met
+                                  </span>
+                                )}
+                              </>
+                            );
+                          }
+                        })()}
                       </div>
-                    ) : (
-                      listing.estimated_retail_price &&
-                      isNewCondition(getStandardizedCondition(listing)) && (
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-sm text-gray-500 line-through">
-                            ${listing.estimated_retail_price.toFixed(2)}
-                          </span>
-                          <div className="flex items-center gap-1 text-xs text-red-600">
-                            <ArrowDown className="h-3 w-3" />
-                            <span>
-                              {Math.round(
-                                ((listing.estimated_retail_price -
-                                  listing.list_price) /
-                                  listing.estimated_retail_price) *
-                                  100
-                              )}
-                              % Off Retail
-                            </span>
-                          </div>
-                        </div>
-                      )
                     )}
+
+                    {/* Treasure Badge or Estimated Retail Price - Hide for sold items */}
+                    {listing.status !== "sold" &&
+                      (listing.isTreasure ? (
+                        <div className="mb-2">
+                          <TreasureBadge
+                            isTreasure={listing.isTreasure}
+                            treasureReason={listing.treasureReason}
+                            showReason={false}
+                          />
+                        </div>
+                      ) : (
+                        listing.estimated_retail_price &&
+                        isNewCondition(getStandardizedCondition(listing)) && (
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-sm text-gray-500 line-through">
+                              ${listing.estimated_retail_price.toFixed(2)}
+                            </span>
+                            <div className="flex items-center gap-1 text-xs text-red-600">
+                              <ArrowDown className="h-3 w-3" />
+                              <span>
+                                {(() => {
+                                  const displayPrice = getDisplayPrice(listing);
+                                  return Math.round(
+                                    ((listing.estimated_retail_price -
+                                      displayPrice.price) /
+                                      listing.estimated_retail_price) *
+                                      100
+                                  );
+                                })()}
+                                % Off Retail
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      ))}
 
                     {/* Rating - Only show if there are actual reviews */}
                     {listing.rating && listing.reviews > 0 && (
@@ -1262,7 +1271,7 @@ export default function ListingsPage() {
                     )}
 
                     {/* Action Buttons */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 mt-auto">
                       <Button
                         variant="default"
                         className="flex-1 bg-[#D4AF3D] hover:bg-[#b8932f] text-white text-sm"
@@ -1728,73 +1737,79 @@ export default function ListingsPage() {
                     />
                   </div>
 
-                  {/* Price Information */}
-                  <div className="bg-gray-50 p-4 rounded-lg mb-6">
-                    <div className="flex items-center justify-between mb-2">
-                      {(() => {
-                        const displayPrice = getDisplayPrice(selectedListing);
+                  {/* Price Information - Hide for sold items */}
+                  {selectedListing.status !== "sold" && (
+                    <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                      <div className="flex items-center justify-between mb-2">
+                        {(() => {
+                          const displayPrice = getDisplayPrice(selectedListing);
 
-                        if (displayPrice.isDiscounted) {
-                          return (
-                            <div className="flex items-center gap-3">
-                              <span className="text-3xl font-bold text-green-600">
+                          if (displayPrice.isDiscounted) {
+                            return (
+                              <div className="flex items-center gap-3">
+                                <span className="text-3xl font-bold text-green-600">
+                                  ${displayPrice.price.toFixed(2)}
+                                </span>
+                                <span className="text-xl text-gray-500 line-through">
+                                  ${displayPrice.originalPrice?.toFixed(2)}
+                                </span>
+                                <span className="text-sm bg-red-100 text-red-800 px-2 py-1 rounded font-medium">
+                                  Sale
+                                </span>
+                              </div>
+                            );
+                          } else {
+                            return (
+                              <span className="text-3xl font-bold text-gray-900">
                                 ${displayPrice.price.toFixed(2)}
                               </span>
-                              <span className="text-xl text-gray-500 line-through">
-                                ${displayPrice.originalPrice?.toFixed(2)}
-                              </span>
-                              <span className="text-sm bg-red-100 text-red-800 px-2 py-1 rounded font-medium">
-                                Sale
+                            );
+                          }
+                        })()}
+                      </div>
+                      {(() => {
+                        const displayPrice = getDisplayPrice(selectedListing);
+                        return (
+                          displayPrice.price <=
+                            selectedListing.reserve_price && (
+                            <div className="text-sm bg-green-100 text-green-800 px-3 py-1 rounded font-medium inline-block">
+                              Reserve Met
+                            </div>
+                          )
+                        );
+                      })()}
+                      {/* Estimated Retail Price - Only show if available and condition is New */}
+                      {selectedListing.estimated_retail_price &&
+                        isNewCondition(
+                          getStandardizedCondition(selectedListing)
+                        ) && (
+                          <div className="mt-3 flex items-center gap-3">
+                            <span className="text-lg text-gray-500 line-through">
+                              $
+                              {selectedListing.estimated_retail_price.toFixed(
+                                2
+                              )}
+                            </span>
+                            <div className="flex items-center gap-2 text-sm text-red-600">
+                              <ArrowDown className="h-4 w-4" />
+                              <span className="font-medium">
+                                {(() => {
+                                  const displayPrice =
+                                    getDisplayPrice(selectedListing);
+                                  return Math.round(
+                                    ((selectedListing.estimated_retail_price -
+                                      displayPrice.price) /
+                                      selectedListing.estimated_retail_price) *
+                                      100
+                                  );
+                                })()}
+                                % Off Retail
                               </span>
                             </div>
-                          );
-                        } else {
-                          return (
-                            <span className="text-3xl font-bold text-gray-900">
-                              ${displayPrice.price.toFixed(2)}
-                            </span>
-                          );
-                        }
-                      })()}
+                          </div>
+                        )}
                     </div>
-                    {(() => {
-                      const displayPrice = getDisplayPrice(selectedListing);
-                      return (
-                        displayPrice.price <= selectedListing.reserve_price && (
-                          <div className="text-sm bg-green-100 text-green-800 px-3 py-1 rounded font-medium inline-block">
-                            Reserve Met
-                          </div>
-                        )
-                      );
-                    })()}
-                    {/* Estimated Retail Price - Only show if available and condition is New */}
-                    {selectedListing.estimated_retail_price &&
-                      isNewCondition(
-                        getStandardizedCondition(selectedListing)
-                      ) && (
-                        <div className="mt-3 flex items-center gap-3">
-                          <span className="text-lg text-gray-500 line-through">
-                            ${selectedListing.estimated_retail_price.toFixed(2)}
-                          </span>
-                          <div className="flex items-center gap-2 text-sm text-red-600">
-                            <ArrowDown className="h-4 w-4" />
-                            <span className="font-medium">
-                              {(() => {
-                                const displayPrice =
-                                  getDisplayPrice(selectedListing);
-                                return Math.round(
-                                  ((selectedListing.estimated_retail_price -
-                                    displayPrice.price) /
-                                    selectedListing.estimated_retail_price) *
-                                    100
-                                );
-                              })()}
-                              % Off Retail
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                  </div>
+                  )}
 
                   {/* Action Buttons */}
                   <div className="space-y-3 mb-6">

@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { Printer, FileText } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 
 interface CustomQRCodeProps {
   itemId: string;
@@ -43,21 +44,19 @@ export default function CustomQRCode({
   });
 
   // Generate the full URL for the QR code
-  const qrData = `${window.location.origin}/list-item/${itemId}`;
+  const [qrData, setQrData] = useState<string>("");
+
+  // Set QR data on client side to avoid SSR issues
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setQrData(`${window.location.origin}/list-item/${itemId}`);
+    }
+  }, [itemId]);
 
   useEffect(() => {
-    const loadQRCode = async () => {
-      try {
-        const { QRCodeSVG } = await import("qrcode.react");
-        setQRCodeComponent(() => QRCodeSVG);
-      } catch (error) {
-        console.error("Failed to load QR code component:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadQRCode();
+    // Set the QR component directly since we're importing it statically now
+    setQRCodeComponent(() => QRCodeSVG);
+    setIsLoading(false);
   }, []);
 
   const handlePrintLabel = async () => {
@@ -675,14 +674,14 @@ export default function CustomQRCode({
     <div className={`relative block ${className}`}>
       {/* QR Code */}
       <div className="relative flex justify-center">
-        {isLoading ? (
+        {isLoading || !qrData ? (
           <div
             className="bg-gray-100 rounded-lg p-4 text-center"
             style={{ width: size, height: size }}
           >
             <p className="text-sm text-gray-600">Loading QR Code...</p>
           </div>
-        ) : QRCodeComponent ? (
+        ) : QRCodeComponent && qrData ? (
           <QRCodeComponent
             value={qrData}
             size={size}
@@ -724,7 +723,7 @@ export default function CustomQRCode({
       </div>
 
       {/* TreasureHub Organization Print Buttons */}
-      {showPrintButton && isTreasureHubMember && !isLoading && (
+      {showPrintButton && isTreasureHubMember && !isLoading && qrData && (
         <div className="mt-4 text-center">
           <div className="flex gap-2 justify-center">
             <button

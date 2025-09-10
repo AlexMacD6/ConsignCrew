@@ -1146,7 +1146,7 @@ export default function CheckoutPage() {
                               .toUpperCase();
                             setPromo(sanitized);
                           }}
-                          placeholder="EARLYACCESS"
+                          placeholder="Enter promo code"
                           className="border rounded px-3 py-2 flex-1 text-sm font-mono"
                         />
                         <Button

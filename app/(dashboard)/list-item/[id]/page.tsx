@@ -1153,12 +1153,15 @@ export default function ListingDetailPage() {
                       <div className="flex items-center gap-2 text-sm text-red-600">
                         <TrendingDown className="h-4 w-4" />
                         <span className="font-medium">
-                          {Math.round(
-                            ((listing.estimated_retail_price -
-                              listing.list_price) /
-                              listing.estimated_retail_price) *
-                              100
-                          )}
+                          {(() => {
+                            const displayPrice = getDisplayPrice(listing);
+                            return Math.round(
+                              ((listing.estimated_retail_price -
+                                displayPrice.price) /
+                                listing.estimated_retail_price) *
+                                100
+                            );
+                          })()}
                           % Off Retail
                         </span>
                       </div>

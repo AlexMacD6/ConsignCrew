@@ -158,7 +158,7 @@ export default function PromoCodeInput({
                 if (error) setError("");
               }}
               onKeyPress={handleKeyPress}
-              placeholder="EARLYACCESS"
+              placeholder="Enter promo code"
               className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent font-mono text-sm ${
                 error ? "border-red-300" : "border-gray-300"
               }`}

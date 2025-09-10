@@ -146,8 +146,7 @@ export async function POST(request: NextRequest) {
         }
       });
 
-      // Create order in database with price breakdown stored in shippingAddress field for now
-      // (In future, we should add dedicated fields for subtotal, deliveryFee, tax)
+      // Create order in database with both new fields and JSON backup
       const order = await prisma.order.create({
         data: {
           listingId: listing.id,
@@ -158,7 +157,20 @@ export async function POST(request: NextRequest) {
           status: 'PENDING',
           checkoutExpiresAt: holdExpiry,
           isHeld: true,
-          // Store price breakdown in shippingAddress for now (temporary solution)
+          
+          // NEW: Populate dedicated pricing fields
+          subtotal: finalPrice,
+          deliveryFee: deliveryFee,
+          taxAmount: salesTax,
+          taxRate: TAX_RATE,
+          deliveryMethod: deliveryMethod,
+          deliveryCategory: deliveryCategory,
+          promoCode: promoCode,
+          promoDiscountAmount: promoDiscountAmount,
+          promoDiscountType: promoDiscount?.type,
+          isMultiItem: false,
+          
+          // Keep JSON for backward compatibility and item details
           shippingAddress: {
             priceBreakdown: {
               subtotal: finalPrice,
@@ -292,7 +304,7 @@ export async function POST(request: NextRequest) {
       // and store all item details in the shippingAddress field
       const primaryListing = cartItems[0].listing;
       
-      // Create order in database with full cart details stored in shippingAddress field
+      // Create order in database with both new fields and JSON backup
       const order = await prisma.order.create({
         data: {
           listingId: primaryListing.id,
@@ -303,7 +315,20 @@ export async function POST(request: NextRequest) {
           status: 'PENDING',
           checkoutExpiresAt: holdExpiry,
           isHeld: true,
-          // Store complete cart details in shippingAddress for now (temporary solution)
+          
+          // NEW: Populate dedicated pricing fields
+          subtotal: subtotal,
+          deliveryFee: deliveryFee,
+          taxAmount: salesTax,
+          taxRate: TAX_RATE,
+          deliveryMethod: deliveryMethod,
+          deliveryCategory: hasBulkItems ? 'BULK' : 'NORMAL',
+          promoCode: promoCode,
+          promoDiscountAmount: promoDiscountAmount,
+          promoDiscountType: promoDiscount?.type,
+          isMultiItem: true,
+          
+          // Keep JSON for backward compatibility and item details
           shippingAddress: {
             priceBreakdown: {
               subtotal: subtotal,

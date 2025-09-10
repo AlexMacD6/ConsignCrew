@@ -241,4 +241,279 @@ export function getWelcomeEmailTemplate(data: EmailTemplateData) {
   `
 
   return getBaseEmailTemplate(content, 'Welcome to TreasureHub!', false)
+}
+
+/**
+ * En Route notification email template
+ */
+export function getEnRouteEmailTemplate(data: {
+  customerName: string;
+  orderId: string;
+  itemTitle: string;
+  itemId: string;
+  deliveryNotes?: string;
+  phoneNumber?: string;
+}) {
+  const { customerName, orderId, itemTitle, itemId, deliveryNotes, phoneNumber } = data;
+  const orderShortId = orderId.slice(-8).toUpperCase();
+  
+  const content = `
+    <!-- En Route Alert -->
+    <div style="background-color: #dbeafe; border-left: 4px solid #3b82f6; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+        <h2 style="color: #1e40af; margin: 0 0 10px 0; font-size: 20px; font-weight: 600; font-family: 'Poppins', Arial, Helvetica, sans-serif;">🚚 Your order is on the way!</h2>
+        <p style="color: #1d4ed8; margin: 0; font-size: 16px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Great news! Your TreasureHub order is now out for delivery and heading your way.</p>
+    </div>
+
+    <!-- Order Details -->
+    <div style="background-color: #f8fafc; border-radius: 12px; padding: 25px; margin-bottom: 30px; border: 1px solid #e2e8f0;">
+        <h3 style="color: #1e293b; margin: 0 0 20px 0; font-size: 18px; font-weight: 600; font-family: 'Poppins', Arial, Helvetica, sans-serif;">📦 Order Details</h3>
+        
+        <div style="display: grid; gap: 15px;">
+            <div style="display: flex; align-items: center; padding: 12px; background-color: white; border-radius: 8px; border-left: 3px solid #d4af3d;">
+                <span style="color: #6b7280; font-weight: 500; min-width: 100px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Order #:</span>
+                <span style="color: #1e293b; font-weight: 600; margin-left: 10px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">${orderShortId}</span>
+            </div>
+            
+            <div style="display: flex; align-items: center; padding: 12px; background-color: white; border-radius: 8px; border-left: 3px solid #d4af3d;">
+                <span style="color: #6b7280; font-weight: 500; min-width: 100px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Item:</span>
+                <span style="color: #1e293b; font-weight: 600; margin-left: 10px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">${itemTitle}</span>
+            </div>
+            
+            <div style="display: flex; align-items: center; padding: 12px; background-color: white; border-radius: 8px; border-left: 3px solid #d4af3d;">
+                <span style="color: #6b7280; font-weight: 500; min-width: 100px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Item ID:</span>
+                <span style="color: #1e293b; font-weight: 600; margin-left: 10px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">${itemId}</span>
+            </div>
+        </div>
+    </div>
+
+    ${deliveryNotes ? `
+    <!-- Delivery Information -->
+    <div style="background-color: #fffbe6; border-radius: 12px; padding: 25px; margin-bottom: 30px; border: 2px solid #d4af3d;">
+        <h3 style="color: #825e08; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; font-family: 'Poppins', Arial, Helvetica, sans-serif;">🕒 Delivery Window</h3>
+        <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #d4af3d;">
+            <p style="color: #825e08; margin: 0; font-size: 16px; font-weight: 600; font-family: 'Poppins', Arial, Helvetica, sans-serif;">
+                ${deliveryNotes}
+            </p>
+        </div>
+    </div>
+    ` : ''}
+
+    <!-- What to Expect -->
+    <div style="background-color: #f0f9ff; border-radius: 12px; padding: 25px; margin-bottom: 30px; border: 1px solid #0ea5e9;">
+        <h3 style="color: #0c4a6e; margin: 0 0 20px 0; font-size: 18px; font-weight: 600; font-family: 'Poppins', Arial, Helvetica, sans-serif;">What to Expect</h3>
+        
+        <div style="display: grid; gap: 15px;">
+            <div style="display: flex; align-items: flex-start; padding: 15px; background-color: white; border-radius: 8px; border-left: 3px solid #0ea5e9;">
+                <span style="color: #0ea5e9; font-size: 20px; margin-right: 15px; font-weight: bold;">🚚</span>
+                <div>
+                    <h4 style="color: #1e293b; margin: 0 0 5px 0; font-size: 16px; font-weight: 600; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Delivery in Progress</h4>
+                    <p style="color: #6b7280; margin: 0; font-size: 14px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Our delivery team is on their way to your location with your treasure.</p>
+                </div>
+            </div>
+            
+            <div style="display: flex; align-items: flex-start; padding: 15px; background-color: white; border-radius: 8px; border-left: 3px solid #0ea5e9;">
+                <span style="color: #0ea5e9; font-size: 20px; margin-right: 15px; font-weight: bold;">📱</span>
+                <div>
+                    <h4 style="color: #1e293b; margin: 0 0 5px 0; font-size: 16px; font-weight: 600; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Stay Available</h4>
+                    <p style="color: #6b7280; margin: 0; font-size: 14px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Please ensure someone is available to receive the delivery during your scheduled window.</p>
+                </div>
+            </div>
+            
+            <div style="display: flex; align-items: flex-start; padding: 15px; background-color: white; border-radius: 8px; border-left: 3px solid #0ea5e9;">
+                <span style="color: #0ea5e9; font-size: 20px; margin-right: 15px; font-weight: bold;">✅</span>
+                <div>
+                    <h4 style="color: #1e293b; margin: 0 0 5px 0; font-size: 16px; font-weight: 600; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Delivery Confirmation</h4>
+                    <p style="color: #6b7280; margin: 0; font-size: 14px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">You'll receive a confirmation email once your item has been successfully delivered.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact Information -->
+    <div style="text-align: center; padding: 25px; background-color: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+        <h3 style="color: #1e293b; margin: 0 0 15px 0; font-size: 16px; font-weight: 600; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Questions about your delivery?</h3>
+        <p style="color: #6b7280; margin: 0 0 20px 0; font-size: 14px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Our team is here to help if you have any questions or concerns.</p>
+        <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+            ${phoneNumber ? `
+            <a href="tel:${phoneNumber.replace(/\D/g, '')}" style="display: inline-block; background-color: #d4af3d; color: #1e293b; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">📞 Call ${phoneNumber}</a>
+            ` : ''}
+            <a href="mailto:support@treasurehub.club?subject=Delivery Question - Order ${orderShortId}" style="display: inline-block; background-color: #825e08; color: white; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">✉️ Email Support</a>
+        </div>
+    </div>
+  `
+
+  return getBaseEmailTemplate(content, 'Your Order is On the Way!', true)
+}
+
+/**
+ * Delivery confirmation email template
+ */
+export function getDeliveryConfirmationEmailTemplate(data: {
+  customerName: string;
+  orderId: string;
+  itemTitle: string;
+  itemId: string;
+  deliveredAt: string;
+  deliveryPhotos?: string[];
+  phoneNumber?: string;
+  contestPeriodExpiresAt?: string;
+}) {
+  const { customerName, orderId, itemTitle, itemId, deliveredAt, deliveryPhotos, phoneNumber, contestPeriodExpiresAt } = data;
+  const orderShortId = orderId.slice(-8).toUpperCase();
+  
+  const content = `
+    <!-- Delivery Success Alert -->
+    <div style="background-color: #dcfce7; border-left: 4px solid #16a34a; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+        <h2 style="color: #15803d; margin: 0 0 10px 0; font-size: 20px; font-weight: 600; font-family: 'Poppins', Arial, Helvetica, sans-serif;">✅ Delivery Complete!</h2>
+        <p style="color: #166534; margin: 0; font-size: 16px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Great news! Your TreasureHub order has been successfully delivered.</p>
+    </div>
+
+    <!-- Order Details -->
+    <div style="background-color: #f8fafc; border-radius: 12px; padding: 25px; margin-bottom: 30px; border: 1px solid #e2e8f0;">
+        <h3 style="color: #1e293b; margin: 0 0 20px 0; font-size: 18px; font-weight: 600; font-family: 'Poppins', Arial, Helvetica, sans-serif;">📦 Order Details</h3>
+        
+        <div style="display: grid; gap: 15px;">
+            <div style="display: flex; align-items: center; padding: 12px; background-color: white; border-radius: 8px; border-left: 3px solid #d4af3d;">
+                <span style="color: #6b7280; font-weight: 500; min-width: 100px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Order #:</span>
+                <span style="color: #1e293b; font-weight: 600; margin-left: 10px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">${orderShortId}</span>
+            </div>
+            
+            <div style="display: flex; align-items: center; padding: 12px; background-color: white; border-radius: 8px; border-left: 3px solid #d4af3d;">
+                <span style="color: #6b7280; font-weight: 500; min-width: 100px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Item:</span>
+                <span style="color: #1e293b; font-weight: 600; margin-left: 10px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">${itemTitle}</span>
+            </div>
+            
+            <div style="display: flex; align-items: center; padding: 12px; background-color: white; border-radius: 8px; border-left: 3px solid #d4af3d;">
+                <span style="color: #6b7280; font-weight: 500; min-width: 100px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Item ID:</span>
+                <span style="color: #1e293b; font-weight: 600; margin-left: 10px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">${itemId}</span>
+            </div>
+            
+            <div style="display: flex; align-items: center; padding: 12px; background-color: white; border-radius: 8px; border-left: 3px solid #d4af3d;">
+                <span style="color: #6b7280; font-weight: 500; min-width: 100px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Delivered:</span>
+                <span style="color: #1e293b; font-weight: 600; margin-left: 10px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">
+                    ${new Date(deliveredAt).toLocaleDateString("en-US", {
+                      weekday: "long",
+                      year: "numeric", 
+                      month: "long",
+                      day: "numeric"
+                    })} at ${new Date(deliveredAt).toLocaleTimeString("en-US", {
+                      hour: "numeric",
+                      minute: "2-digit",
+                      hour12: true
+                    })}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    ${deliveryPhotos && deliveryPhotos.length > 0 ? `
+    <!-- Delivery Photos -->
+    <div style="background-color: #f0f9ff; border-radius: 12px; padding: 25px; margin-bottom: 30px; border: 1px solid #0ea5e9;">
+        <h3 style="color: #0c4a6e; margin: 0 0 20px 0; font-size: 18px; font-weight: 600; font-family: 'Poppins', Arial, Helvetica, sans-serif;">📸 Delivery Confirmation Photos</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            ${deliveryPhotos.map((photo, index) => `
+                <div style="background-color: white; padding: 10px; border-radius: 8px; border: 1px solid #e0e7ff;">
+                    <img src="${photo}" alt="Delivery Photo ${index + 1}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 6px; display: block;">
+                    <p style="text-align: center; margin: 8px 0 0 0; font-size: 12px; color: #6b7280; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Photo ${index + 1}</p>
+                </div>
+            `).join('')}
+        </div>
+    </div>
+    ` : ''}
+
+    ${contestPeriodExpiresAt ? `
+    <!-- Contest Period Notice -->
+    <div style="background-color: #fef3c7; border-radius: 12px; padding: 25px; margin-bottom: 30px; border: 2px solid #f59e0b;">
+        <h3 style="color: #92400e; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; font-family: 'Poppins', Arial, Helvetica, sans-serif;">⚠️ Important: 24-Hour Review Period</h3>
+        <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 20px;">
+            <p style="color: #92400e; margin: 0 0 15px 0; font-size: 16px; font-weight: 600; font-family: 'Poppins', Arial, Helvetica, sans-serif;">
+                Review Period Expires: ${new Date(contestPeriodExpiresAt).toLocaleDateString("en-US", {
+                  weekday: "long",
+                  year: "numeric", 
+                  month: "long",
+                  day: "numeric"
+                })} at ${new Date(contestPeriodExpiresAt).toLocaleTimeString("en-US", {
+                  hour: "numeric",
+                  minute: "2-digit",
+                  hour12: true
+                })}
+            </p>
+            <p style="color: #6b7280; margin: 0; font-size: 14px; line-height: 1.6; font-family: 'Poppins', Arial, Helvetica, sans-serif;">
+                You have 24 hours from delivery to report any issues with your order. After this period, your order will be automatically finalized and the transaction will be complete.
+            </p>
+        </div>
+        
+        <div style="display: grid; gap: 15px;">
+            <div style="display: flex; align-items: flex-start; padding: 15px; background-color: white; border-radius: 8px; border-left: 3px solid #f59e0b;">
+                <span style="color: #f59e0b; font-size: 20px; margin-right: 15px; font-weight: bold;">🔍</span>
+                <div>
+                    <h4 style="color: #1e293b; margin: 0 0 5px 0; font-size: 16px; font-weight: 600; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Inspect Your Order</h4>
+                    <p style="color: #6b7280; margin: 0; font-size: 14px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Please check your delivered item carefully for any damage, missing parts, or discrepancies.</p>
+                </div>
+            </div>
+            
+            <div style="display: flex; align-items: flex-start; padding: 15px; background-color: white; border-radius: 8px; border-left: 3px solid #f59e0b;">
+                <span style="color: #f59e0b; font-size: 20px; margin-right: 15px; font-weight: bold;">📝</span>
+                <div>
+                    <h4 style="color: #1e293b; margin: 0 0 5px 0; font-size: 16px; font-weight: 600; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Report Issues Immediately</h4>
+                    <p style="color: #6b7280; margin: 0; font-size: 14px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">If there are any problems, please report them within 24 hours using the link below.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/contest-order/${orderId}" style="display: inline-block; background-color: #dc2626; color: white; text-decoration: none; padding: 15px 30px; border-radius: 8px; font-weight: 600; font-size: 16px; font-family: 'Poppins', Arial, Helvetica, sans-serif; margin-right: 15px;">🚨 Report an Issue</a>
+            <p style="color: #6b7280; margin: 10px 0 0 0; font-size: 12px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">
+                Only use this if there are genuine problems with your order
+            </p>
+        </div>
+    </div>
+    ` : ''}
+
+    <!-- Success Message -->
+    <div style="background-color: #ecfdf5; border-radius: 12px; padding: 25px; margin-bottom: 30px; border: 1px solid #10b981;">
+        <h3 style="color: #065f46; margin: 0 0 20px 0; font-size: 18px; font-weight: 600; font-family: 'Poppins', Arial, Helvetica, sans-serif;">🎉 Thank You for Choosing TreasureHub!</h3>
+        
+        <div style="display: grid; gap: 15px;">
+            <div style="display: flex; align-items: flex-start; padding: 15px; background-color: white; border-radius: 8px; border-left: 3px solid #10b981;">
+                <span style="color: #10b981; font-size: 20px; margin-right: 15px; font-weight: bold;">✅</span>
+                <div>
+                    <h4 style="color: #1e293b; margin: 0 0 5px 0; font-size: 16px; font-weight: 600; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Order Complete</h4>
+                    <p style="color: #6b7280; margin: 0; font-size: 14px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Your treasure has been successfully delivered and your order is now complete.</p>
+                </div>
+            </div>
+            
+            <div style="display: flex; align-items: flex-start; padding: 15px; background-color: white; border-radius: 8px; border-left: 3px solid #10b981;">
+                <span style="color: #10b981; font-size: 20px; margin-right: 15px; font-weight: bold;">⭐</span>
+                <div>
+                    <h4 style="color: #1e293b; margin: 0 0 5px 0; font-size: 16px; font-weight: 600; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Share Your Experience</h4>
+                    <p style="color: #6b7280; margin: 0; font-size: 14px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">We'd love to hear about your TreasureHub experience. Your feedback helps us improve!</p>
+                </div>
+            </div>
+            
+            <div style="display: flex; align-items: flex-start; padding: 15px; background-color: white; border-radius: 8px; border-left: 3px solid #10b981;">
+                <span style="color: #10b981; font-size: 20px; margin-right: 15px; font-weight: bold;">🔄</span>
+                <div>
+                    <h4 style="color: #1e293b; margin: 0 0 5px 0; font-size: 16px; font-weight: 600; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Keep Exploring</h4>
+                    <p style="color: #6b7280; margin: 0; font-size: 14px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Discover more amazing treasures on our platform. New items are added daily!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact Information -->
+    <div style="text-align: center; padding: 25px; background-color: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+        <h3 style="color: #1e293b; margin: 0 0 15px 0; font-size: 16px; font-weight: 600; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Questions or concerns?</h3>
+        <p style="color: #6b7280; margin: 0 0 20px 0; font-size: 14px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">Our team is here to help with any questions about your delivery.</p>
+        <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+            ${phoneNumber ? `
+            <a href="tel:${phoneNumber.replace(/\D/g, '')}" style="display: inline-block; background-color: #d4af3d; color: #1e293b; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">📞 Call ${phoneNumber}</a>
+            ` : ''}
+            <a href="mailto:support@treasurehub.club?subject=Delivery Question - Order ${orderShortId}" style="display: inline-block; background-color: #825e08; color: white; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">✉️ Email Support</a>
+            <a href="https://treasurehub.club" style="display: inline-block; background-color: #16a34a; color: white; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; font-family: 'Poppins', Arial, Helvetica, sans-serif;">🏪 Browse More</a>
+        </div>
+    </div>
+  `
+
+  return getBaseEmailTemplate(content, 'Delivery Confirmed!', true)
 } 
