@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { validateGender, validateAgeGroup, validateItemGroupId } from "@/lib/product-specifications";
+import { checkAndReleaseListingHold } from "@/lib/auto-release-holds";
 
 export async function GET(
   request: NextRequest,
@@ -9,6 +10,10 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    
+    // Check and release this specific listing's hold if expired
+    await checkAndReleaseListingHold(id);
+    
     const { searchParams } = new URL(request.url);
     const isEdit = searchParams.get('edit') === 'true';
     const session = await auth.api.getSession({ headers: request.headers });

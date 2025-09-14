@@ -5,6 +5,7 @@ import { createHistoryEvent, HistoryEvents } from '@/lib/listing-history';
 import { validateGender, validateAgeGroup, validateItemGroupId } from '@/lib/product-specifications';
 import { metaPixelAPI } from '@/lib/meta-pixel-api';
 import { trackCatalogUpdate, trackProductStatusChange } from '@/lib/meta-pixel-client';
+import { autoReleaseExpiredHolds } from '@/lib/auto-release-holds';
 
 // Generate a unique random 6-character ID using letters and numbers
 async function generateUniqueRandomId(): Promise<string> {
@@ -398,6 +399,9 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    // Auto-release any expired holds before querying listings
+    await autoReleaseExpiredHolds();
+    
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') || 'active';
     const limit = parseInt(searchParams.get('limit') || '50');

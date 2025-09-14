@@ -170,7 +170,7 @@ export default function BulkVideoUpload({
     [videos.length, maxVideos]
   );
 
-  // Upload video
+  // Upload video using presigned URL approach
   const uploadVideo = async (videoData: UploadedVideo) => {
     try {
       console.log("🎬 Starting video upload:", {
@@ -197,56 +197,117 @@ export default function BulkVideoUpload({
         throw new Error(`File size exceeds ${maxFileSizeMB}MB limit`);
       }
 
-      const formData = new FormData();
-      formData.append("video", videoData.file);
-      if (listingId) {
-        formData.append("listingId", listingId);
-        console.log("🎬 Including listingId in upload:", listingId);
-      }
-
-      // Simulate upload progress
+      // Progress update helper
       const updateProgress = (progress: number) => {
         setVideos((prev) =>
           prev.map((v) => (v.id === videoData.id ? { ...v, progress } : v))
         );
       };
 
-      // Simulate progress
-      for (let i = 0; i <= 90; i += 10) {
-        await new Promise((resolve) => setTimeout(resolve, 200));
-        updateProgress(i);
-      }
+      // Step 1: Get presigned URL
+      console.log("🎬 Requesting presigned URL...");
+      updateProgress(10);
 
-      console.log("🎬 Sending upload request to /api/upload/video/bulk");
-
-      const response = await fetch("/api/upload/video/bulk", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-
-      console.log(
-        "🎬 Upload response status:",
-        response.status,
-        response.statusText
+      const presignedResponse = await fetch(
+        "/api/upload/video/bulk-presigned",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            fileName: videoData.file.name,
+            fileSize: videoData.file.size,
+            fileType: videoData.file.type,
+            listingId: listingId,
+          }),
+          credentials: "include",
+        }
       );
 
-      if (!response.ok) {
-        let errorMessage = `Upload failed with status ${response.status}`;
+      if (!presignedResponse.ok) {
+        let errorMessage = `Failed to get presigned URL with status ${presignedResponse.status}`;
         try {
-          const errorData = await response.json();
-          console.error("🎬 Upload error details:", errorData);
+          const errorData = await presignedResponse.json();
+          console.error("🎬 Presigned URL error details:", errorData);
           errorMessage = errorData.error || errorData.message || errorMessage;
         } catch (parseError) {
-          // If we can't parse the error response, use the status text
-          console.error("🎬 Could not parse error response:", parseError);
-          errorMessage = response.statusText || errorMessage;
+          console.error(
+            "🎬 Could not parse presigned URL error response:",
+            parseError
+          );
+          errorMessage = presignedResponse.statusText || errorMessage;
         }
         throw new Error(errorMessage);
       }
 
-      const result = await response.json();
+      const presignedResult = await presignedResponse.json();
+      console.log("🎬 Presigned URL obtained:", presignedResult.videoId);
+
+      // Step 2: Upload directly to S3 using presigned URL
+      console.log("🎬 Uploading to S3...");
+      updateProgress(20);
+
+      const uploadResponse = await fetch(presignedResult.presignedUrl, {
+        method: "PUT",
+        body: videoData.file,
+        headers: {
+          "Content-Type": videoData.file.type,
+        },
+      });
+
+      console.log("🎬 S3 upload response status:", uploadResponse.status);
+
+      if (!uploadResponse.ok) {
+        // Confirm upload failure
+        await fetch("/api/upload/video/bulk-confirm", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            videoId: presignedResult.videoId,
+            success: false,
+          }),
+          credentials: "include",
+        });
+
+        throw new Error(
+          `S3 upload failed with status ${uploadResponse.status}`
+        );
+      }
+
+      // Step 3: Confirm upload success
+      console.log("🎬 Confirming upload success...");
+      updateProgress(90);
+
+      const confirmResponse = await fetch("/api/upload/video/bulk-confirm", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          videoId: presignedResult.videoId,
+          success: true,
+        }),
+        credentials: "include",
+      });
+
+      if (!confirmResponse.ok) {
+        console.warn("🎬 Failed to confirm upload, but S3 upload succeeded");
+      }
+
+      const result = await confirmResponse.json();
       console.log("🎬 Upload successful:", result);
+
+      // Use the presigned result data for further processing
+      const finalResult = {
+        ...result,
+        videoId: presignedResult.videoId,
+        videoUrl: presignedResult.videoUrl,
+        fileName: presignedResult.fileName,
+        fileSize: presignedResult.fileSize,
+      };
 
       updateProgress(100);
 
@@ -266,7 +327,7 @@ export default function BulkVideoUpload({
         console.log("🎬 Uploading frames to S3...");
         const uploadedFrameUrls = await uploadFramesToS3(
           frameData.frameUrls,
-          result.videoId
+          finalResult.videoId
         );
         console.log("🎬 Uploaded frame URLs:", uploadedFrameUrls);
 
@@ -274,13 +335,13 @@ export default function BulkVideoUpload({
         console.log("🎬 Uploading thumbnail to S3...");
         const uploadedThumbnailUrl = await uploadThumbnailToS3(
           frameData.thumbnailUrl,
-          result.videoId
+          finalResult.videoId
         );
         console.log("🎬 Uploaded thumbnail URL:", uploadedThumbnailUrl);
 
         // Update video record with frame information
         const updateResponse = await fetch(
-          `/api/upload/video/status/${result.videoId}`,
+          `/api/upload/video/status/${finalResult.videoId}`,
           {
             method: "PATCH",
             headers: {
@@ -305,9 +366,9 @@ export default function BulkVideoUpload({
               v.id === videoData.id
                 ? {
                     ...v,
-                    id: result.videoId, // Update to use the database ID returned from API
+                    id: finalResult.videoId, // Update to use the database ID returned from API
                     status: "completed",
-                    uploadedUrl: result.videoUrl,
+                    uploadedUrl: finalResult.videoUrl,
                     thumbnailUrl:
                       uploadedThumbnailUrl ||
                       frameData.thumbnailUrl ||
@@ -330,10 +391,10 @@ export default function BulkVideoUpload({
             v.id === videoData.id
               ? {
                   ...v,
-                  id: result.videoId, // Update to use the database ID returned from API
+                  id: finalResult.videoId, // Update to use the database ID returned from API
                   status: "completed",
-                  uploadedUrl: result.videoUrl,
-                  thumbnailUrl: result.thumbnailUrl || v.preview,
+                  uploadedUrl: finalResult.videoUrl,
+                  thumbnailUrl: finalResult.thumbnailUrl || v.preview,
                   progress: 100,
                 }
               : v
