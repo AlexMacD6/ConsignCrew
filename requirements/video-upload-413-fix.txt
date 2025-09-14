@@ -1,0 +1,99 @@
+# Video Upload 413 Error Fix
+
+## Problem
+When uploading bulk videos to listings, users encountered a "413 Request Entity Too Large" error. This occurred because:
+
+1. **Next.js App Router Default Limit**: API routes have a default body size limit of ~1MB
+2. **Large Video Files**: Users were trying to upload videos up to 100MB
+3. **Direct Upload Approach**: The original implementation sent video files directly through the API route
+
+## Root Cause
+The error occurred at the Next.js server level before reaching the API route code. The server rejected requests with bodies larger than the default limit, resulting in a 413 HTTP status code.
+
+## Solution Implemented
+Implemented a **presigned URL approach** to bypass the body size limit entirely:
+
+### 1. New API Endpoints
+- **`/api/upload/video/bulk-presigned`**: Generates presigned S3 URLs for direct upload
+- **`/api/upload/video/bulk-confirm`**: Confirms upload completion and updates database
+
+### 2. Updated Upload Flow
+1. **Request Presigned URL**: Client requests a presigned URL with file metadata
+2. **Direct S3 Upload**: Client uploads file directly to S3 using presigned URL
+3. **Confirm Upload**: Client confirms successful upload to update database status
+
+### 3. Benefits
+- **No Body Size Limits**: Files upload directly to S3, bypassing Next.js server
+- **Better Performance**: Reduces server load and improves upload speed
+- **More Reliable**: Eliminates timeout issues for large files
+- **Scalable**: Can handle files of any size supported by S3
+
+## Files Modified
+
+### API Routes
+- `app/api/upload/video/bulk-presigned/route.ts` (new)
+- `app/api/upload/video/bulk-confirm/route.ts` (new)
+- `app/api/upload/video/bulk/route.ts` (enhanced with runtime config)
+
+### Components
+- `app/components/BulkVideoUpload.tsx` (updated upload logic)
+
+### Configuration
+- `next.config.ts` (added runtime configuration)
+
+## Technical Details
+
+### Presigned URL Generation
+```typescript
+// Generate presigned URL for S3 upload
+const uploadCommand = new PutObjectCommand({
+  Bucket: bucketName,
+  Key: s3Key,
+  ContentType: fileType,
+  Metadata: {
+    originalName: fileName,
+    uploadedBy: session.user.id,
+    uploadedAt: new Date().toISOString(),
+    videoId: videoRecord.id,
+  },
+});
+
+const presignedUrl = await getSignedUrl(s3Client, uploadCommand, { 
+  expiresIn: 900 // 15 minutes
+});
+```
+
+### Direct S3 Upload
+```typescript
+// Upload directly to S3 using presigned URL
+const uploadResponse = await fetch(presignedUrl, {
+  method: "PUT",
+  body: videoFile,
+  headers: {
+    "Content-Type": videoFile.type,
+  },
+});
+```
+
+### Database Integration
+- Videos are created in database before upload (status: "uploading")
+- Status updated to "uploaded" or "failed" after S3 upload completes
+- Proper association with listings maintained through existing relationship
+
+## Testing Verification
+- ✅ Large video files (up to 100MB) upload successfully
+- ✅ Videos display correctly in listing pages
+- ✅ Multiple videos per listing work properly
+- ✅ Video carousel and thumbnail generation function correctly
+- ✅ Error handling for failed uploads implemented
+
+## Backward Compatibility
+- Existing video display logic unchanged
+- Database schema unchanged
+- Video URL generation unchanged
+- All existing videos continue to work
+
+## Future Considerations
+- Could implement chunked uploads for files larger than 100MB
+- Could add upload progress tracking using S3 multipart uploads
+- Could implement client-side video compression before upload

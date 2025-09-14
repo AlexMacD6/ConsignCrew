@@ -1,0 +1,118 @@
+# Photo Type Selector Fix for Edit Listing Page
+
+## Problem
+Users were unable to save listings after uploading new photos because:
+
+1. **All new photos defaulted to "Additional" type** - The edit listing page hardcoded all uploads as "additional" photos
+2. **Hero photo requirement** - Form validation requires a "Hero" photo to save the listing
+3. **No way to designate photo types** - Users had no control over which photo served which purpose
+
+## Root Cause
+In the edit listing page (`app/(dashboard)/list-item/[id]/edit/page.tsx`), line 873 was hardcoded:
+```typescript
+formData.append("photoType", "additional"); // For edit page, treat as additional photo
+```
+
+This meant all new photos were classified as "Additional" regardless of user intent, causing validation failures when no Hero photo existed.
+
+## Solution Implemented
+
+### 1. Photo Type Selector
+Added a dropdown selector that allows users to choose the photo type before upload:
+
+- **Hero Photo** - Main front-facing image (Required)
+- **Back Photo** - Rear or underside view (Recommended) 
+- **Proof Photo** - Model numbers, serial numbers, authenticity markers (Optional)
+- **Additional Photo** - Extra angles, details, accessories (Optional)
+
+### 2. Smart Type Selection
+- **Disabled options** for photo types that already exist (prevents duplicates)
+- **Descriptive labels** showing photo purpose and requirements
+- **Auto-advancement** to next recommended photo type after successful upload
+
+### 3. Photo Type Conversion
+Added ability to change existing photo types:
+- **Hover dropdown** on each photo in the grid
+- **Real-time conversion** between photo types
+- **Validation** to prevent conflicts (e.g., can't have two Hero photos)
+
+### 4. User Experience Enhancements
+- **Contextual descriptions** explaining each photo type's purpose
+- **Visual indicators** showing which photo types are already filled
+- **Guided workflow** that suggests the next photo type to upload
+
+## Technical Implementation
+
+### State Management
+```typescript
+const [newPhotoType, setNewPhotoType] = useState<'hero' | 'back' | 'proof' | 'additional'>('additional');
+```
+
+### Photo Type Selector UI
+```typescript
+<select
+  value={newPhotoType}
+  onChange={(e) => setNewPhotoType(e.target.value as 'hero' | 'back' | 'proof' | 'additional')}
+  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent text-sm"
+>
+  <option value="additional">Additional Photo</option>
+  <option value="hero" disabled={!!photos.hero}>
+    Hero Photo {photos.hero ? '(Already exists)' : '(Required)'}
+  </option>
+  <option value="back" disabled={!!photos.back}>
+    Back Photo {photos.back ? '(Already exists)' : '(Recommended)'}
+  </option>
+  <option value="proof" disabled={!!photos.proof}>
+    Proof Photo {photos.proof ? '(Already exists)' : '(Optional)'}
+  </option>
+</select>
+```
+
+### Dynamic Upload Handling
+```typescript
+// Update photos based on selected type
+if (newPhotoType === 'additional') {
+  // Add to additional photos array
+  setPhotos((prev) => ({
+    ...prev,
+    additional: [...prev.additional, data.url],
+  }));
+} else {
+  // Set specific photo type (hero, back, proof)
+  setPhotos((prev) => ({
+    ...prev,
+    [newPhotoType]: data.url,
+  }));
+}
+```
+
+### Photo Type Conversion
+```typescript
+const changePhotoType = (currentPhotoId: string, newType: string) => {
+  // Get current photo URL, remove from old position, add to new position
+  // Handles conversion between all photo types
+};
+```
+
+## Files Modified
+- `app/(dashboard)/list-item/[id]/edit/page.tsx` - Added photo type selector and conversion functionality
+
+## User Benefits
+- ✅ **Can now save listings** after uploading photos
+- ✅ **Clear photo requirements** with descriptive guidance
+- ✅ **Flexible photo management** - can change photo types after upload
+- ✅ **Guided workflow** - system suggests next photo type to upload
+- ✅ **Prevents errors** - validation and disabled options prevent conflicts
+
+## Testing Verification
+- ✅ Users can select photo type before upload
+- ✅ Hero photo requirement satisfied when Hero type selected
+- ✅ Form validation passes with proper photo types
+- ✅ Photo type conversion works for existing photos
+- ✅ Auto-advancement guides users through photo upload process
+
+## Backward Compatibility
+- ✅ Existing photos retain their current types
+- ✅ All existing functionality preserved
+- ✅ No database schema changes required
+- ✅ Works with existing photo upload API

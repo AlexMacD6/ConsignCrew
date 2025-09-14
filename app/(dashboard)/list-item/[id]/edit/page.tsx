@@ -158,6 +158,10 @@ export default function EditListingPage() {
   });
   const [draggedPhoto, setDraggedPhoto] = useState<string | null>(null);
   const [photoOrder, setPhotoOrder] = useState<string[]>([]);
+  const [newPhotoType, setNewPhotoType] = useState<
+    "hero" | "back" | "proof" | "additional"
+  >("additional");
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
   // Video state - support for multiple videos
   const [videoData, setVideoData] = useState<{
@@ -854,6 +858,177 @@ export default function EditListingPage() {
     }
   };
 
+  const changePhotoType = (currentPhotoId: string, newType: string) => {
+    // Get the current photo URL
+    let photoUrl = null;
+
+    if (currentPhotoId === "hero" && photos.hero) {
+      photoUrl = photos.hero;
+    } else if (currentPhotoId === "back" && photos.back) {
+      photoUrl = photos.back;
+    } else if (currentPhotoId === "proof" && photos.proof) {
+      photoUrl = photos.proof;
+    } else if (currentPhotoId.startsWith("additional-")) {
+      const additionalIndex = parseInt(currentPhotoId.split("-")[1]);
+      photoUrl = photos.additional[additionalIndex];
+    }
+
+    if (!photoUrl) return;
+
+    // Update photos and photo order atomically to prevent key conflicts
+    setPhotos((prevPhotos) => {
+      let newPhotos = { ...prevPhotos };
+
+      // Remove from current position
+      if (currentPhotoId === "hero") {
+        newPhotos.hero = null;
+      } else if (currentPhotoId === "back") {
+        newPhotos.back = null;
+      } else if (currentPhotoId === "proof") {
+        newPhotos.proof = null;
+      } else if (currentPhotoId.startsWith("additional-")) {
+        const additionalIndex = parseInt(currentPhotoId.split("-")[1]);
+        newPhotos.additional = newPhotos.additional.filter(
+          (_, index) => index !== additionalIndex
+        );
+      }
+
+      // Add to new position
+      if (newType === "additional") {
+        newPhotos.additional = [...newPhotos.additional, photoUrl];
+      } else {
+        newPhotos[newType as keyof typeof newPhotos] = photoUrl;
+      }
+
+      return newPhotos;
+    });
+
+    // Update photo order
+    setPhotoOrder((prevOrder) => {
+      // Remove current photo from order
+      let newOrder = prevOrder.filter((id) => id !== currentPhotoId);
+
+      // Add new photo to order
+      if (newType === "additional") {
+        // Find the next available additional index
+        const existingAdditionalIds = newOrder.filter((id) =>
+          id.startsWith("additional-")
+        );
+        const nextIndex = existingAdditionalIds.length;
+        const newPhotoId = `additional-${nextIndex}`;
+        newOrder.push(newPhotoId);
+      } else {
+        // Add specific photo type if not already present
+        if (!newOrder.includes(newType)) {
+          newOrder.push(newType);
+        }
+      }
+
+      return newOrder;
+    });
+  };
+
+  // Drag and drop handlers for bulk upload
+  const handleBulkDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleBulkDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleBulkDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleBulkDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      // Create a synthetic event to reuse the existing upload logic
+      const syntheticEvent = {
+        target: { files },
+      } as React.ChangeEvent<HTMLInputElement>;
+      handleBulkImageChange(syntheticEvent);
+    }
+  };
+
+  const handleBulkImageChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    // Convert FileList to Array for easier processing
+    const fileArray = Array.from(files);
+
+    // Validate all files are images
+    const invalidFiles = fileArray.filter(
+      (file) => !file.type.startsWith("image/")
+    );
+    if (invalidFiles.length > 0) {
+      setError(
+        `${invalidFiles.length} file(s) are not valid images. Please select only image files.`
+      );
+      return;
+    }
+
+    try {
+      setError(null);
+
+      // Upload all files
+      const uploadPromises = fileArray.map(async (file) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("photoType", "additional"); // All bulk uploads start as additional
+        formData.append("itemId", params.id as string);
+
+        const response = await fetch("/api/upload/photo", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to upload image");
+        }
+
+        return await response.json();
+      });
+
+      // Wait for all uploads to complete
+      const results = await Promise.all(uploadPromises);
+
+      // Add all photos to additional photos array
+      setPhotos((prev) => ({
+        ...prev,
+        additional: [
+          ...prev.additional,
+          ...results.map((result) => result.url),
+        ],
+      }));
+
+      // Add all photos to photo order
+      setPhotoOrder((prev) => {
+        const newPhotoIds = results.map((_, index) => {
+          const existingAdditionalIds = prev.filter((id) =>
+            id.startsWith("additional-")
+          );
+          return `additional-${existingAdditionalIds.length + index}`;
+        });
+        return [...prev, ...newPhotoIds];
+      });
+
+      // Clear the file input
+      e.target.value = "";
+    } catch (error) {
+      console.error("Error uploading bulk images:", error);
+      setError(
+        error instanceof Error ? error.message : "Failed to upload some images"
+      );
+    }
+  };
+
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -870,7 +1045,7 @@ export default function EditListingPage() {
       // Create form data with required parameters
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("photoType", "additional"); // For edit page, treat as additional photo
+      formData.append("photoType", newPhotoType); // Use selected photo type
       formData.append("itemId", params.id as string);
 
       const response = await fetch("/api/upload/photo", {
@@ -885,18 +1060,50 @@ export default function EditListingPage() {
 
       const data = await response.json();
 
-      // Add the new photo to the additional photos array
-      setPhotos((prev) => ({
-        ...prev,
-        additional: [...prev.additional, data.url],
-      }));
+      // Update photos and photo order atomically to prevent key conflicts
+      if (newPhotoType === "additional") {
+        // Add to additional photos array and update order
+        setPhotos((prev) => ({
+          ...prev,
+          additional: [...prev.additional, data.url],
+        }));
 
-      // Add to photo order
-      const newPhotoId = `additional-${photos.additional.length}`;
-      setPhotoOrder((prev) => [...prev, newPhotoId]);
+        // Add to photo order with correct index
+        setPhotoOrder((prev) => {
+          const existingAdditionalIds = prev.filter((id) =>
+            id.startsWith("additional-")
+          );
+          const nextIndex = existingAdditionalIds.length;
+          const newPhotoId = `additional-${nextIndex}`;
+          return [...prev, newPhotoId];
+        });
+      } else {
+        // Set specific photo type (hero, back, proof)
+        setPhotos((prev) => ({
+          ...prev,
+          [newPhotoType]: data.url,
+        }));
+
+        // Add to photo order if not already present
+        setPhotoOrder((prev) => {
+          if (!prev.includes(newPhotoType)) {
+            return [...prev, newPhotoType];
+          }
+          return prev;
+        });
+      }
 
       // Clear any previous errors
       setError(null);
+
+      // Auto-advance to next recommended photo type
+      if (newPhotoType === "hero" && !photos.back) {
+        setNewPhotoType("back");
+      } else if (newPhotoType === "back" && !photos.proof) {
+        setNewPhotoType("proof");
+      } else {
+        setNewPhotoType("additional");
+      }
     } catch (error) {
       console.error("Error uploading image:", error);
       setError(
@@ -1773,10 +1980,28 @@ export default function EditListingPage() {
           {/* Photos Management */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Photos</h2>
-            <p className="text-sm text-gray-600 mb-6">
-              Drag and drop photos to reorder them. The first photo will be the
-              main image shown in listings.
-            </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <h3 className="text-sm font-medium text-blue-900 mb-2">
+                How to manage your photos:
+              </h3>
+              <ul className="text-sm text-blue-800 space-y-1">
+                <li>
+                  • <strong>Click a photo</strong> to highlight it and see the
+                  type dropdown
+                </li>
+                <li>
+                  • <strong>Use the dropdown</strong> to change photo types
+                  (Hero, Back, Proof, Additional)
+                </li>
+                <li>
+                  • <strong>Drag and drop</strong> to reorder photos
+                </li>
+                <li>
+                  • <strong>Upload multiple photos</strong> at once using the
+                  bulk upload section
+                </li>
+              </ul>
+            </div>
 
             {/* Photo Grid with Drag and Drop */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
@@ -1816,10 +2041,17 @@ export default function EditListingPage() {
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, photoId)}
                     onDragEnd={handleDragEnd}
-                    className={`relative group cursor-move border-2 rounded-lg overflow-hidden ${
+                    onClick={() =>
+                      setSelectedPhoto(
+                        selectedPhoto === photoId ? null : photoId
+                      )
+                    }
+                    className={`relative group cursor-pointer border-2 rounded-lg overflow-hidden transition-all duration-200 ${
                       draggedPhoto === photoId
                         ? "border-[#D4AF3D] opacity-50"
-                        : "border-gray-200"
+                        : selectedPhoto === photoId
+                        ? "border-[#D4AF3D] border-4 shadow-lg ring-2 ring-[#D4AF3D]/30"
+                        : "border-gray-200 hover:border-gray-300"
                     }`}
                   >
                     <img
@@ -1835,6 +2067,49 @@ export default function EditListingPage() {
                           {index + 1}
                         </span>
                       </div>
+
+                      {/* Photo Type Changer - Show on hover or when selected */}
+                      <div
+                        className={`absolute top-2 left-1/2 transform -translate-x-1/2 transition-opacity ${
+                          selectedPhoto === photoId
+                            ? "opacity-100"
+                            : "opacity-0 group-hover:opacity-100"
+                        }`}
+                      >
+                        <select
+                          value={
+                            photoId.startsWith("additional-")
+                              ? "additional"
+                              : photoId
+                          }
+                          onChange={(e) =>
+                            changePhotoType(photoId, e.target.value)
+                          }
+                          className="text-xs bg-white border border-gray-300 rounded px-2 py-1 shadow-md font-medium"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <option
+                            value="hero"
+                            disabled={photoId !== "hero" && !!photos.hero}
+                          >
+                            🏆 Hero
+                          </option>
+                          <option
+                            value="back"
+                            disabled={photoId !== "back" && !!photos.back}
+                          >
+                            🔄 Back
+                          </option>
+                          <option
+                            value="proof"
+                            disabled={photoId !== "proof" && !!photos.proof}
+                          >
+                            🏷️ Proof
+                          </option>
+                          <option value="additional">➕ Additional</option>
+                        </select>
+                      </div>
+
                       <button
                         type="button"
                         onClick={() => removePhoto(photoId)}
@@ -1851,18 +2126,185 @@ export default function EditListingPage() {
               })}
             </div>
 
+            {/* Selected Photo Actions */}
+            {selectedPhoto && (
+              <div className="bg-[#D4AF3D]/10 border border-[#D4AF3D]/30 rounded-lg p-4 mb-6">
+                <h3 className="text-sm font-medium text-gray-900 mb-3">
+                  Selected Photo:{" "}
+                  {selectedPhoto.startsWith("additional-")
+                    ? `Additional ${parseInt(selectedPhoto.split("-")[1]) + 1}`
+                    : selectedPhoto.charAt(0).toUpperCase() +
+                      selectedPhoto.slice(1)}
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => changePhotoType(selectedPhoto, "hero")}
+                    disabled={selectedPhoto === "hero" || !!photos.hero}
+                    className="px-3 py-1 text-xs bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    🏆 Make Hero
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => changePhotoType(selectedPhoto, "back")}
+                    disabled={selectedPhoto === "back" || !!photos.back}
+                    className="px-3 py-1 text-xs bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    🔄 Make Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => changePhotoType(selectedPhoto, "proof")}
+                    disabled={selectedPhoto === "proof" || !!photos.proof}
+                    className="px-3 py-1 text-xs bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    🏷️ Make Proof
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => changePhotoType(selectedPhoto, "additional")}
+                    disabled={selectedPhoto.startsWith("additional-")}
+                    className="px-3 py-1 text-xs bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    ➕ Make Additional
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removePhoto(selectedPhoto)}
+                    className="px-3 py-1 text-xs bg-red-50 border border-red-300 text-red-700 rounded-md hover:bg-red-100"
+                  >
+                    🗑️ Remove Photo
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Photo Upload */}
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Add New Photo
                 </label>
+
+                {/* Photo Type Selection */}
+                <div className="mb-3">
+                  <label className="block text-xs font-medium text-gray-600 mb-2">
+                    Photo Type
+                  </label>
+                  <select
+                    value={newPhotoType}
+                    onChange={(e) =>
+                      setNewPhotoType(
+                        e.target.value as
+                          | "hero"
+                          | "back"
+                          | "proof"
+                          | "additional"
+                      )
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent text-sm"
+                  >
+                    <option value="additional">Additional Photo</option>
+                    <option value="hero" disabled={!!photos.hero}>
+                      Hero Photo{" "}
+                      {photos.hero ? "(Already exists)" : "(Required)"}
+                    </option>
+                    <option value="back" disabled={!!photos.back}>
+                      Back Photo{" "}
+                      {photos.back ? "(Already exists)" : "(Recommended)"}
+                    </option>
+                    <option value="proof" disabled={!!photos.proof}>
+                      Proof Photo{" "}
+                      {photos.proof ? "(Already exists)" : "(Optional)"}
+                    </option>
+                  </select>
+
+                  {/* Photo Type Descriptions */}
+                  <div className="mt-2 text-xs text-gray-500">
+                    {newPhotoType === "hero" && (
+                      <p>
+                        📸 <strong>Hero Photo:</strong> Main front-facing image
+                        that buyers see first. Should show the entire item,
+                        centered and well-lit.
+                      </p>
+                    )}
+                    {newPhotoType === "back" && (
+                      <p>
+                        🔄 <strong>Back Photo:</strong> Shows the rear or
+                        underside of the item. Helps prevent returns by showing
+                        all angles.
+                      </p>
+                    )}
+                    {newPhotoType === "proof" && (
+                      <p>
+                        🏷️ <strong>Proof Photo:</strong> Shows model numbers,
+                        serial numbers, or authenticity markers. Builds buyer
+                        confidence.
+                      </p>
+                    )}
+                    {newPhotoType === "additional" && (
+                      <p>
+                        ➕ <strong>Additional Photo:</strong> Extra angles,
+                        close-ups of details, or included accessories.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
                 <input
                   type="file"
                   accept="image/*"
                   onChange={handleImageChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
                 />
+              </div>
+
+              {/* Bulk Photo Upload */}
+              <div className="border-t pt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Or Upload Multiple Photos at Once
+                </label>
+                <div
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#D4AF3D] transition-colors"
+                  onDrop={handleBulkDrop}
+                  onDragOver={handleBulkDragOver}
+                  onDragEnter={handleBulkDragEnter}
+                  onDragLeave={handleBulkDragLeave}
+                >
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleBulkImageChange}
+                    className="hidden"
+                    id="bulk-photo-upload"
+                  />
+                  <label
+                    htmlFor="bulk-photo-upload"
+                    className="cursor-pointer flex flex-col items-center"
+                  >
+                    <svg
+                      className="w-8 h-8 text-gray-400 mb-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                      />
+                    </svg>
+                    <span className="text-sm text-gray-600">
+                      Click to select multiple photos or drag and drop
+                    </span>
+                    <span className="text-xs text-gray-400 mt-1">
+                      All photos will be uploaded as Additional photos initially
+                    </span>
+                  </label>
+                </div>
               </div>
             </div>
           </div>
