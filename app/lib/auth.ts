@@ -29,6 +29,13 @@ export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
   secret: process.env.BETTER_AUTH_SECRET || 'your-secret-key',
   baseURL: getBaseURL(),
+  trustedOrigins: [
+    'https://treasurehub.club',
+    'https://www.treasurehub.club', 
+    'https://treasurehubclub.com',
+    'https://www.treasurehubclub.com',
+    'http://localhost:3000', // for development
+  ],
   
   // Email and password authentication
   emailAndPassword: {
