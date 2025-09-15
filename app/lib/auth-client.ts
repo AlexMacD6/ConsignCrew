@@ -5,8 +5,19 @@ import { adminClient } from 'better-auth/client/plugins'
 
 // (Optional) Add user type augmentation here for better DX
 
+// Dynamic base URL for client-side auth
+function getClientBaseURL(): string {
+  // In browser, always use current origin to support both domains
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  
+  // Server-side fallback
+  return process.env.BETTER_AUTH_URL || 'http://localhost:3000';
+}
+
 export const authClient = createAuthClient({
-  baseURL: process.env.BETTER_AUTH_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'),
+  baseURL: getClientBaseURL(),
   plugins: [
     organizationClient({ 
       teams: { 
