@@ -1,14 +1,26 @@
 {
   "redirects": [
     {
-      "source": "https://treasurehub.club/(.*)",
+      "source": "/(.*)",
       "destination": "https://www.treasurehubclub.com/$1",
-      "permanent": true
+      "permanent": true,
+      "has": [
+        {
+          "type": "host",
+          "value": "treasurehub.club"
+        }
+      ]
     },
     {
-      "source": "https://www.treasurehub.club/(.*)",
+      "source": "/(.*)",
       "destination": "https://www.treasurehubclub.com/$1",
-      "permanent": true
+      "permanent": true,
+      "has": [
+        {
+          "type": "host",
+          "value": "www.treasurehub.club"
+        }
+      ]
     }
   ],
   "headers": [
