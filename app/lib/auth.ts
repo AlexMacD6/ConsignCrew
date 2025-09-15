@@ -4,10 +4,31 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// Dynamic base URL detection to support both domains
+function getBaseURL(): string {
+  // Priority order: explicit env vars, then dynamic detection, then fallback
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
+  if (process.env.BETTER_AUTH_URL) return process.env.BETTER_AUTH_URL;
+  
+  // In browser, use current origin
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  
+  // Server-side: check common production domains
+  const host = process.env.VERCEL_URL || process.env.HOST;
+  if (host) {
+    return `https://${host}`;
+  }
+  
+  // Fallback to primary domain
+  return 'https://www.treasurehubclub.com';
+}
+
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
   secret: process.env.BETTER_AUTH_SECRET || 'your-secret-key',
-  baseURL: process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL || 'https://treasurehub.club',
+  baseURL: getBaseURL(),
   
   // Email and password authentication
   emailAndPassword: {

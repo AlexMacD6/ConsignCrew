@@ -45,8 +45,20 @@ export async function POST(request: NextRequest) {
       }
     });
     
-    // Send verification email using public domain for cross-device access
-    const verificationUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL || 'https://treasurehub.club'}/api/auth/verify?token=${token}`;
+    // Send verification email using dynamic domain detection
+    function getVerificationBaseUrl(): string {
+      if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
+      if (process.env.BETTER_AUTH_URL) return process.env.BETTER_AUTH_URL;
+      
+      // Check Vercel environment
+      const host = process.env.VERCEL_URL || process.env.HOST;
+      if (host) return `https://${host}`;
+      
+      // Support both production domains
+      return 'https://www.treasurehubclub.com';
+    }
+    
+    const verificationUrl = `${getVerificationBaseUrl()}/api/auth/verify?token=${token}`;
     const subject = 'Verify your TreasureHub account';
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">

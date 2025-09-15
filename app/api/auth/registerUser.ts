@@ -134,8 +134,20 @@ export async function registerUser(data: RegistrationData) {
         
         const { sendEmail } = await import('../../lib/ses-server');
         
-        // Generate verification URL using public domain for cross-device access
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL || 'https://treasurehub.club';
+        // Generate verification URL using dynamic domain detection
+        function getVerificationBaseUrl(): string {
+          if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
+          if (process.env.BETTER_AUTH_URL) return process.env.BETTER_AUTH_URL;
+          
+          // Check Vercel environment
+          const host = process.env.VERCEL_URL || process.env.HOST;
+          if (host) return `https://${host}`;
+          
+          // Support both production domains
+          return 'https://www.treasurehubclub.com';
+        }
+        
+        const baseUrl = getVerificationBaseUrl();
         
         // Instead of manually creating the verification URL, let's trigger Better Auth's 
         // built-in email verification which will generate the proper token

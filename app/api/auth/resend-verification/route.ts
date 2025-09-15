@@ -55,8 +55,20 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Create verification URL
-    const baseUrl = process.env.BETTER_AUTH_URL || 'http://localhost:3000';
+    // Create verification URL with dynamic domain detection
+    function getVerificationBaseUrl(): string {
+      if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
+      if (process.env.BETTER_AUTH_URL) return process.env.BETTER_AUTH_URL;
+      
+      // Check Vercel environment
+      const host = process.env.VERCEL_URL || process.env.HOST;
+      if (host) return `https://${host}`;
+      
+      // Development fallback
+      return 'http://localhost:3000';
+    }
+    
+    const baseUrl = getVerificationBaseUrl();
     const verificationUrl = `${baseUrl}/api/auth/[...betterauth]?action=verifyEmail&token=${verificationToken}&identifier=${encodeURIComponent(user.email)}`;
 
     // Send verification email using SES

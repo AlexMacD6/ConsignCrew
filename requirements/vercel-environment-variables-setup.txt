@@ -12,10 +12,10 @@ Required Environment Variables for Vercel:
    - Value: Generate a secure random string (32+ characters)
    - Example: "your-super-secure-secret-key-here-32-chars-min"
 
-2. BETTER_AUTH_URL
-   - Description: Base URL for BetterAuth (should match your production domain)
-   - Value: "https://treasurehub.club" (for production)
-   - Note: This should match the domain in your email verification links
+2. BETTER_AUTH_URL (Optional - auto-detected)
+   - Description: Base URL for BetterAuth (auto-detects from current domain)
+   - Value: "https://www.treasurehubclub.com" OR "https://treasurehub.club" (both supported)
+   - Note: System now auto-detects domain, but can be overridden if needed
 
 3. AWS_ACCESS_KEY_ID
    - Description: AWS access key for SES email sending
@@ -35,11 +35,18 @@ Required Environment Variables for Vercel:
 
 7. AWS_SES_DEFAULT_FROM_EMAIL
    - Description: Default sender email for SES
-   - Value: "no-reply@treasurehub.club"
+   - Value: "no-reply@treasurehubclub.com" (works for both domains)
 
 8. CONTACT_FORM_EMAIL
    - Description: Contact form recipient email
-   - Value: "support@treasurehub.club"
+   - Value: "support@treasurehubclub.com"
+
+## Multi-Domain Support
+The system now automatically supports both:
+- https://www.treasurehubclub.com
+- https://treasurehub.club
+
+Authentication will work seamlessly on both domains without additional configuration.
 
 Steps to Fix:
 1. Go to Vercel Dashboard > Your Project > Settings > Environment Variables
