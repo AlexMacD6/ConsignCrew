@@ -14,6 +14,7 @@ interface VideoUploadProps {
   onError: (error: string) => void;
   onStarted?: () => void;
   disabled?: boolean;
+  listingId?: string; // Add listing ID to associate video immediately
 }
 
 interface VideoStatus {
@@ -37,6 +38,7 @@ export default function VideoUpload({
   onError,
   onStarted,
   disabled = false,
+  listingId,
 }: VideoUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -118,6 +120,7 @@ export default function VideoUpload({
           fileName: selectedFile.name,
           contentType: selectedFile.type,
           fileSize: selectedFile.size,
+          listingId: listingId, // Pass listing ID for immediate association
         }),
       });
 
