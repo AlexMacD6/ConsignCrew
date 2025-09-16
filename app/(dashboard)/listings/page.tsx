@@ -101,7 +101,7 @@ export default function ListingsPage() {
   const [selectedCategory, setSelectedCategory] = useState("All"); // Department
   const [selectedSubCategory, setSelectedSubCategory] = useState("All"); // Category
   const [selectedSubSubCategory, setSelectedSubSubCategory] = useState("All"); // Subcategory
-  const [sortBy, setSortBy] = useState("newest");
+  const [sortBy, setSortBy] = useState("largest-discount");
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const [showSold, setShowSold] = useState(true); // Default to showing sold items
   const [showProcessing, setShowProcessing] = useState(true); // Default to showing processing items
@@ -124,9 +124,10 @@ export default function ListingsPage() {
   const [loadingPurchase, setLoadingPurchase] = useState(false); // Purchase loading state
   const [ownListingConfirmOpen, setOwnListingConfirmOpen] = useState(false);
 
-  // Pagination state
+  // Pagination state - client-side pagination after sorting
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(50);
+  const [itemsPerPage, setItemsPerPage] = useState(100); // Display 100 items per page
+  const [apiItemsPerPage] = useState(1000); // Always fetch all items from API for sorting
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -220,7 +221,7 @@ export default function ListingsPage() {
       try {
         setLoading(true);
         const response = await fetch(
-          `/api/listings?page=${currentPage}&limit=${itemsPerPage}`
+          `/api/listings?page=1&limit=${apiItemsPerPage}` // Always fetch all items for sorting
         );
         if (!response.ok) {
           if (response.status === 401) {
@@ -317,7 +318,7 @@ export default function ListingsPage() {
     };
 
     fetchListings();
-  }, [currentPage, itemsPerPage]);
+  }, [apiItemsPerPage]); // Only refetch when API limit changes, not on page changes
 
   // Update time calculations every minute
   useEffect(() => {
@@ -339,8 +340,8 @@ export default function ListingsPage() {
   //   showTreasures,
   // });
 
-  // Filter and sort listings
-  const filteredListings = listings
+  // Filter and sort listings (all items)
+  const allFilteredListings = listings
     .filter((listing) => {
       // Extract department, category, and subcategory from listing
       const listingDepartment =
@@ -439,10 +440,11 @@ export default function ListingsPage() {
               return displayPrice.originalPrice - displayPrice.price;
             }
 
-            // For "New" items, calculate discount off estimated retail price if available
+            // For ALL items, calculate discount off estimated retail price if available
+            // This shows savings vs retail for both new and used items
             if (
-              getStandardizedCondition(listing) === "New" &&
-              listing.estimated_retail_price
+              listing.estimated_retail_price &&
+              listing.estimated_retail_price > displayPrice.price
             ) {
               return listing.estimated_retail_price - displayPrice.price;
             }
@@ -479,6 +481,25 @@ export default function ListingsPage() {
           return 0;
       }
     });
+
+  // Client-side pagination after sorting
+  const totalFilteredItems = allFilteredListings.length;
+  const calculatedTotalPages = Math.ceil(totalFilteredItems / itemsPerPage);
+
+  // Update pagination state when filters/sorting change
+  useEffect(() => {
+    setTotalItems(totalFilteredItems);
+    setTotalPages(calculatedTotalPages);
+    // Reset to page 1 if current page is beyond available pages
+    if (currentPage > calculatedTotalPages && calculatedTotalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [totalFilteredItems, calculatedTotalPages, currentPage]);
+
+  // Get current page items
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const filteredListings = allFilteredListings.slice(startIndex, endIndex);
 
   // Debug logging commented out to reduce console spam
   // console.log(
@@ -1038,7 +1059,7 @@ export default function ListingsPage() {
         <div className="flex items-center justify-between">
           <p className="text-gray-600">
             Showing {filteredListings.length} of {totalItems} listings
-            {totalItems > itemsPerPage && (
+            {totalPages > 1 && (
               <span className="ml-2 text-sm">
                 (Page {currentPage} of {totalPages})
               </span>
@@ -1236,7 +1257,7 @@ export default function ListingsPage() {
                       </div>
                     )}
 
-                    {/* Treasure Badge or Estimated Retail Price - Hide for sold items */}
+                    {/* Treasure Badge or Value Comparison - Hide for sold items */}
                     {listing.status !== "sold" &&
                       (listing.isTreasure ? (
                         <div className="mb-2">
@@ -1247,8 +1268,7 @@ export default function ListingsPage() {
                           />
                         </div>
                       ) : (
-                        listing.estimated_retail_price &&
-                        isNewCondition(getStandardizedCondition(listing)) && (
+                        listing.estimated_retail_price && (
                           <div className="flex items-center gap-2 mb-2">
                             <span className="text-sm text-gray-500 line-through">
                               ${listing.estimated_retail_price.toFixed(2)}
@@ -1258,14 +1278,22 @@ export default function ListingsPage() {
                               <span>
                                 {(() => {
                                   const displayPrice = getDisplayPrice(listing);
-                                  return Math.round(
+                                  const condition =
+                                    getStandardizedCondition(listing);
+                                  const percentOff = Math.round(
                                     ((listing.estimated_retail_price -
                                       displayPrice.price) /
                                       listing.estimated_retail_price) *
                                       100
                                   );
+
+                                  // Show different messaging based on condition
+                                  if (isNewCondition(condition)) {
+                                    return `${percentOff}% Off Retail`;
+                                  } else {
+                                    return `${percentOff}% vs New`;
+                                  }
                                 })()}
-                                % Off Retail
                               </span>
                             </div>
                           </div>
