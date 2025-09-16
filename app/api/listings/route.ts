@@ -404,7 +404,9 @@ export async function GET(request: NextRequest) {
     
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') || 'active';
-    const limit = parseInt(searchParams.get('limit') || '50');
+    // Remove pagination limits to allow frontend sorting to work properly
+    // With only 65 total listings, we can load all at once
+    const limit = parseInt(searchParams.get('limit') || '1000'); // High limit to get all
     const page = parseInt(searchParams.get('page') || '1');
     const offset = (page - 1) * limit;
     const userOnly = searchParams.get('userOnly') === 'true';
@@ -477,7 +479,7 @@ export async function GET(request: NextRequest) {
       orderBy: {
         createdAt: 'desc',
       },
-      take: Math.min(limit, 100), // Increased cap to 100 for better UX
+      take: Math.min(limit, 1000), // Allow all listings for proper frontend sorting
       skip: offset,
     });
 

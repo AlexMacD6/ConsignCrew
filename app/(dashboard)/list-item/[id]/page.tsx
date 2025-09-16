@@ -1144,8 +1144,7 @@ export default function ListingDetailPage() {
                     )}
                   </div>
                 ) : (
-                  listing.estimated_retail_price &&
-                  isNewCondition(getStandardizedCondition(listing)) && (
+                  listing.estimated_retail_price && (
                     <div className="flex items-center gap-3 mb-4">
                       <span className="text-lg text-gray-500 line-through">
                         ${listing.estimated_retail_price.toFixed(2)}
@@ -1155,14 +1154,21 @@ export default function ListingDetailPage() {
                         <span className="font-medium">
                           {(() => {
                             const displayPrice = getDisplayPrice(listing);
-                            return Math.round(
+                            const condition = getStandardizedCondition(listing);
+                            const percentOff = Math.round(
                               ((listing.estimated_retail_price -
                                 displayPrice.price) /
                                 listing.estimated_retail_price) *
                                 100
                             );
+
+                            // Show different messaging based on condition
+                            if (isNewCondition(condition)) {
+                              return `${percentOff}% Off Retail`;
+                            } else {
+                              return `Save ${percentOff}% vs New - ${condition} Condition`;
+                            }
                           })()}
-                          % Off Retail
                         </span>
                       </div>
                     </div>
