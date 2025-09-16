@@ -2133,6 +2133,7 @@ export default function ListItemPage() {
                       onError={handleVideoError}
                       onStarted={handleVideoStarted}
                       disabled={videoData.processing}
+                      listingId={undefined} // No listing ID during creation
                     />
 
                     {videoData.error && (

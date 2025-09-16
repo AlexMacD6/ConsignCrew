@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-// import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth';
 import { generateVideoUploadUrl, validateVideoFile } from '@/lib/video-upload';
 import { prisma } from '@/lib/prisma';
 
@@ -7,29 +7,20 @@ export async function POST(request: NextRequest) {
   try {
     console.log('=== VIDEO UPLOAD PRESIGNED URL ===');
     
-    // Temporarily bypass auth for testing
-    // const session = await auth();
-    // if (!session?.user?.id) {
-    //   return NextResponse.json(
-    //     { error: 'Unauthorized' },
-    //     { status: 401 }
-    //   );
-    // }
-    
-    // Get a real user ID for testing (since we're bypassing auth)
-    const { prisma } = await import('@/lib/prisma');
-    const users = await prisma.user.findMany({ take: 1 });
-    if (users.length === 0) {
+    // Restore proper authentication
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'No users found in database' },
-        { status: 500 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       );
     }
-    const testUserId = users[0].id;
-    console.log('Using test user ID for video upload');
+    
+    const userId = session.user.id;
+    console.log('Authenticated user ID:', userId);
 
-    const { fileName, contentType, fileSize } = await request.json();
-    console.log('Request data:', { fileName, contentType, fileSize });
+    const { fileName, contentType, fileSize, listingId } = await request.json();
+    console.log('Request data:', { fileName, contentType, fileSize, listingId });
 
     // Validate required fields
     if (!fileName || !contentType || !fileSize) {
@@ -37,6 +28,24 @@ export async function POST(request: NextRequest) {
         { error: 'Missing required fields: fileName, contentType, fileSize' },
         { status: 400 }
       );
+    }
+
+    // If listingId is provided, validate that the user owns the listing
+    if (listingId) {
+      const listing = await prisma.listing.findFirst({
+        where: {
+          itemId: listingId,
+          userId: userId,
+        },
+      });
+
+      if (!listing) {
+        return NextResponse.json(
+          { error: 'Listing not found or you do not have permission to edit it' },
+          { status: 403 }
+        );
+      }
+      console.log('Listing validation passed for:', listingId);
     }
 
     // Create a mock file object for validation
@@ -61,7 +70,7 @@ export async function POST(request: NextRequest) {
     console.log('Creating video record...');
     const video = await prisma.video.create({
       data: {
-        userId: testUserId,
+        userId: userId,
         originalFilename: fileName,
         originalSize: fileSize,
         mimeType: contentType,
@@ -76,17 +85,27 @@ export async function POST(request: NextRequest) {
     const { presignedUrl, fileKey } = await generateVideoUploadUrl(
       fileName,
       contentType,
-      testUserId,
+      userId,
       video.id
     );
     console.log('Presigned URL generated');
 
-    // Update video record with the file key
+    // Update video record with the file key and optionally associate with listing
+    const updateData: any = { rawVideoKey: fileKey };
+    
+    // If listingId is provided, immediately associate the video with the listing
+    if (listingId) {
+      console.log('Associating video with listing:', listingId);
+      updateData.listings = {
+        connect: { itemId: listingId }
+      };
+    }
+
     await prisma.video.update({
       where: { id: video.id },
-      data: { rawVideoKey: fileKey },
+      data: updateData,
     });
-    console.log('Video record updated with file key');
+    console.log('Video record updated with file key and listing association');
 
     return NextResponse.json({
       presignedUrl,

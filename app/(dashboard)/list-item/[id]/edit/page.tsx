@@ -2852,6 +2852,7 @@ export default function EditListingPage() {
                     onError={handleVideoError}
                     onStarted={handleVideoStarted}
                     disabled={videoData.processing}
+                    listingId={params.id as string}
                   />
                 )}
 
