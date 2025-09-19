@@ -615,6 +615,7 @@ model Order {
   promoDiscountAmount Float? // Discount amount
   promoDiscountType   String? // 'fixed_amount', 'percentage', 'free_shipping'
   isMultiItem         Boolean @default(false) // Single item vs cart checkout
+  orderItems          Json? // Array of all items in the order with individual prices
 
   trackingNumber         String?
   deliveredAt            DateTime?
