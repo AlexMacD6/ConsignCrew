@@ -283,16 +283,27 @@ model Listing {
   isHeld                 Boolean          @default(false)
   deliveryCategory       DeliveryCategory @default(NORMAL)
   saves                  Int              @default(0)
-  user                   user             @relation(fields: [userId], references: [id])
-  history                ListingHistory[]
-  orders                 Order[]
-  priceHistory           PriceHistory[]
-  inventoryItems         InventoryItem[]  @relation("InventoryItemToListing")
-  inventoryLists         InventoryList[]  @relation("InventoryListToListing")
-  videos                 Video[]          @relation("ListingToVideo")
-  cartItems              CartItem[]
-  savedByUsers           SavedListing[]   @relation("SavedListing")
-  hiddenByUsers          HiddenListing[]  @relation("HiddenListing")
+
+  // Transaction tracking fields for sellers
+  purchasePrice     Float? // What the seller paid for the item
+  transactionPrice  Float? // Final sale price to customer
+  paymentMethod     String? // 'venmo', 'zelle', 'cash'
+  salesTax          Float? // Calculated sales tax
+  taxRate           Float? // Tax rate used for calculation
+  soldAt            DateTime? // When the item was sold
+  comments          String? // Transaction notes/comments
+  fulfillmentMethod String? // 'pickup', 'delivery' - how the item was fulfilled
+
+  user           user             @relation(fields: [userId], references: [id])
+  history        ListingHistory[]
+  orders         Order[]
+  priceHistory   PriceHistory[]
+  inventoryItems InventoryItem[]  @relation("InventoryItemToListing")
+  inventoryLists InventoryList[]  @relation("InventoryListToListing")
+  videos         Video[]          @relation("ListingToVideo")
+  cartItems      CartItem[]
+  savedByUsers   SavedListing[]   @relation("SavedListing")
+  hiddenByUsers  HiddenListing[]  @relation("HiddenListing")
 
   @@index([userId])
   @@index([status])

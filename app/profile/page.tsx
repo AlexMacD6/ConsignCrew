@@ -31,7 +31,9 @@ import {
   ShoppingCart,
   Clock,
   Bookmark,
+  BarChart3,
 } from "lucide-react";
+import ListingSummaryModal from "@/components/ListingSummaryModal";
 import { SELLER_ZIP_CODES, BUYER_ZIP_CODES } from "../lib/zipcodes";
 
 import { authClient } from "../lib/auth-client";
@@ -137,6 +139,8 @@ export default function ProfilePage() {
   const [listingsSearch, setListingsSearch] = useState("");
   const [selectedListing, setSelectedListing] = useState<any>(null);
   const [showListingModal, setShowListingModal] = useState(false);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [summaryListing, setSummaryListing] = useState<any>(null);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [showAddressCompletionModal, setShowAddressCompletionModal] =
     useState(false);
@@ -315,6 +319,27 @@ export default function ProfilePage() {
     }
   };
 
+  // Summary modal handlers
+  const handleOpenSummary = (listing: any) => {
+    setSummaryListing(listing);
+    setShowSummaryModal(true);
+  };
+
+  const handleCloseSummary = () => {
+    setShowSummaryModal(false);
+    setSummaryListing(null);
+  };
+
+  const handleUpdateListing = (updatedListing: any) => {
+    // Update the listing in the listings array
+    setListings((prevListings) =>
+      prevListings.map((listing) =>
+        listing.itemId === updatedListing.itemId ? updatedListing : listing
+      )
+    );
+    setUpdateSuccess("Listing updated successfully!");
+  };
+
   const getFilteredListings = () => {
     let filtered = listings;
 
@@ -333,7 +358,8 @@ export default function ProfilePage() {
           listing.title.toLowerCase().includes(listingsSearch.toLowerCase()) ||
           listing.description
             .toLowerCase()
-            .includes(listingsSearch.toLowerCase())
+            .includes(listingsSearch.toLowerCase()) ||
+          listing.itemId.toLowerCase().includes(listingsSearch.toLowerCase())
       );
     }
 
@@ -915,7 +941,7 @@ export default function ProfilePage() {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <input
                     type="text"
-                    placeholder="Search listings..."
+                    placeholder="Search by title, description, or item ID..."
                     value={listingsSearch}
                     onChange={(e) => setListingsSearch(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
@@ -1017,28 +1043,30 @@ export default function ProfilePage() {
                         <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
                           {listing.title}
                         </h3>
-                        <p className="text-2xl font-bold text-[#D4AF3D] mb-2">
-                          {(() => {
-                            const displayPrice = getDisplayPrice(listing);
-                            if (displayPrice.isDiscounted) {
-                              return (
-                                <>
-                                  <span className="text-green-600">
-                                    ${displayPrice.price.toFixed(2)}
-                                  </span>
-                                  <span className="text-sm text-gray-500 line-through ml-2">
-                                    ${displayPrice.originalPrice?.toFixed(2)}
-                                  </span>
-                                </>
-                              );
-                            } else {
-                              return `$${displayPrice.price.toFixed(2)}`;
-                            }
-                          })()}
-                        </p>
-                        <p className="text-sm text-gray-500 mb-3 line-clamp-2">
-                          {listing.description}
-                        </p>
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-2xl font-bold text-[#D4AF3D]">
+                            {(() => {
+                              const displayPrice = getDisplayPrice(listing);
+                              if (displayPrice.isDiscounted) {
+                                return (
+                                  <>
+                                    <span className="text-green-600">
+                                      ${displayPrice.price.toFixed(2)}
+                                    </span>
+                                    <span className="text-sm text-gray-500 line-through ml-2">
+                                      ${displayPrice.originalPrice?.toFixed(2)}
+                                    </span>
+                                  </>
+                                );
+                              } else {
+                                return `$${displayPrice.price.toFixed(2)}`;
+                              }
+                            })()}
+                          </p>
+                          <span className="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded">
+                            {listing.itemId}
+                          </span>
+                        </div>
 
                         {/* Stats */}
                         <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
@@ -1081,6 +1109,15 @@ export default function ProfilePage() {
                           >
                             <Edit className="h-4 w-4 mr-1" />
                             Edit
+                          </Button>
+                          <Button
+                            onClick={() => handleOpenSummary(listing)}
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 bg-[#D4AF3D] text-white hover:bg-[#b8932f] border-[#D4AF3D]"
+                          >
+                            <BarChart3 className="h-4 w-4 mr-1" />
+                            Summary
                           </Button>
                           <Button
                             onClick={() =>
@@ -1475,6 +1512,14 @@ export default function ProfilePage() {
           postalCode: form.zipCode || "",
           country: form.country || "",
         }}
+      />
+
+      {/* Summary Modal */}
+      <ListingSummaryModal
+        isOpen={showSummaryModal}
+        onClose={handleCloseSummary}
+        listing={summaryListing}
+        onUpdate={handleUpdateListing}
       />
     </div>
   );

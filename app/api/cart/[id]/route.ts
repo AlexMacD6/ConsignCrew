@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "../../../lib/auth";
 import { prisma } from "../../../../lib/prisma";
 
-// DELETE /api/cart/[itemId] - Remove item from cart
+// DELETE /api/cart/[id] - Remove item from cart
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { itemId: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth.api.getSession({
@@ -16,11 +16,11 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { itemId } = params;
+    const { id } = await params; // id is the cart item ID
 
     // Find the cart item and verify ownership
     const cartItem = await prisma.cartItem.findUnique({
-      where: { id: itemId },
+      where: { id },
       include: {
         cart: true,
       },
@@ -42,7 +42,7 @@ export async function DELETE(
 
     // Delete the cart item
     await prisma.cartItem.delete({
-      where: { id: itemId },
+      where: { id },
     });
 
     return NextResponse.json({
@@ -58,10 +58,10 @@ export async function DELETE(
   }
 }
 
-// PUT /api/cart/[itemId] - Update cart item quantity
+// PUT /api/cart/[id] - Update cart item quantity
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { itemId: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth.api.getSession({
@@ -72,7 +72,7 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { itemId } = params;
+    const { id } = await params; // id is the cart item ID
     const body = await request.json();
     const { quantity } = body;
 
@@ -85,7 +85,7 @@ export async function PUT(
 
     // Find the cart item and verify ownership
     const cartItem = await prisma.cartItem.findUnique({
-      where: { id: itemId },
+      where: { id },
       include: {
         cart: true,
       },
@@ -107,7 +107,7 @@ export async function PUT(
 
     // Update the quantity
     await prisma.cartItem.update({
-      where: { id: itemId },
+      where: { id },
       data: { quantity },
     });
 

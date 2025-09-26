@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
         }
       }),
       
-      // Get user's listings
+      // Get user's listings with inventory data for purchase price calculation
       prisma.listing.findMany({
         where: { userId: session.user.id },
         select: {
@@ -84,6 +84,25 @@ export async function GET(req: NextRequest) {
           saves: true,
           createdAt: true,
           updatedAt: true,
+          // Transaction tracking fields
+          purchasePrice: true,
+          transactionPrice: true,
+          paymentMethod: true,
+          salesTax: true,
+          taxRate: true,
+          soldAt: true,
+          comments: true,
+          fulfillmentMethod: true,
+          // Inventory relationship for purchase price calculation
+          inventoryItems: {
+            select: {
+              id: true,
+              purchasePrice: true,
+              quantity: true,
+              unitRetail: true,
+              description: true
+            }
+          }
         },
         orderBy: { createdAt: 'desc' }
       }),
