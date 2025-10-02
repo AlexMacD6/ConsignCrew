@@ -95,6 +95,14 @@ export default function NavBar() {
         <Link href="/faq" className="hover:text-[#D4AF3D] transition">
           FAQ
         </Link>
+        <a
+          href="https://www.spinnata.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-bold text-orange-600 hover:text-orange-700 transition"
+        >
+          🎃 SPIN-ÑATA
+        </a>
         <Popover open={originDropdownOpen} onOpenChange={setOriginDropdownOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -275,6 +283,15 @@ export default function NavBar() {
               >
                 FAQ
               </Link>
+              <a
+                href="https://www.spinnata.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full text-left py-2 font-bold text-orange-600 hover:text-orange-700 transition"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                🎃 SPIN-ÑATA
+              </a>
               <Link
                 href="/listings"
                 className="block w-full text-left py-2 text-[#222] font-medium hover:text-[#D4AF3D] transition"
