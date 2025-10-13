@@ -421,6 +421,15 @@ export default function AdminDashboard() {
       color: "bg-purple-600",
       stats: "Manage Codes",
     },
+    {
+      title: "Sales Analytics",
+      description:
+        "Track sales performance, revenue trends, and comprehensive business metrics",
+      icon: BarChart3,
+      href: "/admin/sales-analytics",
+      color: "bg-green-500",
+      stats: "View Reports",
+    },
   ];
 
   useEffect(() => {
