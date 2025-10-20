@@ -15,6 +15,8 @@ export async function POST(
     const itemId = params.id;
     const body = await request.json();
     const receiveQty = parseInt(body?.quantity ?? 0, 10);
+    const override = body?.override === true; // Allow override for out-of-order receiving
+    
     if (!Number.isFinite(receiveQty) || receiveQty <= 0) {
       return NextResponse.json(
         { error: "quantity must be a positive integer" },
@@ -22,17 +24,54 @@ export async function POST(
       );
     }
 
-    const item = await prisma.inventoryItem.findUnique({ where: { id: itemId } });
+    // Fetch item with listing count to check if items have been posted
+    const item = await prisma.inventoryItem.findUnique({ 
+      where: { id: itemId },
+      include: {
+        listings: {
+          select: { id: true, status: true },
+          where: { status: "active" }
+        }
+      }
+    });
+    
     if (!item) {
       return NextResponse.json({ error: "Item not found" }, { status: 404 });
     }
 
     const totalQty = item.quantity ?? 0;
     const alreadyReceived = item.receivedQuantity ?? 0;
+    const postedListings = item.listings?.length || 0;
+    
+    // Calculate remaining considering both received and posted items
     const remaining = Math.max(totalQty - alreadyReceived, 0);
-    if (receiveQty > remaining) {
+    
+    // If no override and trying to receive more than remaining, check if items are posted
+    if (!override && receiveQty > remaining) {
+      // If items are posted but not received, suggest override
+      if (postedListings > 0 && alreadyReceived === 0) {
+        return NextResponse.json(
+          { 
+            error: `Cannot receive ${receiveQty}. Only ${remaining} remaining. However, ${postedListings} item(s) have been posted but not received. Use override to receive out of order.`,
+            requiresOverride: true,
+            postedCount: postedListings
+          },
+          { status: 400 }
+        );
+      }
+      
       return NextResponse.json(
         { error: `Cannot receive ${receiveQty}. Only ${remaining} remaining.` },
+        { status: 400 }
+      );
+    }
+    
+    // With override, allow receiving even if it exceeds "available" due to posted items
+    // But still don't exceed the total quantity
+    const maxAllowedWithOverride = totalQty - alreadyReceived;
+    if (receiveQty > maxAllowedWithOverride) {
+      return NextResponse.json(
+        { error: `Cannot receive ${receiveQty}. Maximum ${maxAllowedWithOverride} can be received (total: ${totalQty}, already received: ${alreadyReceived}).` },
         { status: 400 }
       );
     }
@@ -53,7 +92,11 @@ export async function POST(
       },
     });
 
-    return NextResponse.json({ success: true, item: updated });
+    return NextResponse.json({ 
+      success: true, 
+      item: updated,
+      warning: override ? "Item received out of order (after posting)" : undefined
+    });
   } catch (error) {
     console.error("Error receiving inventory item:", error);
     return NextResponse.json(

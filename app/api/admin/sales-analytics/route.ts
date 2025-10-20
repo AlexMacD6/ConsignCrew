@@ -6,6 +6,10 @@ import { auth } from "@/lib/auth";
  * GET /api/admin/sales-analytics
  * Returns comprehensive sales analytics data for admin dashboard
  * 
+ * Query parameters:
+ * - startDate: ISO date string (YYYY-MM-DD) - filter sales from this date (inclusive)
+ * - endDate: ISO date string (YYYY-MM-DD) - filter sales to this date (inclusive)
+ * 
  * Includes:
  * - Monthly sales breakdown
  * - Total revenue and sales tax
@@ -22,11 +26,34 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Parse date filter parameters
+    const { searchParams } = new URL(request.url);
+    const startDateParam = searchParams.get("startDate");
+    const endDateParam = searchParams.get("endDate");
+
+    // Build date filter for query
+    const dateFilter: any = {};
+    if (startDateParam) {
+      // Start of day for start date
+      const startDate = new Date(startDateParam);
+      startDate.setHours(0, 0, 0, 0);
+      dateFilter.gte = startDate;
+    }
+    if (endDateParam) {
+      // End of day for end date
+      const endDate = new Date(endDateParam);
+      endDate.setHours(23, 59, 59, 999);
+      dateFilter.lte = endDate;
+    }
+
     // Fetch all sold listings with transaction data
     const soldListings = await prisma.listing.findMany({
       where: {
         status: "sold",
-        soldAt: { not: null },
+        soldAt: { 
+          not: null,
+          ...(Object.keys(dateFilter).length > 0 ? dateFilter : {}),
+        },
         transactionPrice: { not: null },
       },
       select: {

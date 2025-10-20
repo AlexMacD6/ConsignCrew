@@ -97,6 +97,10 @@ export async function GET(request: NextRequest) {
         postedListings,
         availableToList,
         totalInventory,
+        // Include disposition fields for tracking
+        disposition: it.disposition,
+        dispositionQuantity: it.dispositionQuantity,
+        dispositionNotes: it.dispositionNotes,
       };
     });
 

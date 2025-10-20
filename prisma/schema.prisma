@@ -587,6 +587,12 @@ model InventoryItem {
   receivedQuantity Int                    @default(0)
   receivedAt       DateTime?
   receivedBy       String?
+  // Disposition tracking fields
+  disposition      InventoryDisposition?  // Track what happened to the item
+  dispositionQuantity Int                 @default(0) // How many were marked with this disposition
+  dispositionAt    DateTime? // When the disposition was applied
+  dispositionBy    String? // Who applied the disposition
+  dispositionNotes String? // Additional notes about why (damage reason, use tax category, etc.)
   list             InventoryList          @relation(fields: [listId], references: [id], onDelete: Cascade)
   listings         Listing[]              @relation("InventoryItemToListing")
 
@@ -594,12 +600,18 @@ model InventoryItem {
   @@index([listId])
   @@index([itemNumber])
   @@index([receiveStatus])
+  @@index([disposition])
 }
 
 enum InventoryReceiveStatus {
   MANIFESTED
   PARTIALLY_RECEIVED
   RECEIVED
+}
+
+enum InventoryDisposition {
+  TRASH    // Item disposed of (damaged, unsellable)
+  USE      // Item kept for personal/business use (use tax applicable)
 }
 
 model Order {

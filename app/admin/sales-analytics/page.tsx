@@ -103,16 +103,29 @@ export default function SalesAnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Date filter state
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  const [datePreset, setDatePreset] = useState<string>("all");
+
   useEffect(() => {
     fetchAnalytics();
-  }, []);
+  }, [startDate, endDate]);
 
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
       setError("");
 
-      const response = await fetch("/api/admin/sales-analytics");
+      // Build query parameters with date filters
+      const params = new URLSearchParams();
+      if (startDate) params.set("startDate", startDate);
+      if (endDate) params.set("endDate", endDate);
+
+      const url = `/api/admin/sales-analytics${
+        params.toString() ? `?${params.toString()}` : ""
+      }`;
+      const response = await fetch(url);
       const result = await response.json();
 
       if (response.ok && result.success) {
@@ -126,6 +139,94 @@ export default function SalesAnalyticsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle preset date range selection
+  const handlePresetChange = (preset: string) => {
+    setDatePreset(preset);
+    const today = new Date();
+    let start = "";
+    let end = "";
+
+    switch (preset) {
+      case "today":
+        start = today.toISOString().split("T")[0];
+        end = start;
+        break;
+      case "yesterday":
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        start = yesterday.toISOString().split("T")[0];
+        end = start;
+        break;
+      case "thisWeek":
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay());
+        start = startOfWeek.toISOString().split("T")[0];
+        end = today.toISOString().split("T")[0];
+        break;
+      case "lastWeek":
+        const lastWeekEnd = new Date(today);
+        lastWeekEnd.setDate(today.getDate() - today.getDay() - 1);
+        const lastWeekStart = new Date(lastWeekEnd);
+        lastWeekStart.setDate(lastWeekEnd.getDate() - 6);
+        start = lastWeekStart.toISOString().split("T")[0];
+        end = lastWeekEnd.toISOString().split("T")[0];
+        break;
+      case "thisMonth":
+        start = new Date(today.getFullYear(), today.getMonth(), 1)
+          .toISOString()
+          .split("T")[0];
+        end = today.toISOString().split("T")[0];
+        break;
+      case "lastMonth":
+        const lastMonthStart = new Date(
+          today.getFullYear(),
+          today.getMonth() - 1,
+          1
+        );
+        const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+        start = lastMonthStart.toISOString().split("T")[0];
+        end = lastMonthEnd.toISOString().split("T")[0];
+        break;
+      case "last3Months":
+        const threeMonthsAgo = new Date(today);
+        threeMonthsAgo.setMonth(today.getMonth() - 3);
+        start = threeMonthsAgo.toISOString().split("T")[0];
+        end = today.toISOString().split("T")[0];
+        break;
+      case "last6Months":
+        const sixMonthsAgo = new Date(today);
+        sixMonthsAgo.setMonth(today.getMonth() - 6);
+        start = sixMonthsAgo.toISOString().split("T")[0];
+        end = today.toISOString().split("T")[0];
+        break;
+      case "thisYear":
+        start = new Date(today.getFullYear(), 0, 1).toISOString().split("T")[0];
+        end = today.toISOString().split("T")[0];
+        break;
+      case "lastYear":
+        const lastYearStart = new Date(today.getFullYear() - 1, 0, 1);
+        const lastYearEnd = new Date(today.getFullYear() - 1, 11, 31);
+        start = lastYearStart.toISOString().split("T")[0];
+        end = lastYearEnd.toISOString().split("T")[0];
+        break;
+      case "all":
+      default:
+        start = "";
+        end = "";
+        break;
+    }
+
+    setStartDate(start);
+    setEndDate(end);
+  };
+
+  // Clear date filters
+  const clearDateFilters = () => {
+    setStartDate("");
+    setEndDate("");
+    setDatePreset("all");
   };
 
   // Format currency
@@ -257,6 +358,105 @@ export default function SalesAnalyticsPage() {
           <p className="text-gray-600">
             Comprehensive overview of your sales performance
           </p>
+        </div>
+
+        {/* Date Filter Section */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+          <div className="flex flex-col md:flex-row gap-4 items-start md:items-end">
+            {/* Preset Dropdown */}
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Calendar className="inline h-4 w-4 mr-1" />
+                Date Range
+              </label>
+              <select
+                value={datePreset}
+                onChange={(e) => handlePresetChange(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#D4AF3D]"
+              >
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="thisWeek">This Week</option>
+                <option value="lastWeek">Last Week</option>
+                <option value="thisMonth">This Month</option>
+                <option value="lastMonth">Last Month</option>
+                <option value="last3Months">Last 3 Months</option>
+                <option value="last6Months">Last 6 Months</option>
+                <option value="thisYear">This Year</option>
+                <option value="lastYear">Last Year</option>
+                <option value="custom">Custom Range</option>
+              </select>
+            </div>
+
+            {/* Custom Date Inputs */}
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  setDatePreset("custom");
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#D4AF3D]"
+              />
+            </div>
+
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                End Date
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setDatePreset("custom");
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#D4AF3D]"
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              <button
+                onClick={clearDateFilters}
+                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                disabled={!startDate && !endDate}
+              >
+                Clear
+              </button>
+              <button
+                onClick={fetchAnalytics}
+                className="px-4 py-2 bg-[#D4AF3D] text-white rounded-md hover:bg-[#C19F2D] transition-colors flex items-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <BarChart3 className="h-4 w-4" />
+                    Apply
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Active Filter Display */}
+          {(startDate || endDate) && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-sm text-gray-600">
+                <strong>Showing sales from:</strong> {startDate || "beginning"}{" "}
+                <strong>to</strong> {endDate || "now"}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Summary Cards */}

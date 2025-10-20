@@ -616,12 +616,22 @@ export default function ListItemPage() {
     fetchUserZipCode();
   }, [zipCode]);
 
-  // Load inventory when modal opens or search query changes
+  // Debounced inventory search - only load after user stops typing
   useEffect(() => {
     if (showInventoryModal) {
-      loadInventoryItems();
+      const debounceTimer = setTimeout(() => {
+        loadInventoryItems();
+      }, 400); // Wait 400ms after user stops typing
+
+      return () => clearTimeout(debounceTimer);
     }
-  }, [showInventoryModal, loadInventoryItems]);
+  }, [
+    showInventoryModal,
+    inventorySearchQuery,
+    inventoryPage,
+    showAvailableOnly,
+    loadInventoryItems,
+  ]);
 
   // Cleanup modal state on component unmount
   useEffect(() => {
@@ -3847,6 +3857,7 @@ export default function ListItemPage() {
           showAvailableOnly={showAvailableOnly}
           setShowAvailableOnly={setShowAvailableOnly}
           isLoadingInventory={isLoadingInventory}
+          onItemsChanged={loadInventoryItems}
         />
       </div>
     </div>
