@@ -26,6 +26,8 @@ interface Item {
   disposition?: "TRASH" | "USE" | null;
   dispositionQuantity?: number;
   dispositionNotes?: string;
+  // Listing tracking
+  postedListings?: number;
 }
 
 export default function InventoryReceiving() {
@@ -108,7 +110,21 @@ export default function InventoryReceiving() {
   }, [q, status, listId, page]);
 
   const receive = async (id: string, forceOverride = false) => {
-    const qty = inputQuantities[id] ?? 0;
+    // Get the item to calculate unreceived quantity
+    const item = items.find((it) => it.id === id);
+    if (!item) return;
+
+    const total = item.quantity ?? 0;
+    const rec = item.receivedQuantity ?? 0;
+    const posted = item.postedListings ?? 0;
+    const dispositioned = item.dispositionQuantity ?? 0;
+
+    // If total is 0 but we have posted listings, infer the total should at least match posted
+    const effectiveTotal = Math.max(total, posted, rec + dispositioned);
+    const unreceived = Math.max(effectiveTotal - rec, 0);
+
+    // Use inputQuantities if set, otherwise default to unreceived
+    const qty = inputQuantities[id] || unreceived;
     if (!qty || qty <= 0) return;
 
     const res = await fetch(`/api/admin/inventory/items/${id}/receive`, {
@@ -336,8 +352,10 @@ export default function InventoryReceiving() {
             <tr className="text-left text-gray-600">
               <th className="py-2 pr-4">Item</th>
               <th className="py-2 pr-4">Delivery</th>
-              <th className="py-2 pr-4">Qty</th>
+              <th className="py-2 pr-4">Total Qty</th>
               <th className="py-2 pr-4">Received</th>
+              <th className="py-2 pr-4">Listed</th>
+              <th className="py-2 pr-4">Remaining</th>
               <th className="py-2 pr-4">Disposed</th>
               <th className="py-2 pr-4">Status</th>
               <th className="py-2 pr-4">Action Qty</th>
@@ -348,14 +366,14 @@ export default function InventoryReceiving() {
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={9} className="py-8 text-center text-gray-500">
+                <td colSpan={11} className="py-8 text-center text-gray-500">
                   Loading...
                 </td>
               </tr>
             )}
             {!loading && items.length === 0 && (
               <tr>
-                <td colSpan={9} className="py-10 text-center text-gray-500">
+                <td colSpan={11} className="py-10 text-center text-gray-500">
                   <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   No items found
                 </td>
@@ -364,8 +382,22 @@ export default function InventoryReceiving() {
             {items.map((it) => {
               const total = it.quantity ?? 0;
               const rec = it.receivedQuantity ?? 0;
+              const posted = it.postedListings ?? 0;
               const dispositioned = it.dispositionQuantity ?? 0;
-              const remaining = Math.max(total - rec - dispositioned, 0);
+
+              // If total is 0 but we have posted listings, infer the total should at least match posted
+              const effectiveTotal = Math.max(
+                total,
+                posted,
+                rec + dispositioned
+              );
+
+              const remaining = Math.max(
+                effectiveTotal - rec - posted - dispositioned,
+                0
+              );
+              const unreceived = Math.max(effectiveTotal - rec, 0); // For override cases
+
               return (
                 <tr key={it.id} className="border-t">
                   <td className="py-2 pr-4">
@@ -391,8 +423,35 @@ export default function InventoryReceiving() {
                   <td className="py-2 pr-4">
                     <div className="text-gray-800">{it.list?.name}</div>
                   </td>
-                  <td className="py-2 pr-4">{total}</td>
+                  <td className="py-2 pr-4">
+                    {total === 0 && posted > 0 ? (
+                      <div className="flex items-center gap-1">
+                        <span
+                          className="text-gray-400 line-through"
+                          title="Database value is incorrect"
+                        >
+                          {total}
+                        </span>
+                        <span
+                          className="text-green-600 font-medium"
+                          title="Inferred from received + listed"
+                        >
+                          {effectiveTotal}
+                        </span>
+                      </div>
+                    ) : (
+                      total
+                    )}
+                  </td>
                   <td className="py-2 pr-4">{rec}</td>
+                  <td className="py-2 pr-4">
+                    <span className="font-medium text-blue-600">
+                      {it.postedListings ?? 0}
+                    </span>
+                  </td>
+                  <td className="py-2 pr-4">
+                    <span className="font-medium">{remaining}</span>
+                  </td>
                   <td className="py-2 pr-4">
                     {rec > 0 ? (
                       <div className="flex flex-col gap-2">
@@ -450,8 +509,8 @@ export default function InventoryReceiving() {
                     <input
                       type="number"
                       min={1}
-                      max={remaining}
-                      value={inputQuantities[it.id] ?? 0}
+                      max={unreceived}
+                      value={inputQuantities[it.id] || unreceived}
                       onChange={(e) =>
                         setInputQuantities((p) => ({
                           ...p,
@@ -462,6 +521,12 @@ export default function InventoryReceiving() {
                     />
                     <div className="text-xs text-gray-500 mt-1">
                       Available: {remaining}
+                      {unreceived > remaining && (
+                        <span className="text-orange-600 font-medium">
+                          {" "}
+                          (Override available)
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="py-2 pr-4">
@@ -469,7 +534,8 @@ export default function InventoryReceiving() {
                       <button
                         onClick={() => receive(it.id)}
                         disabled={
-                          remaining <= 0 || (inputQuantities[it.id] ?? 0) <= 0
+                          unreceived <= 0 ||
+                          (inputQuantities[it.id] || unreceived) <= 0
                         }
                         className="px-3 py-1 rounded bg-green-600 text-white disabled:opacity-50 hover:bg-green-700 text-xs flex items-center gap-1"
                       >

@@ -11,6 +11,112 @@ Enhanced the "Select from Inventory" modal when listing items to allow receiving
   - Added validation to prevent selecting unrecieved items
   - Added real-time receive functionality without leaving the modal
 
+### Added Out-of-Order Receiving Override
+
+Added ability to receive inventory items that were accidentally listed before being received, allowing users to correct the mistake without data loss.
+
+#### API Changes
+- Updated `/api/admin/inventory/items/[id]/receive` endpoint:
+  - Added `override` boolean parameter to bypass posted-before-received check
+  - Returns `requiresOverride: true` when item has listings but isn't received
+  - Prevents receiving if posted and `override=false`
+
+#### UI Changes in Admin Inventory Receiving
+- Modified "Receive" button logic:
+  - Uses `unreceived` quantity (total - received) instead of `remaining` (total - received - posted)
+  - Enables "Receive" button for items that need receiving, even if already posted
+  - Shows prompt asking for confirmation when override is needed
+  - Displays item details (ID and quantity) in override prompt
+- **Fixed Action Qty input default value**:
+  - Changed from `?? unreceived` to `|| unreceived` to handle both `undefined` and `0` values
+  - Now defaults to `unreceived` quantity instead of `0`
+  - Makes "Receive" button immediately usable without manual input
+  - Handles cases where input was previously set to 0 or never initialized
+  - Simplifies override workflow (just click "Receive")
+- **Fixed receive function**:
+  - Updated to calculate `effectiveTotal` and `unreceived` based on item data
+  - Uses `inputQuantities[id] || unreceived` instead of `inputQuantities[id] ?? 0`
+  - Now works even when quantity hasn't been manually entered
+  - Prevents silent failures when input state is undefined
+- Clear user feedback for override scenarios
+
+#### Features
+- **Override Protection**: Prevents accidental out-of-order receiving without confirmation
+- **Recovery Path**: Allows fixing mistakes when items are posted before receiving
+- **Data Integrity**: Tracks both receive and post actions independently
+- **User-Friendly**: Clear prompts explain what happened and what will happen
+- **Smart Defaults**: Action quantity automatically set to the unreceived amount
+
+#### Workflow
+1. **Normal Case**: User manifests → receives → posts (no override needed)
+2. **Override Case**: User manifests → posts by accident → needs to receive
+   - User goes to Admin → Inventory → Receiving
+   - Finds the item (shows Qty: X, Received: 0, Listed: X)
+   - "Action Qty" field automatically shows the unreceived quantity
+   - "Receive" button is enabled (green)
+   - Clicks "Receive" button
+   - System detects item was posted before receiving
+   - Prompt appears: "This inventory has already been posted to listings..."
+   - User clicks OK to override and receive
+   - System receives the item and updates status
+
+### Added "Listed" and "Remaining" Columns to Admin Inventory Receiving
+
+Restructured the inventory columns to provide clearer visibility into inventory flow and status. Added "Listed" column to show active listings count and "Remaining" column to show available quantity after accounting for all operations.
+
+#### Changes
+- **API** (`app/api/admin/inventory/items/route.ts`):
+  - Already includes `postedListings` count in response
+  - Counts only active listings
+- **TypeScript Interface** (`app/admin/InventoryReceiving.tsx`):
+  - Added `postedListings?: number` to Item interface
+- **UI** (`app/admin/InventoryReceiving.tsx`):
+  - Renamed "Qty" column to "Total Qty" for clarity
+  - Added "Listed" column showing active listings count (blue font)
+  - Added "Remaining" column showing available quantity (Total - Received - Listed - Disposed)
+  - Updated remaining calculation to account for posted listings: `Math.max(total - rec - posted - dispositioned, 0)`
+  - Updated colspan values for loading/empty states (10 → 11)
+  - **Edge Case Handling**: When `total` is 0 but listings exist:
+    - Shows strikethrough `0` (gray) with the correct `effectiveTotal` (green) next to it
+    - Database value (0) is crossed out to indicate it's incorrect
+    - Inferred value (effectiveTotal) is shown in green
+    - Tooltips explain: "Database value is incorrect" and "Inferred from received + listed"
+    - Infers `effectiveTotal` as `Math.max(total, posted, rec + dispositioned)`
+    - Enables receiving with the effective total quantity
+    - Gracefully handles data integrity issues
+
+#### Features
+- **Clear Inventory Flow**: Column progression now tells the complete story
+- **Active Listings Count**: Shows how many active listings use this inventory
+- **Remaining Quantity**: Makes it obvious what's left to work with (accounts for posted listings)
+- **Context for Override**: Helps understand when override is needed (Received: 0, Listed: 1)
+- **Logical Progression**: Total → Received → Listed → Remaining shows the flow
+- **Data Issue Detection**: Flags inconsistencies (e.g., Total: 0, Listed: 1)
+- **Graceful Recovery**: Allows fixing data issues by inferring correct totals
+
+#### Column Order (Updated)
+1. Item (description, item #, vendor, unit price)
+2. Delivery (list name)
+3. **Total Qty** (manifested quantity) ← RENAMED from "Qty"
+4. Received (quantity physically received)
+5. **Listed (active listings count)** ← NEW
+6. **Remaining (available quantity)** ← NEW
+7. Disposed (trash/use tracking with dropdown)
+8. Status (manifested/received badges)
+9. Action Qty (input field for actions)
+10. Actions (receive/trash/use buttons)
+11. Notes (disposition notes)
+
+#### How It Clarifies the Flow
+**Before**: 
+- Qty: 3, Received: 0, Listed: 1 → Confusing! How can 1 be listed if none received?
+
+**After**:
+- Total Qty: 3, Received: 0, Listed: 1, Remaining: 2 → Clear! Item was posted before receiving (override case)
+
+**Normal Flow**:
+- Total Qty: 10, Received: 10, Listed: 3, Remaining: 7 → 7 available to list or dispose
+
 #### UI Changes
 - **Status Badges**:
   - Orange badge: "Not Received - Must Receive First" for manifested items
