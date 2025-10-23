@@ -3,100 +3,140 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 /**
- * POST endpoint to mark an inventory item with a disposition (TRASH or USE)
- * This endpoint allows tracking items that are:
- * - TRASH: Disposed of (damaged, unsellable)
- * - USE: Kept for personal/business use (subject to use tax)
- * 
- * The disposition is tracked separately from receiving status to maintain
- * accurate inventory reconciliation and tax reporting.
+ * GET endpoint to retrieve all dispositions for an inventory item
  */
-export async function POST(
+export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Authenticate user
     const session = await auth.api.getSession({ headers: request.headers });
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const itemId = params.id;
+    const { id: itemId } = await params;
+
+    const dispositions = await prisma.inventoryDisposition.findMany({
+      where: { inventoryItemId: itemId },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return NextResponse.json({ dispositions });
+  } catch (error) {
+    console.error("Error fetching dispositions:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch dispositions" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST endpoint to set or update a disposition status for an inventory item
+ * This allows splitting items into different statuses (e.g., 1 RECEIVED, 1 TRASH, 1 USE)
+ * 
+ * Body parameters:
+ * - status: "RECEIVED" | "TRASH" | "USE"
+ * - quantity: Number of units to set to this status
+ * - notes: Optional notes about this disposition
+ */
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id: itemId } = await params;
     const body = await request.json();
     
-    // Validate disposition type
-    const disposition = body?.disposition;
-    if (!disposition || !["TRASH", "USE"].includes(disposition)) {
+    // Validate status
+    const status = body?.status;
+    if (!status || !["RECEIVED", "TRASH", "USE"].includes(status)) {
       return NextResponse.json(
-        { error: "disposition must be 'TRASH' or 'USE'" },
+        { error: "status must be 'RECEIVED', 'TRASH', or 'USE'" },
         { status: 400 }
       );
     }
 
     // Validate quantity
-    const dispositionQty = parseInt(body?.quantity ?? 0, 10);
-    if (!Number.isFinite(dispositionQty) || dispositionQty <= 0) {
+    const quantity = parseInt(body?.quantity ?? 0, 10);
+    if (!Number.isFinite(quantity) || quantity <= 0) {
       return NextResponse.json(
         { error: "quantity must be a positive integer" },
         { status: 400 }
       );
     }
 
-    // Optional notes about the disposition
-    const dispositionNotes = body?.notes || null;
+    const notes = body?.notes || null;
 
-    // Fetch the item
-    const item = await prisma.inventoryItem.findUnique({ where: { id: itemId } });
+    // Fetch the item and current dispositions
+    const item = await prisma.inventoryItem.findUnique({
+      where: { id: itemId },
+      include: { dispositions: true },
+    });
+
     if (!item) {
       return NextResponse.json({ error: "Item not found" }, { status: 404 });
     }
 
-    // Calculate available quantity for disposition
     const totalQty = item.quantity ?? 0;
-    const alreadyReceived = item.receivedQuantity ?? 0;
-    const alreadyDispositioned = item.dispositionQuantity ?? 0;
-    const available = Math.max(totalQty - alreadyReceived - alreadyDispositioned, 0);
+    
+    // Calculate total allocated
+    const currentlyAllocated = item.dispositions.reduce(
+      (sum, d) => sum + d.quantity,
+      0
+    );
+    
+    const available = totalQty - currentlyAllocated;
 
-    if (dispositionQty > available) {
+    if (quantity > available) {
       return NextResponse.json(
         { 
-          error: `Cannot disposition ${dispositionQty}. Only ${available} available (${totalQty} total, ${alreadyReceived} received, ${alreadyDispositioned} already dispositioned).` 
+          error: `Cannot allocate ${quantity}. Only ${available} available (${totalQty} total, ${currentlyAllocated} already allocated).` 
         },
         { status: 400 }
       );
     }
 
-    // Update the item with disposition
-    const newDispositionTotal = alreadyDispositioned + dispositionQty;
-    const newReceived = alreadyReceived; // Don't change received quantity
-    
-    // Determine new receive status based on total accounted items
-    const totalAccounted = newReceived + newDispositionTotal;
-    let newStatus: "MANIFESTED" | "PARTIALLY_RECEIVED" | "RECEIVED" = "MANIFESTED";
-    if (totalAccounted <= 0) newStatus = "MANIFESTED";
-    else if (totalAccounted < totalQty) newStatus = "PARTIALLY_RECEIVED";
-    else newStatus = "RECEIVED"; // Consider "received" when all items are accounted for (including dispositions)
+    // Check if there's already a disposition with this status
+    const existingDisposition = item.dispositions.find(d => d.status === status);
 
-    const updated = await prisma.inventoryItem.update({
-      where: { id: itemId },
-      data: {
-        disposition,
-        dispositionQuantity: newDispositionTotal,
-        dispositionAt: new Date(),
-        dispositionBy: session.user.id,
-        dispositionNotes,
-        receiveStatus: newStatus,
-      },
-    });
+    let result;
+    if (existingDisposition) {
+      // Update existing disposition quantity
+      result = await prisma.inventoryDisposition.update({
+        where: { id: existingDisposition.id },
+        data: {
+          quantity: existingDisposition.quantity + quantity,
+          notes: notes || existingDisposition.notes,
+          updatedAt: new Date(),
+        },
+      });
+    } else {
+      // Create new disposition
+      result = await prisma.inventoryDisposition.create({
+        data: {
+          inventoryItemId: itemId,
+          status,
+          quantity,
+          notes,
+          createdBy: session.user.id,
+        },
+      });
+    }
 
     return NextResponse.json({ 
       success: true, 
-      item: updated,
-      message: `${dispositionQty} unit(s) marked as ${disposition}`
+      disposition: result,
+      message: `${quantity} unit(s) marked as ${status}`
     });
   } catch (error) {
-    console.error("Error setting item disposition:", error);
+    console.error("Error setting disposition:", error);
     return NextResponse.json(
       { error: "Failed to set disposition" },
       { status: 500 }
@@ -105,128 +145,163 @@ export async function POST(
 }
 
 /**
- * PUT endpoint to update/change an inventory item's disposition
- * This allows changing the disposition type (RECEIVED, TRASH, USE) after initial processing
+ * PUT endpoint to update a specific disposition's quantity
+ * This allows changing quantities or moving items between statuses
  * 
  * Body parameters:
- * - disposition: "RECEIVED" | "TRASH" | "USE" (null/"RECEIVED" means normal received, not disposed)
- * - quantity: Optional number of units to change (defaults to all received if not provided)
- * - notes: Optional notes about the change
+ * - status: "RECEIVED" | "TRASH" | "USE" - The status to update
+ * - quantity: New total quantity for this status
+ * - notes: Optional notes
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Authenticate user
     const session = await auth.api.getSession({ headers: request.headers });
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const itemId = params.id;
+    const { id: itemId } = await params;
     const body = await request.json();
     
-    // Validate disposition type - null or "RECEIVED" means clear disposition
-    const disposition = body?.disposition;
-    if (disposition && !["RECEIVED", "TRASH", "USE"].includes(disposition)) {
+    // Validate status
+    const status = body?.status;
+    if (!status || !["RECEIVED", "TRASH", "USE"].includes(status)) {
       return NextResponse.json(
-        { error: "disposition must be 'RECEIVED', 'TRASH', or 'USE'" },
+        { error: "status must be 'RECEIVED', 'TRASH', or 'USE'" },
         { status: 400 }
       );
     }
 
-    // Optional notes about the disposition change
-    const dispositionNotes = body?.notes || null;
-
-    // Optional quantity - how many units to change
-    const changeQuantity = body?.quantity ? parseInt(body.quantity, 10) : null;
-    if (changeQuantity !== null && (!Number.isFinite(changeQuantity) || changeQuantity <= 0)) {
+    // Validate quantity
+    const newQuantity = parseInt(body?.quantity ?? 0, 10);
+    if (!Number.isFinite(newQuantity) || newQuantity < 0) {
       return NextResponse.json(
-        { error: "quantity must be a positive integer" },
+        { error: "quantity must be a non-negative integer" },
         { status: 400 }
       );
     }
 
-    // Fetch the item
-    const item = await prisma.inventoryItem.findUnique({ where: { id: itemId } });
+    const notes = body?.notes;
+
+    // Fetch the item and current dispositions
+    const item = await prisma.inventoryItem.findUnique({
+      where: { id: itemId },
+      include: { dispositions: true },
+    });
+
     if (!item) {
       return NextResponse.json({ error: "Item not found" }, { status: 404 });
     }
 
-    const receivedQty = item.receivedQuantity || 0;
-    const currentDispositionQty = item.dispositionQuantity || 0;
-
-    // Determine how many units to affect
-    const qtyToChange = changeQuantity !== null ? changeQuantity : receivedQty;
-
-    // Validate quantity doesn't exceed received
-    if (qtyToChange > receivedQty) {
+    const totalQty = item.quantity ?? 0;
+    
+    // Find the disposition for this status
+    const targetDisposition = item.dispositions.find(d => d.status === status);
+    const currentQuantityForStatus = targetDisposition?.quantity ?? 0;
+    
+    // Calculate total allocated to OTHER statuses (excluding the target status)
+    const totalAllocatedToOthers = item.dispositions
+      .filter(d => d.status !== status)
+      .reduce((sum, d) => sum + d.quantity, 0);
+    
+    // The max we can allocate to this status is the total quantity minus what's allocated to other statuses
+    const maxAllowedForThisStatus = totalQty - totalAllocatedToOthers;
+    
+    // Check if the new quantity exceeds what we can allocate
+    if (newQuantity > totalQty) {
       return NextResponse.json(
-        { error: `Cannot change ${qtyToChange} units. Only ${receivedQty} received.` },
+        { 
+          error: `Cannot set ${status} to ${newQuantity}. Total quantity is only ${totalQty}.` 
+        },
         { status: 400 }
       );
     }
+    
+    // Calculate how much we need to deallocate from other statuses
+    const neededChange = newQuantity - currentQuantityForStatus;
+    const totalAllocated = item.dispositions.reduce((sum, d) => sum + d.quantity, 0);
+    const manifestedQty = totalQty - totalAllocated;
 
-    // Prepare update data based on disposition
-    let updateData: any = {
-      dispositionAt: new Date(),
-      dispositionBy: session.user.id,
-    };
-
-    if (disposition === "RECEIVED" || !disposition) {
-      // Moving back to RECEIVED - reduce or clear disposition quantity
-      const newDispositionQty = Math.max(0, currentDispositionQty - qtyToChange);
+    // If we need more than what's manifested, we need to deallocate from other statuses
+    if (neededChange > manifestedQty) {
+      const needToDeallocate = neededChange - manifestedQty;
       
-      updateData.dispositionQuantity = newDispositionQty;
+      // Deallocate from other statuses (FIFO - first status with quantity)
+      let remainingToDeallocate = needToDeallocate;
       
-      // If no more units are dispositioned, clear disposition entirely
-      if (newDispositionQty === 0) {
-        updateData.disposition = null;
-        updateData.dispositionNotes = null;
+      for (const disp of item.dispositions) {
+        if (disp.status !== status && remainingToDeallocate > 0) {
+          const canTakeFromThis = Math.min(disp.quantity, remainingToDeallocate);
+          
+          if (canTakeFromThis === disp.quantity) {
+            // Delete this disposition entirely
+            await prisma.inventoryDisposition.delete({
+              where: { id: disp.id },
+            });
+          } else {
+            // Reduce this disposition
+            await prisma.inventoryDisposition.update({
+              where: { id: disp.id },
+              data: {
+                quantity: disp.quantity - canTakeFromThis,
+                updatedAt: new Date(),
+              },
+            });
+          }
+          
+          remainingToDeallocate -= canTakeFromThis;
+        }
       }
-    } else {
-      // Set TRASH or USE disposition
-      updateData.disposition = disposition;
-      
-      // If current disposition is same type, don't change quantity (just update notes)
-      // If different type or no disposition, set to the specified quantity
-      if (item.disposition === disposition) {
-        // Same disposition - add to existing quantity if specified
-        updateData.dispositionQuantity = changeQuantity !== null 
-          ? Math.min(receivedQty, currentDispositionQty + qtyToChange)
-          : receivedQty;
-      } else {
-        // Different or no disposition - set to new quantity
-        updateData.dispositionQuantity = qtyToChange;
-      }
-      
-      updateData.dispositionNotes = dispositionNotes;
     }
 
-    const updated = await prisma.inventoryItem.update({
-      where: { id: itemId },
-      data: updateData,
-    });
+    let result;
 
-    let message = "";
-    if (disposition === "RECEIVED" || !disposition) {
-      message = `${qtyToChange} unit(s) moved back to RECEIVED (normal)`;
+    if (newQuantity === 0) {
+      // Remove the disposition if quantity is 0
+      if (targetDisposition) {
+        await prisma.inventoryDisposition.delete({
+          where: { id: targetDisposition.id },
+        });
+      }
+      result = null;
+    } else if (targetDisposition) {
+      // Update existing disposition
+      result = await prisma.inventoryDisposition.update({
+        where: { id: targetDisposition.id },
+        data: {
+          quantity: newQuantity,
+          notes: notes !== undefined ? notes : targetDisposition.notes,
+          updatedAt: new Date(),
+        },
+      });
     } else {
-      message = `${qtyToChange} unit(s) marked as ${disposition}`;
+      // Create new disposition
+      result = await prisma.inventoryDisposition.create({
+        data: {
+          inventoryItemId: itemId,
+          status,
+          quantity: newQuantity,
+          notes,
+          createdBy: session.user.id,
+        },
+      });
     }
 
     return NextResponse.json({ 
       success: true, 
-      item: updated,
-      message
+      disposition: result,
+      message: newQuantity === 0 
+        ? `${status} status cleared`
+        : `${status} quantity set to ${newQuantity}`
     });
   } catch (error) {
-    console.error("Error updating item disposition:", error);
+    console.error("Error updating disposition:", error);
     return NextResponse.json(
       { error: "Failed to update disposition" },
       { status: 500 }
     );
   }
 }
-

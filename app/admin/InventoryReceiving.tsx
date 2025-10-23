@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   RefreshCw,
   Search,
@@ -8,50 +8,76 @@ import {
   Package,
   Trash2,
   User,
+  X,
 } from "lucide-react";
 
 interface Item {
   id: string;
   description?: string;
   itemNumber?: string;
-  quantity?: number;
-  receivedQuantity?: number;
-  receiveStatus: "MANIFESTED" | "PARTIALLY_RECEIVED" | "RECEIVED";
+  totalQuantity?: number; // Total manifest quantity
+  receivedQuantity?: number; // Quantity with RECEIVED status
+  trashedQuantity?: number; // Quantity with TRASH status
+  usedQuantity?: number; // Quantity with USE status
+  manifestedQuantity?: number; // Not yet allocated to any status
   department?: string;
   vendor?: string;
   unitRetail?: number;
   list: { id: string; name: string; lotNumber?: string | null };
   notes?: string;
-  // Disposition fields
-  disposition?: "TRASH" | "USE" | null;
-  dispositionQuantity?: number;
-  dispositionNotes?: string;
-  // Listing tracking
   postedListings?: number;
+  dispositions?: Array<{
+    id: string;
+    status: "RECEIVED" | "TRASH" | "USE";
+    quantity: number;
+    notes?: string;
+  }>;
+}
+
+type DispositionType = "RECEIVED" | "TRASH" | "USE";
+
+interface ModalState {
+  isOpen: boolean;
+  item: Item | null;
+  type: DispositionType;
+  maxQuantity: number;
+}
+
+interface DisplayRow {
+  itemId: string;
+  type: "RECEIVED" | "TRASH" | "USE" | "MANIFESTED";
+  quantity: number;
+  item: Item;
+  notes?: string;
 }
 
 export default function InventoryReceiving() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState<"ALL" | Item["receiveStatus"]>("ALL");
+  const [status, setStatus] = useState<
+    "ALL" | "MANIFESTED" | "RECEIVED" | "TRASH" | "USE"
+  >("ALL");
   const [listId, setListId] = useState<string>("");
   const [page, setPage] = useState(1);
   const [limit] = useState(25);
   const [totalPages, setTotalPages] = useState(1);
   const [statusCounts, setStatusCounts] = useState({
     MANIFESTED: 0,
-    PARTIALLY_RECEIVED: 0,
     RECEIVED: 0,
+    TRASH: 0,
+    USE: 0,
   });
-  const [inputQuantities, setInputQuantities] = useState<
-    Record<string, number>
-  >({});
 
-  // Track disposition change quantities separately
-  const [dispositionQuantities, setDispositionQuantities] = useState<
-    Record<string, number>
-  >({});
+  // Modal state
+  const [modal, setModal] = useState<ModalState>({
+    isOpen: false,
+    item: null,
+    type: "RECEIVED",
+    maxQuantity: 0,
+  });
+  const [modalQuantity, setModalQuantity] = useState(1);
+  const [modalNotes, setModalNotes] = useState("");
 
   const fetchItems = async () => {
     setLoading(true);
@@ -71,24 +97,6 @@ export default function InventoryReceiving() {
         setItems(data.items);
         setTotalPages(data.pagination.totalPages || 1);
         setStatusCounts(data.statusCounts);
-
-        // Initialize input quantities for receiving
-        const defaults: Record<string, number> = {};
-        const dispDefaults: Record<string, number> = {};
-        data.items.forEach((it: Item) => {
-          const remaining = Math.max(
-            (it.quantity || 0) - (it.receivedQuantity || 0),
-            0
-          );
-          defaults[it.id] = remaining > 0 ? remaining : 0;
-
-          // Initialize disposition quantity to 1 by default for received items
-          if ((it.receivedQuantity || 0) > 0) {
-            dispDefaults[it.id] = 1;
-          }
-        });
-        setInputQuantities(defaults);
-        setDispositionQuantities(dispDefaults);
       } else {
         setItems([]);
       }
@@ -99,268 +107,219 @@ export default function InventoryReceiving() {
     }
   };
 
-  // Debounce search query - wait for user to stop typing before fetching
+  // Debounce search query
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
       fetchItems();
-    }, 400); // Wait 400ms after user stops typing
+    }, 400);
 
     return () => clearTimeout(debounceTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, status, listId, page]);
 
-  const receive = async (id: string, forceOverride = false) => {
-    // Get the item to calculate unreceived quantity
-    const item = items.find((it) => it.id === id);
-    if (!item) return;
+  // Convert items to display rows (split by disposition)
+  const getDisplayRows = (): DisplayRow[] => {
+    const rows: DisplayRow[] = [];
 
-    const total = item.quantity ?? 0;
-    const rec = item.receivedQuantity ?? 0;
-    const posted = item.postedListings ?? 0;
-    const dispositioned = item.dispositionQuantity ?? 0;
+    items.forEach((item) => {
+      // Get all dispositions for this item
+      const dispositions = item.dispositions || [];
 
-    // If total is 0 but we have posted listings, infer the total should at least match posted
-    const effectiveTotal = Math.max(total, posted, rec + dispositioned);
-    const unreceived = Math.max(effectiveTotal - rec, 0);
-
-    // Use inputQuantities if set, otherwise default to unreceived
-    const qty = inputQuantities[id] || unreceived;
-    if (!qty || qty <= 0) return;
-
-    const res = await fetch(`/api/admin/inventory/items/${id}/receive`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        quantity: qty,
-        override: forceOverride,
-      }),
-    });
-    const data = await res.json();
-    if (data.success) {
-      if (data.warning) {
-        alert(`Success: ${data.warning}`);
-      }
-      fetchItems();
-    } else {
-      // Check if override is needed
-      if (data.requiresOverride && !forceOverride) {
-        const confirmOverride = confirm(
-          `${data.error}\n\nThis item has been posted to listings before receiving. Click OK to receive it anyway (out of order receiving), or Cancel to abort.`
-        );
-        if (confirmOverride) {
-          // Retry with override
-          receive(id, true);
+      // Create a row for each disposition status that has quantity
+      dispositions.forEach((disp) => {
+        if (disp.quantity > 0) {
+          rows.push({
+            itemId: item.id,
+            type: disp.status,
+            quantity: disp.quantity,
+            item,
+            notes: disp.notes,
+          });
         }
-      } else {
-        alert(data.error || "Failed to receive item");
+      });
+
+      // If no dispositions, show as manifested (we'll handle this in the UI)
+      if (dispositions.length === 0 && (item.manifestedQuantity ?? 0) > 0) {
+        // Show item with MANIFESTED type
+        rows.push({
+          itemId: item.id,
+          type: "MANIFESTED",
+          quantity: item.manifestedQuantity ?? 0,
+          item,
+        });
       }
-    }
-  };
-
-  // Mark item as TRASH (disposed)
-  const markAsTrash = async (id: string) => {
-    const qty = inputQuantities[id] ?? 0;
-    if (!qty || qty <= 0) return;
-
-    const notes = prompt(
-      `Mark ${qty} unit(s) as TRASH?\n\nOptional: Enter reason (damage, unsellable, etc.):`
-    );
-    if (notes === null) return; // User cancelled
-
-    const res = await fetch(`/api/admin/inventory/items/${id}/disposition`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        disposition: "TRASH",
-        quantity: qty,
-        notes: notes || undefined,
-      }),
     });
-    const data = await res.json();
-    if (data.success) {
-      fetchItems();
-    } else {
-      alert(data.error || "Failed to mark as trash");
-    }
+
+    return rows;
   };
 
-  // Mark item as USE (personal/business use)
-  const markAsUse = async (id: string) => {
-    const qty = inputQuantities[id] ?? 0;
-    if (!qty || qty <= 0) return;
+  const displayRows = getDisplayRows();
 
-    const notes = prompt(
-      `Mark ${qty} unit(s) for PERSONAL/BUSINESS USE?\n\nThese will be subject to use tax.\nOptional: Enter reason or category:`
+  // Open modal for action
+  const openModal = (item: Item, type: DispositionType) => {
+    const total = item.totalQuantity ?? 0;
+    const manifested = item.manifestedQuantity ?? 0;
+    const received = item.receivedQuantity ?? 0;
+    const trashed = item.trashedQuantity ?? 0;
+    const used = item.usedQuantity ?? 0;
+
+    let maxQty = 0;
+
+    // All disposition types can now reallocate from the total quantity
+    // The API will automatically deallocate from other statuses as needed
+    maxQty = total;
+
+    // Get current notes for this disposition type
+    const currentDisposition = item.dispositions?.find(
+      (d) => d.status === type
     );
-    if (notes === null) return; // User cancelled
+    const currentNotes = currentDisposition?.notes || "";
 
-    const res = await fetch(`/api/admin/inventory/items/${id}/disposition`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        disposition: "USE",
-        quantity: qty,
-        notes: notes || undefined,
-      }),
+    setModal({
+      isOpen: true,
+      item,
+      type,
+      maxQuantity: maxQty,
     });
-    const data = await res.json();
-    if (data.success) {
-      fetchItems();
-    } else {
-      alert(data.error || "Failed to mark as use");
-    }
+    setModalQuantity(Math.min(maxQty, 1));
+    setModalNotes(currentNotes);
   };
 
-  // Change disposition status for already received items
-  const changeDisposition = async (
-    id: string,
-    newDisposition: "RECEIVED" | "TRASH" | "USE"
-  ) => {
-    const item = items.find((it) => it.id === id);
-    if (!item) return;
+  // Close modal
+  const closeModal = () => {
+    setModal({ isOpen: false, item: null, type: "RECEIVED", maxQuantity: 0 });
+    setModalQuantity(1);
+    setModalNotes("");
+  };
 
-    // Get the quantity to change
-    const qty = dispositionQuantities[id] || 1;
-    const receivedQty = item.receivedQuantity || 0;
+  // Handle modal submission
+  const handleModalSubmit = async () => {
+    if (!modal.item) return;
 
-    // Validate quantity
-    if (qty <= 0) {
-      alert("Please enter a valid quantity greater than 0");
-      return;
-    }
-    if (qty > receivedQty) {
-      alert(`Cannot change ${qty} units. Only ${receivedQty} units received.`);
+    if (modalQuantity <= 0 || modalQuantity > modal.maxQuantity) {
+      alert(`Please enter a quantity between 1 and ${modal.maxQuantity}`);
       return;
     }
 
-    // If changing to TRASH or USE, prompt for notes
-    let notes = null;
-    if (newDisposition === "TRASH") {
-      notes = prompt(
-        `Mark ${qty} unit(s) as TRASH?\n\nOptional: Enter reason (damage, unsellable, etc.):`
+    try {
+      // Set/update disposition status (RECEIVED, TRASH, or USE)
+      const res = await fetch(
+        `/api/admin/inventory/items/${modal.item.id}/disposition`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: modal.type,
+            quantity: modalQuantity,
+            notes: modalNotes || undefined,
+          }),
+        }
       );
-      if (notes === null) return; // User cancelled
-    } else if (newDisposition === "USE") {
-      notes = prompt(
-        `Mark ${qty} unit(s) for USE (personal/business)?\n\nThese will be subject to use tax.\nOptional: Enter reason or category:`
-      );
-      if (notes === null) return; // User cancelled
+
+      const data = await res.json();
+      if (data.success) {
+        closeModal();
+        fetchItems();
+      } else {
+        alert(data.error || "Failed to update item status");
+      }
+    } catch (error) {
+      console.error("Error submitting:", error);
+      alert("Failed to update item");
     }
-
-    const res = await fetch(`/api/admin/inventory/items/${id}/disposition`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        disposition: newDisposition,
-        quantity: qty,
-        notes: notes || undefined,
-      }),
-    });
-    const data = await res.json();
-    if (data.success) {
-      fetchItems();
-    } else {
-      alert(data.error || "Failed to update disposition");
-    }
-  };
-
-  const statusChip = (s: Item["receiveStatus"]) => {
-    const map: any = {
-      MANIFESTED: "bg-gray-100 text-gray-700",
-      PARTIALLY_RECEIVED: "bg-yellow-100 text-yellow-800",
-      RECEIVED: "bg-green-100 text-green-800",
-    };
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${map[s]}`}>
-        {s.replace("_", " ")}
-      </span>
-    );
-  };
-
-  // Disposition chip for visual indication
-  const dispositionChip = (d: Item["disposition"]) => {
-    if (!d) return null;
-    const map: any = {
-      TRASH: "bg-red-100 text-red-800",
-      USE: "bg-blue-100 text-blue-800",
-    };
-    return (
-      <span
-        className={`px-2 py-1 rounded-full text-xs font-medium ${map[d]} ml-2`}
-      >
-        {d}
-      </span>
-    );
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">Receiving</h3>
-          <p className="text-gray-600 text-sm">
-            Process inventory items: <strong>Receive</strong> for resale, mark
-            as <strong>Trash</strong> (disposed), or <strong>Use</strong>{" "}
-            (personal/business use tax). Status updates automatically.
-          </p>
-        </div>
-        <button
-          onClick={fetchItems}
-          className="flex items-center gap-2 px-3 py-2 border rounded hover:bg-gray-50"
-        >
-          <RefreshCw className="h-4 w-4" /> Refresh
-        </button>
+    <div className="p-6">
+      {/* Header */}
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Receiving</h2>
+        <p className="text-gray-600">
+          Process inventory items: <strong>Receive</strong> for resale, mark as{" "}
+          <strong>Trash</strong> (disposed), or <strong>Use</strong>{" "}
+          (personal/business use tax). Status updates automatically.
+        </p>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        <div className="flex items-center gap-2 border rounded px-2 py-1">
-          <Search className="h-4 w-4 text-gray-500" />
+      <div className="flex flex-wrap gap-4 mb-6">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
+            type="text"
+            placeholder="Search items..."
             value={q}
             onChange={(e) => {
-              setPage(1);
               setQ(e.target.value);
+              setPage(1);
             }}
-            placeholder="Search description, item #, vendor, dept"
-            className="outline-none text-sm"
+            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF3D]"
           />
         </div>
+
         <select
           value={status}
           onChange={(e) => {
+            setStatus(e.target.value as typeof status);
             setPage(1);
-            setStatus(e.target.value as any);
           }}
-          className="border rounded px-2 py-1 text-sm"
+          className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF3D]"
         >
           <option value="ALL">All</option>
-          <option value="MANIFESTED">
-            Manifested ({statusCounts.MANIFESTED})
-          </option>
-          <option value="PARTIALLY_RECEIVED">
-            Partially Received ({statusCounts.PARTIALLY_RECEIVED})
-          </option>
-          <option value="RECEIVED">Received ({statusCounts.RECEIVED})</option>
+          <option value="MANIFESTED">Manifested</option>
+          <option value="RECEIVED">Received</option>
+          <option value="TRASH">Trash</option>
+          <option value="USE">Use</option>
         </select>
+
+        <button
+          onClick={fetchItems}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition disabled:opacity-50"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          Refresh
+        </button>
       </div>
 
-      {/* List */}
-      <div className="overflow-x-auto">
+      {/* Status Counts */}
+      <div className="flex gap-4 mb-6">
+        <div className="bg-gray-50 px-4 py-2 rounded-lg">
+          <span className="text-sm text-gray-600">Manifested:</span>
+          <span className="ml-2 font-semibold">{statusCounts.MANIFESTED}</span>
+        </div>
+        <div className="bg-green-50 px-4 py-2 rounded-lg">
+          <span className="text-sm text-gray-600">Received:</span>
+          <span className="ml-2 font-semibold">{statusCounts.RECEIVED}</span>
+        </div>
+        <div className="bg-red-50 px-4 py-2 rounded-lg">
+          <span className="text-sm text-gray-600">Trash:</span>
+          <span className="ml-2 font-semibold">{statusCounts.TRASH}</span>
+        </div>
+        <div className="bg-blue-50 px-4 py-2 rounded-lg">
+          <span className="text-sm text-gray-600">Use:</span>
+          <span className="ml-2 font-semibold">{statusCounts.USE}</span>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-lg border overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="text-left text-gray-600">
-              <th className="py-2 pr-4">Item</th>
-              <th className="py-2 pr-4">Delivery</th>
-              <th className="py-2 pr-4">Total Qty</th>
-              <th className="py-2 pr-4">Received</th>
-              <th className="py-2 pr-4">Listed</th>
-              <th className="py-2 pr-4">Remaining</th>
-              <th className="py-2 pr-4">Disposed</th>
-              <th className="py-2 pr-4">Status</th>
-              <th className="py-2 pr-4">Action Qty</th>
-              <th className="py-2 pr-4">Actions</th>
-              <th className="py-2 pr-4">Notes</th>
+            <tr className="text-left text-gray-600 bg-gray-50">
+              <th className="py-3 px-4">Item</th>
+              <th className="py-3 px-4">Delivery</th>
+              <th className="py-3 px-4 text-center">Manifested</th>
+              <th className="py-3 px-4 text-center">Listed</th>
+              <th className="py-3 px-4 text-center border-l-2 border-gray-300">
+                Total Qty
+              </th>
+              <th className="py-3 px-4 text-center">Received</th>
+              <th className="py-3 px-4 text-center">Trashed</th>
+              <th className="py-3 px-4 text-center">Used</th>
+              <th className="py-3 px-4 border-l-2 border-gray-300">Status</th>
+              <th className="py-3 px-4">Actions</th>
+              <th className="py-3 px-4">Notes</th>
             </tr>
           </thead>
           <tbody>
@@ -371,7 +330,7 @@ export default function InventoryReceiving() {
                 </td>
               </tr>
             )}
-            {!loading && items.length === 0 && (
+            {!loading && displayRows.length === 0 && (
               <tr>
                 <td colSpan={11} className="py-10 text-center text-gray-500">
                   <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -379,210 +338,208 @@ export default function InventoryReceiving() {
                 </td>
               </tr>
             )}
-            {items.map((it) => {
-              const total = it.quantity ?? 0;
-              const rec = it.receivedQuantity ?? 0;
-              const posted = it.postedListings ?? 0;
-              const dispositioned = it.dispositionQuantity ?? 0;
+            {displayRows.map((row, idx) => {
+              const item = row.item;
+              const total = item.totalQuantity ?? 0;
+              const rec = item.receivedQuantity ?? 0;
+              const trashed = item.trashedQuantity ?? 0;
+              const used = item.usedQuantity ?? 0;
+              const manifested = item.manifestedQuantity ?? 0;
+              const posted = item.postedListings ?? 0;
 
-              // If total is 0 but we have posted listings, infer the total should at least match posted
-              const effectiveTotal = Math.max(
-                total,
-                posted,
-                rec + dispositioned
+              // Check if this is the first row for this item
+              const isFirstRow =
+                idx === 0 || displayRows[idx - 1].itemId !== row.itemId;
+              const rowsForItem = displayRows.filter(
+                (r) => r.itemId === row.itemId
               );
-
-              const remaining = Math.max(
-                effectiveTotal - rec - posted - dispositioned,
-                0
-              );
-              const unreceived = Math.max(effectiveTotal - rec, 0); // For override cases
+              const rowSpan = rowsForItem.length;
 
               return (
-                <tr key={it.id} className="border-t">
-                  <td className="py-2 pr-4">
-                    <div className="font-medium text-gray-900">
-                      {it.description || "Untitled"}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      Item #{it.itemNumber || "N/A"} • Unit:{" "}
-                      {typeof it.unitRetail === "number"
-                        ? it.unitRetail.toLocaleString("en-US", {
-                            style: "currency",
-                            currency: "USD",
-                          })
-                        : "N/A"}{" "}
-                      • Vendor: {it.vendor || "N/A"}
-                    </div>
-                    {it.disposition && it.dispositionNotes && (
-                      <div className="text-xs text-gray-600 mt-1 italic">
-                        {it.disposition} Note: {it.dispositionNotes}
+                <tr
+                  key={`${row.itemId}-${row.type}-${idx}`}
+                  className={`border-t hover:bg-gray-50 ${
+                    row.type === "TRASH"
+                      ? "bg-red-50/30"
+                      : row.type === "USE"
+                      ? "bg-blue-50/30"
+                      : ""
+                  }`}
+                >
+                  {/* Item info - only show on first row */}
+                  {isFirstRow && (
+                    <td className="py-3 px-4" rowSpan={rowSpan}>
+                      <div className="font-medium text-gray-900">
+                        {item.description || "Untitled"}
                       </div>
-                    )}
-                  </td>
-                  <td className="py-2 pr-4">
-                    <div className="text-gray-800">{it.list?.name}</div>
-                  </td>
-                  <td className="py-2 pr-4">
-                    {total === 0 && posted > 0 ? (
-                      <div className="flex items-center gap-1">
-                        <span
-                          className="text-gray-400 line-through"
-                          title="Database value is incorrect"
-                        >
-                          {total}
-                        </span>
-                        <span
-                          className="text-green-600 font-medium"
-                          title="Inferred from received + listed"
-                        >
-                          {effectiveTotal}
-                        </span>
+                      <div className="text-xs text-gray-500">
+                        Item #{item.itemNumber || "N/A"} • Unit:{" "}
+                        {typeof item.unitRetail === "number"
+                          ? item.unitRetail.toLocaleString("en-US", {
+                              style: "currency",
+                              currency: "USD",
+                            })
+                          : "N/A"}{" "}
+                        • Vendor: {item.vendor || "N/A"}
                       </div>
+                    </td>
+                  )}
+
+                  {/* Delivery - only show on first row */}
+                  {isFirstRow && (
+                    <td className="py-3 px-4" rowSpan={rowSpan}>
+                      <div className="text-gray-800 font-medium">
+                        {item.list?.name}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {item.list?.lotNumber || "No lot #"}
+                      </div>
+                    </td>
+                  )}
+
+                  {/* Manifested - only show on first row */}
+                  {isFirstRow && (
+                    <td className="py-3 px-4 text-center" rowSpan={rowSpan}>
+                      <span className="font-semibold text-gray-900">
+                        {manifested}
+                      </span>
+                    </td>
+                  )}
+
+                  {/* Listed - only show on first row */}
+                  {isFirstRow && (
+                    <td className="py-3 px-4 text-center" rowSpan={rowSpan}>
+                      <span className="font-medium text-purple-600">
+                        {posted}
+                      </span>
+                    </td>
+                  )}
+
+                  {/* Separator + Total Qty - only show on first row */}
+                  {isFirstRow && (
+                    <td
+                      className="py-3 px-4 text-center font-bold border-l-2 border-gray-300"
+                      rowSpan={rowSpan}
+                    >
+                      {total}
+                    </td>
+                  )}
+
+                  {/* Received - split by row type */}
+                  <td className="py-3 px-4 text-center">
+                    {row.type === "RECEIVED" ? (
+                      <span className="font-medium text-green-600">
+                        {row.quantity}
+                      </span>
                     ) : (
-                      total
+                      <span className="text-gray-300">-</span>
                     )}
                   </td>
-                  <td className="py-2 pr-4">{rec}</td>
-                  <td className="py-2 pr-4">
-                    <span className="font-medium text-blue-600">
-                      {it.postedListings ?? 0}
-                    </span>
+
+                  {/* Trashed - split by row type */}
+                  <td className="py-3 px-4 text-center">
+                    {row.type === "TRASH" ? (
+                      <span className="font-medium text-red-600 flex items-center justify-center gap-1">
+                        <Trash2 className="h-3 w-3" />
+                        {row.quantity}
+                      </span>
+                    ) : (
+                      <span className="text-gray-300">-</span>
+                    )}
                   </td>
-                  <td className="py-2 pr-4">
-                    <span className="font-medium">{remaining}</span>
+
+                  {/* Used - split by row type */}
+                  <td className="py-3 px-4 text-center">
+                    {row.type === "USE" ? (
+                      <span className="font-medium text-blue-600 flex items-center justify-center gap-1">
+                        <User className="h-3 w-3" />
+                        {row.quantity}
+                      </span>
+                    ) : (
+                      <span className="text-gray-300">-</span>
+                    )}
                   </td>
-                  <td className="py-2 pr-4">
-                    {rec > 0 ? (
+
+                  {/* Status - show per-row status with separator */}
+                  <td className="py-3 px-4 border-l-2 border-gray-300">
+                    {row.type === "MANIFESTED" && (
+                      <span className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                        MANIFESTED
+                      </span>
+                    )}
+                    {row.type === "RECEIVED" && (
+                      <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+                        RECEIVED
+                      </span>
+                    )}
+                    {row.type === "TRASH" && (
+                      <span className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800 flex items-center gap-1 w-fit">
+                        <Trash2 className="h-3 w-3" />
+                        TRASH
+                      </span>
+                    )}
+                    {row.type === "USE" && (
+                      <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 flex items-center gap-1 w-fit">
+                        <User className="h-3 w-3" />
+                        USE
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Actions - only show on first row */}
+                  {isFirstRow && (
+                    <td className="py-3 px-4" rowSpan={rowSpan}>
                       <div className="flex flex-col gap-2">
-                        {/* Quantity Input for Disposition Change */}
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            min={1}
-                            max={rec}
-                            value={dispositionQuantities[it.id] || 1}
-                            onChange={(e) =>
-                              setDispositionQuantities((p) => ({
-                                ...p,
-                                [it.id]: parseInt(e.target.value || "1", 10),
-                              }))
-                            }
-                            className="w-16 px-2 py-1 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-[#D4AF3D]"
-                          />
-                          <span className="text-xs text-gray-500">
-                            of {rec}
-                          </span>
-                        </div>
-
-                        {/* Disposition Dropdown */}
-                        <select
-                          value={it.disposition || "RECEIVED"}
-                          onChange={(e) =>
-                            changeDisposition(
-                              it.id,
-                              e.target.value as "RECEIVED" | "TRASH" | "USE"
-                            )
-                          }
-                          className="px-2 py-1 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-[#D4AF3D]"
+                        {/* Receive button - always show */}
+                        <button
+                          onClick={() => openModal(item, "RECEIVED")}
+                          className="flex items-center justify-center gap-1 px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded text-xs font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Receive items for resale"
+                          disabled={total === 0}
                         >
-                          <option value="RECEIVED">Received (Normal)</option>
-                          <option value="TRASH">Trash (Disposed)</option>
-                          <option value="USE">Use (Personal/Business)</option>
-                        </select>
+                          <CheckCircle className="h-3.5 w-3.5" />
+                          Receive
+                        </button>
 
-                        {/* Show current disposition info if not normal received */}
-                        {it.disposition && (
-                          <div>
-                            <div className="font-medium text-sm">
-                              {dispositioned} {dispositionChip(it.disposition)}
-                            </div>
-                          </div>
-                        )}
+                        {/* Trash button - always show */}
+                        <button
+                          onClick={() => openModal(item, "TRASH")}
+                          className="flex items-center justify-center gap-1 px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded text-xs font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Mark as trash (disposed)"
+                          disabled={total === 0}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Trash
+                        </button>
+
+                        {/* Use button - always show */}
+                        <button
+                          onClick={() => openModal(item, "USE")}
+                          className="flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded text-xs font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Mark for personal/business use"
+                          disabled={total === 0}
+                        >
+                          <User className="h-3.5 w-3.5" />
+                          Use
+                        </button>
                       </div>
-                    ) : (
-                      <span className="text-gray-400">—</span>
-                    )}
-                  </td>
-                  <td className="py-2 pr-4">{statusChip(it.receiveStatus)}</td>
-                  <td className="py-2 pr-4">
-                    <input
-                      type="number"
-                      min={1}
-                      max={unreceived}
-                      value={inputQuantities[it.id] || unreceived}
-                      onChange={(e) =>
-                        setInputQuantities((p) => ({
-                          ...p,
-                          [it.id]: parseInt(e.target.value || "0", 10),
-                        }))
-                      }
-                      className="w-20 border rounded px-2 py-1"
-                    />
-                    <div className="text-xs text-gray-500 mt-1">
-                      Available: {remaining}
-                      {unreceived > remaining && (
-                        <span className="text-orange-600 font-medium">
-                          {" "}
-                          (Override available)
+                    </td>
+                  )}
+
+                  {/* Notes - display only (edit via modal) */}
+                  <td className="py-3 px-4">
+                    <div className="text-xs text-gray-600 max-w-xs">
+                      {row.type === "MANIFESTED" ? (
+                        <span className="text-gray-400 italic">
+                          Use modal to add notes
                         </span>
+                      ) : (
+                        row.notes || (
+                          <span className="text-gray-400 italic">
+                            Use modal to add notes
+                          </span>
+                        )
                       )}
-                    </div>
-                  </td>
-                  <td className="py-2 pr-4">
-                    <div className="flex flex-col gap-2">
-                      <button
-                        onClick={() => receive(it.id)}
-                        disabled={
-                          unreceived <= 0 ||
-                          (inputQuantities[it.id] || unreceived) <= 0
-                        }
-                        className="px-3 py-1 rounded bg-green-600 text-white disabled:opacity-50 hover:bg-green-700 text-xs flex items-center gap-1"
-                      >
-                        <CheckCircle className="h-3 w-3" /> Receive
-                      </button>
-                      <button
-                        onClick={() => markAsTrash(it.id)}
-                        disabled={
-                          remaining <= 0 || (inputQuantities[it.id] ?? 0) <= 0
-                        }
-                        className="px-3 py-1 rounded bg-red-600 text-white disabled:opacity-50 hover:bg-red-700 text-xs flex items-center gap-1"
-                      >
-                        <Trash2 className="h-3 w-3" /> Trash
-                      </button>
-                      <button
-                        onClick={() => markAsUse(it.id)}
-                        disabled={
-                          remaining <= 0 || (inputQuantities[it.id] ?? 0) <= 0
-                        }
-                        className="px-3 py-1 rounded bg-blue-600 text-white disabled:opacity-50 hover:bg-blue-700 text-xs flex items-center gap-1"
-                      >
-                        <User className="h-3 w-3" /> Use
-                      </button>
-                    </div>
-                  </td>
-                  <td className="py-2 pr-4 w-72">
-                    <div className="flex items-center gap-2">
-                      <input
-                        name={`notes-${it.id}`}
-                        autoComplete="off"
-                        defaultValue={it.notes || ""}
-                        onBlur={async (e) => {
-                          const newNotes = e.target.value;
-                          try {
-                            await fetch(
-                              `/api/admin/inventory/items/${it.id}/notes`,
-                              {
-                                method: "PUT",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ notes: newNotes }),
-                              }
-                            );
-                          } catch {}
-                        }}
-                        placeholder="Leave a Note Here"
-                        className="w-full border rounded px-2 py-1 text-sm"
-                      />
                     </div>
                   </td>
                 </tr>
@@ -593,27 +550,169 @@ export default function InventoryReceiving() {
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between mt-4 text-sm">
-        <div>
-          Page {page} of {totalPages}
-        </div>
-        <div className="flex items-center gap-2">
+      {totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-between">
           <button
-            disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="px-2 py-1 border rounded disabled:opacity-50"
+            disabled={page === 1}
+            className="px-4 py-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Prev
+            Previous
           </button>
+          <span className="text-sm text-gray-600">
+            Page {page} of {totalPages}
+          </span>
           <button
-            disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            className="px-2 py-1 border rounded disabled:opacity-50"
+            disabled={page === totalPages}
+            className="px-4 py-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Next
           </button>
         </div>
-      </div>
+      )}
+
+      {/* Modal */}
+      {modal.isOpen && modal.item && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b">
+              <h3 className="text-xl font-bold text-gray-900">
+                {modal.type === "RECEIVED" && "Receive Items"}
+                {modal.type === "TRASH" && "Mark as Trash"}
+                {modal.type === "USE" && "Mark for Use"}
+              </h3>
+              <button
+                onClick={closeModal}
+                className="text-gray-400 hover:text-gray-600 transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4">
+              {/* Item Info */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="font-medium text-gray-900 mb-1">
+                  {modal.item.description || "Untitled"}
+                </div>
+                <div className="text-sm text-gray-600">
+                  Item #{modal.item.itemNumber || "N/A"}
+                </div>
+                <div className="text-xs text-gray-500 mt-2">
+                  <div className="space-y-1">
+                    <div>
+                      <strong>Total:</strong> {modal.item.totalQuantity || 0}
+                    </div>
+                    <div className="text-green-600">
+                      <strong>Received:</strong>{" "}
+                      {modal.item.receivedQuantity || 0}
+                    </div>
+                    <div className="text-red-600">
+                      <strong>Trashed:</strong>{" "}
+                      {modal.item.trashedQuantity || 0}
+                    </div>
+                    <div className="text-blue-600">
+                      <strong>Used:</strong> {modal.item.usedQuantity || 0}
+                    </div>
+                    <div>
+                      <strong>Manifested:</strong>{" "}
+                      {modal.item.manifestedQuantity || 0}
+                    </div>
+                    <div className="mt-2 text-xs font-medium text-gray-700">
+                      {modal.type === "RECEIVED" &&
+                        `Setting new total for RECEIVED status (current: ${
+                          modal.item.receivedQuantity || 0
+                        }). Max: ${modal.maxQuantity}`}
+                      {modal.type === "TRASH" &&
+                        `Setting new total for TRASH status (current: ${
+                          modal.item.trashedQuantity || 0
+                        }). Max: ${modal.maxQuantity}`}
+                      {modal.type === "USE" &&
+                        `Setting new total for USE status (current: ${
+                          modal.item.usedQuantity || 0
+                        }). Max: ${modal.maxQuantity}`}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quantity Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Quantity
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={modal.maxQuantity}
+                  value={modalQuantity}
+                  onChange={(e) =>
+                    setModalQuantity(parseInt(e.target.value) || 1)
+                  }
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF3D]"
+                  autoFocus
+                />
+                <div className="text-xs text-gray-500 mt-1">
+                  Max: {modal.maxQuantity}
+                </div>
+              </div>
+
+              {/* Notes Input (for Trash and Use) */}
+              {modal.type !== "RECEIVED" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {modal.type === "TRASH" && "Reason (optional)"}
+                    {modal.type === "USE" && "Category/Reason (optional)"}
+                  </label>
+                  <textarea
+                    value={modalNotes}
+                    onChange={(e) => setModalNotes(e.target.value)}
+                    placeholder={
+                      modal.type === "TRASH"
+                        ? "e.g., Damaged, broken, unsellable..."
+                        : "e.g., Office supplies, personal gift..."
+                    }
+                    rows={3}
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF3D] resize-none"
+                  />
+                  {modal.type === "USE" && (
+                    <div className="text-xs text-amber-600 mt-1">
+                      Items marked for use are subject to use tax.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex gap-3 p-6 border-t bg-gray-50">
+              <button
+                onClick={closeModal}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleModalSubmit}
+                className={`flex-1 px-4 py-2 rounded-lg transition font-medium text-white ${
+                  modal.type === "RECEIVED"
+                    ? "bg-green-500 hover:bg-green-600"
+                    : modal.type === "TRASH"
+                    ? "bg-red-500 hover:bg-red-600"
+                    : "bg-blue-500 hover:bg-blue-600"
+                }`}
+              >
+                {modal.type === "RECEIVED" && "Receive"}
+                {modal.type === "TRASH" && "Mark as Trash"}
+                {modal.type === "USE" && "Mark for Use"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

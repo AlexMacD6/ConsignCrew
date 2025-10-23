@@ -15,9 +15,6 @@ export async function GET(request: NextRequest) {
     const statusParam = searchParams.get("status");
     const inStockParam = searchParams.get("inStock");
     const availableOnlyParam = searchParams.get("availableOnly"); // Now means "listed only"
-    const status = (statusParam && statusParam !== "ALL"
-      ? (statusParam as "MANIFESTED" | "PARTIALLY_RECEIVED" | "RECEIVED")
-      : null);
     const listId = searchParams.get("listId");
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = parseInt(searchParams.get("limit") || "25", 10);
@@ -25,11 +22,8 @@ export async function GET(request: NextRequest) {
 
     const where: any = {};
     if (listId) where.listId = listId;
-    if (status) where.receiveStatus = status;
-    if (inStockParam === "true") {
-      // Only items with at least one unit received
-      where.receivedQuantity = { gt: 0 };
-    }
+    // Note: status filtering will be done after fetching, since it's calculated from dispositions
+    // Note: inStock filtering will also be done after fetching
     // Note: We'll handle availableOnlyParam filtering after getting the data
     // availableOnlyParam=true now means "show only listed items"
     if (q) {
@@ -42,11 +36,8 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // For listed-only filtering, we need to get all items first, then filter and paginate
-    // This is because we need to calculate posting counts before filtering
-    const shouldFetchAll = availableOnlyParam === "true";
-    
-    const [items, total, counts] = await Promise.all([
+    // Fetch all items since we need to calculate dispositions and filter before paginating
+    const [items, total] = await Promise.all([
       prisma.inventoryItem.findMany({
         where,
         include: {
@@ -57,34 +48,33 @@ export async function GET(request: NextRequest) {
             select: { id: true, status: true, createdAt: true },
             where: { status: "active" }, // Only count active listings
           },
+          dispositions: true, // Include all disposition records
         },
         orderBy: [{ updatedAt: "desc" }, { description: "asc" }],
-        ...(shouldFetchAll ? {} : { skip, take: limit }), // Skip pagination if we need to filter
       }),
       prisma.inventoryItem.count({ where }),
-      prisma.inventoryItem.groupBy({
-        by: ["receiveStatus"],
-        _count: { receiveStatus: true },
-      }),
     ]);
 
     // Include unitPurchasePrice and listing counts
     const itemsWithUnit = items.map((it: any) => {
       const postedListings = it.listings?.length || 0;
-      // Handle null quantity by defaulting to 0, but preserve original for debugging
-      const originalQuantity = it.quantity;
       const totalInventory = it.quantity || 0;
-      const availableToList = Math.max(0, totalInventory - postedListings);
       
-      // Debug logging for items with null quantity
-      if (originalQuantity === null || originalQuantity === undefined) {
-        console.log(`Warning: Item ${it.itemNumber} has null/undefined quantity:`, {
-          itemNumber: it.itemNumber,
-          originalQuantity,
-          totalInventory,
-          description: it.description
-        });
-      }
+      // Calculate disposition quantities from the new disposition records
+      const dispositions = it.dispositions || [];
+      const receivedQty = dispositions
+        .filter((d: any) => d.status === "RECEIVED")
+        .reduce((sum: number, d: any) => sum + d.quantity, 0);
+      const trashedQty = dispositions
+        .filter((d: any) => d.status === "TRASH")
+        .reduce((sum: number, d: any) => sum + d.quantity, 0);
+      const usedQty = dispositions
+        .filter((d: any) => d.status === "USE")
+        .reduce((sum: number, d: any) => sum + d.quantity, 0);
+      
+      const totalAllocated = receivedQty + trashedQty + usedQty;
+      const manifested = Math.max(0, totalInventory - totalAllocated);
+      const availableToList = Math.max(0, receivedQty - postedListings);
       
       return {
         ...it,
@@ -97,41 +87,60 @@ export async function GET(request: NextRequest) {
         postedListings,
         availableToList,
         totalInventory,
-        // Include disposition fields for tracking
-        disposition: it.disposition,
-        dispositionQuantity: it.dispositionQuantity,
-        dispositionNotes: it.dispositionNotes,
+        // Disposition quantities
+        receivedQuantity: receivedQty,
+        trashedQuantity: trashedQty,
+        usedQuantity: usedQty,
+        manifestedQuantity: manifested,
+        dispositions: it.dispositions, // Include full disposition records
       };
     });
 
     // Apply filtering after calculating counts
+    let filteredItems = itemsWithUnit;
+    
+    // Filter by status if requested
+    if (statusParam && statusParam !== "ALL") {
+      if (statusParam === "MANIFESTED") {
+        filteredItems = filteredItems.filter(item => item.manifestedQuantity > 0);
+      } else if (statusParam === "RECEIVED") {
+        filteredItems = filteredItems.filter(item => item.receivedQuantity > 0);
+      } else if (statusParam === "TRASH") {
+        filteredItems = filteredItems.filter(item => item.trashedQuantity > 0);
+      } else if (statusParam === "USE") {
+        filteredItems = filteredItems.filter(item => item.usedQuantity > 0);
+      }
+    }
+    
+    // Filter by in-stock if requested
+    if (inStockParam === "true") {
+      filteredItems = filteredItems.filter(item => item.receivedQuantity > 0);
+    }
+    
     // availableOnlyParam=true means "show only items available to list" (availableToList > 0)
-    let filteredItems = availableOnlyParam === "true" 
-      ? itemsWithUnit.filter(item => item.availableToList > 0)
-      : itemsWithUnit;
-
-    // Apply pagination to filtered results if we fetched all items
-    if (shouldFetchAll) {
-      const startIndex = skip;
-      const endIndex = startIndex + limit;
-      filteredItems = filteredItems.slice(startIndex, endIndex);
+    if (availableOnlyParam === "true") {
+      filteredItems = filteredItems.filter(item => item.availableToList > 0);
     }
 
-    const statusCounts = {
-      MANIFESTED: 0,
-      PARTIALLY_RECEIVED: 0,
-      RECEIVED: 0,
-    } as Record<string, number>;
-    for (const c of counts) statusCounts[c.receiveStatus] = c._count.receiveStatus;
+    // Calculate total count after filtering
+    const totalFilteredCount = filteredItems.length;
 
-    // Calculate proper pagination counts
-    const totalFilteredCount = availableOnlyParam === "true" 
-      ? itemsWithUnit.filter(item => item.availableToList > 0).length
-      : total;
+    // Apply pagination to filtered results
+    const startIndex = skip;
+    const endIndex = startIndex + limit;
+    const paginatedItems = filteredItems.slice(startIndex, endIndex);
+
+    // Calculate status counts from the items - sum quantities, not count items
+    const statusCounts = {
+      MANIFESTED: itemsWithUnit.reduce((sum, item) => sum + (item.manifestedQuantity || 0), 0),
+      RECEIVED: itemsWithUnit.reduce((sum, item) => sum + (item.receivedQuantity || 0), 0),
+      TRASH: itemsWithUnit.reduce((sum, item) => sum + (item.trashedQuantity || 0), 0),
+      USE: itemsWithUnit.reduce((sum, item) => sum + (item.usedQuantity || 0), 0),
+    };
 
     return NextResponse.json({
       success: true,
-      items: filteredItems,
+      items: paginatedItems,
       pagination: { 
         page, 
         limit, 
