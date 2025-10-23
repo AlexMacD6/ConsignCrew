@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/ses-server";
-
-const prisma = new PrismaClient();
 
 /**
  * POST /api/select-delivery/[token]/confirm

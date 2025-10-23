@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { PrismaClient } from "@prisma/client";
-
-// Configure API route for larger file uploads
-export const runtime = 'nodejs';
-export const maxDuration = 60; // 60 seconds timeout for video uploads
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 // Validate AWS environment variables at startup
 const validateAWSConfig = () => {
