@@ -1,0 +1,44 @@
+Facebook Shop Export XLSX Upgrade with Photos & Videos
+
+Requirements:
+- Convert Facebook Shop Export from CSV format to XLSX (Excel) format
+- Improve aesthetics and visual presentation of the exported file
+- Add TreasureHub branding in the header/title area
+- Include all photos and videos from selected listings in the export
+- Package everything (XLSX + photos + videos) in a single ZIP file for easy download
+- Maintain all existing functionality and data structure
+- Ensure compatibility with Facebook Marketplace bulk upload requirements
+- Ensure all formatting (colors, fonts, borders) is properly applied
+
+Implementation Details:
+- Use ExcelJS library for Excel file generation (has full styling support)
+- Use jszip library for creating zip files with multiple assets
+- Add professional styling including:
+  - TreasureHub gold color (#D4AF3D) for branding and headers
+  - Poppins font throughout
+  - Proper column widths for better readability
+  - Row height adjustments for header sections
+  - Alternating row colors for data rows (white/light gray)
+  - Cell borders and proper text alignment
+  - Merged cells for title and instructions rows
+  - Text wrapping for description fields
+- Include TreasureHub name in the main title row
+- Add export date and listing count to the instructions
+- File structure in ZIP:
+  - Facebook-Marketplace-Template.xlsx (styled template)
+  - [itemId]-[title]/photos/ (all listing photos)
+  - [itemId]-[title]/videos/ (all listing videos)
+- File naming convention: TreasureHub-Facebook-Export-YYYY-MM-DD.zip
+- Download all photos using the same logic as "Download All Photos" button
+- Download all videos using the same logic as "Download Video" button
+- Show loading state during export process with spinner
+- Display success message with count of listings, photos, and videos
+- Custom modal for success message instead of browser alert
+
+Dependencies:
+- exceljs library v4.4.0 (provides full styling support for XLSX files)
+- jszip library (latest version)
+
+Note: The standard xlsx (SheetJS) library's community edition does not support cell styling. 
+ExcelJS is used instead as it provides comprehensive styling capabilities for free.
+

@@ -2,7 +2,16 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Download, Loader2, Search, Check } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  Loader2,
+  Search,
+  Check,
+  CheckCircle,
+} from "lucide-react";
+import ExcelJS from "exceljs";
+import JSZip from "jszip";
 
 interface Listing {
   id: string;
@@ -12,6 +21,7 @@ interface Listing {
   price: number;
   department: string;
   category: string;
+  subCategory?: string | null;
   status: string;
   condition: string;
   createdAt: string;
@@ -19,7 +29,15 @@ interface Listing {
   photos?: {
     hero: string | null;
     back: string | null;
+    proof: string | null;
+    additional?: string[];
   };
+  videos?: Array<{
+    id: string;
+    videoUrl: string | null;
+    processedVideoKey: string | null;
+    rawVideoKey: string | null;
+  }>;
 }
 
 export default function FacebookShopExportPage() {
@@ -30,9 +48,16 @@ export default function FacebookShopExportPage() {
     new Set()
   );
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("active"); // Default to "active"
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [exportStats, setExportStats] = useState({
+    listings: 0,
+    photos: 0,
+    videos: 0,
+  });
 
   // Load all listings
   useEffect(() => {
@@ -114,97 +139,383 @@ export default function FacebookShopExportPage() {
     }
   };
 
-  const exportToCSV = () => {
+  // Helper function to fetch a file as blob through the admin API (avoids CORS issues)
+  const fetchFileAsBlob = async (
+    url: string,
+    type: "photo" | "video"
+  ): Promise<Blob | null> => {
+    try {
+      let apiUrl: string;
+
+      if (type === "photo") {
+        // Use the admin photo download API
+        apiUrl = `/api/admin/download-photos?photoUrl=${encodeURIComponent(
+          url
+        )}`;
+      } else {
+        // Use the admin video download API - extract video ID and URL
+        // For videos, we might have a full URL or just a key
+        apiUrl = `/api/admin/download-video?videoUrl=${encodeURIComponent(
+          url
+        )}`;
+      }
+
+      console.log(`Fetching ${type} through API:`, apiUrl);
+      const response = await fetch(apiUrl);
+
+      if (!response.ok) {
+        console.error(`Failed to fetch ${url}: ${response.status}`);
+        return null;
+      }
+      return await response.blob();
+    } catch (error) {
+      console.error(`Error fetching ${url}:`, error);
+      return null;
+    }
+  };
+
+  // Helper function to get file extension from URL
+  const getFileExtension = (url: string): string => {
+    const urlParts = url.split("?")[0].split("/");
+    const filename = urlParts[urlParts.length - 1];
+    const extensionMatch = filename.match(
+      /\.(jpg|jpeg|png|gif|webp|mp4|mov|avi)$/i
+    );
+    return extensionMatch ? extensionMatch[1] : "jpg";
+  };
+
+  const exportToXLSX = async () => {
     if (selectedListings.size === 0) {
-      alert("Please select at least one listing to export");
+      setError("Please select at least one listing to export");
       return;
     }
 
-    // Get selected listing objects
-    const selectedListingObjects = listings.filter((l) =>
-      selectedListings.has(l.id)
-    );
+    setExporting(true);
+    setError("");
 
-    // Facebook Marketplace Bulk Upload Template format
-    // Row 1: Header
-    // Row 2: Subheader with requirements
-    // Row 3: Empty
-    // Row 4: Column headers
-    // Row 5+: Data
+    try {
+      console.log("📦 Starting export with photos and videos...");
 
-    const line1 = "Facebook Marketplace Bulk Upload Template";
-    const line2 = "";
-    const line3 =
-      "You can create up to 50 listings at once. When you are finished, be sure to save or export this as an XLS/XLSX file.";
-    const line4 = "";
+      // Get selected listing objects
+      const selectedListingObjects = listings.filter((l) =>
+        selectedListings.has(l.id)
+      );
 
-    // Column headers with requirements
-    const headers = [
-      "TITLE",
-      "PRICE",
-      "CONDITION",
-      "DESCRIPTION",
-      "CATEGORY",
-      "OFFER SHIPPING",
-    ];
+      // Create a new zip file
+      const zip = new JSZip();
 
-    const headerRequirements = [
-      "REQUIRED | Plain text (up to 150 characters)",
-      "REQUIRED | A whole number in $",
-      'REQUIRED | Supported values: "New"; "Used - Like New"; "Used - Good"; "Used - Fair"',
-      "OPTIONAL | Plain text (up to 5000 characters)",
-      "OPTIONAL | Type of listing",
-      "OPTIONAL |",
-    ];
+      // ===== CREATE EXCEL FILE =====
+      console.log("📊 Creating XLSX file with ExcelJS...");
 
-    // Map listings to rows
-    const rows = selectedListingObjects.map((listing) => [
-      listing.title.substring(0, 150), // Limit to 150 characters
-      Math.ceil(listing.price), // Whole dollar amount
-      listing.condition || "Used - Good", // Use actual condition from listing
-      (listing.description || "").substring(0, 5000), // Limit to 5000 characters
-      `${listing.department || ""}${
-        listing.category ? "/" + listing.category : ""
-      }`, // Category format
-      "", // Offer shipping - empty for now
-    ]);
+      // Create a new workbook with ExcelJS
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Facebook Marketplace");
 
-    // Combine all parts with proper CSV escaping
-    const escapeCsvField = (field: string | number) => {
-      const str = String(field);
-      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-        return `"${str.replace(/"/g, '""')}"`;
+      // Define column widths
+      worksheet.columns = [
+        { width: 55 }, // TITLE
+        { width: 12 }, // PRICE
+        { width: 25 }, // CONDITION
+        { width: 70 }, // DESCRIPTION
+        { width: 35 }, // CATEGORY
+        { width: 18 }, // OFFER SHIPPING
+      ];
+
+      // Row 1: TreasureHub branding
+      const titleRow = worksheet.getRow(1);
+      titleRow.height = 32;
+      const titleCell = titleRow.getCell(1);
+      titleCell.value =
+        "TreasureHub - Facebook Marketplace Bulk Upload Template";
+      titleCell.font = {
+        name: "Poppins",
+        size: 18,
+        bold: true,
+        color: { argb: "FFD4AF3D" },
+      };
+      titleCell.alignment = { vertical: "middle", horizontal: "left" };
+      titleCell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFFFFFFF" },
+      };
+      titleCell.border = {
+        top: { style: "thin", color: { argb: "FFCCCCCC" } },
+        left: { style: "thin", color: { argb: "FFCCCCCC" } },
+        bottom: { style: "thin", color: { argb: "FFCCCCCC" } },
+        right: { style: "thin", color: { argb: "FFCCCCCC" } },
+      };
+
+      // Row 2: Instructions
+      const instructionsRow = worksheet.getRow(2);
+      instructionsRow.height = 24;
+      const instructionsCell = instructionsRow.getCell(1);
+      instructionsCell.value = `You can create up to 50 listings at once. Exported on ${new Date().toLocaleDateString()} with ${
+        selectedListingObjects.length
+      } listing(s).`;
+      instructionsCell.font = {
+        name: "Poppins",
+        size: 11,
+        color: { argb: "FF495057" },
+      };
+      instructionsCell.alignment = {
+        vertical: "middle",
+        horizontal: "left",
+      };
+      instructionsCell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFF8F9FA" },
+      };
+      instructionsCell.border = {
+        top: { style: "thin", color: { argb: "FFCCCCCC" } },
+        left: { style: "thin", color: { argb: "FFCCCCCC" } },
+        bottom: { style: "thin", color: { argb: "FFCCCCCC" } },
+        right: { style: "thin", color: { argb: "FFCCCCCC" } },
+      };
+
+      // Row 3: Header requirements
+      const requirementsRow = worksheet.getRow(3);
+      requirementsRow.height = 48;
+      const requirements = [
+        "REQUIRED | Plain text (up to 150 characters)",
+        "REQUIRED | A whole number in $",
+        'REQUIRED | Supported values: "New"; "Used - Like New"; "Used - Good"; "Used - Fair"',
+        "OPTIONAL | Plain text (up to 5000 characters)",
+        "OPTIONAL | Type of listing",
+        "OPTIONAL |",
+      ];
+      requirements.forEach((req, index) => {
+        const cell = requirementsRow.getCell(index + 1);
+        cell.value = req;
+        cell.font = {
+          name: "Poppins",
+          size: 9,
+          italic: true,
+          color: { argb: "FF6C757D" },
+        };
+        cell.alignment = {
+          vertical: "top",
+          horizontal: "left",
+          wrapText: true,
+        };
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFFFF3CD" },
+        };
+        cell.border = {
+          top: { style: "thin", color: { argb: "FFCCCCCC" } },
+          left: { style: "thin", color: { argb: "FFCCCCCC" } },
+          bottom: { style: "thin", color: { argb: "FFCCCCCC" } },
+          right: { style: "thin", color: { argb: "FFCCCCCC" } },
+        };
+      });
+
+      // Row 4: Column headers
+      const headerRow = worksheet.getRow(4);
+      headerRow.height = 28;
+      const headers = [
+        "TITLE",
+        "PRICE",
+        "CONDITION",
+        "DESCRIPTION",
+        "CATEGORY",
+        "OFFER SHIPPING",
+      ];
+      headers.forEach((header, index) => {
+        const cell = headerRow.getCell(index + 1);
+        cell.value = header;
+        cell.font = {
+          name: "Poppins",
+          size: 13,
+          bold: true,
+          color: { argb: "FFFFFFFF" },
+        };
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFD4AF3D" },
+        };
+        cell.border = {
+          top: { style: "medium", color: { argb: "FF000000" } },
+          left: { style: "medium", color: { argb: "FF000000" } },
+          bottom: { style: "medium", color: { argb: "FF000000" } },
+          right: { style: "medium", color: { argb: "FF000000" } },
+        };
+      });
+
+      // Row 5+: Data rows
+      selectedListingObjects.forEach((listing, index) => {
+        const rowNumber = index + 5;
+        const dataRow = worksheet.getRow(rowNumber);
+
+        // Build Facebook category path from department, category, subCategory with // separators
+        const parts = [];
+        if (listing.department) parts.push(listing.department);
+        if (listing.category) parts.push(listing.category);
+        if (listing.subCategory) parts.push(listing.subCategory);
+        const categoryPath = parts.join("//");
+
+        const rowData = [
+          listing.title.substring(0, 150),
+          Math.ceil(listing.price),
+          listing.condition || "Used - Good",
+          (listing.description || "").substring(0, 5000),
+          categoryPath,
+          "",
+        ];
+
+        rowData.forEach((value, colIndex) => {
+          const cell = dataRow.getCell(colIndex + 1);
+          cell.value = value;
+          cell.font = { name: "Poppins", size: 11 };
+          cell.alignment = {
+            vertical: "top",
+            horizontal: "left",
+            wrapText: colIndex === 3, // Enable wrapping for description column
+          };
+
+          // Alternating row colors
+          const fillColor = rowNumber % 2 === 0 ? "FFFFFFFF" : "FFF8F9FA";
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: fillColor },
+          };
+
+          cell.border = {
+            top: { style: "thin", color: { argb: "FFCCCCCC" } },
+            left: { style: "thin", color: { argb: "FFCCCCCC" } },
+            bottom: { style: "thin", color: { argb: "FFCCCCCC" } },
+            right: { style: "thin", color: { argb: "FFCCCCCC" } },
+          };
+        });
+      });
+
+      // Generate Excel file as buffer
+      const excelBuffer = await workbook.xlsx.writeBuffer();
+      const xlsxBlob = new Blob([excelBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      // Add XLSX file to zip
+      zip.file("Facebook-Marketplace-Template.xlsx", xlsxBlob);
+      console.log("✅ XLSX file added to zip");
+
+      // ===== DOWNLOAD ALL PHOTOS AND VIDEOS =====
+      console.log("📸 Starting photo and video download...");
+
+      let totalPhotos = 0;
+      let totalVideos = 0;
+
+      for (const listing of selectedListingObjects) {
+        console.log(`Processing listing: ${listing.title}`);
+
+        // Create a folder for each listing
+        const listingFolderName = `${listing.itemId}-${listing.title
+          .replace(/[^a-z0-9]/gi, "_")
+          .substring(0, 50)}`;
+
+        // Collect all photo URLs
+        const photoUrls: string[] = [];
+        if (listing.photos) {
+          if (listing.photos.hero) photoUrls.push(listing.photos.hero);
+          if (listing.photos.back) photoUrls.push(listing.photos.back);
+          if (listing.photos.proof) photoUrls.push(listing.photos.proof);
+          if (listing.photos.additional) {
+            photoUrls.push(...listing.photos.additional);
+          }
+        }
+
+        // Download and add photos to zip
+        for (let i = 0; i < photoUrls.length; i++) {
+          const url = photoUrls[i];
+          console.log(`  Downloading photo ${i + 1}/${photoUrls.length}...`);
+
+          const blob = await fetchFileAsBlob(url, "photo");
+          if (blob) {
+            const extension = getFileExtension(url);
+            zip.file(
+              `${listingFolderName}/photos/photo-${i + 1}.${extension}`,
+              blob
+            );
+            totalPhotos++;
+          }
+        }
+
+        // Download and add videos to zip
+        if (listing.videos && listing.videos.length > 0) {
+          for (let i = 0; i < listing.videos.length; i++) {
+            const video = listing.videos[i];
+            const videoUrl = video.videoUrl || video.processedVideoKey;
+
+            if (videoUrl) {
+              console.log(
+                `  Downloading video ${i + 1}/${listing.videos.length}...`
+              );
+
+              // Generate video URL using CloudFront domain
+              const cdnDomain =
+                process.env.NEXT_PUBLIC_CDN_URL ||
+                "https://dtlqyjbwka60p.cloudfront.net";
+              const cleanDomain = cdnDomain
+                .replace("https://", "")
+                .replace("http://", "");
+
+              let fullVideoUrl = videoUrl;
+              if (!videoUrl.startsWith("http")) {
+                fullVideoUrl = `https://${cleanDomain}/${videoUrl}`;
+              }
+
+              const blob = await fetchFileAsBlob(fullVideoUrl, "video");
+              if (blob) {
+                const extension = getFileExtension(fullVideoUrl);
+                zip.file(
+                  `${listingFolderName}/videos/video-${i + 1}.${extension}`,
+                  blob
+                );
+                totalVideos++;
+              }
+            }
+          }
+        }
       }
-      return str;
-    };
 
-    const csvContent = [
-      line1,
-      line2,
-      line3,
-      line4,
-      headers.map(escapeCsvField).join(","),
-      headerRequirements.map(escapeCsvField).join(","),
-      ...rows.map((row) => row.map(escapeCsvField).join(",")),
-    ].join("\n");
+      console.log(
+        `✅ Downloaded ${totalPhotos} photos and ${totalVideos} videos`
+      );
 
-    // Create blob and download
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
+      // ===== GENERATE AND DOWNLOAD ZIP FILE =====
+      console.log("📦 Generating zip file...");
+      const zipBlob = await zip.generateAsync({ type: "blob" });
 
-    link.setAttribute("href", url);
-    link.setAttribute(
-      "download",
-      `facebook-marketplace-export-${
+      // Trigger download
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(zipBlob);
+      link.href = url;
+      link.download = `TreasureHub-Facebook-Export-${
         new Date().toISOString().split("T")[0]
-      }.csv`
-    );
-    link.style.visibility = "hidden";
+      }.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
 
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      console.log("✅ Export complete!");
+      setExportStats({
+        listings: selectedListingObjects.length,
+        photos: totalPhotos,
+        videos: totalVideos,
+      });
+      setShowSuccessModal(true);
+    } catch (error) {
+      console.error("❌ Export error:", error);
+      setError("Failed to export. Please try again.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   if (loading) {
@@ -242,12 +553,22 @@ export default function FacebookShopExportPage() {
             </div>
 
             <button
-              onClick={exportToCSV}
-              disabled={selectedListings.size === 0}
+              onClick={exportToXLSX}
+              disabled={selectedListings.size === 0 || exporting}
               className="inline-flex items-center gap-2 px-4 py-2 bg-[#D4AF3D] text-white rounded-lg hover:bg-[#C49F2D] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <Download className="h-5 w-5" />
-              Export {selectedListings.size > 0 && `(${selectedListings.size})`}
+              {exporting ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <Download className="h-5 w-5" />
+                  Export{" "}
+                  {selectedListings.size > 0 && `(${selectedListings.size})`}
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -440,6 +761,89 @@ export default function FacebookShopExportPage() {
           )}
         </div>
       </div>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            {/* Background overlay */}
+            <div
+              className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
+              onClick={() => setShowSuccessModal(false)}
+            ></div>
+
+            {/* Center modal */}
+            <span
+              className="hidden sm:inline-block sm:align-middle sm:h-screen"
+              aria-hidden="true"
+            >
+              &#8203;
+            </span>
+
+            {/* Modal panel */}
+            <div className="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-gradient-to-br from-[#D4AF3D] to-[#B8941F] px-6 pt-8 pb-6">
+                <div className="flex items-center justify-center w-16 h-16 mx-auto bg-white rounded-full shadow-lg">
+                  <CheckCircle className="w-10 h-10 text-[#D4AF3D]" />
+                </div>
+                <h3 className="mt-4 text-2xl font-bold text-center text-white">
+                  Export Successful!
+                </h3>
+              </div>
+
+              <div className="px-6 py-6 bg-white">
+                <p className="text-center text-gray-600 mb-6">
+                  Your Facebook Marketplace export is ready and has been
+                  downloaded.
+                </p>
+
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="text-3xl font-bold text-[#D4AF3D]">
+                      {exportStats.listings}
+                    </div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      Listing{exportStats.listings !== 1 ? "s" : ""}
+                    </div>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="text-3xl font-bold text-[#D4AF3D]">
+                      {exportStats.photos}
+                    </div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      Photo{exportStats.photos !== 1 ? "s" : ""}
+                    </div>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="text-3xl font-bold text-[#D4AF3D]">
+                      {exportStats.videos}
+                    </div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      Video{exportStats.videos !== 1 ? "s" : ""}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                  <p className="text-sm text-blue-800">
+                    <strong>📦 What's included:</strong>
+                    <br />• Professional XLSX template with TreasureHub branding
+                    <br />• All photos organized by listing
+                    <br />• All videos organized by listing
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setShowSuccessModal(false)}
+                  className="w-full px-4 py-3 text-white bg-[#D4AF3D] rounded-lg hover:bg-[#C49F2D] transition-colors font-semibold shadow-md hover:shadow-lg"
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

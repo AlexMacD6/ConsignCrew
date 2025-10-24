@@ -90,3 +90,4 @@ After pasting the complete list:
 That's it! Once you paste the categories, everything will work perfectly. The component is ready and waiting for your data.
 
 
+
