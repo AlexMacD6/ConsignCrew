@@ -2,13 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { PrismaClient } from "@prisma/client";
-
-// Configure API route for presigned URL generation
-export const runtime = 'nodejs';
-export const maxDuration = 30; // 30 seconds timeout for presigned URL generation
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 // Validate AWS environment variables at startup
 const validateAWSConfig = () => {

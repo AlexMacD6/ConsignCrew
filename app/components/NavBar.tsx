@@ -147,14 +147,15 @@ export default function NavBar() {
             </Link>
           </PopoverContent>
         </Popover>
-        {session?.user && (
+        {/* Temporarily hidden - Treasure Hunt */}
+        {/* {session?.user && (
           <Link
             href="/treasure-hunt"
             className="text-[#D4AF3D] font-semibold hover:text-[#b8932f] transition"
           >
             Treasure Hunt
           </Link>
-        )}
+        )} */}
       </div>
 
       {/* Mobile Menu Button and Session-aware buttons (right) */}
@@ -320,7 +321,8 @@ export default function NavBar() {
               >
                 Quick Appraisal
               </Link>
-              {session?.user && (
+              {/* Temporarily hidden - Treasure Hunt */}
+              {/* {session?.user && (
                 <Link
                   href="/treasure-hunt"
                   className="block w-full text-left py-2 text-[#D4AF3D] font-semibold hover:text-[#b8932f] transition"
@@ -328,7 +330,7 @@ export default function NavBar() {
                 >
                   Treasure Hunt
                 </Link>
-              )}
+              )} */}
             </div>
 
             {/* Our Origin Section */}

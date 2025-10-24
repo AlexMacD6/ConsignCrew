@@ -27,19 +27,20 @@ model user {
   invitationsSent  Invitation[]    @relation("InvitationsSent")
   listings         Listing[]
   members          Member[]
+  photoGallery     PhotoGallery[]  @relation("UserPhotoGallery")
   answers          Question[]      @relation("QuestionAnsweredBy")
   approvals        Question[]      @relation("QuestionApprovedBy")
   questions        Question[]      @relation("QuestionCreatedBy")
   teamMemberships  TeamMember[]
   videos           Video[]
   accounts         account[]
+  cart             Cart?
+  hiddenListings   HiddenListing[]
   buyerOrders      Order[]         @relation("BuyerOrders")
   sellerOrders     Order[]         @relation("SellerOrders")
-  sessions         session[]
-  cart             Cart?
-  savedListings    SavedListing[]
-  hiddenListings   HiddenListing[]
   promoCodes       PromoCode[]
+  savedListings    SavedListing[]
+  sessions         session[]
 
   @@index([email])
   @@index([zipCode])
@@ -281,40 +282,33 @@ model Listing {
   googleProductCategory  String?
   heldUntil              DateTime?
   isHeld                 Boolean          @default(false)
-  deliveryCategory       DeliveryCategory @default(NORMAL)
   saves                  Int              @default(0)
-
-  // Transaction tracking fields for sellers
-  purchasePrice     Float? // What the seller paid for the item
-  transactionPrice  Float? // Final sale price to customer
-  paymentMethod     String? // 'venmo', 'zelle', 'cash'
-  salesTax          Float? // Calculated sales tax
-  taxRate           Float? // Tax rate used for calculation
-  soldAt            DateTime? // When the item was sold
-  comments          String? // Transaction notes/comments
-  fulfillmentMethod String? // 'pickup', 'delivery' - how the item was fulfilled
-
-  user           user             @relation(fields: [userId], references: [id])
-  history        ListingHistory[]
-  orders         Order[]
-  priceHistory   PriceHistory[]
-  inventoryItems InventoryItem[]  @relation("InventoryItemToListing")
-  inventoryLists InventoryList[]  @relation("InventoryListToListing")
-  videos         Video[]          @relation("ListingToVideo")
-  cartItems      CartItem[]
-  savedByUsers   SavedListing[]   @relation("SavedListing")
-  hiddenByUsers  HiddenListing[]  @relation("HiddenListing")
+  deliveryCategory       DeliveryCategory @default(NORMAL)
+  comments               String?
+  paymentMethod          String?
+  purchasePrice          Float?
+  salesTax               Float?
+  soldAt                 DateTime?
+  taxRate                Float?
+  transactionPrice       Float?
+  fulfillmentMethod      String?
+  user                   user             @relation(fields: [userId], references: [id])
+  galleryPhotos          PhotoGallery[]   @relation("ListingGalleryPhotos")
+  cartItems              CartItem[]
+  hiddenByUsers          HiddenListing[]  @relation("HiddenListing")
+  history                ListingHistory[]
+  orders                 Order[]
+  priceHistory           PriceHistory[]
+  savedByUsers           SavedListing[]   @relation("SavedListing")
+  inventoryItems         InventoryItem[]  @relation("InventoryItemToListing")
+  inventoryLists         InventoryList[]  @relation("InventoryListToListing")
+  videos                 Video[]          @relation("ListingToVideo")
 
   @@index([userId])
   @@index([status])
   @@index([department])
   @@index([facebookShopEnabled])
   @@index([facebookLastSync])
-}
-
-enum DeliveryCategory {
-  NORMAL
-  BULK
 }
 
 model PriceHistory {
@@ -477,6 +471,30 @@ model Video {
   @@index([createdAt])
 }
 
+model PhotoGallery {
+  id               String   @id @default(cuid())
+  userId           String
+  s3Key            String
+  url              String
+  thumbnailUrl     String?
+  originalFilename String
+  fileSize         Int
+  mimeType         String
+  width            Int?
+  height           Int?
+  status           String   @default("available")
+  listingId        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  listing          Listing? @relation("ListingGalleryPhotos", fields: [listingId], references: [id])
+  user             user     @relation("UserPhotoGallery", fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([listingId])
+  @@index([createdAt])
+}
+
 model EbayNotification {
   id                  String                @id @default(cuid())
   notificationId      String                @unique
@@ -565,106 +583,92 @@ model InventoryList {
 }
 
 model InventoryItem {
-  id               String                 @id @default(cuid())
-  listId           String
-  lotNumber        String?
-  itemNumber       String?
-  deptCode         String?
-  department       String?
-  description      String?
-  quantity         Int?
-  unitRetail       Float?
-  extRetail        Float?
-  vendor           String?
-  categoryCode     String?
-  category         String?
-  notes            String?
-  createdAt        DateTime               @default(now())
-  updatedAt        DateTime               @updatedAt
-  purchasePrice    Float?
-  // Receiving fields
-  receiveStatus    InventoryReceiveStatus @default(MANIFESTED)
-  receivedQuantity Int                    @default(0)
-  receivedAt       DateTime?
-  receivedBy       String?
-  list             InventoryList          @relation(fields: [listId], references: [id], onDelete: Cascade)
-  listings         Listing[]              @relation("InventoryItemToListing")
+  id                   String                 @id @default(cuid())
+  listId               String
+  lotNumber            String?
+  itemNumber           String?
+  deptCode             String?
+  department           String?
+  description          String?
+  quantity             Int?
+  unitRetail           Float?
+  extRetail            Float?
+  vendor               String?
+  categoryCode         String?
+  category             String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  purchasePrice        Float?
+  notes                String?
+  InventoryDisposition InventoryDisposition[]
+  list                 InventoryList          @relation(fields: [listId], references: [id], onDelete: Cascade)
+  listings             Listing[]              @relation("InventoryItemToListing")
 
   @@unique([listId, itemNumber])
   @@index([listId])
   @@index([itemNumber])
-  @@index([receiveStatus])
-}
-
-enum InventoryReceiveStatus {
-  MANIFESTED
-  PARTIALLY_RECEIVED
-  RECEIVED
 }
 
 model Order {
-  id                      String      @id @default(cuid())
+  id                      String             @id @default(cuid())
   listingId               String
   buyerId                 String
   sellerId                String
-  stripePaymentIntentId   String?     @unique
-  stripeCheckoutSessionId String?     @unique
+  stripePaymentIntentId   String?            @unique
+  stripeCheckoutSessionId String?            @unique
   stripeChargeId          String?
   amount                  Float
-  currency                String      @default("usd")
-  status                  OrderStatus @default(PENDING)
+  currency                String             @default("usd")
+  status                  OrderStatus        @default(PENDING)
   shippingAddress         Json?
-
-  // NEW PRICING FIELDS - Proper database fields instead of JSON storage
-  subtotal            Float? // Item price(s) before delivery/tax
-  deliveryFee         Float? // Delivery fee (0 if free shipping)
-  taxAmount           Float? // Sales tax amount
-  taxRate             Float? // Tax rate used (e.g., 0.0825)
-  deliveryMethod      String? // 'delivery', 'pickup'
-  deliveryCategory    String? // 'NORMAL', 'BULK', 'large'
-  promoCode           String? // Applied promo code
-  promoDiscountAmount Float? // Discount amount
-  promoDiscountType   String? // 'fixed_amount', 'percentage', 'free_shipping'
-  isMultiItem         Boolean @default(false) // Single item vs cart checkout
-  orderItems          Json? // Array of all items in the order with individual prices
-
-  trackingNumber         String?
-  deliveredAt            DateTime?
-  deliveryPhotos         Json? // Array of photo URLs for delivery confirmation
-  finalizedAt            DateTime?
-  createdAt              DateTime           @default(now())
-  updatedAt              DateTime           @updatedAt
-  disputeReason          String?
-  disputeCreatedAt       DateTime?
-  disputeResolvedAt      DateTime? // When the dispute was resolved
-  disputeResolution      String? // RETURNED, REFUNDED, FINALIZED
-  disputeAdminComments   String? // Admin comments about the dispute resolution
-  contestPeriodExpiresAt DateTime? // When the 24-hour contest period expires
-  checkoutExpiresAt      DateTime?
-  isHeld                 Boolean            @default(false)
-  deliveryAttempts       Int                @default(0)
-  deliveryDriverId       String?
-  deliveryNotes          String?
-  estimatedDeliveryTime  DateTime?
-  lastDeliveryAttempt    DateTime?
-  pickupTimeSlot         String?
-  scheduledPickupTime    DateTime?
-  enRouteAt              DateTime? // Timestamp when order was marked as En Route
-  statusUpdatedAt        DateTime?
-  statusUpdatedBy        String?
-  buyer                  user               @relation("BuyerOrders", fields: [buyerId], references: [id])
-  listing                Listing            @relation(fields: [listingId], references: [id])
-  seller                 user               @relation("SellerOrders", fields: [sellerId], references: [id])
-  deliveryTimeSlots      DeliveryTimeSlot[]
+  trackingNumber          String?
+  deliveredAt             DateTime?
+  finalizedAt             DateTime?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+  disputeReason           String?
+  disputeCreatedAt        DateTime?
+  checkoutExpiresAt       DateTime?
+  isHeld                  Boolean            @default(false)
+  deliveryAttempts        Int                @default(0)
+  deliveryDriverId        String?
+  deliveryNotes           String?
+  estimatedDeliveryTime   DateTime?
+  lastDeliveryAttempt     DateTime?
+  pickupTimeSlot          String?
+  scheduledPickupTime     DateTime?
+  statusUpdatedAt         DateTime?
+  statusUpdatedBy         String?
+  deliveryCategory        String?
+  deliveryFee             Float?
+  deliveryMethod          String?
+  isMultiItem             Boolean            @default(false)
+  promoCode               String?
+  promoDiscountAmount     Float?
+  promoDiscountType       String?
+  subtotal                Float?
+  taxAmount               Float?
+  taxRate                 Float?
+  enRouteAt               DateTime?
+  deliveryPhotos          Json?
+  contestPeriodExpiresAt  DateTime?
+  disputeAdminComments    String?
+  disputeResolution       String?
+  disputeResolvedAt       DateTime?
+  orderItems              Json?
+  deliveryTimeSlots       DeliveryTimeSlot[]
+  buyer                   user               @relation("BuyerOrders", fields: [buyerId], references: [id])
+  listing                 Listing            @relation(fields: [listingId], references: [id])
+  seller                  user               @relation("SellerOrders", fields: [sellerId], references: [id])
 
   @@index([listingId])
   @@index([buyerId])
   @@index([sellerId])
   @@index([status])
   @@index([createdAt])
-  @@index([promoCode]) // NEW: For promo code queries
-  @@index([deliveryMethod]) // NEW: For delivery method filtering
-  @@index([subtotal]) // NEW: For pricing queries
+  @@index([promoCode])
+  @@index([deliveryMethod])
+  @@index([subtotal])
   @@map("orders")
 }
 
@@ -674,16 +678,16 @@ model Driver {
   fullName            String
   email               String?              @unique
   phone               String?
-  vehicleType         String?
   isActive            Boolean              @default(true)
   totalReviews        Int                  @default(0)
   totalBonusEarned    Float                @default(0)
   googleReviewsUrl    String?
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
+  vehicleType         String?
+  preScreeningRatings PreScreeningRating[]
   reviewBonuses       ReviewBonus[]
   reviewScans         ReviewScan[]
-  preScreeningRatings PreScreeningRating[]
 
   @@index([initials])
   @@index([isActive])
@@ -741,7 +745,7 @@ model PreScreeningRating {
   id               String      @id @default(cuid())
   driverId         String
   reviewScanId     String?     @unique
-  rating           Int // 1-5 stars
+  rating           Int
   ipAddress        String?
   proceedsToGoogle Boolean     @default(false)
   createdAt        DateTime    @default(now())
@@ -752,6 +756,103 @@ model PreScreeningRating {
   @@index([rating])
   @@index([proceedsToGoogle])
   @@index([createdAt])
+}
+
+model SavedListing {
+  id        String   @id @default(cuid())
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+  listing   Listing  @relation("SavedListing", fields: [listingId], references: [id], onDelete: Cascade)
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId])
+  @@index([userId])
+  @@index([listingId])
+  @@map("saved_listings")
+}
+
+model HiddenListing {
+  id        String   @id @default(cuid())
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+  listing   Listing  @relation("HiddenListing", fields: [listingId], references: [id], onDelete: Cascade)
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId])
+  @@index([userId])
+  @@index([listingId])
+  @@map("hidden_listings")
+}
+
+model PromoCode {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  name        String
+  description String?
+  type        String
+  value       Float
+  isActive    Boolean   @default(true)
+  startDate   DateTime?
+  endDate     DateTime?
+  usageLimit  Int?
+  usageCount  Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdBy   String?
+  creator     user?     @relation(fields: [createdBy], references: [id])
+
+  @@index([code])
+  @@index([isActive])
+  @@index([startDate])
+  @@index([endDate])
+  @@map("promo_codes")
+}
+
+model DeliveryTimeSlot {
+  id          String                 @id @default(cuid())
+  orderId     String
+  date        DateTime               @db.Date
+  windowId    String
+  windowLabel String
+  startTime   String
+  endTime     String
+  status      DeliveryTimeSlotStatus @default(PENDING_SELECTION)
+  createdAt   DateTime               @default(now())
+  selectedAt  DateTime?
+  expiresAt   DateTime?
+  isActive    Boolean                @default(true)
+  token       String?
+  version     Int                    @default(1)
+  order       Order                  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([token])
+  @@index([date])
+  @@index([status])
+  @@index([isActive])
+  @@map("delivery_time_slots")
+}
+
+model InventoryDisposition {
+  id              String              @id
+  inventoryItemId String
+  status          InventoryItemStatus
+  quantity        Int
+  notes           String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime
+  createdBy       String?
+  InventoryItem   InventoryItem       @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+
+  @@index([inventoryItemId])
+  @@index([status])
+}
+
+enum DeliveryCategory {
+  NORMAL
+  BULK
 }
 
 enum OrderStatus {
@@ -765,90 +866,19 @@ enum OrderStatus {
   CANCELLED
   REFUNDED
   PENDING_SCHEDULING
-  AWAITING_DELIVERY_SCHEDULING
   SCHEDULED
   EN_ROUTE
-}
-
-model SavedListing {
-  id        String   @id @default(cuid())
-  userId    String
-  listingId String
-  createdAt DateTime @default(now())
-  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  listing   Listing  @relation("SavedListing", fields: [listingId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, listingId])
-  @@index([userId])
-  @@index([listingId])
-  @@map("saved_listings")
-}
-
-model HiddenListing {
-  id        String   @id @default(cuid())
-  userId    String
-  listingId String
-  createdAt DateTime @default(now())
-  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  listing   Listing  @relation("HiddenListing", fields: [listingId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, listingId])
-  @@index([userId])
-  @@index([listingId])
-  @@map("hidden_listings")
-}
-
-model PromoCode {
-  id          String    @id @default(cuid())
-  code        String    @unique
-  name        String
-  description String?
-  type        String // 'percentage', 'fixed_amount', 'free_shipping'
-  value       Float // percentage (0-100) or fixed amount in dollars
-  isActive    Boolean   @default(true)
-  startDate   DateTime?
-  endDate     DateTime?
-  usageLimit  Int? // null = unlimited
-  usageCount  Int       @default(0)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  createdBy   String? // user ID who created it
-  creator     user?     @relation(fields: [createdBy], references: [id])
-
-  @@index([code])
-  @@index([isActive])
-  @@index([startDate])
-  @@index([endDate])
-  @@map("promo_codes")
-}
-
-model DeliveryTimeSlot {
-  id          String                 @id @default(cuid())
-  orderId     String
-  token       String? // Token for this delivery assignment (shared across slots)
-  version     Int                    @default(1) // Version number for tracking
-  date        DateTime               @db.Date
-  windowId    String // 'morning', 'afternoon', 'evening'
-  windowLabel String // 'Morning (8:00 AM - 12:00 PM)'
-  startTime   String // '08:00'
-  endTime     String // '12:00'
-  status      DeliveryTimeSlotStatus @default(PENDING_SELECTION)
-  isActive    Boolean                @default(true) // False when superseded by newer assignment
-  createdAt   DateTime               @default(now())
-  selectedAt  DateTime?
-  expiresAt   DateTime? // Optional expiration time
-  order       Order                  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  @@index([orderId])
-  @@index([token])
-  @@index([date])
-  @@index([status])
-  @@index([isActive])
-  @@map("delivery_time_slots")
+  AWAITING_DELIVERY_SCHEDULING
 }
 
 enum DeliveryTimeSlotStatus {
   PENDING_SELECTION
   CONFIRMED
   CANCELLED
+}
+
+enum InventoryItemStatus {
+  RECEIVED
+  TRASH
+  USE
 }

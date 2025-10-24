@@ -1,12 +1,11 @@
 "use client";
 import React from "react";
 import { Lock } from "lucide-react";
-import CategorySelector from "./CategorySelector";
+import UnifiedCategorySelector from "./UnifiedCategorySelector";
 import BasicFormFields from "./BasicFormFields";
 import ProductDimensions from "./ProductDimensions";
 import AdditionalFormFields from "./AdditionalFormFields";
 import DeliveryCategory from "./DeliveryCategory";
-
 
 interface FormSectionProps {
   // Form data
@@ -54,8 +53,6 @@ interface FormSectionProps {
   deliveryCategory: "NORMAL" | "BULK";
   setDeliveryCategory: (value: "NORMAL" | "BULK") => void;
 
-
-
   // Additional props
   selectedInventoryItem?: any;
   discountSchedules: readonly string[];
@@ -70,7 +67,7 @@ interface FormSectionProps {
 export default function FormSection(props: FormSectionProps) {
   return (
     <div className="space-y-4">
-      <CategorySelector
+      <UnifiedCategorySelector
         department={props.department}
         setDepartment={props.setDepartment}
         category={props.category}
@@ -117,7 +114,9 @@ export default function FormSection(props: FormSectionProps) {
         modelNumber={props.modelNumber}
         setModelNumber={props.setModelNumber}
         discountSchedule={props.discountSchedule}
-        setDiscountSchedule={(value: string) => props.setDiscountSchedule(value as any)}
+        setDiscountSchedule={(value: string) =>
+          props.setDiscountSchedule(value as any)
+        }
         discountSchedules={props.discountSchedules}
         facebookGtin={props.facebookGtin}
         setFacebookGtin={props.setFacebookGtin}
@@ -133,8 +132,6 @@ export default function FormSection(props: FormSectionProps) {
         setDeliveryCategory={props.setDeliveryCategory}
         confidenceScores={props.confidenceScores}
       />
-
-
     </div>
   );
 }

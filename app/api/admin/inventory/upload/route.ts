@@ -2,11 +2,54 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
+/**
+ * Parse a single CSV line, properly handling quoted fields that may contain commas
+ */
+function parseCsvLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const nextChar = line[i + 1];
+    
+    if (char === '"') {
+      // Handle escaped quotes (double quotes)
+      if (inQuotes && nextChar === '"') {
+        current += '"';
+        i++; // Skip the next quote
+      } else {
+        // Toggle quote state
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      // End of field
+      result.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  
+  // Add the last field
+  result.push(current);
+  
+  return result;
+}
+
+/**
+ * Parse CSV content into structured inventory items
+ * Handles quoted fields properly to support product descriptions with commas
+ */
 function parseCsv(text: string) {
   const lines = text.split(/\r?\n/).filter((l) => l.trim() !== "");
   if (lines.length === 0) return [] as any[];
-  const header = lines[0].split(",").map((h) => h.trim().toLowerCase());
+  
+  // Parse header using proper CSV parsing
+  const header = parseCsvLine(lines[0]).map((h) => h.trim().toLowerCase());
   const idx = (name: string) => header.findIndex((h) => h.startsWith(name));
+  
   const col = {
     lot: idx("lot"),
     item: idx("item"),
@@ -20,9 +63,12 @@ function parseCsv(text: string) {
     categoryCode: idx("category c"),
     category: idx("category"),
   };
+  
   return lines.slice(1).map((line) => {
-    const v = line.split(",");
+    // Use proper CSV parsing for each line
+    const v = parseCsvLine(line);
     const get = (i: number) => (i >= 0 ? v[i]?.trim() ?? null : null);
+    
     return {
       lotNumber: get(col.lot),
       itemNumber: get(col.item),

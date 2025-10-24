@@ -554,7 +554,7 @@ Return a single JSON object with the following fields populated (NO COMMENTS IN 
   "department": "string",
   "category": "string",
   "subCategory": "string",
-  "condition": "new" | "used" | "refurbished",
+  "condition": "New" | "Used - Like New" | "Used - Good" | "Used - Fair",
   "brand": "string",
   "estimatedRetailPrice": number,
   "listPrice": number,
@@ -574,7 +574,7 @@ Return a single JSON object with the following fields populated (NO COMMENTS IN 
   "conditionDetails": "string",
   "valueProposition": "string",
   "facebookBrand": "string",
-  "facebookCondition": "new" | "used" | "refurbished",
+  "facebookCondition": "New" | "Used - Like New" | "Used - Good" | "Used - Fair",
   "facebookGtin": "string" | null,
   "facebookCategory": "string",
   "googleProductCategory": "string", // Official Google Product Category for Facebook Commerce Manager
@@ -665,39 +665,55 @@ CRITICAL: When counting items (drawers, shelves, etc.), count carefully and accu
 MANDATORY: Always describe visible damage, wear, or imperfections in the description, even if minor.
 
 📋 FACEBOOK MARKETPLACE TAXONOMY (SINGLE SOURCE OF TRUTH):
-Use ONLY Facebook Marketplace categories for all categorization:
+Use ONLY the categories provided below in the EXACT format shown.
 
-DEPARTMENTS:
-- Furniture
-- Electronics  
-- Home & Garden
-- Clothing & Accessories
-- Sporting Goods
-- Toys & Games
-- Books & Magazines
-- Automotive
-- Beauty & Health
-- Jewelry & Watches
-- Tools & Hardware
-- Collectibles & Art
-- Antiques
+**CRITICAL INSTRUCTIONS FOR CATEGORIZATION:**
+1. You MUST select a category from the complete list below
+2. Return the FULL PATH in this exact format: "Department//Category//Sub-category"
+3. Examples of CORRECT format:
+   - "Electronics//Video Games & Consoles//Video Game Accessories//Memory Cards & Expansion Packs"
+   - "Antiques & Collectibles//Antique & Collectible Furniture//Chairs"
+   - "Clothing, Shoes & Accessories//Men's Clothing//T-Shirts"
 
-CATEGORIES (by Department):
-Furniture: Living Room, Dining Room, Bedroom, Office, Storage, Outdoor, Kids
-Electronics: Computers & Tablets, Mobile Phones, Audio Equipment, Cameras & Photo, TVs & Video, Smart Home, Gaming
-Home & Garden: Home Décor, Lighting, Kitchen & Dining, Bathroom, Storage & Organization, Rugs & Textiles
-Clothing & Accessories: Men's Clothing, Women's Clothing, Kids' Clothing, Jewelry & Watches, Bags & Purses, Shoes
-Sporting Goods: Fitness Equipment, Team Sports, Outdoor Sports, Water Sports
-Toys & Games: Board Games, Video Games, Educational, Action Figures
+4. For department, category, and subCategory fields in your response:
+   - Parse the full path and extract each level
+   - department = First level (e.g., "Electronics")
+   - category = Second level (e.g., "Video Games & Consoles")
+   - subCategory = Third level if it exists (e.g., "Video Game Accessories")
+   
+5. If there's a 4th level, combine it with the 3rd level using " // " separator
+
+**COMPLETE CATEGORY LIST** (Use ONLY these - format: Department//Category//Sub-category):
+- Home & Kitchen//Major Appliances//Refrigerators & Freezers
+- Home & Kitchen//Kitchen & Dining//Cookware//Skillets & Frying Pans
+- Electronics//Video Games & Consoles//Video Game Accessories//Memory Cards & Expansion Packs
+- Electronics//Video Games & Consoles//Video Games
+- Clothing, Shoes & Accessories//Men's Clothing//T-Shirts
+- Clothing, Shoes & Accessories//Women's Shoes//Boots
+- Furniture//Living Room Furniture//Sofas, Loveseats & Sectionals
+- Furniture//Bedroom Furniture//Beds & Bed Frames
+- Antiques & Collectibles//Antique & Collectible Furniture//Chairs
+- Arts & Crafts//Art Supplies//Canvas & Art Boards
+- Baby Products//Baby Clothing & Shoes//Boys' Baby Clothing & Shoes//Bodysuits
+- Bags & Luggage//Handbags//Crossbody Bags
+
+[NOTE: This is a simplified sample. The full taxonomy with ALL categories is loaded at runtime. Choose the MOST SPECIFIC matching category from the available options. Common departments include: Home & Kitchen, Electronics, Clothing Shoes & Accessories, Furniture, Tools & Home Improvement, Toys & Games, Sporting Goods, etc.]
 
 🎯 UNIFIED CATEGORIZATION:
-- Use Facebook Marketplace taxonomy for ALL categorization
-- No separate TreasureHub vs Facebook categories
-- Single department → category → subCategory structure
-- All fields use the same Facebook-compatible values
+- Parse each category path by splitting on "//"
+- First segment = department
+- Second segment = category  
+- Third+ segments = subCategory (join with " // " if multiple levels)
+- All categorization uses this single taxonomy source
+
+🎯 Condition Values (MUST use these EXACT strings):
+- "New" - Brand new, never used
+- "Used - Like New" - Minimal signs of wear, excellent condition
+- "Used - Good" - Some signs of wear, fully functional
+- "Used - Fair" - Noticeable wear but still functional
 
 🎯 Facebook Marketplace Integration:
-- Condition values must be: "new", "used", or "refurbished" (lowercase)
+- Condition MUST be one of the exact values above
 - Brand field is shared between platforms
 - GTIN field is prioritized for Facebook matching
 - Category uses unified Facebook Marketplace taxonomy
@@ -723,7 +739,7 @@ If the item appears vintage, discontinued, or one-of-a-kind and no reliable MSRP
 Treasure indicators:
 - Item appears to be 20+ years old
 - No modern equivalent or MSRP available
-- Condition = "used" 
+- Condition = "Used - Good" or "Used - Fair" (use exact format)
 - Vintage, antique, or collector appeal
 - Discontinued or rare model
 - One-of-a-kind or handmade piece`;
@@ -919,7 +935,7 @@ export interface ComprehensiveListingData {
   department: string;
   category: string;
   subCategory: string;
-  condition: 'new' | 'used' | 'refurbished'; // Updated to Facebook-compatible format
+  condition: 'New' | 'Used - Like New' | 'Used - Good' | 'Used - Fair'; // Updated to Facebook-compatible format
   estimatedRetailPrice: number;
   listPrice: number;
   priceReasoning: string;

@@ -11,7 +11,7 @@
     "ffprobe": ">=4.0.0"
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "cross-env NODE_OPTIONS=--dns-result-order=ipv4first next dev",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
@@ -31,6 +31,7 @@
     "@mailchimp/mailchimp_marketing": "^3.0.80",
     "@prisma/client": "^6.12.0",
     "@radix-ui/react-popover": "^1.1.14",
+    "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.3",
     "@react-spring/three": "^10.0.1",
     "@react-spring/web": "^10.0.1",
@@ -47,10 +48,12 @@
     "ffprobe-static": "^3.1.0",
     "framer-motion": "^12.23.9",
     "jspdf": "^3.0.1",
+    "jszip": "^3.10.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.525.0",
     "next": "^15.4.4",
     "openai": "^5.11.0",
+    "pg": "^8.16.3",
     "qrcode": "^1.5.4",
     "qrcode.react": "^4.2.0",
     "react": "^19.1.0",
@@ -61,6 +64,7 @@
     "react-phone-input-2": "^2.15.1",
     "react-qr-code": "^2.0.18",
     "react-scrollama": "^2.4.2",
+    "recharts": "^2.15.0",
     "scrollama": "^3.2.0",
     "stripe": "^18.4.0",
     "supports-color": "^10.0.0",
@@ -68,6 +72,7 @@
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.178.0",
     "uuid": "^11.1.0",
+    "xlsx": "^0.18.5",
     "zod": "^3.23.8"
   },
   "overrides": {
@@ -84,6 +89,7 @@
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
     "autoprefixer": "^10.4.17",
+    "cross-env": "^10.1.0",
     "eslint": "9.33.0",
     "eslint-config-next": "15.4.7",
     "postcss": "^8.4.35",

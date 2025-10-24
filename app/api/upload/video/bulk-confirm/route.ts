@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { PrismaClient } from "@prisma/client";
-
-// Configure API route
-export const runtime = 'nodejs';
-export const maxDuration = 30; // 30 seconds timeout
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
   try {

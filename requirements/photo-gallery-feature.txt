@@ -1,0 +1,78 @@
+## Photo Gallery Feature
+
+### Overview
+Replace the single photo upload option with a Photo Gallery feature that allows users to select from previously uploaded photos.
+
+### Requirements
+
+#### Photo Gallery Modal
+- Replace commented-out "Single Photo Upload" option with "Photo Gallery" button
+- Clicking opens a modal showing user's photo library
+- Photos displayed in a grid with thumbnails
+- Multi-select capability to choose photos for the listing
+- Drag-and-drop to reorder selected photos
+
+#### Photo Categories/Filters
+- Filter tabs:
+  1. "Available" - uploaded photos not yet used in any listing
+  2. "Previously Listed" - photos already used in other listings
+  3. "All Photos" - show everything
+- Default view: "Available" photos only
+- Clear visual distinction between available and listed photos
+
+#### Backend Requirements
+- New S3 folder: `photo-gallery/{userId}/` for storing gallery photos
+- New database table or fields to track:
+  - Photo owner (userId)
+  - Photo status (available, listed)
+  - Associated listing ID (if listed)
+  - Upload date
+  - Original filename
+- API endpoints:
+  - GET /api/photo-gallery - fetch user's photos with filters
+  - POST /api/photo-gallery/upload - upload photos to gallery
+  - DELETE /api/photo-gallery/{photoId} - delete photo from gallery
+  - PATCH /api/photo-gallery/{photoId}/status - update photo status
+
+#### Security & Permissions
+- Users can only see their own photos
+- Verify user authentication on all endpoints
+- Filter photos by session userId
+- Prevent access to other users' photos
+
+#### User Experience
+- Upload directly to gallery from the modal
+- Ability to bulk upload multiple photos to gallery
+- Preview selected photos before adding to listing
+- Show photo count for each filter category
+- Responsive grid layout
+- Loading states for photo fetching
+
+#### Integration with Existing Flow
+- Selected photos from gallery use the same position-based categorization:
+  - 1st photo = Hero
+  - 2nd = Back
+  - 3rd = Proof
+  - 4th+ = Additional
+- Seamlessly integrate with existing bulk upload flow
+- Photos selected from gallery should behave identically to newly uploaded photos
+
+### Technical Implementation
+- Create PhotoGallery component
+- Create PhotoGalleryModal component
+- Add PhotoGallery database model/table
+- Create API routes for gallery management
+- Update S3 bucket structure
+- Add photo status tracking when listings are created
+
+
+
+
+
+
+
+
+
+
+
+

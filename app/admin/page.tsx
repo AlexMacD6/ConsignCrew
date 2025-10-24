@@ -396,9 +396,9 @@ export default function AdminDashboard() {
     {
       title: "Facebook Shop Export",
       description:
-        "Export all listings with Facebook Shop enabled to CSV format for upload",
+        "Select and export listings with Facebook Shop enabled to CSV format for upload",
       icon: ExternalLink,
-      href: "/fbshop.csv",
+      href: "/admin/facebook-shop-export",
       color: "bg-blue-600",
       stats: "Export CSV",
     },
@@ -421,71 +421,133 @@ export default function AdminDashboard() {
       color: "bg-purple-600",
       stats: "Manage Codes",
     },
+    {
+      title: "Sales Analytics",
+      description:
+        "Track sales performance, revenue trends, and comprehensive business metrics",
+      icon: BarChart3,
+      href: "/admin/sales-analytics",
+      color: "bg-green-500",
+      stats: "View Reports",
+    },
   ];
 
+  // Load data only when switching to a tab that needs it
   useEffect(() => {
-    loadData();
-  }, []);
+    loadTabData(activeTab);
+  }, [activeTab]);
 
-  const loadData = async () => {
+  // Track which tabs have been loaded to avoid reloading
+  const [loadedTabs, setLoadedTabs] = useState<Set<string>>(new Set());
+
+  const loadTabData = async (tab: string) => {
+    // Skip if already loaded
+    if (loadedTabs.has(tab)) return;
+
     try {
       setLoading(true);
       setError("");
 
-      // Load users
-      const usersResponse = await fetch("/api/admin/users");
-      if (usersResponse.ok) {
-        const usersData = await usersResponse.json();
-        setUsers(usersData.users || []);
+      switch (tab) {
+        case "overview":
+          // Load summary data for overview
+          await Promise.all([
+            loadUsers(),
+            loadOrganizations(),
+            loadPendingQuestions(),
+          ]);
+          break;
+
+        case "users":
+          await loadUsers();
+          break;
+
+        case "organizations":
+          await Promise.all([loadOrganizations(), loadPendingInvitations()]);
+          break;
+
+        case "settings":
+          await Promise.all([loadZipCodes(), loadAiConfig()]);
+          break;
+
+        case "inventory":
+          await loadInventoryLists();
+          break;
+
+        // facebook and security tabs don't need initial data
+        default:
+          break;
       }
 
-      // Load organizations
-      const orgsResponse = await fetch("/api/admin/organizations");
-      if (orgsResponse.ok) {
-        const orgsData = await orgsResponse.json();
-        setOrganizations(orgsData.organizations || []);
-      }
-
-      // Load pending invitations
-      const invitationsResponse = await fetch(
-        "/api/admin/organizations/invitations"
-      );
-      if (invitationsResponse.ok) {
-        const invitationsData = await invitationsResponse.json();
-        setPendingInvitations(invitationsData.invitations || []);
-      }
-
-      // Load zip codes
-      const zipCodesResponse = await fetch("/api/admin/zipcodes");
-      if (zipCodesResponse.ok) {
-        const zipCodesData = await zipCodesResponse.json();
-        setZipCodes(zipCodesData.zipCodes || []);
-      }
-
-      // Load pending questions count
-      const questionsResponse = await fetch("/api/admin/questions");
-      if (questionsResponse.ok) {
-        const questionsData = await questionsResponse.json();
-        setPendingQuestions(questionsData.pendingCount || 0);
-      }
-
-      // Load AI model configuration
-      const aiConfigResponse = await fetch("/api/admin/ai-model-config");
-      if (aiConfigResponse.ok) {
-        const aiConfigData = await aiConfigResponse.json();
-        if (aiConfigData.config) {
-          setAiModelConfig(aiConfigData.config);
-        }
-      }
-
-      // Load inventory lists
-      await loadInventoryLists();
+      // Mark tab as loaded
+      setLoadedTabs((prev) => new Set(prev).add(tab));
     } catch (err) {
-      setError("Failed to load admin data");
-      console.error("Error loading admin data:", err);
+      setError("Failed to load data");
+      console.error("Error loading tab data:", err);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Individual data loading functions
+  const loadUsers = async () => {
+    const response = await fetch("/api/admin/users");
+    if (response.ok) {
+      const data = await response.json();
+      setUsers(data.users || []);
+    }
+  };
+
+  const loadOrganizations = async () => {
+    const response = await fetch("/api/admin/organizations");
+    if (response.ok) {
+      const data = await response.json();
+      setOrganizations(data.organizations || []);
+    }
+  };
+
+  const loadPendingInvitations = async () => {
+    const response = await fetch("/api/admin/organizations/invitations");
+    if (response.ok) {
+      const data = await response.json();
+      setPendingInvitations(data.invitations || []);
+    }
+  };
+
+  const loadZipCodes = async () => {
+    const response = await fetch("/api/admin/zipcodes");
+    if (response.ok) {
+      const data = await response.json();
+      setZipCodes(data.zipCodes || []);
+    }
+  };
+
+  const loadPendingQuestions = async () => {
+    const response = await fetch("/api/admin/questions");
+    if (response.ok) {
+      const data = await response.json();
+      setPendingQuestions(data.pendingCount || 0);
+    }
+  };
+
+  const loadAiConfig = async () => {
+    const response = await fetch("/api/admin/ai-model-config");
+    if (response.ok) {
+      const data = await response.json();
+      if (data.config) {
+        setAiModelConfig(data.config);
+      }
+    }
+  };
+
+  // Legacy loadData function for use in mutation callbacks
+  const reloadCurrentTab = () => {
+    setLoadedTabs((prev) => {
+      const newSet = new Set(prev);
+      newSet.delete(activeTab);
+      return newSet;
+    });
+    loadTabData(activeTab);
   };
 
   const handleCreateOrganization = async () => {
@@ -500,7 +562,7 @@ export default function AdminDashboard() {
         setSuccess("Organization created successfully!");
         setNewOrganization({ name: "", slug: "", logo: "", metadata: "" });
         setShowCreateOrgModal(false);
-        loadData();
+        reloadCurrentTab();
       } else {
         const error = await response.json();
         setError(error.error || "Failed to create organization");
@@ -527,7 +589,7 @@ export default function AdminDashboard() {
         setSuccess("Organization updated successfully!");
         setEditingOrganization(null);
         setShowEditOrgModal(false);
-        loadData();
+        reloadCurrentTab();
       } else {
         const error = await response.json();
         setError(error.error || "Failed to update organization");
@@ -547,7 +609,7 @@ export default function AdminDashboard() {
 
       if (response.ok) {
         setSuccess("Organization deleted successfully!");
-        loadData();
+        reloadCurrentTab();
       } else {
         const error = await response.json();
         setError(error.error || "Failed to delete organization");
@@ -575,7 +637,7 @@ export default function AdminDashboard() {
         setNewInvitation({ email: "", role: "member" });
         setShowInviteModal(false);
         setSelectedOrgForInvite(null);
-        loadData();
+        reloadCurrentTab();
       } else {
         const error = await response.json();
         setError(error.error || "Failed to send invitation");
@@ -775,7 +837,7 @@ export default function AdminDashboard() {
 
       if (response.ok) {
         setSuccess("Invitation accepted successfully!");
-        loadData();
+        reloadCurrentTab();
       } else {
         const error = await response.json();
         setError(error.error || "Failed to accept invitation");
@@ -796,7 +858,7 @@ export default function AdminDashboard() {
       if (response.ok) {
         setSuccess("Team created successfully!");
         setNewTeam({ name: "" });
-        loadData();
+        reloadCurrentTab();
       } else {
         const error = await response.json();
         setError(error.error || "Failed to create team");
@@ -820,7 +882,7 @@ export default function AdminDashboard() {
 
       if (response.ok) {
         setSuccess("User role updated successfully!");
-        loadData();
+        reloadCurrentTab();
       } else {
         const error = await response.json();
         setError(error.error || "Failed to update user role");
@@ -851,7 +913,7 @@ export default function AdminDashboard() {
         setNewUserRole({ organizationId: "", role: "MEMBER" });
         setShowRoleModal(false);
         setSelectedUserForRole(null);
-        loadData();
+        reloadCurrentTab();
       } else {
         const error = await response.json();
         setError(error.error || "Failed to update user role");
@@ -879,7 +941,7 @@ export default function AdminDashboard() {
         setNewUserOrg({ organizationId: "", role: "MEMBER" });
         setShowOrgModal(false);
         setSelectedUserForOrg(null);
-        loadData();
+        reloadCurrentTab();
       } else {
         const error = await response.json();
         setError(error.error || "Failed to add user to organization");
@@ -912,7 +974,7 @@ export default function AdminDashboard() {
 
       if (response.ok) {
         setSuccess("User removed from organization successfully!");
-        loadData();
+        reloadCurrentTab();
       } else {
         const error = await response.json();
         setError(error.error || "Failed to remove user from organization");
@@ -938,7 +1000,7 @@ export default function AdminDashboard() {
       // });
       // if (response.ok) {
       //   setSuccess("User deleted successfully!");
-      //   loadData();
+      //   reloadCurrentTab();
       // } else {
       //   const error = await response.json();
       //   setError(error.error || "Failed to delete user");
@@ -968,7 +1030,7 @@ export default function AdminDashboard() {
 
       if (response.ok) {
         setSuccess("User removed successfully!");
-        loadData();
+        reloadCurrentTab();
       } else {
         const error = await response.json();
         setError(error.error || "Failed to remove user");
@@ -989,7 +1051,7 @@ export default function AdminDashboard() {
       if (response.ok) {
         setSuccess("Zip code added successfully!");
         setNewZipCode({ code: "", area: "", type: "buyer" });
-        loadData();
+        reloadCurrentTab();
       } else {
         const error = await response.json();
         setError(error.error || "Failed to add zip code");
@@ -1012,7 +1074,7 @@ export default function AdminDashboard() {
       if (response.ok) {
         setSuccess("Zip code updated successfully!");
         setEditingZipCode(null);
-        loadData();
+        reloadCurrentTab();
       } else {
         const error = await response.json();
         setError(error.error || "Failed to update zip code");
@@ -1032,7 +1094,7 @@ export default function AdminDashboard() {
 
       if (response.ok) {
         setSuccess("Zip code deleted successfully!");
-        loadData();
+        reloadCurrentTab();
       } else {
         const error = await response.json();
         setError(error.error || "Failed to delete zip code");
