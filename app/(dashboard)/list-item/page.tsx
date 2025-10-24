@@ -35,7 +35,7 @@ import {
   getCategories as fbGetCategories,
   getSubCategories as fbGetSubCategories,
   validateCategoryHierarchy,
-} from "../../lib/facebook-taxonomy";
+} from "../../lib/facebook-taxonomy-complete";
 // FormGenerationData interface moved to ai-service for unified typing
 import { FormGenerationData } from "../../lib/ai-form-generator";
 import VideoUpload from "../../components/VideoUpload";
@@ -44,11 +44,11 @@ import CustomQRCode from "../../components/CustomQRCode";
 import ProgressBar, { Step } from "../../components/ProgressBar";
 import DeliveryCategory from "../../components/DeliveryCategory";
 import BasicFormFields from "../../components/BasicFormFields";
-import CategorySelector from "../../components/CategorySelector";
 import ProductDimensions from "../../components/ProductDimensions";
 import FacebookShopIntegration from "../../components/FacebookShopIntegration";
 import ProductSpecifications from "../../components/ProductSpecifications";
 import InventorySelector from "../../components/InventorySelector";
+import PhotoGalleryModal from "../../components/PhotoGalleryModal";
 import TreasureDetection from "../../components/TreasureDetection";
 import AdditionalFormFields from "../../components/AdditionalFormFields";
 import PhotoDisplay from "../../components/PhotoDisplay";
@@ -207,7 +207,10 @@ export default function ListItemPage() {
   const [inventorySearchQuery, setInventorySearchQuery] = useState("");
   const [inventoryPage, setInventoryPage] = useState(1);
   const [inventoryTotalPages, setInventoryTotalPages] = useState(1);
-  const [showAvailableOnly, setShowAvailableOnly] = useState(false); // Default to showing all items
+  const [statusFilter, setStatusFilter] = useState<
+    "ALL" | "MANIFESTED" | "RECEIVED" | "TRASH" | "USE"
+  >("RECEIVED"); // Default to RECEIVED
+  const [showUnlistedOnly, setShowUnlistedOnly] = useState(true); // Default to showing only unlisted items
 
   // Zip code validation state
   const [zipCodeValidation, setZipCodeValidation] = useState<{
@@ -265,6 +268,9 @@ export default function ListItemPage() {
     }>
   >([]);
   const [bulkUploading, setBulkUploading] = useState(false);
+
+  // Photo gallery modal state
+  const [showPhotoGallery, setShowPhotoGallery] = useState(false);
 
   // Video upload method selection
   const [videoUploadMethod, setVideoUploadMethod] = useState<"single" | "bulk">(
@@ -472,7 +478,9 @@ export default function ListItemPage() {
       // Show a brief success message
       setTimeout(() => {
         setVideoData((prev) => ({ ...prev, processing: false }));
-      }, 3000); // Hide processing indicator after 3 seconds
+        // Auto-advance to photos step after video upload completes
+        setStep(2);
+      }, 3000); // Hide processing indicator after 3 seconds and advance
     },
     []
   );
@@ -523,8 +531,11 @@ export default function ListItemPage() {
       }
       params.append("page", String(inventoryPage));
       params.append("limit", "25");
-      if (showAvailableOnly) {
-        params.append("availableOnly", "true");
+      if (statusFilter !== "ALL") {
+        params.append("status", statusFilter);
+      }
+      if (showUnlistedOnly) {
+        params.append("unlistedOnly", "true");
       }
 
       const response = await fetch(
@@ -544,7 +555,7 @@ export default function ListItemPage() {
     } finally {
       setIsLoadingInventory(false);
     }
-  }, [inventorySearchQuery, inventoryPage, showAvailableOnly]);
+  }, [inventorySearchQuery, inventoryPage, statusFilter, showUnlistedOnly]);
 
   // UseEffect hooks - must come before early returns
   // Redirect users without listing permissions away from this page
@@ -629,7 +640,8 @@ export default function ListItemPage() {
     showInventoryModal,
     inventorySearchQuery,
     inventoryPage,
-    showAvailableOnly,
+    statusFilter,
+    showUnlistedOnly,
     loadInventoryItems,
   ]);
 
@@ -1059,6 +1071,21 @@ export default function ListItemPage() {
 
   const removeBulkPhoto = (index: number) => {
     setBulkPhotos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Photo gallery handlers
+  const handleGalleryPhotosSelected = (selectedPhotos: any[]) => {
+    // Convert gallery photos to bulk photos format
+    const newBulkPhotos = selectedPhotos.map((photo) => ({
+      file: null as any, // No file object for gallery photos
+      url: photo.url,
+      preview: photo.thumbnailUrl || photo.url,
+      type: undefined,
+      galleryId: photo.id, // Track the gallery photo ID
+    }));
+
+    setBulkPhotos(newBulkPhotos);
+    setShowPhotoGallery(false);
   };
 
   // Bulk video upload handlers
@@ -2041,8 +2068,9 @@ export default function ListItemPage() {
             </h1>
             <p className="text-gray-600 mb-8 text-center max-w-2xl">
               Upload a video demonstration of your item to enhance your listing.
-              Our AI will analyze key frames from your video to provide better
-              product insights.
+              Our AI will automatically analyze key frames from your video to
+              provide better product insights. Processing begins immediately
+              after upload completes.
             </p>
 
             {/* Video Upload Method Selection */}
@@ -2611,48 +2639,38 @@ export default function ListItemPage() {
                   Choose Your Upload Method
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Single Photo Upload Option */}
-                  <label className="relative cursor-pointer">
-                    <input
-                      type="radio"
-                      name="uploadMethod"
-                      value="single"
-                      checked={uploadMethod === "single"}
-                      onChange={(e) =>
-                        setUploadMethod(e.target.value as "single" | "bulk")
-                      }
-                      className="sr-only"
-                    />
-                    <div
-                      className={`p-4 rounded-lg border-2 transition-all ${
-                        uploadMethod === "single"
-                          ? "border-[#D4AF3D] bg-[#D4AF3D]/5"
-                          : "border-gray-200 bg-white hover:border-gray-300"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                            uploadMethod === "single"
-                              ? "border-[#D4AF3D] bg-[#D4AF3D]"
-                              : "border-gray-300"
-                          }`}
+                  {/* Photo Gallery Option */}
+                  <button
+                    type="button"
+                    onClick={() => setShowPhotoGallery(true)}
+                    className="relative p-4 rounded-lg border-2 border-gray-200 bg-white hover:border-[#D4AF3D] hover:bg-[#D4AF3D]/5 transition-all text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-[#D4AF3D]/10 rounded-lg flex items-center justify-center">
+                        <svg
+                          className="w-6 h-6 text-[#D4AF3D]"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
                         >
-                          {uploadMethod === "single" && (
-                            <div className="w-2 h-2 bg-white rounded-full"></div>
-                          )}
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                          />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          Photo Gallery
                         </div>
-                        <div>
-                          <div className="font-medium text-gray-900">
-                            Single Photo Upload
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            Step-by-step, one photo at a time
-                          </div>
+                        <div className="text-sm text-gray-600">
+                          Select from previously uploaded photos
                         </div>
                       </div>
                     </div>
-                  </label>
+                  </button>
 
                   {/* Bulk Photo Upload Option */}
                   <label className="relative cursor-pointer">
@@ -2727,8 +2745,8 @@ export default function ListItemPage() {
                 </div>
               )}
 
-            {/* Single Photo Upload Interface */}
-            {uploadMethod === "single" && (
+            {/* Single Photo Upload Interface - REMOVED - Replaced with Photo Gallery */}
+            {false && uploadMethod === "single" && (
               <>
                 {/* Photo Progress with Previews */}
                 <div className="flex items-center gap-4 mb-8">
@@ -2748,21 +2766,30 @@ export default function ListItemPage() {
                     <span className="text-xs text-red-600 font-medium">
                       Required
                     </span>
-                    {photos.hero?.url && photos.hero.url.trim() !== "" && (
-                      <div className="relative w-12 h-12">
-                        <img
-                          src={photos.hero.url}
-                          alt="Hero photo preview"
-                          className="w-full h-full object-cover rounded-lg border border-gray-200"
-                        />
-                        <button
-                          onClick={() => removePhoto("hero")}
-                          className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
-                        >
-                          Ã—
-                        </button>
-                      </div>
-                    )}
+                    {(() => {
+                      const heroUrl = photos.hero?.url;
+                      if (
+                        !heroUrl ||
+                        typeof heroUrl !== "string" ||
+                        heroUrl!.trim() === ""
+                      )
+                        return null;
+                      return (
+                        <div className="relative w-12 h-12">
+                          <img
+                            src={heroUrl as string}
+                            alt="Hero photo preview"
+                            className="w-full h-full object-cover rounded-lg border border-gray-200"
+                          />
+                          <button
+                            onClick={() => removePhoto("hero")}
+                            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Photo 2 - Back */}
@@ -2781,21 +2808,30 @@ export default function ListItemPage() {
                     <span className="text-xs text-red-600 font-medium">
                       Required
                     </span>
-                    {photos.back?.url && photos.back.url.trim() !== "" && (
-                      <div className="relative w-12 h-12">
-                        <img
-                          src={photos.back.url}
-                          alt="Back photo preview"
-                          className="w-full h-full object-cover rounded-lg border border-gray-200"
-                        />
-                        <button
-                          onClick={() => removePhoto("back")}
-                          className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
-                        >
-                          Ã—
-                        </button>
-                      </div>
-                    )}
+                    {(() => {
+                      const backUrl = photos.back?.url;
+                      if (
+                        !backUrl ||
+                        typeof backUrl !== "string" ||
+                        backUrl!.trim() === ""
+                      )
+                        return null;
+                      return (
+                        <div className="relative w-12 h-12">
+                          <img
+                            src={backUrl as string}
+                            alt="Back photo preview"
+                            className="w-full h-full object-cover rounded-lg border border-gray-200"
+                          />
+                          <button
+                            onClick={() => removePhoto("back")}
+                            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Photo 3 - Proof */}
@@ -2814,21 +2850,30 @@ export default function ListItemPage() {
                     <span className="text-xs text-red-600 font-medium">
                       Required
                     </span>
-                    {photos.proof?.url && photos.proof.url.trim() !== "" && (
-                      <div className="relative w-12 h-12">
-                        <img
-                          src={photos.proof.url}
-                          alt="Proof photo preview"
-                          className="w-full h-full object-cover rounded-lg border border-gray-200"
-                        />
-                        <button
-                          onClick={() => removePhoto("proof")}
-                          className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
-                        >
-                          Ã—
-                        </button>
-                      </div>
-                    )}
+                    {(() => {
+                      const proofUrl = photos.proof?.url;
+                      if (
+                        !proofUrl ||
+                        typeof proofUrl !== "string" ||
+                        proofUrl!.trim() === ""
+                      )
+                        return null;
+                      return (
+                        <div className="relative w-12 h-12">
+                          <img
+                            src={proofUrl as string}
+                            alt="Proof photo preview"
+                            className="w-full h-full object-cover rounded-lg border border-gray-200"
+                          />
+                          <button
+                            onClick={() => removePhoto("proof")}
+                            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Additional Photos */}
@@ -3029,22 +3074,25 @@ export default function ListItemPage() {
                     let imageSrc = null;
 
                     if (currentPhotoType === "hero" && photos.hero) {
+                      const heroFile = photos.hero.file;
                       imageSrc =
                         photos.hero.url ||
-                        (photos.hero.file
-                          ? URL.createObjectURL(photos.hero.file)
+                        (heroFile instanceof File
+                          ? URL.createObjectURL(heroFile as File)
                           : null);
                     } else if (currentPhotoType === "back" && photos.back) {
+                      const backFile = photos.back.file;
                       imageSrc =
                         photos.back.url ||
-                        (photos.back.file
-                          ? URL.createObjectURL(photos.back.file)
+                        (backFile instanceof File
+                          ? URL.createObjectURL(backFile as File)
                           : null);
                     } else if (currentPhotoType === "proof" && photos.proof) {
+                      const proofFile = photos.proof.file;
                       imageSrc =
                         photos.proof.url ||
-                        (photos.proof.file
-                          ? URL.createObjectURL(photos.proof.file)
+                        (proofFile instanceof File
+                          ? URL.createObjectURL(proofFile as File)
                           : null);
                     } else if (
                       currentPhotoType === "additional" &&
@@ -3265,8 +3313,12 @@ export default function ListItemPage() {
                       Bulk Photo Upload
                     </h3>
                     <p className="text-sm text-blue-700 mb-4 text-center">
-                      Select multiple photos at once. We'll automatically
-                      categorize them for you.
+                      Select multiple photos at once. Drag and drop to reorder:
+                      <br />
+                      <span className="text-xs">
+                        1st photo = Hero (Front) • 2nd = Back • 3rd = Proof •
+                        Rest = Additional
+                      </span>
                     </p>
 
                     {/* Drag & Drop Area */}
@@ -3317,24 +3369,65 @@ export default function ListItemPage() {
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          {bulkPhotos.map((photo, index) => (
-                            <div key={index} className="relative group">
-                              <img
-                                src={photo.preview}
-                                alt={`Photo ${index + 1}`}
-                                className="w-full h-24 object-cover rounded-lg border border-gray-200"
-                              />
-                              <button
-                                onClick={() => removeBulkPhoto(index)}
-                                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100 transition-opacity"
+                          {bulkPhotos.map((photo, index) => {
+                            // Determine category based on position
+                            let category = "";
+                            if (index === 0) category = "Hero";
+                            else if (index === 1) category = "Back";
+                            else if (index === 2) category = "Proof";
+                            else category = "Additional";
+
+                            return (
+                              <div
+                                key={index}
+                                className="relative group cursor-move"
+                                draggable
+                                onDragStart={(e) => {
+                                  e.dataTransfer!.effectAllowed = "move";
+                                  e.dataTransfer!.setData(
+                                    "photoIndex",
+                                    index.toString()
+                                  );
+                                }}
+                                onDragOver={(e) => {
+                                  e.preventDefault();
+                                  e.dataTransfer!.dropEffect = "move";
+                                }}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  const sourceIndex = parseInt(
+                                    e.dataTransfer!.getData("photoIndex")
+                                  );
+                                  if (sourceIndex !== index) {
+                                    // Reorder photos
+                                    const newPhotos = [...bulkPhotos];
+                                    const [movedPhoto] = newPhotos.splice(
+                                      sourceIndex,
+                                      1
+                                    );
+                                    newPhotos.splice(index, 0, movedPhoto);
+                                    setBulkPhotos(newPhotos);
+                                  }
+                                }}
                               >
-                                Ã—
-                              </button>
-                              <div className="absolute bottom-1 left-1 right-1 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
-                                {photo.type || "Auto-categorize"}
+                                <img
+                                  src={photo.preview}
+                                  alt={`Photo ${index + 1}`}
+                                  className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                                />
+                                <button
+                                  onClick={() => removeBulkPhoto(index)}
+                                  className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  ×
+                                </button>
+                                <div className="absolute bottom-1 left-1 right-1 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded flex items-center justify-between">
+                                  <span>{category}</span>
+                                  <span className="text-xs opacity-75">⋮⋮</span>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
 
                         {/* Upload Button */}
@@ -3854,10 +3947,19 @@ export default function ListItemPage() {
           inventoryPage={inventoryPage}
           setInventoryPage={setInventoryPage}
           inventoryTotalPages={inventoryTotalPages}
-          showAvailableOnly={showAvailableOnly}
-          setShowAvailableOnly={setShowAvailableOnly}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          showUnlistedOnly={showUnlistedOnly}
+          setShowUnlistedOnly={setShowUnlistedOnly}
           isLoadingInventory={isLoadingInventory}
           onItemsChanged={loadInventoryItems}
+        />
+
+        {/* Photo Gallery Modal */}
+        <PhotoGalleryModal
+          isOpen={showPhotoGallery}
+          onClose={() => setShowPhotoGallery(false)}
+          onSelectPhotos={handleGalleryPhotosSelected}
         />
       </div>
     </div>

@@ -396,9 +396,9 @@ export default function AdminDashboard() {
     {
       title: "Facebook Shop Export",
       description:
-        "Export all listings with Facebook Shop enabled to CSV format for upload",
+        "Select and export listings with Facebook Shop enabled to CSV format for upload",
       icon: ExternalLink,
-      href: "/fbshop.csv",
+      href: "/admin/facebook-shop-export",
       color: "bg-blue-600",
       stats: "Export CSV",
     },

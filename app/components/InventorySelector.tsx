@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { CheckCircle, Package, AlertCircle } from "lucide-react";
+import { CheckCircle, Package, AlertCircle, Trash2, User } from "lucide-react";
 
 interface InventoryItem {
   id: string;
@@ -24,10 +24,20 @@ interface InventoryItem {
     briefDescription?: string;
     datePurchased?: string;
   };
-  // Receiving fields
-  receiveStatus?: "MANIFESTED" | "PARTIALLY_RECEIVED" | "RECEIVED";
+  // Disposition fields
   receivedQuantity?: number;
+  trashedQuantity?: number;
+  usedQuantity?: number;
+  manifestedQuantity?: number;
+  dispositions?: Array<{
+    id: string;
+    status: "RECEIVED" | "TRASH" | "USE";
+    quantity: number;
+    notes?: string;
+  }>;
 }
+
+type DispositionType = "RECEIVED" | "TRASH" | "USE";
 
 interface InventorySelectorProps {
   showInventoryModal: boolean;
@@ -40,8 +50,12 @@ interface InventorySelectorProps {
   inventoryPage: number;
   setInventoryPage: (page: number) => void;
   inventoryTotalPages: number;
-  showAvailableOnly: boolean;
-  setShowAvailableOnly: (show: boolean) => void;
+  statusFilter: "ALL" | "MANIFESTED" | "RECEIVED" | "TRASH" | "USE";
+  setStatusFilter: (
+    status: "ALL" | "MANIFESTED" | "RECEIVED" | "TRASH" | "USE"
+  ) => void;
+  showUnlistedOnly: boolean;
+  setShowUnlistedOnly: (show: boolean) => void;
   isLoadingInventory: boolean;
   onItemsChanged?: () => void; // Callback to refresh inventory list after receiving
 }
@@ -57,8 +71,10 @@ export default function InventorySelector({
   inventoryPage,
   setInventoryPage,
   inventoryTotalPages,
-  showAvailableOnly,
-  setShowAvailableOnly,
+  statusFilter,
+  setStatusFilter,
+  showUnlistedOnly,
+  setShowUnlistedOnly,
   isLoadingInventory,
   onItemsChanged,
 }: InventorySelectorProps) {
@@ -69,83 +85,88 @@ export default function InventorySelector({
     Record<string, number>
   >({});
 
+  // Modal state for disposition actions
+  const [dispositionModal, setDispositionModal] = useState<{
+    isOpen: boolean;
+    item: InventoryItem | null;
+    type: DispositionType;
+    maxQuantity: number;
+  }>({
+    isOpen: false,
+    item: null,
+    type: "RECEIVED",
+    maxQuantity: 0,
+  });
+  const [dispositionQuantity, setDispositionQuantity] = useState(1);
+  const [dispositionNotes, setDispositionNotes] = useState("");
+  const [dispositionLoading, setDispositionLoading] = useState(false);
+
   if (!showInventoryModal) return null;
 
-  // Handle receiving an item directly from this modal
-  const handleReceiveItem = async (
-    item: InventoryItem,
-    event: React.MouseEvent,
-    forceOverride = false
-  ) => {
-    event.stopPropagation(); // Prevent selecting the item when clicking receive
+  // Open disposition modal
+  const openDispositionModal = (item: InventoryItem, type: DispositionType) => {
+    const maxQty = item.manifestedQuantity || 0;
+    setDispositionModal({ isOpen: true, item, type, maxQuantity: maxQty });
+    setDispositionQuantity(Math.min(1, maxQty));
+    setDispositionNotes("");
+  };
 
-    const totalQty = item.totalInventory || item.totalQuantity || 0;
-    const receivedQty = item.receivedQuantity || 0;
-    const remaining = Math.max(totalQty - receivedQty, 0);
+  // Close disposition modal
+  const closeDispositionModal = () => {
+    setDispositionModal({
+      isOpen: false,
+      item: null,
+      type: "RECEIVED",
+      maxQuantity: 0,
+    });
+    setDispositionQuantity(1);
+    setDispositionNotes("");
+  };
 
-    if (remaining <= 0 && !forceOverride) {
-      alert("All units have already been received for this item.");
-      return;
-    }
-
-    const qtyToReceive = receiveQuantities[item.id] || remaining;
-
-    if (qtyToReceive <= 0 || qtyToReceive > remaining) {
-      alert(`Please enter a valid quantity between 1 and ${remaining}`);
-      return;
-    }
+  // Submit disposition
+  const submitDisposition = async () => {
+    const { item, type } = dispositionModal;
+    if (!item) return;
 
     try {
-      setReceivingItems((prev) => ({ ...prev, [item.id]: true }));
-
-      const res = await fetch(`/api/admin/inventory/items/${item.id}/receive`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          quantity: qtyToReceive,
-          override: forceOverride,
-        }),
-      });
+      setDispositionLoading(true);
+      const res = await fetch(
+        `/api/admin/inventory/items/${item.id}/disposition`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: type,
+            quantity: dispositionQuantity,
+            notes: dispositionNotes || undefined,
+          }),
+        }
+      );
 
       const data = await res.json();
 
       if (data.success) {
-        if (data.warning) {
-          alert(`Success: ${data.warning}`);
-        }
+        closeDispositionModal();
         // Refresh the inventory list
         if (onItemsChanged) {
           onItemsChanged();
         }
       } else {
-        // Check if override is needed
-        if (data.requiresOverride && !forceOverride) {
-          const confirmOverride = confirm(
-            `${data.error}\n\nThis item has been posted to listings before receiving. Click OK to receive it anyway (out of order receiving), or Cancel to abort.`
-          );
-          if (confirmOverride) {
-            // Retry with override
-            handleReceiveItem(item, event, true);
-          }
-        } else {
-          alert(data.error || "Failed to receive item");
-        }
+        alert(data.error || "Failed to set disposition");
       }
     } catch (error) {
-      console.error("Error receiving item:", error);
-      alert("Failed to receive item");
+      console.error("Error setting disposition:", error);
+      alert("Failed to set disposition");
     } finally {
-      setReceivingItems((prev) => ({ ...prev, [item.id]: false }));
+      setDispositionLoading(false);
     }
   };
 
   // Handle item selection - only allow if received
   const handleItemClick = (item: InventoryItem) => {
-    const isReceived =
-      item.receiveStatus === "RECEIVED" ||
-      (item.receivedQuantity && item.receivedQuantity > 0);
-
-    if (!isReceived) {
+    // Check if item has received quantity > 0
+    const receivedQty = item.receivedQuantity || 0;
+    if (receivedQty === 0) {
       alert(
         "This item must be received before you can list it. Use the 'Receive' button to receive it first."
       );
@@ -189,19 +210,36 @@ export default function InventorySelector({
                 />
               </div>
               <div className="flex gap-2">
+                {/* Status Filter Dropdown */}
+                <select
+                  value={statusFilter}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value as any);
+                    setInventoryPage(1);
+                  }}
+                  className="px-4 py-2 text-sm font-medium rounded-lg border-2 border-gray-300 bg-white hover:border-[#D4AF3D] focus:border-[#D4AF3D] focus:ring-2 focus:ring-[#D4AF3D] transition-all duration-200"
+                >
+                  <option value="RECEIVED">Received</option>
+                  <option value="ALL">All Items</option>
+                  <option value="MANIFESTED">Manifested</option>
+                  <option value="TRASH">Trashed</option>
+                  <option value="USE">Used</option>
+                </select>
+
+                {/* Unlisted Only Toggle */}
                 <button
                   type="button"
                   onClick={() => {
-                    setShowAvailableOnly(!showAvailableOnly);
+                    setShowUnlistedOnly(!showUnlistedOnly);
                     setInventoryPage(1);
                   }}
                   className={`px-4 py-2 text-sm font-medium rounded-lg border-2 transition-all duration-200 ${
-                    showAvailableOnly
+                    showUnlistedOnly
                       ? "bg-[#D4AF3D] text-white border-[#D4AF3D] shadow-md transform scale-105"
                       : "bg-white text-gray-700 border-gray-300 hover:border-[#D4AF3D] hover:text-[#D4AF3D] hover:shadow-sm"
                   }`}
                 >
-                  {showAvailableOnly ? "✓ Available Only" : "Show All Items"}
+                  {showUnlistedOnly ? "✓ Unlisted Only" : "Show All"}
                 </button>
               </div>
             </div>
@@ -214,14 +252,23 @@ export default function InventorySelector({
           ) : (
             <div className="space-y-3 max-h-[500px] overflow-y-auto">
               {inventoryItems.map((item) => {
-                const totalQty = item.totalInventory || item.totalQuantity || 0;
+                const totalQty =
+                  item.totalInventory ||
+                  item.totalQuantity ||
+                  item.quantity ||
+                  0;
+
+                // Get quantities from API (calculated from InventoryDisposition records)
                 const receivedQty = item.receivedQuantity || 0;
-                const remaining = Math.max(totalQty - receivedQty, 0);
-                const isReceived =
-                  item.receiveStatus === "RECEIVED" || receivedQty > 0;
-                const isManifested =
-                  item.receiveStatus === "MANIFESTED" ||
-                  (!isReceived && totalQty > 0);
+                const trashedQty = item.trashedQuantity || 0;
+                const usedQty = item.usedQuantity || 0;
+                const manifestedQty = item.manifestedQuantity || 0;
+
+                // Determine which statuses this item has
+                const hasReceived = receivedQty > 0;
+                const hasTrashed = trashedQty > 0;
+                const hasUsed = usedQty > 0;
+                const hasManifested = manifestedQty > 0;
 
                 return (
                   <div
@@ -229,61 +276,80 @@ export default function InventorySelector({
                     className={`w-full text-left p-4 border rounded-lg transition-all duration-200 ${
                       selectedInventoryItem?.id === item.id
                         ? "border-[#D4AF3D] bg-[#D4AF3D]/10"
-                        : isManifested
+                        : hasManifested
                         ? "border-orange-300 bg-orange-50"
-                        : "border-gray-200 hover:bg-gray-50 cursor-pointer"
-                    } ${!isReceived ? "opacity-90" : ""}`}
-                    onClick={() => isReceived && handleItemClick(item)}
+                        : hasReceived
+                        ? "border-gray-200 hover:bg-gray-50 cursor-pointer"
+                        : "border-gray-200"
+                    }`}
+                    onClick={() => hasReceived && handleItemClick(item)}
                   >
-                    {/* Status Badge */}
+                    {/* Status Badges and Disposition Actions */}
                     <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        {isManifested && !isReceived && (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded">
-                            <AlertCircle className="h-3 w-3" />
-                            Not Received - Must Receive First
-                          </span>
-                        )}
-                        {isReceived && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {hasReceived && (
                           <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">
                             <CheckCircle className="h-3 w-3" />
-                            Received ({receivedQty})
+                            Received: {receivedQty}
+                          </span>
+                        )}
+                        {hasTrashed && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded">
+                            <Trash2 className="h-3 w-3" />
+                            Trashed: {trashedQty}
+                          </span>
+                        )}
+                        {hasUsed && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+                            <User className="h-3 w-3" />
+                            Used: {usedQty}
+                          </span>
+                        )}
+                        {hasManifested && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded">
+                            <AlertCircle className="h-3 w-3" />
+                            Manifested: {manifestedQty}
                           </span>
                         )}
                       </div>
-                      {!isReceived && totalQty > 0 && (
+
+                      {/* Disposition Action Buttons - only show for manifested items */}
+                      {hasManifested && (
                         <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            min={1}
-                            max={remaining}
-                            value={receiveQuantities[item.id] || remaining}
-                            onChange={(e) => {
-                              e.stopPropagation();
-                              setReceiveQuantities((prev) => ({
-                                ...prev,
-                                [item.id]: parseInt(e.target.value || "0", 10),
-                              }));
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="w-20 px-2 py-1 text-sm border rounded focus:ring-2 focus:ring-[#D4AF3D]"
-                          />
                           <button
-                            onClick={(e) => handleReceiveItem(item, e)}
-                            disabled={receivingItems[item.id]}
-                            className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50 flex items-center gap-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDispositionModal(item, "RECEIVED");
+                            }}
+                            className="flex items-center justify-center gap-1 px-2 py-1 bg-green-500 hover:bg-green-600 text-white rounded text-xs font-medium transition"
+                            title="Receive items for resale"
                           >
-                            {receivingItems[item.id] ? (
-                              <>
-                                <Package className="h-4 w-4 animate-pulse" />
-                                Receiving...
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle className="h-4 w-4" />
-                                Receive
-                              </>
-                            )}
+                            <CheckCircle className="h-3.5 w-3.5" />
+                            Receive
+                          </button>
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDispositionModal(item, "TRASH");
+                            }}
+                            className="flex items-center justify-center gap-1 px-2 py-1 bg-red-500 hover:bg-red-600 text-white rounded text-xs font-medium transition"
+                            title="Mark as trash (disposed)"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Trash
+                          </button>
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDispositionModal(item, "USE");
+                            }}
+                            className="flex items-center justify-center gap-1 px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-xs font-medium transition"
+                            title="Mark for personal use or tax write-off"
+                          >
+                            <User className="h-3.5 w-3.5" />
+                            Use
                           </button>
                         </div>
                       )}
@@ -419,6 +485,107 @@ export default function InventorySelector({
           </button>
         </div>
       </div>
+
+      {/* Disposition Modal */}
+      {dispositionModal.isOpen && dispositionModal.item && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
+          <div className="bg-white rounded-lg w-full max-w-md overflow-hidden">
+            <div
+              className={`p-4 text-white ${
+                dispositionModal.type === "RECEIVED"
+                  ? "bg-green-500"
+                  : dispositionModal.type === "TRASH"
+                  ? "bg-red-500"
+                  : "bg-blue-500"
+              }`}
+            >
+              <h3 className="text-lg font-semibold">
+                {dispositionModal.type === "RECEIVED"
+                  ? "Receive Items"
+                  : dispositionModal.type === "TRASH"
+                  ? "Trash Items"
+                  : "Mark as Used"}
+              </h3>
+            </div>
+
+            <div className="p-4">
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-2">
+                  <span className="font-medium">Item:</span>{" "}
+                  {dispositionModal.item.description ||
+                    dispositionModal.item.itemNumber}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Manifested Quantity:</span>{" "}
+                  {dispositionModal.maxQuantity}
+                </p>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Quantity
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={dispositionModal.maxQuantity}
+                  value={dispositionQuantity}
+                  onChange={(e) =>
+                    setDispositionQuantity(parseInt(e.target.value || "1", 10))
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-[#D4AF3D]"
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Notes (optional)
+                </label>
+                <textarea
+                  value={dispositionNotes}
+                  onChange={(e) => setDispositionNotes(e.target.value)}
+                  placeholder={
+                    dispositionModal.type === "TRASH"
+                      ? "e.g., damaged, broken, unsellable"
+                      : dispositionModal.type === "USE"
+                      ? "e.g., tax write-off, personal use"
+                      : "Any additional notes"
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-[#D4AF3D] resize-none"
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={closeDispositionModal}
+                  className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                  disabled={dispositionLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitDisposition}
+                  disabled={
+                    dispositionLoading ||
+                    dispositionQuantity <= 0 ||
+                    dispositionQuantity > dispositionModal.maxQuantity
+                  }
+                  className={`flex-1 px-4 py-2 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                    dispositionModal.type === "RECEIVED"
+                      ? "bg-green-500 hover:bg-green-600"
+                      : dispositionModal.type === "TRASH"
+                      ? "bg-red-500 hover:bg-red-600"
+                      : "bg-blue-500 hover:bg-blue-600"
+                  }`}
+                >
+                  {dispositionLoading ? "Processing..." : "Confirm"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

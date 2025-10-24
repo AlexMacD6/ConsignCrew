@@ -1,0 +1,15 @@
+## List Item - Bulk Photo Upload UI Enhancements
+
+### Requirements
+- Remove single photo upload functionality (comment out or remove the single photo upload option)
+- Keep only bulk photo upload enabled
+- Remove "Auto-categorize" labels displayed on each uploaded photo
+- Add drag-and-drop reordering functionality to rearrange photos
+- Categories based on position in order:
+  - 1st photo: Hero (Front)
+  - 2nd photo: Back
+  - 3rd photo: Proof
+  - 4th+ photos: Additional
+- Fix delete icon (X button) - currently showing "A~" instead of "×" symbol
+- Update photo categorization logic to use position-based assignment instead of auto-categorization
+

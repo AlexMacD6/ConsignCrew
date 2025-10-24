@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     const statusParam = searchParams.get("status");
     const inStockParam = searchParams.get("inStock");
     const availableOnlyParam = searchParams.get("availableOnly"); // Now means "listed only"
+    const unlistedOnlyParam = searchParams.get("unlistedOnly"); // Filter for items not yet listed
     const listId = searchParams.get("listId");
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = parseInt(searchParams.get("limit") || "25", 10);
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // Fetch all items since we need to calculate dispositions and filter before paginating
+    // Fetch all items
     const [items, total] = await Promise.all([
       prisma.inventoryItem.findMany({
         where,
@@ -48,38 +49,59 @@ export async function GET(request: NextRequest) {
             select: { id: true, status: true, createdAt: true },
             where: { status: "active" }, // Only count active listings
           },
-          dispositions: true, // Include all disposition records
+          InventoryDisposition: {
+            select: { 
+              id: true,
+              status: true, 
+              quantity: true, 
+              notes: true,
+              createdAt: true,
+              createdBy: true,
+            },
+            orderBy: { createdAt: "desc" },
+          },
         },
         orderBy: [{ updatedAt: "desc" }, { description: "asc" }],
       }),
       prisma.inventoryItem.count({ where }),
     ]);
 
-    // Include unitPurchasePrice and listing counts
+    // Include unitPurchasePrice, listing counts, and disposition quantities
     const itemsWithUnit = items.map((it: any) => {
       const postedListings = it.listings?.length || 0;
       const totalInventory = it.quantity || 0;
+      const availableToList = Math.max(0, totalInventory - postedListings);
       
-      // Calculate disposition quantities from the new disposition records
-      const dispositions = it.dispositions || [];
+      // Calculate quantities from InventoryDisposition records
+      const dispositions = it.InventoryDisposition || [];
       const receivedQty = dispositions
         .filter((d: any) => d.status === "RECEIVED")
-        .reduce((sum: number, d: any) => sum + d.quantity, 0);
+        .reduce((sum: number, d: any) => sum + (d.quantity || 0), 0);
       const trashedQty = dispositions
         .filter((d: any) => d.status === "TRASH")
-        .reduce((sum: number, d: any) => sum + d.quantity, 0);
+        .reduce((sum: number, d: any) => sum + (d.quantity || 0), 0);
       const usedQty = dispositions
         .filter((d: any) => d.status === "USE")
-        .reduce((sum: number, d: any) => sum + d.quantity, 0);
+        .reduce((sum: number, d: any) => sum + (d.quantity || 0), 0);
       
-      const totalAllocated = receivedQty + trashedQty + usedQty;
-      const manifested = Math.max(0, totalInventory - totalAllocated);
-      const availableToList = Math.max(0, receivedQty - postedListings);
+      // Calculate manifested quantity (total - all dispositions)
+      const totalDispositioned = receivedQty + trashedQty + usedQty;
+      const manifestedQty = Math.max(0, totalInventory - totalDispositioned);
+      
+      // Determine primary status (what state most of the inventory is in)
+      let primaryStatus = "MANIFESTED"; // Default if no dispositions
+      if (receivedQty > 0 && receivedQty >= manifestedQty && receivedQty >= trashedQty && receivedQty >= usedQty) {
+        primaryStatus = "RECEIVED";
+      } else if (trashedQty > 0 && trashedQty >= manifestedQty && trashedQty >= receivedQty && trashedQty >= usedQty) {
+        primaryStatus = "TRASH";
+      } else if (usedQty > 0 && usedQty >= manifestedQty && usedQty >= receivedQty && usedQty >= trashedQty) {
+        primaryStatus = "USE";
+      }
       
       return {
         ...it,
-        quantity: availableToList, // Override with available quantity for the UI
-        totalQuantity: totalInventory, // Keep total for display
+        quantity: availableToList,
+        totalQuantity: totalInventory,
         unitPurchasePrice:
           typeof it.purchasePrice === "number" && typeof totalInventory === "number" && totalInventory > 0
             ? it.purchasePrice / totalInventory
@@ -87,32 +109,36 @@ export async function GET(request: NextRequest) {
         postedListings,
         availableToList,
         totalInventory,
-        // Disposition quantities
+        // Add calculated disposition quantities
         receivedQuantity: receivedQty,
         trashedQuantity: trashedQty,
         usedQuantity: usedQty,
-        manifestedQuantity: manifested,
-        dispositions: it.dispositions, // Include full disposition records
+        manifestedQuantity: manifestedQty,
+        primaryStatus, // PRIMARY, RECEIVED, TRASH, USE
       };
     });
 
     // Apply filtering after calculating counts
     let filteredItems = itemsWithUnit;
     
-    // Filter by status if requested
+    // Filter by status if requested (using calculated quantities from InventoryDisposition)
     if (statusParam && statusParam !== "ALL") {
       if (statusParam === "MANIFESTED") {
+        // Show items with manifested quantity > 0
         filteredItems = filteredItems.filter(item => item.manifestedQuantity > 0);
       } else if (statusParam === "RECEIVED") {
+        // Show items with received quantity > 0
         filteredItems = filteredItems.filter(item => item.receivedQuantity > 0);
       } else if (statusParam === "TRASH") {
+        // Show items with trashed quantity > 0
         filteredItems = filteredItems.filter(item => item.trashedQuantity > 0);
       } else if (statusParam === "USE") {
+        // Show items with used quantity > 0
         filteredItems = filteredItems.filter(item => item.usedQuantity > 0);
       }
     }
     
-    // Filter by in-stock if requested
+    // Filter by in-stock if requested (items with RECEIVED quantity)
     if (inStockParam === "true") {
       filteredItems = filteredItems.filter(item => item.receivedQuantity > 0);
     }
@@ -120,6 +146,11 @@ export async function GET(request: NextRequest) {
     // availableOnlyParam=true means "show only items available to list" (availableToList > 0)
     if (availableOnlyParam === "true") {
       filteredItems = filteredItems.filter(item => item.availableToList > 0);
+    }
+    
+    // unlistedOnlyParam=true means "show only items that haven't been listed yet" (postedListings === 0)
+    if (unlistedOnlyParam === "true") {
+      filteredItems = filteredItems.filter(item => item.postedListings === 0);
     }
 
     // Calculate total count after filtering
