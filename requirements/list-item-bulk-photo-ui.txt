@@ -14,3 +14,5 @@
 - Update photo categorization logic to use position-based assignment instead of auto-categorization
 
 
+
+
