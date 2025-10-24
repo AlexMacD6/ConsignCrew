@@ -2,18 +2,38 @@
  * Direct import script - Connects to Neon backup branch and imports data
  * This eliminates the manual export/import step
  * 
- * Run with: node scripts/import-from-backup-branch.js
+ * Run with: BACKUP_DATABASE_URL="your-backup-connection-string" node scripts/import-from-backup-branch.js
+ * 
+ * Required environment variables:
+ * - DATABASE_URL: Main database connection (from .env file)
+ * - BACKUP_DATABASE_URL: Connection string to the backup database branch
  */
 
 const { PrismaClient } = require('@prisma/client');
 const { Client } = require('pg');
+
+// Load environment variables
+require('dotenv').config();
+
+// Validate required environment variables
+if (!process.env.DATABASE_URL) {
+  console.error('❌ Error: DATABASE_URL environment variable is required');
+  console.error('Make sure your .env file contains DATABASE_URL');
+  process.exit(1);
+}
+
+if (!process.env.BACKUP_DATABASE_URL) {
+  console.error('❌ Error: BACKUP_DATABASE_URL environment variable is required');
+  console.error('Usage: BACKUP_DATABASE_URL="your-connection-string" node scripts/import-from-backup-branch.js');
+  process.exit(1);
+}
 
 // Main database (current schema)
 const prisma = new PrismaClient();
 
 // Backup database connection
 const backupClient = new Client({
-  connectionString: 'postgresql://neondb_owner:npg_Bsjwzn3Kk7Vq@ep-old-bread-aefqou3d-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require',
+  connectionString: process.env.BACKUP_DATABASE_URL,
 });
 
 async function importFromBackup() {

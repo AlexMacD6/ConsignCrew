@@ -1,12 +1,25 @@
 /**
  * Check what columns exist in the backup branch
- * Run with: node scripts/check-backup-schema.js
+ * Run with: BACKUP_DATABASE_URL="your-backup-connection-string" node scripts/check-backup-schema.js
+ * 
+ * Required environment variable:
+ * - BACKUP_DATABASE_URL: Connection string to the backup database branch
  */
 
 const { Client } = require('pg');
 
+// Load environment variables
+require('dotenv').config();
+
+// Validate required environment variable
+if (!process.env.BACKUP_DATABASE_URL) {
+  console.error('❌ Error: BACKUP_DATABASE_URL environment variable is required');
+  console.error('Usage: BACKUP_DATABASE_URL="your-connection-string" node scripts/check-backup-schema.js');
+  process.exit(1);
+}
+
 const backupClient = new Client({
-  connectionString: 'postgresql://neondb_owner:npg_Bsjwzn3Kk7Vq@ep-old-bread-aefqou3d-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require',
+  connectionString: process.env.BACKUP_DATABASE_URL,
 });
 
 async function checkSchema() {
