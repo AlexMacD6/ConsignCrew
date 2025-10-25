@@ -2,6 +2,24 @@
 
 ## Changelog
 
+### Bug Fixes
+- **Fixed Photo Gallery Upload Issue**: Photos selected from the gallery were not being processed correctly
+  - Gallery photos already exist in S3, so they no longer re-upload
+  - Instead, their existing URLs are used directly
+  - Updated `handleBulkPhotoUpload()` to detect gallery photos (via `galleryId` and `url` fields)
+  - Gallery photos skip S3 upload and proceed directly to form generation
+  - Fixed TypeScript type definitions to support `File | null` for gallery photos
+  - Updated components: `MediaPreview.tsx`, `PhotoDisplay.tsx` to handle gallery photos
+
+- **Created Separate Gallery Photos Interface**: Photos from gallery now have their own dedicated UI
+  - Added new "gallery" upload method state
+  - Created dedicated green-themed interface for gallery photos (vs blue for bulk upload)
+  - Updated `handleGalleryPhotosSelected()` to switch to "gallery" mode
+  - Gallery interface shows "Use X Photos & Generate Form" button (not "Upload")
+  - Added helpful text: "These photos are already uploaded and won't be re-uploaded"
+  - Added "Change Photos" button to easily reopen the gallery modal
+  - Prevents confusion between uploading new photos vs using existing gallery photos
+
 ### Database Schema
 - Added new `PhotoGallery` model to store user's photo library
   - Fields: userId, s3Key, url, thumbnailUrl, originalFilename, fileSize, mimeType, width, height, status, listingId, createdAt, updatedAt
@@ -85,13 +103,20 @@
 6. Verify photos appear in the "Available" tab
 7. Verify photo count badges update correctly
 
-### Test Photo Selection
-1. In the Photo Gallery modal, click photos to select them
-2. Verify selection checkmark appears on selected photos
-3. Click "Use Selected Photos" button
-4. Verify modal closes and selected photos appear in the bulk upload grid
-5. Verify photos are categorized by position (Hero, Back, Proof, Additional)
-6. Verify drag-and-drop reordering works on selected photos
+### Test Photo Selection (CRITICAL - Bug Fix Test)
+1. In the Photo Gallery modal, select 4 photos
+2. Click "Use Selected Photos" button
+3. **Verify modal closes and you see a GREEN "Photos from Gallery" interface (not the blue Bulk Upload interface)**
+4. Verify selected photos appear in the gallery photos grid
+5. **Verify photos show Hero, Back, Proof, and Additional labels**
+6. **Verify the "Use 4 Photos & Generate Form" button is immediately visible**
+7. **Verify helpful text below button: "These photos are already uploaded and won't be re-uploaded"**
+8. **Verify "Change Photos" button is available to reopen gallery**
+9. Click "Use 4 Photos & Generate Form" button
+10. **Verify the button processes without errors**
+11. **Verify you progress to Step 3 (AI Form Generation)**
+12. **Verify AI form generation completes successfully**
+13. Verify photos display correctly in the form
 
 ### Test Filtering
 1. Open Photo Gallery modal
@@ -127,6 +152,7 @@
 3. Try selecting more photos than allowed (if maxSelect is set)
 4. Try deleting photos while they're in use (should be prevented)
 5. Test with poor network connection (verify loading states)
+
 
 
 

@@ -12,7 +12,11 @@ interface PhotoDisplayProps {
     hero: Photo;
     back: Photo;
     proof: Photo;
-    additional: Array<{ file: File; key: string | null; url: string | null }>;
+    additional: Array<{
+      file: File | null;
+      key: string | null;
+      url: string | null;
+    }>;
   };
   removePhoto: (
     type: "hero" | "back" | "proof" | "additional",
