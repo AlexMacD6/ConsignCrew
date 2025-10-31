@@ -12,6 +12,8 @@
     "AllowedOrigins": [
       "http://localhost:3000",
       "http://localhost:8081",
+      "http://192.168.4.119:3000",
+      "http://192.168.4.119:8081",
       "https://localhost:3000",
       "https://treasurehub.club",
       "https://www.treasurehub.club",

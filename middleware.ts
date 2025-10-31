@@ -6,6 +6,22 @@ import { trackPageViewForRequest, isTrackingEnabled } from './app/lib/meta-pagev
  * Middleware to handle authentication and route protection
  */
 export async function middleware(request: NextRequest) {
+  // Handle CORS preflight OPTIONS requests - CRITICAL: Must come first
+  // Do NOT redirect OPTIONS requests to prevent "Redirect is not allowed for a preflight request" error
+  if (request.method === 'OPTIONS') {
+    return new NextResponse(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': request.headers.get('origin') || '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        'Access-Control-Expose-Headers': 'set-auth-token, ETag',
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Max-Age': '86400',
+      },
+    });
+  }
+
   // Only handle URL-encoded BetterAuth routes - be very specific
   if (request.nextUrl.pathname.includes('/api/auth/') && request.nextUrl.pathname.includes('%5B...betterauth%5D')) {
     console.log('🔍 Detected encoded BetterAuth URL:', request.nextUrl.pathname);

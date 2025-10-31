@@ -33,7 +33,9 @@ export const auth = betterAuth({
     'https://treasurehubclub.com',
     'https://www.treasurehubclub.com',
     'http://localhost:3000', // for development
-    'http://localhost:8081', // for development
+    'http://localhost:8081', // for mobile app development
+    'http://192.168.4.119:3000', // for LAN testing
+    'http://192.168.4.119:8081', // for mobile app LAN testing
   ],
   
   // Email and password authentication
