@@ -105,7 +105,11 @@ export default function ListItemPage() {
     hero: { file: File | null; key: string | null; url: string | null };
     back: { file: File | null; key: string | null; url: string | null };
     proof: { file: File | null; key: string | null; url: string | null };
-    additional: Array<{ file: File; key: string | null; url: string | null }>;
+    additional: Array<{
+      file: File | null;
+      key: string | null;
+      url: string | null;
+    }>;
   }>({
     hero: { file: null, key: null, url: null },
     back: { file: null, key: null, url: null },
@@ -258,13 +262,16 @@ export default function ListItemPage() {
   });
 
   // Photo upload method selection
-  const [uploadMethod, setUploadMethod] = useState<"single" | "bulk">("single");
+  const [uploadMethod, setUploadMethod] = useState<
+    "single" | "bulk" | "gallery"
+  >("single");
   const [bulkPhotos, setBulkPhotos] = useState<
     Array<{
-      file: File;
+      file: File | null;
       url: string | null;
       preview: string;
       type?: "hero" | "back" | "proof" | "additional";
+      galleryId?: string; // Track gallery photo ID for photos selected from gallery
     }>
   >([]);
   const [bulkUploading, setBulkUploading] = useState(false);
@@ -912,22 +919,44 @@ export default function ListItemPage() {
       // Upload each photo
       for (const photo of categorizedPhotos) {
         if (photo.type) {
-          const formData = new FormData();
-          formData.append("file", photo.file);
-          formData.append("photoType", photo.type);
-          formData.append("itemId", uploadItemId);
+          // Check if this is a gallery photo (has galleryId and url but no file)
+          const isGalleryPhoto = photo.galleryId && photo.url && !photo.file;
 
-          const uploadResponse = await fetch("/api/upload/photo", {
-            method: "POST",
-            body: formData,
-          });
+          let result;
+          if (isGalleryPhoto && photo.url) {
+            // Gallery photo - already in S3, just use the existing URL
+            // Extract the S3 key from the URL if needed
+            const urlParts = photo.url.split("/");
+            const key = urlParts.slice(3).join("/"); // Remove domain and get S3 key path
 
-          if (!uploadResponse.ok) {
-            const errorData = await uploadResponse.json();
-            throw new Error(errorData.error || "Upload failed");
+            result = {
+              key: key,
+              url: photo.url,
+            };
+            console.log("Using gallery photo:", result);
+          } else if (photo.file) {
+            // New photo - upload to S3
+            const formData = new FormData();
+            formData.append("file", photo.file);
+            formData.append("photoType", photo.type);
+            formData.append("itemId", uploadItemId);
+
+            const uploadResponse = await fetch("/api/upload/photo", {
+              method: "POST",
+              body: formData,
+            });
+
+            if (!uploadResponse.ok) {
+              const errorData = await uploadResponse.json();
+              throw new Error(errorData.error || "Upload failed");
+            }
+
+            result = await uploadResponse.json();
+          } else {
+            // Invalid photo state - skip
+            console.warn("Skipping photo with invalid state:", photo);
+            continue;
           }
-
-          const result = await uploadResponse.json();
 
           // Update photo state
           if (photo.type === "additional") {
@@ -1086,6 +1115,9 @@ export default function ListItemPage() {
 
     setBulkPhotos(newBulkPhotos);
     setShowPhotoGallery(false);
+
+    // Switch to gallery mode to show the gallery-specific interface
+    setUploadMethod("gallery");
   };
 
   // Bulk video upload handlers
@@ -2680,7 +2712,9 @@ export default function ListItemPage() {
                       value="bulk"
                       checked={uploadMethod === "bulk"}
                       onChange={(e) =>
-                        setUploadMethod(e.target.value as "single" | "bulk")
+                        setUploadMethod(
+                          e.target.value as "single" | "bulk" | "gallery"
+                        )
                       }
                       className="sr-only"
                     />
@@ -3101,10 +3135,11 @@ export default function ListItemPage() {
                     ) {
                       const lastAdditional =
                         photos.additional[photos.additional.length - 1];
+                      const file = lastAdditional.file;
                       imageSrc =
                         lastAdditional.url ||
-                        (lastAdditional.file
-                          ? URL.createObjectURL(lastAdditional.file)
+                        (file instanceof File
+                          ? URL.createObjectURL(file as File)
                           : null);
                     }
 
@@ -3455,6 +3490,141 @@ export default function ListItemPage() {
                         </div>
                       </div>
                     )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Gallery Photos Interface - Shows selected photos from gallery */}
+            {uploadMethod === "gallery" && bulkPhotos.length > 0 && (
+              <>
+                {/* Gallery Photos Preview */}
+                <div className="w-full max-w-2xl mb-8">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-green-900 mb-4 text-center">
+                      Photos from Gallery
+                    </h3>
+                    <p className="text-sm text-green-700 mb-4 text-center">
+                      Using photos from your gallery. Drag and drop to reorder:
+                      <br />
+                      <span className="text-xs">
+                        1st photo = Hero (Front) • 2nd = Back • 3rd = Proof •
+                        Rest = Additional
+                      </span>
+                    </p>
+
+                    {/* Selected Photos Preview */}
+                    <div className="mt-6">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-medium text-green-900">
+                          Selected Photos ({bulkPhotos.length})
+                        </h4>
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => setShowPhotoGallery(true)}
+                            className="text-sm text-green-700 hover:text-green-800 font-medium"
+                          >
+                            Change Photos
+                          </button>
+                          <button
+                            onClick={clearBulkPhotos}
+                            className="text-sm text-red-600 hover:text-red-700 font-medium"
+                          >
+                            Clear All
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {bulkPhotos.map((photo, index) => {
+                          // Determine category based on position
+                          let category = "";
+                          if (index === 0) category = "Hero";
+                          else if (index === 1) category = "Back";
+                          else if (index === 2) category = "Proof";
+                          else category = "Additional";
+
+                          return (
+                            <div
+                              key={index}
+                              className="relative group cursor-move"
+                              draggable
+                              onDragStart={(e) => {
+                                e.dataTransfer!.effectAllowed = "move";
+                                e.dataTransfer!.setData(
+                                  "photoIndex",
+                                  index.toString()
+                                );
+                              }}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                e.dataTransfer!.dropEffect = "move";
+                              }}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                const sourceIndex = parseInt(
+                                  e.dataTransfer!.getData("photoIndex")
+                                );
+                                if (sourceIndex !== index) {
+                                  // Reorder photos
+                                  const newPhotos = [...bulkPhotos];
+                                  const [movedPhoto] = newPhotos.splice(
+                                    sourceIndex,
+                                    1
+                                  );
+                                  newPhotos.splice(index, 0, movedPhoto);
+                                  setBulkPhotos(newPhotos);
+                                }
+                              }}
+                            >
+                              <img
+                                src={photo.preview}
+                                alt={`Photo ${index + 1}`}
+                                className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                              />
+                              <button
+                                onClick={() => removeBulkPhoto(index)}
+                                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                ×
+                              </button>
+                              <div className="absolute bottom-1 left-1 right-1 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded flex items-center justify-between">
+                                <span>{category}</span>
+                                <span className="text-xs opacity-75">⋮⋮</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Generate Form Button */}
+                      <div className="mt-6 text-center">
+                        <button
+                          onClick={handleBulkPhotoUpload}
+                          disabled={!validateBulkPhotos() || bulkUploading}
+                          className={`px-8 py-3 rounded-lg font-medium transition-colors ${
+                            validateBulkPhotos() && !bulkUploading
+                              ? "bg-[#D4AF3D] text-white hover:bg-[#b8932f]"
+                              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                          }`}
+                        >
+                          {bulkUploading ? (
+                            <span className="flex items-center gap-2">
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Processing Photos...
+                            </span>
+                          ) : (
+                            `Use ${bulkPhotos.length} Photo${
+                              bulkPhotos.length !== 1 ? "s" : ""
+                            } & Generate Form`
+                          )}
+                        </button>
+                        <p className="text-xs text-gray-500 mt-2">
+                          These photos are already uploaded and won't be
+                          re-uploaded
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </>

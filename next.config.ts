@@ -28,9 +28,31 @@ const nextConfig: NextConfig = {
 			},
 		];
 	},
+	// CORS headers configuration for API routes
+	async headers() {
+		return [
+			{
+				// Apply these headers to all API routes
+				source: '/api/:path*',
+				headers: [
+					{ key: 'Access-Control-Allow-Origin', value: 'http://localhost:8081, http://localhost:3000, http://192.168.4.119:8081, http://192.168.4.119:3000' },
+					{ key: 'Access-Control-Allow-Methods', value: 'GET, POST, PUT, DELETE, OPTIONS' },
+					{ key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization, X-Requested-With' },
+					{ key: 'Access-Control-Expose-Headers', value: 'set-auth-token, ETag' },
+					{ key: 'Access-Control-Allow-Credentials', value: 'true' },
+					{ key: 'Access-Control-Max-Age', value: '86400' },
+				],
+			},
+		];
+	},
 	experimental: {
 		serverActions: {
-			allowedOrigins: ['localhost:3000'],
+			allowedOrigins: [
+				'localhost:3000',
+				'localhost:8081',
+				'192.168.4.119:3000',
+				'192.168.4.119:8081',
+			],
 			bodySizeLimit: '100mb',
 		},
 	},

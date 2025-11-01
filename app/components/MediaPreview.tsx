@@ -8,7 +8,11 @@ interface MediaPreviewProps {
     hero: { file: File | null; key: string | null; url: string | null };
     back: { file: File | null; key: string | null; url: string | null };
     proof: { file: File | null; key: string | null; url: string | null };
-    additional: Array<{ file: File; key: string | null; url: string | null }>;
+    additional: Array<{
+      file: File | null;
+      key: string | null;
+      url: string | null;
+    }>;
   };
   videoData: {
     frameUrls: string[];
