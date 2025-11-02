@@ -426,13 +426,12 @@ export async function GET(request: NextRequest) {
     if (userOnly) {
       whereClause.userId = session!.user.id;
     } else {
-      // For public listings, show ACTIVE, PROCESSING, and SOLD
+      // For public listings, default to showing ACTIVE and PROCESSING (not SOLD)
       if (status === 'active') {
-        // TEMPORARY DEBUG: Show all listings regardless of status
-        // whereClause.status = {
-        //   in: ['active', 'processing', 'sold']
-        // };
-        console.log('DEBUG: Temporarily showing all listings regardless of status');
+        whereClause.status = {
+          in: ['active', 'processing'] // Exclude sold items by default
+        };
+        console.log('Listings API: Showing active and processing listings (excluding sold)');
       } else {
         whereClause.status = status;
       }

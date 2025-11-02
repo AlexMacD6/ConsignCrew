@@ -101,9 +101,9 @@ export default function ListingsPage() {
   const [selectedCategory, setSelectedCategory] = useState("All"); // Department
   const [selectedSubCategory, setSelectedSubCategory] = useState("All"); // Category
   const [selectedSubSubCategory, setSelectedSubSubCategory] = useState("All"); // Subcategory
-  const [sortBy, setSortBy] = useState("largest-discount");
+  const [sortBy, setSortBy] = useState("newest"); // Changed default to newest first
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
-  const [showSold, setShowSold] = useState(true); // Default to showing sold items
+  const [showSold, setShowSold] = useState(false); // Changed default to hide sold items
   const [showProcessing, setShowProcessing] = useState(true); // Default to showing processing items
   const [showHidden, setShowHidden] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
