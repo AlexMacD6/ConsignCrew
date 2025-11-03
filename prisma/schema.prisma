@@ -74,16 +74,17 @@ model CartItem {
 }
 
 model Organization {
-  id          String       @id @default(cuid())
-  name        String
-  slug        String       @unique
-  logo        String?
-  metadata    String?
-  createdAt   DateTime     @default(now())
-  invitations Invitation[]
-  members     Member[]
-  teams       Team[]
-  sessions    session[]
+  id           String         @id @default(cuid())
+  name         String
+  slug         String         @unique
+  logo         String?
+  metadata     String?
+  createdAt    DateTime       @default(now())
+  invitations  Invitation[]
+  members      Member[]
+  teams        Team[]
+  sessions     session[]
+  photoGallery PhotoGallery[] @relation("OrganizationPhotos")
 }
 
 model Member {
@@ -472,8 +473,9 @@ model Video {
 }
 
 model PhotoGallery {
-  id               String   @id @default(cuid())
+  id               String        @id @default(cuid())
   userId           String
+  organizationId   String?       // Photos can be shared across organization members
   s3Key            String
   url              String
   thumbnailUrl     String?
@@ -482,14 +484,16 @@ model PhotoGallery {
   mimeType         String
   width            Int?
   height           Int?
-  status           String   @default("available")
+  status           String        @default("available")
   listingId        String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  listing          Listing? @relation("ListingGalleryPhotos", fields: [listingId], references: [id])
-  user             user     @relation("UserPhotoGallery", fields: [userId], references: [id])
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  listing          Listing?      @relation("ListingGalleryPhotos", fields: [listingId], references: [id])
+  user             user          @relation("UserPhotoGallery", fields: [userId], references: [id])
+  organization     Organization? @relation("OrganizationPhotos", fields: [organizationId], references: [id])
 
   @@index([userId])
+  @@index([organizationId])
   @@index([status])
   @@index([listingId])
   @@index([createdAt])

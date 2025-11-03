@@ -7,6 +7,10 @@ import { prisma } from "@/lib/prisma";
  * GET /api/photo-gallery
  * Fetch user's photo gallery with optional filtering
  * Query params: status (available, listed, all)
+ * 
+ * This endpoint returns photos from:
+ * 1. Photos uploaded by the user
+ * 2. Photos uploaded by other members of the user's organizations (shared gallery)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -25,10 +29,33 @@ export async function GET(request: NextRequest) {
     const userId = session.user.id;
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") || "available"; // available, listed, all
+    const organizationId = searchParams.get("organizationId"); // Optional: filter by specific organization
+
+    // Get user's organization memberships to fetch shared photos
+    const userOrganizations = await prisma.member.findMany({
+      where: { userId },
+      select: { organizationId: true },
+    });
+
+    const userOrgIds = userOrganizations.map((m) => m.organizationId);
 
     // Build query based on status filter
-    const where: any = { userId };
-    
+    const where: any = {
+      OR: [
+        { userId }, // User's own photos
+        ...(userOrgIds.length > 0
+          ? [
+              {
+                // Photos from organization members (shared gallery)
+                organizationId: organizationId
+                  ? organizationId // Specific organization if requested
+                  : { in: userOrgIds }, // All user's organizations
+              },
+            ]
+          : []),
+      ],
+    };
+
     if (status !== "all") {
       where.status = status;
     }
@@ -51,7 +78,16 @@ export async function GET(request: NextRequest) {
         height: true,
         status: true,
         listingId: true,
+        userId: true,
+        organizationId: true,
         createdAt: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
       },
     });
 
@@ -71,6 +107,9 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/photo-gallery
  * Upload a new photo to the gallery
+ * 
+ * Photos are automatically tagged with the user's primary organization
+ * to enable shared gallery access across organization members
  */
 export async function POST(request: NextRequest) {
   try {
@@ -114,6 +153,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get user's primary organization (first one they're a member of)
+    // This enables shared gallery across organization members
+    const userMembership = await prisma.member.findFirst({
+      where: { userId },
+      select: { organizationId: true },
+    });
+
+    const organizationId = userMembership?.organizationId || null;
+
     // Upload to S3
     const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3");
     
@@ -154,10 +202,11 @@ export async function POST(request: NextRequest) {
     
     const url = `${cdnDomain}/${s3Key}`;
 
-    // Save to database
+    // Save to database with organizationId for shared access
     const photo = await prisma.photoGallery.create({
       data: {
         userId,
+        organizationId, // Tag with organization for shared gallery
         s3Key,
         url,
         originalFilename: file.name,
