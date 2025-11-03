@@ -164,6 +164,7 @@ export async function POST(request: NextRequest) {
 
     // Upload to S3
     const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3");
+    const sharp = (await import("sharp")).default;
     
     const s3Client = new S3Client({
       region: process.env.AWS_REGION || "us-east-1",
@@ -177,12 +178,27 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now();
     const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
     const s3Key = `photo-gallery/${userId}/${timestamp}-${sanitizedFilename}`;
+    const thumbnailS3Key = `photo-gallery/${userId}/thumbnails/${timestamp}-thumb-${sanitizedFilename}`;
 
     // Convert file to buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Upload to S3
+    // Get image metadata and dimensions
+    const imageMetadata = await sharp(buffer).metadata();
+    const width = imageMetadata.width || null;
+    const height = imageMetadata.height || null;
+
+    // Generate thumbnail (400x400 max, maintain aspect ratio)
+    const thumbnailBuffer = await sharp(buffer)
+      .resize(400, 400, {
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+
+    // Upload original image to S3
     await s3Client.send(
       new PutObjectCommand({
         Bucket: bucketName,
@@ -192,7 +208,17 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    // Generate URL - ensure protocol is included
+    // Upload thumbnail to S3
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: bucketName,
+        Key: thumbnailS3Key,
+        Body: thumbnailBuffer,
+        ContentType: "image/jpeg",
+      })
+    );
+
+    // Generate URLs - ensure protocol is included
     let cdnDomain = process.env.NEXT_PUBLIC_CDN_URL || `https://${bucketName}.s3.us-east-1.amazonaws.com`;
     
     // Add https:// if not present
@@ -201,6 +227,7 @@ export async function POST(request: NextRequest) {
     }
     
     const url = `${cdnDomain}/${s3Key}`;
+    const thumbnailUrl = `${cdnDomain}/${thumbnailS3Key}`;
 
     // Save to database with organizationId for shared access
     const photo = await prisma.photoGallery.create({
@@ -209,9 +236,12 @@ export async function POST(request: NextRequest) {
         organizationId, // Tag with organization for shared gallery
         s3Key,
         url,
+        thumbnailUrl, // Add thumbnail URL
         originalFilename: file.name,
         fileSize: file.size,
         mimeType: file.type,
+        width, // Store image dimensions
+        height,
         status: "available",
       },
     });
