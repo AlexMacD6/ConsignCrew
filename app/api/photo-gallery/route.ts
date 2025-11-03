@@ -3,6 +3,19 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 
+// Configure route to handle large file uploads
+export const runtime = "nodejs";
+export const maxDuration = 60; // 60 seconds timeout
+export const dynamic = "force-dynamic";
+
+// Increase body size limit for file uploads (50MB)
+export const config = {
+  api: {
+    bodyParser: false,
+    responseLimit: false,
+  },
+};
+
 /**
  * GET /api/photo-gallery
  * Fetch user's photo gallery with optional filtering
@@ -126,18 +139,32 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = session.user.id;
+    
+    // Log request details for debugging
+    console.log('📤 Photo upload request received');
+    console.log('   User ID:', userId);
+    console.log('   Content-Type:', request.headers.get('content-type'));
+    console.log('   Content-Length:', request.headers.get('content-length'));
+    
     const formData = await request.formData();
     const file = formData.get("file") as File;
 
     if (!file) {
+      console.error('❌ No file in FormData');
       return NextResponse.json(
         { error: "No file provided" },
         { status: 400 }
       );
     }
 
+    console.log('📎 File received:');
+    console.log('   Name:', file.name);
+    console.log('   Type:', file.type);
+    console.log('   Size:', file.size, 'bytes');
+
     // Validate file type
     if (!file.type.startsWith("image/")) {
+      console.error('❌ Invalid file type:', file.type);
       return NextResponse.json(
         { error: "Only image files are allowed" },
         { status: 400 }
@@ -147,8 +174,18 @@ export async function POST(request: NextRequest) {
     // Validate file size (max 10MB)
     const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
+      console.error('❌ File too large:', file.size, 'bytes');
       return NextResponse.json(
         { error: "File size must be less than 10MB" },
+        { status: 400 }
+      );
+    }
+    
+    // Validate file size is not zero
+    if (file.size === 0) {
+      console.error('❌ File size is zero');
+      return NextResponse.json(
+        { error: "File is empty. Please try selecting the photo again." },
         { status: 400 }
       );
     }
@@ -180,23 +217,104 @@ export async function POST(request: NextRequest) {
     const s3Key = `photo-gallery/${userId}/${timestamp}-${sanitizedFilename}`;
     const thumbnailS3Key = `photo-gallery/${userId}/thumbnails/${timestamp}-thumb-${sanitizedFilename}`;
 
-    // Convert file to buffer
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    console.log('🔄 Converting file to buffer...');
+    
+    // Convert file to buffer with multiple retry strategies
+    let buffer: Buffer;
+    
+    try {
+      // Try method 1: arrayBuffer (works most of the time)
+      const arrayBuffer = await file.arrayBuffer();
+      
+      // Validate buffer is not empty
+      if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+        console.warn('⚠️ arrayBuffer is empty, trying alternative method...');
+        
+        // Try method 2: Read as blob then convert
+        const blob = file.slice(0, file.size);
+        const arrayBuffer2 = await blob.arrayBuffer();
+        
+        if (!arrayBuffer2 || arrayBuffer2.byteLength === 0) {
+          console.error('❌ Both buffer reading methods failed');
+          console.error('   File name:', file.name);
+          console.error('   File size:', file.size);
+          console.error('   File type:', file.type);
+          return NextResponse.json(
+            { 
+              error: "Failed to read file data. The file may be corrupted. Please try again.",
+              details: "Empty buffer received from file"
+            },
+            { status: 400 }
+          );
+        }
+        
+        buffer = Buffer.from(arrayBuffer2);
+        console.log('✓ Buffer read using alternative method');
+      } else {
+        buffer = Buffer.from(arrayBuffer);
+        console.log('✓ Buffer read successfully');
+      }
+    } catch (error) {
+      console.error('❌ Error reading file buffer:', error);
+      return NextResponse.json(
+        { 
+          error: "Failed to process file. Please try again.",
+          details: error instanceof Error ? error.message : "Unknown error"
+        },
+        { status: 500 }
+      );
+    }
+    
+    // Final validation - ensure buffer is not empty
+    if (!buffer || buffer.length === 0) {
+      console.error('❌ Buffer is empty after conversion');
+      console.error('   File name:', file.name);
+      console.error('   File size:', file.size);
+      return NextResponse.json(
+        { error: "File data could not be read. Please try uploading again." },
+        { status: 400 }
+      );
+    }
+
+    console.log(`✓ Buffer ready: ${buffer.length} bytes`);
 
     // Get image metadata and dimensions
-    const imageMetadata = await sharp(buffer).metadata();
-    const width = imageMetadata.width || null;
-    const height = imageMetadata.height || null;
+    let imageMetadata;
+    let width = null;
+    let height = null;
+    
+    try {
+      imageMetadata = await sharp(buffer).metadata();
+      width = imageMetadata.width || null;
+      height = imageMetadata.height || null;
+      console.log(`Image dimensions: ${width}x${height}`);
+    } catch (error) {
+      console.error("Error reading image metadata:", error);
+      return NextResponse.json(
+        { error: "Invalid image file. Please ensure the file is a valid image." },
+        { status: 400 }
+      );
+    }
 
     // Generate thumbnail (400x400 max, maintain aspect ratio)
-    const thumbnailBuffer = await sharp(buffer)
-      .resize(400, 400, {
-        fit: "inside",
-        withoutEnlargement: true,
-      })
-      .jpeg({ quality: 80 })
-      .toBuffer();
+    let thumbnailBuffer;
+    try {
+      thumbnailBuffer = await sharp(buffer)
+        .resize(400, 400, {
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .jpeg({ quality: 80 })
+        .toBuffer();
+      
+      console.log(`Generated thumbnail (${thumbnailBuffer.length} bytes)`);
+    } catch (error) {
+      console.error("Error generating thumbnail:", error);
+      return NextResponse.json(
+        { error: "Failed to generate thumbnail. Please try again." },
+        { status: 500 }
+      );
+    }
 
     // Upload original image to S3
     await s3Client.send(
