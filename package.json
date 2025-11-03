@@ -23,6 +23,7 @@
     "@aws-sdk/client-s3": "^3.864.0",
     "@aws-sdk/client-ses": "^3.873.0",
     "@aws-sdk/client-sso": "^3.855.0",
+    "@aws-sdk/cloudfront-signer": "^3.921.0",
     "@aws-sdk/credential-provider-node": "^3.848.0",
     "@aws-sdk/credential-provider-sso": "^3.848.0",
     "@aws-sdk/s3-request-presigner": "^3.850.0",

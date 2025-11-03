@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { generateSignedPhotoUrl, extractS3Key } from "@/lib/cloudfront-signer";
 
 // Configure route to handle large file uploads
 export const runtime = "nodejs";
@@ -24,6 +25,8 @@ export const config = {
  * This endpoint returns photos from:
  * 1. Photos uploaded by the user
  * 2. Photos uploaded by other members of the user's organizations (shared gallery)
+ * 
+ * Security: Returns signed CloudFront URLs that expire after 60 minutes
  */
 export async function GET(request: NextRequest) {
   try {
@@ -104,9 +107,32 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // Generate signed URLs for secure access (60 minute expiry)
+    // This prevents unauthorized access to photos
+    const photosWithSignedUrls = photos.map((photo) => {
+      // Extract S3 key from URL if needed
+      const s3Key = photo.s3Key || extractS3Key(photo.url);
+      
+      // Generate signed URL for full image
+      const signedUrl = generateSignedPhotoUrl(s3Key, { expiresInMinutes: 60 });
+      
+      // Generate signed URL for thumbnail if it exists
+      let signedThumbnailUrl = null;
+      if (photo.thumbnailUrl) {
+        const thumbnailKey = extractS3Key(photo.thumbnailUrl);
+        signedThumbnailUrl = generateSignedPhotoUrl(thumbnailKey, { expiresInMinutes: 60 });
+      }
+
+      return {
+        ...photo,
+        url: signedUrl,
+        thumbnailUrl: signedThumbnailUrl,
+      };
+    });
+
     return NextResponse.json({
-      photos,
-      count: photos.length,
+      photos: photosWithSignedUrls,
+      count: photosWithSignedUrls.length,
     });
   } catch (error) {
     console.error("Error fetching photo gallery:", error);
