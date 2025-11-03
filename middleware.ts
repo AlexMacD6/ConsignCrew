@@ -4,6 +4,7 @@ import { trackPageViewForRequest, isTrackingEnabled } from './app/lib/meta-pagev
 
 /**
  * Middleware to handle authentication and route protection
+ * Updated: Ensuring CORS headers are properly exposed for uploader app
  */
 export async function middleware(request: NextRequest) {
   const origin = request.headers.get('origin');
