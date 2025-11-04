@@ -1,0 +1,157 @@
+# Cross-App Authentication Integration
+
+## Overview
+Enable the separate "Selling to Sold" application to register and authenticate users through TreasureHub's authentication system via secure API endpoints.
+
+## Problem Statement
+- User has a separate codebase called "Selling to Sold"
+- Need to allow users to sign up in that app
+- Registrations should create accounts in TreasureHub's database
+- Both apps should share the same user authentication system
+
+## Solution
+Implement API-based cross-app authentication with secure API key authorization.
+
+## Implementation Details
+
+### 1. External Registration API
+- **Endpoint:** `POST /api/external/register`
+- **Authentication:** API key via `X-API-Key` header
+- **Features:**
+  - Create new users in TreasureHub database
+  - Send email verification
+  - Create Stripe customer (for buyers)
+  - Assign to appropriate organization (buyers/sellers)
+  - Track registration source (appSource parameter)
+
+### 2. External Login Verification API
+- **Endpoint:** `POST /api/external/login`
+- **Authentication:** API key via `X-API-Key` header
+- **Features:**
+  - Verify user credentials
+  - Return user information
+  - Handle email verification status
+  - Provide appropriate error messages
+
+### 3. Security Features
+- API key authentication
+- CORS configuration for allowed origins
+- Input validation
+- Password strength requirements (minimum 8 characters)
+- Duplicate email prevention
+
+### 4. Environment Variables
+- `EXTERNAL_APP_API_KEY` - Secure API key for external app authentication
+- `EXTERNAL_APP_ORIGIN` - Allowed origin for CORS (e.g., https://sellingtosold.app)
+
+### 5. User Flow
+1. User fills out registration form in Selling to Sold app
+2. Selling to Sold app calls TreasureHub's `/api/external/register` endpoint
+3. TreasureHub creates user account and sends verification email
+4. User verifies email via link (redirects to TreasureHub)
+5. User can now log in through either app
+
+## Files Created/Modified
+
+### New Files
+- `app/api/external/register/route.ts` - Registration endpoint
+- `app/api/external/login/route.ts` - Login verification endpoint
+- `CROSS-APP-AUTHENTICATION.md` - Comprehensive integration guide
+
+### Modified Files
+- `env.example` - Added external app environment variables
+
+## Benefits
+- **Centralized User Management** - Single source of truth for user accounts
+- **Consistent Authentication** - Same user database across apps
+- **Security** - API key authentication prevents unauthorized access
+- **Flexibility** - External app can have its own UI while using TreasureHub's auth
+- **Scalability** - Can easily add more external apps using same pattern
+
+## Testing Instructions
+
+### 1. Setup Environment Variables
+```bash
+# In TreasureHub .env file
+EXTERNAL_APP_API_KEY=generate_secure_random_key_32_chars_minimum
+EXTERNAL_APP_ORIGIN=https://localhost:3001  # Selling to Sold app URL
+```
+
+### 2. Generate Secure API Key
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+### 3. Test Registration with curl
+```bash
+curl -X POST http://localhost:3000/api/external/register \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key_here" \
+  -d '{
+    "email": "test@example.com",
+    "password": "testPassword123",
+    "name": "Test User",
+    "userType": "seller",
+    "appSource": "selling-to-sold"
+  }'
+```
+
+### 4. Test Login with curl
+```bash
+curl -X POST http://localhost:3000/api/external/login \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key_here" \
+  -d '{
+    "email": "test@example.com",
+    "password": "testPassword123"
+  }'
+```
+
+### 5. Test Error Cases
+- Missing API key (should return 401)
+- Invalid API key (should return 401)
+- Missing required fields (should return 400)
+- Duplicate email (should return 409)
+- Wrong password (should return 401)
+- Unverified email (should return 403)
+
+## Integration with Selling to Sold App
+
+### Required Setup in Selling to Sold
+1. Add environment variables:
+   - `TREASUREHUB_API_URL=https://treasurehub.club`
+   - `TREASUREHUB_API_KEY=same_key_as_treasurehub`
+
+2. Implement API calls (see CROSS-APP-AUTHENTICATION.md for code examples)
+
+3. Handle responses:
+   - Success: Show success message, prompt email verification
+   - Error: Display appropriate error message to user
+
+## Security Considerations
+- API keys must be kept secret and server-side only
+- Use HTTPS in production
+- Rotate API keys periodically
+- Consider implementing rate limiting
+- Validate all input on both apps
+
+## Future Enhancements
+- SSO (Single Sign-On) between apps
+- OAuth 2.0 provider implementation
+- Webhook notifications for user events
+- Password reset API for external apps
+- User profile sync between apps
+- Resend verification email endpoint
+
+## Dependencies
+- Better Auth (existing)
+- Prisma (existing)
+- Stripe (existing, for customer creation)
+- AWS SES (existing, for email verification)
+
+## Notes
+- Email verification links currently redirect to TreasureHub
+- Consider adding redirect parameter to return users to Selling to Sold after verification
+- Users can log in through either app once verified
+- Same password works for both apps (shared authentication)
+
