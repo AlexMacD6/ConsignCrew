@@ -6,6 +6,7 @@ import { validateGender, validateAgeGroup, validateItemGroupId } from '@/lib/pro
 import { metaPixelAPI } from '@/lib/meta-pixel-api';
 import { trackCatalogUpdate, trackProductStatusChange } from '@/lib/meta-pixel-client';
 import { autoReleaseExpiredHolds } from '@/lib/auto-release-holds';
+import { getDisplayPrice } from '@/lib/price-calculator';
 
 // Generate a unique random 6-character ID using letters and numbers
 async function generateUniqueRandomId(): Promise<string> {
@@ -511,10 +512,22 @@ export async function GET(request: NextRequest) {
       const userZipCode = listing.user.zipCode;
       const neighborhood = userZipCode ? zipCodeMap.get(userZipCode) || 'Unknown Area' : 'Unknown Area';
       
+      // Calculate the current display price with discounts applied
+      const priceInfo = getDisplayPrice(listing);
+      
       return {
         ...listing,
         neighborhood,
-      } as typeof listing & { neighborhood: string };
+        // Add calculated display price fields for mobile app
+        displayPrice: priceInfo.price,           // The actual current price (green price)
+        isDiscounted: priceInfo.isDiscounted,    // Whether item is on sale
+        originalPrice: priceInfo.originalPrice,  // Original price for strikethrough display
+      } as typeof listing & { 
+        neighborhood: string;
+        displayPrice: number;
+        isDiscounted: boolean;
+        originalPrice?: number;
+      };
     });
 
     return NextResponse.json({
