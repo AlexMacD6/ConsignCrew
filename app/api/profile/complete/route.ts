@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getDisplayPrice } from "@/lib/price-calculator";
 
 /**
  * Combined profile endpoint that returns user profile, permissions, admin status, listings, and purchases
@@ -176,6 +177,18 @@ export async function GET(req: NextRequest) {
       estimatedRetailPrice: purchase.listing.estimatedRetailPrice,
     }));
 
+    // Transform listings data with calculated display prices
+    const transformedListings = listings.map(listing => {
+      const priceInfo = getDisplayPrice(listing);
+      
+      return {
+        ...listing,
+        displayPrice: priceInfo.price,
+        isDiscounted: priceInfo.isDiscounted,
+        originalPrice: priceInfo.originalPrice,
+      };
+    });
+
     console.log('Complete Profile API: Successfully compiled complete profile data');
     
     const response = NextResponse.json({
@@ -189,7 +202,7 @@ export async function GET(req: NextRequest) {
         isBuyer,
         isAdmin,
       },
-      listings: listings || [],
+      listings: transformedListings || [],
       purchases: transformedPurchases || [],
       stats: {
         totalListings: listings?.length || 0,

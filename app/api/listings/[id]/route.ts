@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { validateGender, validateAgeGroup, validateItemGroupId } from "@/lib/product-specifications";
 import { checkAndReleaseListingHold } from "@/lib/auto-release-holds";
+import { getDisplayPrice } from "@/lib/price-calculator";
 
 export async function GET(
   request: NextRequest,
@@ -113,10 +114,17 @@ export async function GET(
       }
     }
 
+    // Calculate the current display price with discounts applied
+    const priceInfo = getDisplayPrice(listing);
+
     // Transform the data to include organization information and video
     const transformedListing = {
       ...listing,
       neighborhood, // Add the looked-up neighborhood
+      // Add calculated display price fields for mobile app
+      displayPrice: priceInfo.price,           // The actual current price (green price)
+      isDiscounted: priceInfo.isDiscounted,    // Whether item is on sale
+      originalPrice: priceInfo.originalPrice,  // Original price for strikethrough display
       user: {
         ...listing.user,
         organization: listing.user.members[0]?.organization || null,
