@@ -351,13 +351,18 @@ export default function ListingsPage() {
       const listingSubCategory =
         listing.subCategory || listing.category_id?.split("_")[2] || "";
 
+      // Search across multiple fields including itemId (6-character listing ID)
       const matchesSearch =
         listing.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        listing.itemId?.toLowerCase().includes(searchTerm.toLowerCase()) || // Add itemId search (e.g., "A1B2C3")
         listingDepartment?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         listingCategory?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         listing.seller_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         listing.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        listing.location.toLowerCase().includes(searchTerm.toLowerCase());
+        listing.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        listing.brand?.toLowerCase().includes(searchTerm.toLowerCase()) || // Add brand search
+        listing.modelNumber?.toLowerCase().includes(searchTerm.toLowerCase()) || // Add model number search
+        listing.serialNumber?.toLowerCase().includes(searchTerm.toLowerCase()); // Add serial number search
 
       const matchesDepartment =
         selectedCategory === "All" || listingDepartment === selectedCategory;
@@ -1031,7 +1036,7 @@ export default function ListingsPage() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <input
                   type="text"
-                  placeholder="Search listings..."
+                  placeholder="Search by title, item ID, description, brand..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF3D] focus:border-transparent"
