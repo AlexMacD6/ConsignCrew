@@ -210,6 +210,9 @@ export default function ListItemPage() {
   const [isLoadingInventory, setIsLoadingInventory] = useState(false);
   const [inventorySearchQuery, setInventorySearchQuery] = useState("");
   const [inventoryPage, setInventoryPage] = useState(1);
+
+  // Mobile item metadata from Selling to Sold app (extracted from photos)
+  const [mobileItemMetadata, setMobileItemMetadata] = useState<any>(null);
   const [inventoryTotalPages, setInventoryTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState<
     "ALL" | "MANIFESTED" | "RECEIVED" | "TRASH" | "USE"
@@ -1116,6 +1119,37 @@ export default function ListItemPage() {
     setBulkPhotos(newBulkPhotos);
     setShowPhotoGallery(false);
 
+    // Extract mobile item metadata from the first photo with metadata
+    // This allows dimensions and notes from the mobile app to be used by AI
+    const photoWithMetadata = selectedPhotos.find(
+      (photo) => photo.mobileItem?.metadata
+    );
+
+    if (photoWithMetadata?.mobileItem?.metadata) {
+      const metadata = photoWithMetadata.mobileItem.metadata;
+      console.log("📱 Mobile item metadata found:", metadata);
+      
+      setMobileItemMetadata({
+        customItemId: metadata.customItemId,
+        height: metadata.height,
+        width: metadata.width,
+        depth: metadata.depth,
+        notes: metadata.notes,
+        source: photoWithMetadata.mobileItem.appSource,
+      });
+
+      // Auto-fill dimensions if they exist
+      if (metadata.height) setHeight(metadata.height);
+      if (metadata.width) setWidth(metadata.width);
+      if (metadata.depth) setDepth(metadata.depth);
+      
+      console.log("✅ Dimensions auto-filled from mobile metadata");
+    } else {
+      // Clear metadata if no photos have it
+      setMobileItemMetadata(null);
+      console.log("💬 No mobile item metadata found in selected photos");
+    }
+
     // Switch to gallery mode to show the gallery-specific interface
     setUploadMethod("gallery");
   };
@@ -1499,6 +1533,16 @@ export default function ListItemPage() {
                       lotNumber: selectedInventoryItem.list.lotNumber,
                     }
                   : undefined,
+              }
+            : undefined,
+          mobileItemMetadata: mobileItemMetadata
+            ? {
+                customItemId: mobileItemMetadata.customItemId,
+                height: mobileItemMetadata.height,
+                width: mobileItemMetadata.width,
+                depth: mobileItemMetadata.depth,
+                notes: mobileItemMetadata.notes,
+                source: mobileItemMetadata.source,
               }
             : undefined,
           mode: "comprehensive", // Use comprehensive mode for full analysis

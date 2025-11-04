@@ -1,0 +1,290 @@
+# Selling to Sold Uploader App Integration
+
+## Overview
+Integration between TreasureHub and the Selling to Sold mobile uploader app to allow users to upload photos with associated metadata (dimensions, notes, custom IDs) from the mobile app, which are then displayed in TreasureHub when creating listings.
+
+## Problem Statement
+- Selling to Sold app uploads photos to TreasureHub
+- Users add metadata in the uploader app (height, width, depth, notes, item ID)
+- This metadata was not being sent to or stored in TreasureHub
+- When users create listings in TreasureHub and select photos from the gallery, they couldn't see the metadata they entered in the mobile app
+
+## Solution
+Implemented a complete metadata pipeline from mobile app → TreasureHub database → listing creation UI.
+
+## Implementation Details
+
+### 1. Database Schema Changes
+
+**New Models:**
+
+#### `MobileItem`
+- Stores metadata about items uploaded from the mobile app
+- Links to multiple photos
+- Tracks status (pending, approved, listed)
+- Records app source for tracking
+
+#### `MobileItemMetadata`
+- Stores the actual metadata fields:
+  - `customItemId` - User-provided item identifier
+  - `height` - Height in inches
+  - `width` - Width in inches  
+  - `depth` - Depth in inches
+  - `notes` - User notes about the item
+
+**Modified Models:**
+
+#### `PhotoGallery`
+- Added `mobileItemId` field to link photos to mobile items
+- Added `mobileItem` relation
+
+### 2. API Endpoints
+
+#### `POST /api/mobile/items`
+- Creates a new mobile item with metadata
+- Links existing photos to the item
+- **Request Body:**
+```json
+{
+  "mediaIds": ["photo_id_1", "photo_id_2"],
+  "metadata": {
+    "itemId": "USER-123",
+    "height": "24",
+    "width": "36",
+    "depth": "12",
+    "notes": "Vintage wooden table"
+  },
+  "appSource": "selling-to-sold",
+  "createdAt": 1730745000000
+}
+```
+
+#### `GET /api/mobile/items`
+- Retrieves all mobile items for the authenticated user
+- Includes media and metadata relations
+
+#### `PATCH /api/mobile/items`
+- Updates existing mobile item metadata or status
+
+#### Updated: `GET /api/photo-gallery`
+- Now includes `mobileItem` and `metadata` in the response
+- Photos with metadata show dimensions, notes, and custom IDs
+
+### 3. UI Changes
+
+#### Photo Gallery Modal (`PhotoGalleryModal.tsx`)
+- Updated interface to include mobile item metadata
+- Added visual indicators for photos with metadata:
+  - **Dimension Badge**: Shows "📏 Width"W × Height"H × Depth"D" on photos
+  - **Hover Overlay**: Displays custom item ID and notes on hover
+- Metadata is visible when browsing and selecting photos
+
+### 4. User Flow
+
+**From Mobile App (Selling to Sold):**
+1. User captures 1+ photos of an item
+2. User adds metadata:
+   - Custom item ID (optional)
+   - Dimensions: Height, Width, Depth (optional)
+   - Notes (optional)
+3. Photos are uploaded to `/api/photo-gallery`
+4. Item with metadata is created via `/api/mobile/items`
+5. Photos are linked to the mobile item
+
+**In TreasureHub:**
+1. User goes to create a listing
+2. Opens photo gallery modal
+3. Sees photos with metadata badges showing dimensions
+4. Hovers over photo to see full metadata (ID, notes)
+5. Selects photos - metadata is preserved and visible
+6. User can reference metadata when filling out listing details
+
+## Data Flow Diagram
+
+```
+┌─────────────────────┐
+│  Selling to Sold    │
+│   Mobile App        │
+└──────────┬──────────┘
+           │
+           │ 1. Upload Photos
+           ├──→ POST /api/photo-gallery
+           │    (for each photo)
+           │    Returns: { photo: { id, url, ... } }
+           │
+           │ 2. Create Item with Metadata
+           └──→ POST /api/mobile/items
+                Body: {
+                  mediaIds: ["photo_1", "photo_2"],
+                  metadata: { height, width, depth, notes, itemId }
+                }
+                ↓
+           ┌────────────────┐
+           │   TreasureHub  │
+           │    Database    │
+           └────────────────┘
+                ↓
+           - MobileItem created
+           - MobileItemMetadata created
+           - Photos linked to item
+                ↓
+           ┌────────────────┐
+           │  TreasureHub   │
+           │   Frontend     │
+           └────────────────┘
+                ↓
+           - User opens photo gallery
+           - Metadata displayed on photos
+           - User references dimensions/notes
+```
+
+## Database Migration
+
+**Migration Name:** `add_mobile_item_metadata`
+
+**Changes:**
+1. Create `MobileItem` table
+2. Create `MobileItemMetadata` table
+3. Add `mobileItemId` column to `PhotoGallery`
+4. Add indexes for performance
+
+**Command:**
+```bash
+npx prisma migrate dev --name add_mobile_item_metadata
+```
+
+## Testing Instructions
+
+### 1. Test Photo Upload (Existing)
+```bash
+curl -X POST https://treasurehub.club/api/photo-gallery \
+  -H "Authorization: Bearer {token}" \
+  -F "file=@photo.jpg"
+```
+
+### 2. Test Item Creation with Metadata
+```bash
+curl -X POST https://treasurehub.club/api/mobile/items \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mediaIds": ["photo_abc123"],
+    "metadata": {
+      "itemId": "TABLE-001",
+      "height": "30",
+      "width": "48",
+      "depth": "24",
+      "notes": "Antique oak dining table"
+    },
+    "appSource": "selling-to-sold"
+  }'
+```
+
+### 3. Test Photo Gallery Retrieval
+```bash
+curl -X GET https://treasurehub.club/api/photo-gallery?status=available \
+  -H "Authorization: Bearer {token}"
+```
+
+**Expected Response:**
+```json
+{
+  "photos": [
+    {
+      "id": "photo_abc123",
+      "url": "...",
+      "mobileItem": {
+        "id": "item_xyz789",
+        "metadata": {
+          "customItemId": "TABLE-001",
+          "height": "30",
+          "width": "48",
+          "depth": "24",
+          "notes": "Antique oak dining table"
+        }
+      }
+    }
+  ]
+}
+```
+
+### 4. Test UI Display
+1. Log into TreasureHub
+2. Go to "List an Item"
+3. Click "Select from Gallery"
+4. Look for photos with dimension badges (📏 48"W × 30"H × 24"D)
+5. Hover over photo to see notes and custom ID
+6. Select photo - metadata should be visible
+
+## Security Considerations
+
+- **Authentication Required**: All endpoints require valid session token
+- **User Ownership**: Users can only link photos they own
+- **Validation**: mediaIds are validated before linking
+- **SQL Injection**: Using Prisma ORM prevents SQL injection
+- **XSS Protection**: User-provided text (notes, IDs) properly escaped in UI
+
+## Benefits
+
+- **Seamless Workflow**: Metadata flows from mobile app to web platform
+- **Time Savings**: Users don't need to re-enter dimensions and notes
+- **Accuracy**: Dimensions captured at upload time are preserved
+- **Context**: Notes provide helpful context when creating listings
+- **Tracking**: Custom IDs help users organize and track items
+
+## Future Enhancements
+
+### Phase 2:
+- **Auto-fill Listing**: Pre-populate listing form with metadata
+- **Bulk Operations**: Process multiple items at once
+- **Metadata Editing**: Edit metadata in TreasureHub UI
+- **Photo Grouping**: View/manage photos by mobile item
+- **Search**: Search by custom item ID or notes
+
+### Phase 3:
+- **Advanced Metadata**: Category, condition, estimated value
+- **AI Integration**: Auto-detect dimensions from photos
+- **History Tracking**: Track metadata changes over time
+- **Export**: Export items with metadata to CSV/Excel
+
+## Dependencies
+
+- **Prisma** - Database ORM
+- **Better Auth** - Authentication
+- **React** - Frontend UI
+- **TypeScript** - Type safety
+
+## Files Created/Modified
+
+### New Files:
+- `app/api/mobile/items/route.ts` - Mobile items API endpoint
+- `requirements/selling-to-sold-integration.txt` - This document
+
+### Modified Files:
+- `prisma/schema.prisma` - Added MobileItem and MobileItemMetadata models
+- `app/api/photo-gallery/route.ts` - Added mobileItem to query response
+- `app/components/PhotoGalleryModal.tsx` - Added metadata display
+
+## Migration Notes
+
+- **Backward Compatible**: Existing photos without metadata work as before
+- **No Data Loss**: All existing photos and data preserved
+- **Gradual Adoption**: Users can continue using system without mobile app
+- **Optional Metadata**: All metadata fields are optional
+
+## Support
+
+For questions about:
+- **Mobile App**: Check Selling to Sold app codebase (`src/lib/api.ts`, `src/lib/queue.ts`)
+- **Backend**: TreasureHub API endpoints
+- **Database**: Prisma schema and migrations
+- **UI**: PhotoGalleryModal component
+
+## Changelog
+
+- **v1.0** (2025-11-04) - Initial integration implementation
+  - Database schema for mobile items
+  - API endpoints for item creation
+  - Photo gallery metadata display
+  - UI badges and overlays
+

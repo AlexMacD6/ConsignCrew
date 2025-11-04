@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
       userInput,
       externalItemId,
       inventoryItem,
+      mobileItemMetadata,
       mode = 'comprehensive', // 'comprehensive' or 'formFields' mode
     } = body;
 
@@ -263,6 +264,23 @@ IMPORTANT: Use this inventory data to:
 8. Use itemNumber as potential modelNumber if it represents a product model
 9. Consider purchase date for age-related condition assessment
 10. Reference quantity for availability context in description
+` : ''}
+
+${mobileItemMetadata ? `
+MOBILE ITEM METADATA (From Selling to Sold app - Use for dimensions and additional context):
+- Custom Item ID: ${mobileItemMetadata.customItemId || 'Not provided'}
+- Height: ${mobileItemMetadata.height ? `${mobileItemMetadata.height} inches` : 'Not provided'}
+- Width: ${mobileItemMetadata.width ? `${mobileItemMetadata.width} inches` : 'Not provided'}
+- Depth: ${mobileItemMetadata.depth ? `${mobileItemMetadata.depth} inches` : 'Not provided'}
+- Notes: ${mobileItemMetadata.notes || 'Not provided'}
+- Source: ${mobileItemMetadata.source || 'selling-to-sold'}
+
+IMPORTANT: Use this mobile metadata to:
+1. **DIMENSIONS PRIORITY**: Use the exact dimensions provided (height, width, depth) from the mobile app. These are ACCURATE measurements taken at the time of capture. Output these exact values as numbers only (e.g., "48" not "Approximately 48 inches").
+2. Incorporate the user notes into the detailed description to provide additional context
+3. Reference the custom item ID if relevant for tracking or identification
+4. If dimensions conflict with visual analysis, TRUST the mobile metadata dimensions as they were physically measured
+5. Include dimension information prominently in the description for buyer clarity
 ` : ''}
 
 VISUAL ANALYSIS INSTRUCTIONS:

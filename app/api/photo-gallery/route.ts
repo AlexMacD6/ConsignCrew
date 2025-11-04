@@ -94,6 +94,7 @@ export async function GET(request: NextRequest) {
         height: true,
         status: true,
         listingId: true,
+        mobileItemId: true,
         userId: true,
         organizationId: true,
         createdAt: true,
@@ -102,6 +103,22 @@ export async function GET(request: NextRequest) {
             id: true,
             name: true,
             email: true,
+          },
+        },
+        mobileItem: {
+          select: {
+            id: true,
+            status: true,
+            appSource: true,
+            metadata: {
+              select: {
+                customItemId: true,
+                height: true,
+                width: true,
+                depth: true,
+                notes: true,
+              },
+            },
           },
         },
       },

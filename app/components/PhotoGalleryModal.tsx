@@ -10,6 +10,18 @@ interface PhotoGalleryPhoto {
   status: string;
   listingId?: string;
   createdAt: string;
+  mobileItem?: {
+    id: string;
+    status: string;
+    appSource: string;
+    metadata?: {
+      customItemId?: string | null;
+      height?: string | null;
+      width?: string | null;
+      depth?: string | null;
+      notes?: string | null;
+    } | null;
+  } | null;
 }
 
 interface PhotoGalleryModalProps {
@@ -315,39 +327,66 @@ export default function PhotoGalleryModal({
                         src={photo.thumbnailUrl || photo.url}
                         alt={photo.originalFilename}
                         className="w-full h-full object-cover"
+                        loading="lazy"
                       />
                     </div>
 
-                    {/* Selection Indicator */}
+                    {/* Mobile Item Metadata Badge */}
+                    {photo.mobileItem?.metadata && (
+                      <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                        <span className="font-semibold">📏</span>
+                        {photo.mobileItem.metadata.height && photo.mobileItem.metadata.width && (
+                          <span>
+                            {photo.mobileItem.metadata.width}"W × {photo.mobileItem.metadata.height}"H
+                            {photo.mobileItem.metadata.depth && ` × ${photo.mobileItem.metadata.depth}"D`}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Selected Checkmark */}
                     {isSelected && (
-                      <div className="absolute top-2 right-2 w-6 h-6 bg-[#D4AF3D] rounded-full flex items-center justify-center">
-                        <CheckCircle className="w-4 h-4 text-white" />
+                      <div className="absolute top-2 right-2 bg-[#D4AF3D] rounded-full p-1">
+                        <CheckCircle className="w-5 h-5 text-white" />
                       </div>
                     )}
 
                     {/* Listed Badge */}
                     {isListed && (
-                      <div className="absolute top-2 left-2 px-2 py-1 bg-blue-500 text-white text-xs rounded">
-                        In Use
+                      <div className="absolute top-2 right-2 bg-gray-800/80 text-white text-xs px-2 py-1 rounded">
+                        Listed
                       </div>
                     )}
 
-                    {/* Delete Button */}
-                    {!isListed && filter === "available" && (
+                    {/* Delete Button - Only for available photos */}
+                    {!isListed && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDeletePhoto(photo.id);
                         }}
-                        className="absolute bottom-2 right-2 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                        className="absolute bottom-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                        title="Delete photo"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     )}
 
-                    {/* Filename */}
-                    <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-2 truncate opacity-0 group-hover:opacity-100 transition-opacity">
-                      {photo.originalFilename}
+                    {/* Photo Info Overlay (shows on hover) */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <p className="text-white text-xs truncate">
+                        {photo.originalFilename}
+                      </p>
+                      {photo.mobileItem?.metadata?.customItemId && (
+                        <p className="text-white/80 text-xs truncate">
+                          ID: {photo.mobileItem.metadata.customItemId}
+                        </p>
+                      )}
+                      {photo.mobileItem?.metadata?.notes && (
+                        <p className="text-white/80 text-xs truncate" title={photo.mobileItem.metadata.notes}>
+                          📝 {photo.mobileItem.metadata.notes}
+                        </p>
+                      )}
                     </div>
                   </div>
                 );

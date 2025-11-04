@@ -486,17 +486,52 @@ model PhotoGallery {
   height           Int?
   status           String        @default("available")
   listingId        String?
+  mobileItemId     String?       // Link to mobile item metadata (if uploaded from mobile app)
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
   listing          Listing?      @relation("ListingGalleryPhotos", fields: [listingId], references: [id])
   user             user          @relation("UserPhotoGallery", fields: [userId], references: [id])
   organization     Organization? @relation("OrganizationPhotos", fields: [organizationId], references: [id])
+  mobileItem       MobileItem?   @relation("MobileItemMedia", fields: [mobileItemId], references: [id])
 
   @@index([userId])
   @@index([organizationId])
   @@index([status])
   @@index([listingId])
+  @@index([mobileItemId])
   @@index([createdAt])
+}
+
+// Mobile Item Metadata from Selling to Sold app
+model MobileItem {
+  id           String               @id @default(cuid())
+  userId       String
+  status       String               @default("pending") // pending, approved, listed
+  appSource    String               @default("selling-to-sold")
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  media        PhotoGallery[]       @relation("MobileItemMedia")
+  metadata     MobileItemMetadata?
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Metadata associated with mobile items
+model MobileItemMetadata {
+  id           String     @id @default(cuid())
+  mobileItemId String     @unique
+  customItemId String?    // User-provided item ID
+  height       String?    // Dimensions in inches
+  width        String?
+  depth        String?
+  notes        String?    // User notes about the item
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  mobileItem   MobileItem @relation(fields: [mobileItemId], references: [id], onDelete: Cascade)
+
+  @@index([mobileItemId])
 }
 
 model EbayNotification {
