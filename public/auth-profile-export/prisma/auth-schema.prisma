@@ -1,0 +1,178 @@
+// This file contains the authentication-related Prisma schema models
+// extracted from TreasureHub. Add these models to your prisma/schema.prisma file.
+
+// ============================================================================
+// IMPORTANT: Update the datasource and generator to match your setup
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// USER MODEL - Core user account information
+// ============================================================================
+
+model user {
+  id               String          @id @default(cuid())
+  email            String          @unique
+  mobilePhone      String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  emailVerified    Boolean         @default(false)
+  name             String
+  addressLine1     String?
+  addressLine2     String?
+  city             String?
+  neighborhood     String?
+  state            String?
+  zipCode          String?
+  country          String?
+  stripeCustomerId String?
+  
+  // Relations (you may need to adjust based on your app)
+  sessions         session[]
+  accounts         account[]
+  
+  // Add your own relations here (listings, orders, etc.)
+  
+  @@index([email])
+}
+
+// ============================================================================
+// SESSION MODEL - User sessions for authentication
+// ============================================================================
+
+model session {
+  id                   String        @id @default(cuid())
+  userId               String
+  activeOrganizationId String?
+  activeTeamId         String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  expiresAt            DateTime
+  token                String        @unique
+  ipAddress            String?
+  userAgent            String?
+  user                 user          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([token])
+  @@map("session")
+}
+
+// ============================================================================
+// ACCOUNT MODEL - OAuth and password storage
+// ============================================================================
+
+model account {
+  id                   String    @id @default(cuid())
+  userId               String
+  providerId           String    @map("provider")
+  accountId            String    @map("providerAccountId")
+  refreshToken         String?   @map("refresh_token")
+  accessToken          String?   @map("access_token")
+  idToken              String?   @map("id_token")
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  accessTokenExpiresAt DateTime? @map("expires_at")
+  password             String?   // Hashed password for email/password auth
+  user                 user      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("account")
+}
+
+// ============================================================================
+// VERIFICATION MODEL - Email verification tokens
+// ============================================================================
+
+model verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ============================================================================
+// VERIFICATION TOKEN MODEL - Password reset tokens
+// ============================================================================
+
+model verificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  
+  @@unique([identifier, token])
+  @@index([token])
+  @@map("verificationToken")
+}
+
+// ============================================================================
+// OPTIONAL: ORGANIZATION MODELS (if using multi-tenant)
+// ============================================================================
+// These models are used for organization-based admin access in TreasureHub
+// You may remove them if you don't need multi-tenant functionality
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  logo      String?
+  metadata  String?
+  createdAt DateTime @default(now())
+  members   Member[]
+  sessions  session[] @relation(references: [activeOrganizationId])
+}
+
+model Member {
+  id             String       @id @default(cuid())
+  userId         String
+  organizationId String
+  role           String       // 'OWNER', 'ADMIN', 'MEMBER'
+  createdAt      DateTime     @default(now())
+  user           user         @relation(fields: [userId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  
+  @@unique([userId, organizationId])
+  @@index([userId])
+  @@index([organizationId])
+}
+
+// ============================================================================
+// NOTES FOR IMPLEMENTATION
+// ============================================================================
+
+// 1. Copy these models to your prisma/schema.prisma file
+// 2. Update relations to match your app structure
+// 3. Run: npx prisma migrate dev --name add_auth_system
+// 4. Run: npx prisma generate
+// 5. Restart your dev server
+
+// ============================================================================
+// ADMIN ACCESS CHECKING
+// ============================================================================
+
+// TreasureHub uses organization membership for admin access:
+// - Check if user.members includes role 'ADMIN' or 'OWNER'
+// - Example in code:
+//   const isAdmin = user.members.some(member => 
+//     member.role === 'ADMIN' || member.role === 'OWNER'
+//   );
+
+// If you don't need organizations, you can add a role field to the user model:
+// role String @default("USER") // USER | ADMIN
+
+// Then check: if (user.role === 'ADMIN') { ... }
+

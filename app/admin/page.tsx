@@ -28,6 +28,7 @@ import {
   MessageSquare,
   FileText,
   ExternalLink,
+  Database,
   RefreshCw,
   Loader2,
   Info,
@@ -429,6 +430,15 @@ export default function AdminDashboard() {
       href: "/admin/sales-analytics",
       color: "bg-green-500",
       stats: "View Reports",
+    },
+    {
+      title: "Export Data",
+      description:
+        "Export any database table to CSV format for analysis, backup, or migration",
+      icon: Database,
+      href: "/admin/export-data",
+      color: "bg-cyan-500",
+      stats: "Export CSV",
     },
   ];
 

@@ -1,0 +1,196 @@
+// ============================================================================
+// INVENTORY MANAGEMENT SYSTEM - Prisma Schema
+// ============================================================================
+// Add these models to your schema.prisma file
+//
+// This schema defines the complete inventory management system including:
+// - Inventory lists (delivery lots)
+// - Inventory items (individual SKUs)
+// - Disposition tracking (RECEIVED, TRASH, USE)
+// ============================================================================
+
+// ============================================================================
+// MAIN MODELS
+// ============================================================================
+
+model InventoryList {
+  id                  String          @id @default(cuid())
+  name                String          // e.g., "Home Depot Returns - March 2024"
+  createdBy           String?         // User ID who created this list
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  
+  // Financial tracking (optional but recommended)
+  msrpPercentage      Float?          // What % of MSRP was paid (e.g., 0.20 for 20%)
+  serviceCharges      Float?          // Auction service fees
+  shippingCharges     Float?          // Shipping/handling costs
+  totalExtRetailValue Float?          // Total MSRP value of all items
+  totalPurchasePrice  Float?          // Total amount paid (winning bid + fees + shipping)
+  winningBidAmount    Float?          // Actual bid amount (before fees/shipping)
+  
+  // Lot metadata
+  briefDescription    String?         // Short description of the lot
+  datePurchased       DateTime?       // When the lot was purchased
+  lotNumber           String?         // Vendor-provided lot number
+  
+  // Relations
+  items               InventoryItem[] // One-to-many: list has many items
+  
+  // Indexes for performance
+  @@index([createdBy])
+  @@index([createdAt])
+  @@index([datePurchased])
+}
+
+model InventoryItem {
+  id                   String                 @id @default(cuid())
+  listId               String                 // Foreign key to InventoryList
+  
+  // Item identification
+  lotNumber            String?                // Vendor lot number (may differ from list)
+  itemNumber           String?                // SKU/Item number from vendor
+  
+  // Classification
+  deptCode             String?                // Department code (e.g., "10")
+  department           String?                // Department name (e.g., "Electronics")
+  categoryCode         String?                // Category code (e.g., "CAT01")
+  category             String?                // Category name (e.g., "Televisions")
+  
+  // Description & pricing
+  description          String?                // Item description/title
+  vendor               String?                // Brand/manufacturer
+  quantity             Int?                   // Total quantity in manifest
+  unitRetail           Float?                 // MSRP per unit
+  extRetail            Float?                 // Total MSRP (unitRetail × quantity)
+  purchasePrice        Float?                 // What was actually paid for this SKU (total)
+  
+  // Timestamps
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  
+  // Relations
+  list                 InventoryList          @relation(fields: [listId], references: [id], onDelete: Cascade)
+  listings             Listing[]              // Items that were listed for sale (link to your Listing model)
+  dispositions         InventoryDisposition[] @relation("ItemDispositions")
+  
+  // Indexes for performance and search
+  @@index([listId])
+  @@index([itemNumber])
+  @@index([vendor])
+  @@index([department])
+  @@index([description])
+  @@index([createdAt])
+}
+
+model InventoryDisposition {
+  id              String              @id @default(cuid())
+  inventoryItemId String              // Foreign key to InventoryItem
+  
+  // Disposition details
+  status          InventoryItemStatus // RECEIVED | TRASH | USE
+  quantity        Int                 // How many units have this status
+  notes           String?             // Optional notes (e.g., reason for trash)
+  
+  // Tracking
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  createdBy       String?             // User ID who created this disposition
+  
+  // Relations
+  InventoryItem   InventoryItem       @relation("ItemDispositions", fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  
+  // Indexes
+  @@index([inventoryItemId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([createdBy])
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum InventoryItemStatus {
+  RECEIVED  // Item received and ready for resale (can be listed)
+  TRASH     // Item disposed/damaged/unsellable
+  USE       // Item for personal or business use (tax write-off)
+}
+
+// ============================================================================
+// CALCULATED FIELDS (Not in database - computed at runtime)
+// ============================================================================
+// These fields are calculated by the API based on dispositions:
+//
+// receivedQuantity: number    - Sum of all RECEIVED dispositions
+// trashedQuantity: number     - Sum of all TRASH dispositions
+// usedQuantity: number        - Sum of all USE dispositions
+// manifestedQuantity: number  - quantity - (received + trashed + used)
+// postedListings: number      - Count of active listings for this item
+// availableToList: number     - receivedQuantity - postedListings
+// unitPurchasePrice: number   - purchasePrice / quantity (calculated)
+// ============================================================================
+
+// ============================================================================
+// INTEGRATION WITH EXISTING MODELS
+// ============================================================================
+// 
+// If you have an existing Listing model, add this field:
+//
+// model Listing {
+//   // ... your existing fields
+//   inventoryItemId String?       // Optional link to inventory
+//   inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+//   
+//   @@index([inventoryItemId])
+// }
+//
+// This allows you to:
+// 1. Track which listings came from inventory
+// 2. Calculate "already listed" count
+// 3. Prevent over-listing (listing more than received quantity)
+// ============================================================================
+
+// ============================================================================
+// MIGRATION COMMANDS
+// ============================================================================
+//
+// After adding these models to your schema.prisma:
+//
+// 1. Create migration:
+//    npx prisma migrate dev --name add_inventory_system
+//
+// 2. Generate Prisma Client:
+//    npx prisma generate
+//
+// 3. (Optional) Seed with sample data:
+//    npx prisma db seed
+//
+// ============================================================================
+
+// ============================================================================
+// NOTES
+// ============================================================================
+//
+// 1. Cascading Deletes:
+//    - Deleting an InventoryList will delete all its InventoryItems
+//    - Deleting an InventoryItem will delete all its dispositions
+//
+// 2. Soft Delete Option:
+//    If you prefer soft deletes, add:
+//      deletedAt DateTime?
+//      @@index([deletedAt])
+//    And filter by deletedAt: null in queries
+//
+// 3. Multi-tenancy:
+//    If you need organization-level isolation, add:
+//      organizationId String
+//      @@index([organizationId])
+//
+// 4. Audit Trail:
+//    For compliance, consider adding:
+//      modifiedBy String?
+//      modifiedAt DateTime?
+//    Track who made changes and when
+//
+// ============================================================================
+
