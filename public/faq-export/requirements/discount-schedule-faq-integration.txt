@@ -1,0 +1,82 @@
+# Discount Schedule FAQ Integration and Methodology Updates
+
+## Overview
+Update the discount schedule system to match the tooltip methodology and add detailed schedule information to the FAQ page.
+
+## Issues to Address
+
+### 1. Methodology Mismatch
+- **Problem**: Current implementation uses hourly intervals, but tooltip shows day-based schedules
+- **Root Cause**: Different calculation methods between tooltip and actual implementation
+- **Solution**: Update discount schedule calculations to match tooltip methodology
+
+### 2. Missing FAQ Information
+- **Problem**: Detailed discount schedule tables not available in FAQ
+- **Root Cause**: FAQ page lacks comprehensive pricing information
+- **Solution**: Add detailed discount schedule section to FAQ
+
+## Technical Changes Required
+
+### FAQ Page Updates
+- Add new "Pricing & Discounts" category to FAQ
+- Include detailed Turbo-30 and Classic-60 schedule tables
+- Add information about reserve prices and opt-out options
+- Format tables with proper styling and responsive design
+
+### Discount Schedule Library Updates
+- Update `DISCOUNT_SCHEDULES` to use day-based intervals instead of hourly
+- Turbo-30: Drops every 3 days (0, 3, 6, 9, 12, 15, 18, 21, 24, 30)
+- Classic-60: Drops every 7 days (0, 7, 14, 21, 28, 35, 42, 49, 56, 60)
+- Update calculation functions to use day-based logic
+- Fix Prisma query for discount schedule filtering
+
+### API Updates
+- Update price drop API to use new calculation methodology
+- Ensure next drop price calculations are accurate
+- Maintain backward compatibility with existing data
+
+## Schedule Details
+
+### Turbo-30 (30-Day Schedule)
+- Price drops every 3 days
+- Day 0: 100% (original price)
+- Day 3: 95% (-5%)
+- Day 6: 90% (-10%)
+- Day 9: 85% (-15%)
+- Day 12: 80% (-20%)
+- Day 15: 75% (-25%)
+- Day 18: 70% (-30%)
+- Day 21: 65% (-35%)
+- Day 24: 60% (-40%)
+- Day 30: Expire
+
+### Classic-60 (60-Day Schedule)
+- Price drops every 7 days
+- Day 0: 100% (original price)
+- Day 7: 90% (-10%)
+- Day 14: 80% (-20%)
+- Day 21: 75% (-25%)
+- Day 28: 70% (-30%)
+- Day 35: 65% (-35%)
+- Day 42: 60% (-40%)
+- Day 49: 55% (-45%)
+- Day 56: 50% (-50%)
+- Day 60: Expire
+
+## Files Modified
+- `app/faq/faq-data.tsx` - Added new FAQ category with detailed schedules
+- `app/lib/discount-schedule.ts` - Updated calculation methodology
+- `app/api/listings/[id]/next-price-drop/route.ts` - Updated API to use new calculations
+
+## Testing Instructions
+1. Navigate to FAQ page and verify new "Pricing & Discounts" section
+2. Check that Turbo-30 and Classic-60 tables display correctly
+3. Test price drop calculations with new methodology
+4. Verify that listing pages show correct discount schedule descriptions
+5. Test that existing listings continue to work with updated calculations
+
+## Expected Outcomes
+- FAQ page includes comprehensive discount schedule information
+- Price drop calculations match tooltip methodology exactly
+- All discount schedule descriptions are consistent across the platform
+- Users can easily understand how automatic discounts work 
